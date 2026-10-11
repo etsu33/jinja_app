@@ -29,6 +29,8 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 from temples.services import evidence_gate
 from temples.services.knowledge_seed import parse_seed
 
@@ -468,22 +470,102 @@ def test_wave0_db02_candidate_master_and_base_seed_positions_always_agree():
         assert master_row["longitude"] == base_row["longitude"], candidate_id
 
 
-def test_wave0_db02_base_seed_appends_five_rows_without_duplicates():
+# W0-DB02 の Base Seed cohort（historical boundary）。W0-DB02 は既存108行の後ろに5行を追加した。
+# 後続の cohort（W0-DB03 以降）が末尾に append されてもこの範囲は変わらないため、
+# 現在の Base Seed 全体の行数は検査しない（append-safe）。
+W0_DB02_EXISTING_BASE_ROW_COUNT = 108
+W0_DB02_BASE_ROW_END = W0_DB02_EXISTING_BASE_ROW_COUNT + len(CANDIDATE_IDS)  # 113
+
+
+def _db02_expected_identities() -> list[tuple[str, str]]:
     packet = _load_packet_identities()
+    return [
+        (
+            packet[candidate_id]["official_name"],
+            packet[candidate_id]["official_address"],
+        )
+        for candidate_id in CANDIDATE_IDS
+    ]
+
+
+def _db02_cohort_violations(base_rows: list[dict]) -> list[str]:
+    """W0-DB02 cohort の accounting 違反を列挙する（空なら PASS）。後続 append は許容する。"""
+    expected = _db02_expected_identities()
+    violations: list[str] = []
+    if len(base_rows) < W0_DB02_BASE_ROW_END:
+        violations.append(f"base seed has {len(base_rows)} rows < {W0_DB02_BASE_ROW_END}")
+    cohort = base_rows[W0_DB02_EXISTING_BASE_ROW_COUNT:W0_DB02_BASE_ROW_END]
+    if len(cohort) != len(CANDIDATE_IDS):
+        violations.append(f"cohort size {len(cohort)} != {len(CANDIDATE_IDS)}")
+    cohort_identities = [(row.get("name_jp"), row.get("address")) for row in cohort]
+    if cohort_identities != expected:
+        violations.append(f"cohort identities {cohort_identities} != packet identities")
+    all_identities = [(row.get("name_jp"), row.get("address")) for row in base_rows]
+    for identity in expected:
+        count = all_identities.count(identity)
+        if count != 1:
+            violations.append(f"{identity} occurs {count} times in base seed")
+    duplicated = sorted({i for i in all_identities if all_identities.count(i) > 1})
+    if duplicated:
+        violations.append(f"duplicate base seed identities {duplicated}")
+    return violations
+
+
+def test_wave0_db02_historical_base_seed_cohort_is_append_safe():
+    expected = _db02_expected_identities()
     base_rows = _load_base_rows()
+
+    assert len(base_rows) >= W0_DB02_BASE_ROW_END
+    db02_cohort = base_rows[W0_DB02_EXISTING_BASE_ROW_COUNT:W0_DB02_BASE_ROW_END]
+    assert len(db02_cohort) == len(CANDIDATE_IDS)
+    assert [(row["name_jp"], row["address"]) for row in db02_cohort] == expected
+
     identities = [(row["name_jp"], row["address"]) for row in base_rows]
-
-    # W0-DB03 G4 で4行（wave0-012 / 013 / 015 / 016）を追加し 113 -> 117。
-    # W0-DB04 G4 re-entry で3行（wave0-019 / 021 / 025）を追加し 117 -> 120。
-    # NIIGATA-001-H001 G4 data materialization で nsrc-000004 青海神社を追加し 120 -> 121。
-    # nsrc-000002 青澤神社の Base Shrine materialization で 121 -> 122。
-    assert len(base_rows) == 122
     assert len(identities) == len(set(identities))
+    for identity in expected:
+        assert identities.count(identity) == 1, identity
 
-    for candidate_id in CANDIDATE_IDS:
-        frozen = packet[candidate_id]
-        key = (frozen["official_name"], frozen["official_address"])
-        assert identities.count(key) == 1
+    assert _db02_cohort_violations(base_rows) == []
+
+
+def test_wave0_db02_cohort_accounting_allows_later_appended_rows():
+    appended = _load_base_rows() + [
+        {"name_jp": "後続追加神社", "address": "架空県架空市1-1"},
+        {"name_jp": "後続追加神社二", "address": "架空県架空市2-2"},
+    ]
+
+    assert _db02_cohort_violations(appended) == []
+
+
+def _db02_mutation(kind: str):
+    start = W0_DB02_EXISTING_BASE_ROW_COUNT
+
+    def mutate(rows):
+        if kind == "remove":
+            del rows[start]
+        elif kind == "reorder":
+            rows[start], rows[start + 1] = rows[start + 1], rows[start]
+        elif kind == "change":
+            rows[start + 2] = {**rows[start + 2], "address": "長野県長野市戸隠9999"}
+        elif kind == "duplicate":
+            rows.append(dict(rows[start + 3]))
+        elif kind == "prefix-removed":
+            del rows[0]
+        else:  # pragma: no cover
+            raise AssertionError(kind)
+
+    return mutate
+
+
+@pytest.mark.parametrize(
+    "kind",
+    ["remove", "reorder", "change", "duplicate", "prefix-removed"],
+)
+def test_wave0_db02_cohort_accounting_rejects_mutations(kind):
+    rows = [dict(row) for row in _load_base_rows()]
+    _db02_mutation(kind)(rows)
+
+    assert _db02_cohort_violations(rows) != []
 
 
 def test_wave0_db02_goriyaku_tags_are_canonical_and_mirror_candidate_master():

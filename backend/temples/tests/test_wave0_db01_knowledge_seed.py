@@ -53,16 +53,110 @@ def test_wave0_db01_seed_schema_counts_and_identities():
     assert len(identities) == len(set(identities))
 
 
-def test_wave0_db01_shrine_refs_exist_in_base_seed():
-    base_rows = json.loads(BASE_SEED_PATH.read_text(encoding="utf-8"))
-    base_identities = {(row["name_jp"], row["address"]) for row in base_rows}
+# W0-DB01 の Base Seed cohort（historical boundary）。W0-DB01 は既存103行の後ろに5行を追加した。
+# 後続の cohort（W0-DB02 以降）が末尾に append されてもこの範囲は変わらないため、
+# 現在の Base Seed 全体の行数は検査しない（append-safe）。
+W0_DB01_EXISTING_BASE_ROW_COUNT = 103
+W0_DB01_BASE_ROW_END = W0_DB01_EXISTING_BASE_ROW_COUNT + len(TARGETS)  # 108
 
-    # W0-DB03 G4 で4行（wave0-012 / 013 / 015 / 016）を追加し 113 -> 117。
-    # W0-DB04 G4 re-entry で3行（wave0-019 / 021 / 025）を追加し 117 -> 120。
-    # NIIGATA-001-H001 G4 data materialization で nsrc-000004 青海神社を追加し 120 -> 121。
-    # nsrc-000002 青澤神社の Base Shrine materialization で 121 -> 122。
-    assert len(base_rows) == 122
-    assert all(identity in base_identities for identity in TARGETS)
+
+def _db01_cohort_violations(base_rows: list[dict]) -> list[str]:
+    """W0-DB01 cohort の accounting 違反を列挙する（空なら PASS）。後続 append は許容する。"""
+    violations: list[str] = []
+    if len(base_rows) < W0_DB01_BASE_ROW_END:
+        violations.append(f"base seed has {len(base_rows)} rows < {W0_DB01_BASE_ROW_END}")
+    cohort = base_rows[W0_DB01_EXISTING_BASE_ROW_COUNT:W0_DB01_BASE_ROW_END]
+    if len(cohort) != len(TARGETS):
+        violations.append(f"cohort size {len(cohort)} != {len(TARGETS)}")
+    cohort_identities = [(row.get("name_jp"), row.get("address")) for row in cohort]
+    if cohort_identities != TARGETS:
+        violations.append(f"cohort identities {cohort_identities} != TARGETS")
+    all_identities = [(row.get("name_jp"), row.get("address")) for row in base_rows]
+    for identity in TARGETS:
+        count = all_identities.count(identity)
+        if count != 1:
+            violations.append(f"{identity} occurs {count} times in base seed")
+    return violations
+
+
+def _load_base_rows() -> list[dict]:
+    return json.loads(BASE_SEED_PATH.read_text(encoding="utf-8"))
+
+
+def test_wave0_db01_historical_base_seed_cohort_is_append_safe():
+    base_rows = _load_base_rows()
+
+    assert len(base_rows) >= W0_DB01_BASE_ROW_END
+    db01_cohort = base_rows[W0_DB01_EXISTING_BASE_ROW_COUNT:W0_DB01_BASE_ROW_END]
+    assert len(db01_cohort) == len(TARGETS)
+    assert [(row["name_jp"], row["address"]) for row in db01_cohort] == TARGETS
+
+    all_identities = [(row["name_jp"], row["address"]) for row in base_rows]
+    for identity in TARGETS:
+        assert all_identities.count(identity) == 1, identity
+
+    assert _db01_cohort_violations(base_rows) == []
+
+
+def test_wave0_db01_cohort_accounting_allows_later_appended_rows():
+    base_rows = _load_base_rows()
+    appended = base_rows + [
+        {"name_jp": "後続追加神社", "address": "架空県架空市1-1"},
+        {"name_jp": "後続追加神社二", "address": "架空県架空市2-2"},
+    ]
+
+    assert _db01_cohort_violations(appended) == []
+
+
+def _without(index: int):
+    def mutate(rows):
+        del rows[index]
+
+    return mutate
+
+
+def _swap(i: int, j: int):
+    def mutate(rows):
+        rows[i], rows[j] = rows[j], rows[i]
+
+    return mutate
+
+
+def _rename(index: int, address: str):
+    def mutate(rows):
+        rows[index] = {**rows[index], "address": address}
+
+    return mutate
+
+
+def _duplicate(index: int):
+    def mutate(rows):
+        rows.append(dict(rows[index]))
+
+    return mutate
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(_without(W0_DB01_EXISTING_BASE_ROW_COUNT), id="cohort-row-removed"),
+        pytest.param(
+            _swap(W0_DB01_EXISTING_BASE_ROW_COUNT, W0_DB01_EXISTING_BASE_ROW_COUNT + 1),
+            id="cohort-rows-reordered",
+        ),
+        pytest.param(
+            _rename(W0_DB01_EXISTING_BASE_ROW_COUNT + 2, "茨城県日立市入四間町999"),
+            id="cohort-identity-changed",
+        ),
+        pytest.param(_duplicate(W0_DB01_EXISTING_BASE_ROW_COUNT + 3), id="target-identity-duplicated"),
+        pytest.param(_without(0), id="prefix-row-removed-shifts-cohort"),
+    ],
+)
+def test_wave0_db01_cohort_accounting_rejects_mutations(mutate):
+    rows = [dict(row) for row in _load_base_rows()]
+    mutate(rows)
+
+    assert _db01_cohort_violations(rows) != []
 
 
 def test_wave0_db01_source_keys_are_resolved_and_no_fact_is_source_less():
