@@ -253,7 +253,7 @@ goriyaku_tag_max_id       = 39
 goriyaku_tag_distinct_ids = 39
 ```
 
-G7 Base dry-run / apply は `goriyaku_tags rows=0 updated=0 added_links=0 removed_links=0` を記録した。
+G7 監査記録では、Production Base dry-run / apply の goriyaku 変更は `goriyaku delta = 0` と記録されている。
 Knowledge importer は GoriyakuTag / ShrineGoriyakuAssignment を操作対象に持たず、
 既存 regression（`test_nsrc_000002_knowledge_seed.py` の goriyaku isolation）で GoriyakuTag master と target goriyaku state の before / after 完全一致を確認している。
 Production post-Knowledge verification でも `Shrine.goriyaku = ""`、`target_goriyaku_tag_links = 0`、`target_goriyaku_assignments = 0` を確認した。
