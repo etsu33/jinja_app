@@ -1266,23 +1266,23 @@ _H001_DISCOVERED = {
     "knowledge_status": "UNREVIEWED",
     "build_batch": None,
 }
-# nsrc-000002 は G7 Production Import CLOSED / PASS により IMPORTED
-# （docs/audit/niigata-h001-nsrc-000002-g7-production-import-preflight.md §0）。
-# CORE_READY は G8 の別 Gate であり、ここでは進めない。
-_H001_IMPORTED = {
-    "candidate_status": "IMPORTED",
-    "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+# Nationwide CORE_READY の lifecycle。build_batch は null のまま（Source batch / handoff を入れない）。
+_H001_CORE_READY = {
+    "candidate_status": "CORE_READY",
+    "status_reason_code": "CORE_READY_CONTRACT_PASS",
     "official_source_status": "CONFIRMED",
     "knowledge_status": "FACT_READY",
     "build_batch": None,
 }
 # 現在の lifecycle（Candidate ごと）。
 # nsrc-000004 は G8 Mother Ship decision APPROVED_TARGET_ONLY により CORE_READY
-# （docs/audit/niigata-h001-g8-core-ready-pretransition.md §6）。Nationwide 行は Wave0 の
+# （docs/audit/niigata-h001-g8-core-ready-pretransition.md §6）。
+# nsrc-000002 は G7 CLOSED / PASS 後、G8 Mother Ship decision APPROVED_TARGET_ONLY により CORE_READY
+# （docs/audit/niigata-h001-nsrc-000002-g8-core-ready-pretransition.md §7）。Nationwide 行は Wave0 の
 # W0-DBxx を使わず、Source batch / handoff も build_batch に入れないため build_batch = null のまま。
 H001_CURRENT_LIFECYCLE = {
     "nsrc-000001": dict(_H001_DISCOVERED),
-    "nsrc-000002": dict(_H001_IMPORTED),
+    "nsrc-000002": dict(_H001_CORE_READY),
     "nsrc-000003": dict(_H001_DISCOVERED),
     "nsrc-000004": {
         "candidate_status": "CORE_READY",
@@ -1450,16 +1450,14 @@ def test_nsrc_000004_is_core_ready_with_unchanged_evidence():
     ) == {batch: 5 for batch in CANONICAL_BUILD_BATCHES}
 
 
-def test_nsrc_000002_is_synced_to_g7_imported_and_stops_before_core_ready():
-    """G7 Production Import CLOSED / PASS による IMPORTED。CORE_READY（G8）へは進めない。"""
+def test_nsrc_000002_is_core_ready_with_unchanged_evidence():
+    """G8 Mother Ship decision（APPROVED_TARGET_ONLY）による CORE_READY。他の field は不変。"""
     master = _load_master()
     rows = {row["candidate_id"]: row for row in master["candidates"]}
     row = rows["nsrc-000002"]
 
-    assert row["candidate_status"] == "IMPORTED"
-    assert row["candidate_status"] != "CORE_READY"
-    assert row["status_reason_code"] == "PRODUCTION_IMPORT_COMPLETE"
-    assert row["status_reason_code"] != "CORE_READY_CONTRACT_PASS"
+    assert row["candidate_status"] == "CORE_READY"
+    assert row["status_reason_code"] == "CORE_READY_CONTRACT_PASS"
     assert row["official_source_status"] == "CONFIRMED"
     assert row["knowledge_status"] == "FACT_READY"
     assert row["build_batch"] is None
@@ -1469,7 +1467,7 @@ def test_nsrc_000002_is_synced_to_g7_imported_and_stops_before_core_ready():
     assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
     assert row == {
         **_expected_h001_immutable("nsrc-000002", "青澤神社", "page001-row002"),
-        **_H001_IMPORTED,
+        **_H001_CORE_READY,
     }
     assert row["admission_provenance"] == {
         "track": "nationwide_source_candidate",
@@ -1613,16 +1611,16 @@ def _append_row(row: dict):
         pytest.param(
             _set("nsrc-000004", "duplicate_status", "SAME_SHRINE"), id="n4-duplicate-evidence-change"
         ),
-        # nsrc-000002（IMPORTED）の lifecycle と immutable evidence。premature CORE_READY も拒否する。
-        pytest.param(_set("nsrc-000002", "candidate_status", "CORE_READY"), id="n2-premature-core-ready"),
+        # nsrc-000002（CORE_READY）の lifecycle と immutable evidence。
+        pytest.param(_set("nsrc-000002", "candidate_status", "IMPORTED"), id="n2-regressed-to-imported"),
         pytest.param(
-            _set("nsrc-000002", "status_reason_code", "CORE_READY_CONTRACT_PASS"),
-            id="n2-premature-core-ready-reason",
+            _set("nsrc-000002", "status_reason_code", "PRODUCTION_IMPORT_COMPLETE"),
+            id="n2-core-ready-reason-mismatch",
         ),
         pytest.param(_set("nsrc-000002", "candidate_status", "DISCOVERED"), id="n2-regressed-to-discovered"),
         pytest.param(
             _set("nsrc-000002", "status_reason_code", "REGISTRY_ADMISSION_COMPLETE"),
-            id="n2-imported-reason-mismatch",
+            id="n2-discovered-reason-mismatch",
         ),
         pytest.param(_set("nsrc-000002", "candidate_status", "BUILD_READY"), id="n2-regressed-to-build-ready"),
         pytest.param(_set("nsrc-000002", "knowledge_status", "UNREVIEWED"), id="n2-knowledge-regression"),
@@ -1642,6 +1640,13 @@ def _append_row(row: dict):
         # 他の4社が nsrc-000002 / nsrc-000004 に連動して進まないこと。
         pytest.param(_set("nsrc-000001", "candidate_status", "IMPORTED"), id="other-member-advanced"),
         pytest.param(_set("nsrc-000003", "candidate_status", "IMPORTED"), id="other-member-n3-advanced"),
+        pytest.param(
+            _set("nsrc-000003", "candidate_status", "CORE_READY"), id="other-member-n3-core-ready"
+        ),
+        pytest.param(
+            _set("nsrc-000001", "status_reason_code", "CORE_READY_CONTRACT_PASS"),
+            id="other-member-n1-core-ready-reason",
+        ),
         pytest.param(
             _set("nsrc-000005", "status_reason_code", "PRODUCTION_IMPORT_COMPLETE"),
             id="other-member-n5-reason-advanced",
