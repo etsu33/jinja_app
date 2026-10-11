@@ -1690,7 +1690,18 @@ _H002_G0_LIFECYCLE = {
     "knowledge_status": "UNREVIEWED",
     "build_batch": None,
 }
+# G1 Identity / Duplicate の現在値（Candidate ごと）。G1 は candidate_status を進めず sub-status だけを持つ。
+# nsrc-000006 は G1 PASS / NEW（docs/audit/niigata-h002-nsrc-000006-g1-identity-duplicate.md）。
+# nsrc-000007〜000010（赤城社4件）は G1 未実行で UNREVIEWED のまま。
+H002_G1_STATUS = {
+    "nsrc-000006": {"identity_status": "CONFIRMED", "duplicate_status": "NEW"},
+    "nsrc-000007": {"identity_status": "UNREVIEWED", "duplicate_status": "UNREVIEWED"},
+    "nsrc-000008": {"identity_status": "UNREVIEWED", "duplicate_status": "UNREVIEWED"},
+    "nsrc-000009": {"identity_status": "UNREVIEWED", "duplicate_status": "UNREVIEWED"},
+    "nsrc-000010": {"identity_status": "UNREVIEWED", "duplicate_status": "UNREVIEWED"},
+}
 # G0 時点で持ってはいけない field（G1 以降の hydrate / Wave0 provenance）。
+# G1 PASS 後も official_name / official_address 等は Candidate Master に持たせない。
 H002_FORBIDDEN_G0_FIELDS = frozenset(
     {
         "official_name",
@@ -1718,9 +1729,9 @@ def _expected_h002_row(candidate_id: str, candidate_name: str, source_position: 
         "candidate_id": candidate_id,
         "candidate_name": candidate_name,
         "prefecture": "新潟県",
-        "duplicate_status": "UNREVIEWED",
+        "duplicate_status": H002_G1_STATUS[candidate_id]["duplicate_status"],
         "wave_id": None,
-        "identity_status": "UNREVIEWED",
+        "identity_status": H002_G1_STATUS[candidate_id]["identity_status"],
         "candidate_reason": NATIONWIDE_CANDIDATE_REASON,
         "admission_provenance": {
             "track": NATIONWIDE_TRACK,
@@ -1817,8 +1828,9 @@ def test_niigata_h002_is_registered_exactly_at_g0():
     for row in h002:
         assert row["candidate_status"] == "DISCOVERED"
         assert row["status_reason_code"] == "REGISTRY_ADMISSION_COMPLETE"
-        assert row["duplicate_status"] == "UNREVIEWED"
-        assert row["identity_status"] == "UNREVIEWED"
+        g1 = H002_G1_STATUS[row["candidate_id"]]
+        assert row["duplicate_status"] == g1["duplicate_status"]
+        assert row["identity_status"] == g1["identity_status"]
         assert row["official_source_status"] == "AVAILABLE"
         assert row["knowledge_status"] == "UNREVIEWED"
         assert row["build_batch"] is None
@@ -1843,6 +1855,47 @@ def test_niigata_h002_is_registered_exactly_at_g0():
     assert len(wave0) == EXPECTED_WAVE0_TOTAL
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
     assert Counter(r["status_reason_code"] for r in wave0) == EXPECTED_REASON_COUNTS
+
+
+def test_nsrc_000006_g1_is_confirmed_new_and_stays_discovered():
+    """G1 PASS / NEW。G1 は lifecycle を進めず、G2 以降の field も持たせない。"""
+    master = _load_master()
+    rows = {row["candidate_id"]: row for row in master["candidates"]}
+    row = rows["nsrc-000006"]
+
+    assert row["candidate_status"] == "DISCOVERED"
+    assert row["status_reason_code"] == "REGISTRY_ADMISSION_COMPLETE"
+    assert row["identity_status"] == "CONFIRMED"
+    assert row["duplicate_status"] == "NEW"
+    assert row["official_source_status"] == "AVAILABLE"
+    assert row["knowledge_status"] == "UNREVIEWED"
+    assert row["build_batch"] is None
+    assert row["wave_id"] is None
+    assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
+    assert row == _expected_h002_row("nsrc-000006", "赤井神社", "page001-row006")
+    assert row["admission_provenance"] == {
+        "track": "nationwide_source_candidate",
+        "prefecture": "新潟県",
+        "source_batch_id": "NIIGATA-001",
+        "handoff_id": "NIIGATA-001-H002",
+        "source_position": "page001-row006",
+        "source_snapshot_sha256": "f54022303700821672ee4ee65e9967a7e8f343715a66ad987cc0b43530850380",
+        "source_url": "https://niigata-jinjacho.jp/shrine_niigata/search.php",
+        "source_verified_at": "2026-10-08",
+        "captured_at": "2026-10-08T14:27:00+09:00",
+    }
+    assert not (H002_FORBIDDEN_G0_FIELDS & row.keys())
+
+    # 赤城社4件は G1 未実行のまま（nsrc-000006 の G1 に連動しない）。
+    for candidate_id in ("nsrc-000007", "nsrc-000008", "nsrc-000009", "nsrc-000010"):
+        assert rows[candidate_id]["identity_status"] == "UNREVIEWED", candidate_id
+        assert rows[candidate_id]["duplicate_status"] == "UNREVIEWED", candidate_id
+        assert rows[candidate_id]["candidate_status"] == "DISCOVERED", candidate_id
+
+    assert _h001_violations(master) == []
+    wave0 = _wave0_candidates(master)
+    assert len(wave0) == EXPECTED_WAVE0_TOTAL
+    assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
 
 
 def _h002_reorder(master, rows):
@@ -1931,6 +1984,31 @@ def _h002_extra_member(master, rows):
         pytest.param(_h002_reorder, id="h002-member-reordered"),
         pytest.param(_h002_remove("nsrc-000006"), id="h002-member-removed"),
         pytest.param(_h002_extra_member, id="h002-member-added"),
+        # nsrc-000006（G1 PASS / NEW）の regression と G1 を超えた premature advancement。
+        pytest.param(_set("nsrc-000006", "identity_status", "UNREVIEWED"), id="n6-identity-regression"),
+        pytest.param(_set("nsrc-000006", "duplicate_status", "UNREVIEWED"), id="n6-duplicate-regression"),
+        pytest.param(_set("nsrc-000006", "duplicate_status", "SAME_SHRINE"), id="n6-duplicate-same-shrine"),
+        pytest.param(
+            _set("nsrc-000006", "duplicate_status", "SAME_NAME_DIFFERENT_SHRINE"),
+            id="n6-duplicate-same-name-different-shrine",
+        ),
+        pytest.param(_set("nsrc-000006", "candidate_status", "BUILD_READY"), id="n6-lifecycle-beyond-g1"),
+        pytest.param(
+            _set("nsrc-000006", "official_source_status", "CONFIRMED"), id="n6-official-source-beyond-g1"
+        ),
+        pytest.param(_set("nsrc-000006", "knowledge_status", "FACT_READY"), id="n6-knowledge-beyond-g1"),
+        pytest.param(
+            _set("nsrc-000006", "official_address", "新潟県佐渡市加茂歌代2662番地"),
+            id="n6-official-address-hydrated",
+        ),
+        pytest.param(_set("nsrc-000006", "latitude", 38.0), id="n6-coordinate-before-g2"),
+        pytest.param(
+            _set_provenance("nsrc-000006", "source_url", "https://example.invalid/"),
+            id="n6-changed-provenance",
+        ),
+        # 赤城社4件の未承認 G1 advancement。
+        pytest.param(_set("nsrc-000009", "identity_status", "CONFIRMED"), id="h002-n9-unapproved-identity"),
+        pytest.param(_set("nsrc-000010", "duplicate_status", "NEW"), id="h002-n10-unapproved-duplicate"),
         # 同名の赤城社を1件に統合（重複排除）した状態。
         pytest.param(_h002_remove("nsrc-000009"), id="h002-akagi-deduplicated"),
         pytest.param(_set("nsrc-000008", "candidate_name", "赤城神社"), id="h002-akagi-renamed"),
