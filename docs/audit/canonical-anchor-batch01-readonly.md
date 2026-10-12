@@ -647,7 +647,7 @@ At the 2026-09-24 resume execution, the explicitly authorized Production workspa
 
 ```text
 workspace_name = エツ's workspace
-workspace_id   = tea-d18eq9qdbo4c739j9sdg
+workspace_id   = OMITTED_FROM_PUBLIC_AUDIT
 ```
 
 The resume snapshot recorded the Production backend as:
