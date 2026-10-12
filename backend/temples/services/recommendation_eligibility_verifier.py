@@ -26,6 +26,7 @@ eligibility rule、Evidence Gate条件、Ranking / Scoreのいずれも変更し
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -44,6 +45,9 @@ INELIGIBLE = "INELIGIBLE"
 UNRESOLVED = "UNRESOLVED"
 
 CANDIDATE_MASTER_RELATIVE_PATH = Path("temples") / "data" / "shrine_expansion_candidate_master.json"
+NATIONWIDE_IDENTITY_MANIFEST_RELATIVE_PATH = (
+    Path("temples") / "data" / "shrine_expansion_nationwide_identity_manifest.json"
+)
 
 
 @dataclass(frozen=True)
@@ -195,6 +199,191 @@ def count_batch_candidates(build_batch: str, *, path: Path | None = None) -> int
         for c in candidates
         if isinstance(c, dict) and c.get("build_batch") == build_batch
     )
+
+
+# --- Nationwide handoff identity（G-6） -----------------------------------------------------
+#
+# Nationwide Candidate Master 行は official_name / official_address を持たず build_batch = null
+# のため、`--batch` 経路では解決できない。Nationwide handoff の verifier identity は専用 manifest
+# （temples/data/shrine_expansion_nationwide_identity_manifest.json）が持つ。
+#
+# manifest は reviewed canonical identity の exact 文字列だけを保持する（H001 は
+# docs/audit/niigata-h001-g6-verifier-identity-decision.md、H002 は各 G1 audit）。
+# 本 loader は文字列を正規化・補完・推論せず、Candidate Master と照合して fail closed する。
+# DB へのアクセスは行わない。identity の存在は eligibility を意味しない。
+
+NATIONWIDE_MANIFEST_SCHEMA_VERSION = 1
+_MANIFEST_FIELDS = frozenset({"schema_version", "purpose", "handoffs"})
+_HANDOFF_FIELDS = frozenset({"handoff_id", "members"})
+_MEMBER_FIELDS = frozenset(
+    {"candidate_id", "source_position", "name", "address", "identity_evidence"}
+)
+_EVIDENCE_FIELDS = frozenset({"verifier_identity_authority", "g1_identity_audit"})
+_HANDOFF_ID_RE = re.compile(r"^[A-Z]+-[0-9]{3}-H[0-9]{3}$")
+_NATIONWIDE_ID_RE = re.compile(r"^nsrc-[0-9]{6}$")
+_SOURCE_POSITION_RE = re.compile(r"^page[0-9]{3}-row[0-9]{3}$")
+_EVIDENCE_PATH_RE = re.compile(r"^docs/audit/[A-Za-z0-9_\-]+(?:/[A-Za-z0-9_\-]+)*\.md$")
+_CONTROL_RE = re.compile(r"[\x00-\x1f\x7f\u2028\u2029]")
+
+
+class HandoffIdentityError(ValueError):
+    """Nationwide handoff identity manifest が不正、または Candidate Master と一致しない。"""
+
+
+def _nationwide_identity_manifest_path() -> Path:
+    return Path(settings.BASE_DIR) / NATIONWIDE_IDENTITY_MANIFEST_RELATIVE_PATH
+
+
+def _exact_fields(obj: Any, expected: frozenset[str], where: str) -> dict:
+    if not isinstance(obj, dict):
+        raise HandoffIdentityError(f"{where}: must be an object")
+    missing = sorted(expected - obj.keys())
+    unknown = sorted(obj.keys() - expected)
+    if missing:
+        raise HandoffIdentityError(f"{where}: missing field(s) {missing}")
+    if unknown:
+        raise HandoffIdentityError(f"{where}: unknown field(s) {unknown}")
+    return obj
+
+
+def _exact_text(value: Any, where: str) -> str:
+    # 文字列は検査するだけで、strip / 正規化はしない（exact identity をそのまま使う）。
+    if not isinstance(value, str) or not value:
+        raise HandoffIdentityError(f"{where}: must be a non-empty string")
+    if value != value.strip() or _CONTROL_RE.search(value):
+        raise HandoffIdentityError(
+            f"{where}: must not have surrounding whitespace or control chars"
+        )
+    return value
+
+
+def _cross_check_candidate_master(handoff_id: str, members: list, candidates: list) -> None:
+    """Candidate Master の membership / order / provenance / G1 status / boundary を照合する。"""
+    rows = [
+        row
+        for row in candidates
+        if isinstance(row, dict)
+        and (row.get("admission_provenance") or {}).get("handoff_id") == handoff_id
+    ]
+    want_ids = [member["candidate_id"] for member in members]
+    have_ids = [row.get("candidate_id") for row in rows]
+    if have_ids != want_ids:
+        raise HandoffIdentityError(
+            f"{handoff_id}: Candidate Master members {have_ids} != manifest {want_ids}"
+        )
+    for member, row in zip(members, rows, strict=True):
+        cid = member["candidate_id"]
+        provenance = row.get("admission_provenance") or {}
+        if provenance.get("source_position") != member["source_position"]:
+            raise HandoffIdentityError(f"{cid}: source_position differs from Candidate Master")
+        if row.get("candidate_name") != member["name"]:
+            raise HandoffIdentityError(f"{cid}: name differs from Candidate Master candidate_name")
+        if row.get("identity_status") != "CONFIRMED":
+            raise HandoffIdentityError(f"{cid}: Candidate Master identity_status is not CONFIRMED")
+        if row.get("build_batch") is not None:
+            raise HandoffIdentityError(
+                f"{cid}: Nationwide Candidate Master build_batch must be null"
+            )
+        if {"official_name", "official_address"} & row.keys():
+            raise HandoffIdentityError(
+                f"{cid}: Candidate Master must not carry official_* identity"
+            )
+
+
+def validate_nationwide_identity_manifest(manifest: Any, candidate_master: Any) -> None:
+    """manifest を schema と Candidate Master に照らして検証する（fail closed、pure）。"""
+    _exact_fields(manifest, _MANIFEST_FIELDS, "manifest")
+    version = manifest["schema_version"]
+    if version != NATIONWIDE_MANIFEST_SCHEMA_VERSION or isinstance(version, bool):
+        raise HandoffIdentityError(
+            f"manifest.schema_version: must be {NATIONWIDE_MANIFEST_SCHEMA_VERSION}"
+        )
+    _exact_text(manifest["purpose"], "manifest.purpose")
+    handoffs = manifest["handoffs"]
+    if not isinstance(handoffs, list) or not handoffs:
+        raise HandoffIdentityError("manifest.handoffs: must be a non-empty list")
+
+    candidates = candidate_master.get("candidates") if isinstance(candidate_master, dict) else None
+    if not isinstance(candidates, list):
+        raise HandoffIdentityError("candidate master: unexpected shape")
+
+    handoff_ids: list[str] = []
+    candidate_ids: list[str] = []
+    identities: list[tuple[str, str]] = []
+    for h_index, handoff in enumerate(handoffs):
+        hwhere = f"manifest.handoffs[{h_index}]"
+        _exact_fields(handoff, _HANDOFF_FIELDS, hwhere)
+        handoff_id = handoff["handoff_id"]
+        if not isinstance(handoff_id, str) or not _HANDOFF_ID_RE.fullmatch(handoff_id):
+            raise HandoffIdentityError(f"{hwhere}.handoff_id: invalid {handoff_id!r}")
+        handoff_ids.append(handoff_id)
+        members = handoff["members"]
+        if not isinstance(members, list) or not members:
+            raise HandoffIdentityError(f"{hwhere}.members: must be a non-empty list")
+        for m_index, member in enumerate(members):
+            mwhere = f"{hwhere}.members[{m_index}]"
+            _exact_fields(member, _MEMBER_FIELDS, mwhere)
+            if not isinstance(member["candidate_id"], str) or not _NATIONWIDE_ID_RE.fullmatch(
+                member["candidate_id"]
+            ):
+                raise HandoffIdentityError(f"{mwhere}.candidate_id: invalid")
+            if not isinstance(member["source_position"], str) or not _SOURCE_POSITION_RE.fullmatch(
+                member["source_position"]
+            ):
+                raise HandoffIdentityError(f"{mwhere}.source_position: invalid")
+            name = _exact_text(member["name"], f"{mwhere}.name")
+            address = _exact_text(member["address"], f"{mwhere}.address")
+            evidence = _exact_fields(
+                member["identity_evidence"], _EVIDENCE_FIELDS, f"{mwhere}.identity_evidence"
+            )
+            for key in sorted(_EVIDENCE_FIELDS):
+                ref = evidence[key]
+                if not isinstance(ref, str) or not _EVIDENCE_PATH_RE.fullmatch(ref):
+                    raise HandoffIdentityError(
+                        f"{mwhere}.identity_evidence.{key}: invalid reference"
+                    )
+            candidate_ids.append(member["candidate_id"])
+            identities.append((name, address))
+
+        _cross_check_candidate_master(handoff_id, members, candidates)
+
+    for label, values in (
+        ("handoff_id", handoff_ids),
+        ("candidate_id", candidate_ids),
+        ("exact (name, address)", identities),
+    ):
+        duplicated = sorted({str(v) for v in values if values.count(v) > 1})
+        if duplicated:
+            raise HandoffIdentityError(f"manifest: duplicate {label} {duplicated}")
+
+
+def load_handoff_shrine_identities(
+    handoff_id: str,
+    *,
+    manifest_path: Path | None = None,
+    candidate_master_path: Path | None = None,
+) -> list[ShrineIdentity]:
+    """Nationwide handoff の exact canonical identity を handoff 順で返す（read-only、DB 不使用）。
+
+    manifest 全体を検証し Candidate Master と照合してから、指定 handoff の members を
+    `ShrineIdentity(name, address)` として返す。不明な handoff / 空 handoff / 重複 / Candidate
+    Master との不一致はすべて HandoffIdentityError。identity があることは eligibility を意味しない。
+    """
+    manifest_file = manifest_path or _nationwide_identity_manifest_path()
+    master_file = candidate_master_path or _candidate_master_path()
+    for path in (manifest_file, master_file):
+        if not Path(path).is_file():
+            raise HandoffIdentityError(f"file not found: {path}")
+    try:
+        manifest = json.loads(Path(manifest_file).read_text(encoding="utf-8"))
+        candidate_master = json.loads(Path(master_file).read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise HandoffIdentityError(f"invalid JSON: {exc}") from exc
+    validate_nationwide_identity_manifest(manifest, candidate_master)
+    matches = [h for h in manifest["handoffs"] if h["handoff_id"] == handoff_id]
+    if len(matches) != 1:
+        raise HandoffIdentityError(f"unknown handoff {handoff_id!r}")
+    return [ShrineIdentity(name=m["name"], address=m["address"]) for m in matches[0]["members"]]
 
 
 def _resolve_identities(
