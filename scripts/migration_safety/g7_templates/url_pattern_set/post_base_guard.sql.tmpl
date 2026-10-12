@@ -1,0 +1,16 @@
+-- {{candidate_id}} G7 post-Base / pre-Knowledge Production guard
+-- SELECT-only; raises division-by-zero on any unexpected Base delta.
+SELECT 1 / CASE WHEN (
+  (SELECT COUNT(*) FROM temples_shrine) = {{post_base_shrine_total}}
+  AND (SELECT COUNT(*) FROM temples_shrineknowledgesource) = {{pre_source_total}}
+  AND (SELECT COUNT(*) FROM temples_shrinedeity) = {{pre_deity_total}}
+  AND (SELECT COUNT(*) FROM temples_shrinehistory) = {{pre_history_total}}
+  AND (SELECT COUNT(*) FROM temples_shrinesourcefact) = {{pre_source_fact_total}}
+  AND (SELECT COUNT(*) FROM temples_shrine WHERE name_jp={{name_sql}} AND address={{address_sql}}) = {{expected_exact_after}}
+  AND (SELECT COUNT(*) FROM temples_shrine WHERE name_jp={{name_sql}}) = {{expected_same_name_after}}
+  AND (SELECT COUNT(*) FROM temples_shrine WHERE name_jp={{name_sql}} AND address={{address_sql}} AND abs(latitude - {{latitude}}) < 0.00000001 AND abs(longitude - {{longitude}}) < 0.00000001 AND COALESCE(goriyaku,'')={{goriyaku_text_sql}}) = 1
+  AND (SELECT COUNT(*) FROM temples_shrine_goriyaku_tags gt JOIN temples_shrine s ON s.id=gt.shrine_id WHERE s.name_jp={{name_sql}} AND s.address={{address_sql}}) = {{expected_goriyaku_tag_links_after}}
+  AND (SELECT COUNT(*) FROM temples_shrineknowledgesource WHERE source_type={{source_type_sql}} AND (
+    {{url_patterns_url_4}}
+  )) = 0
+) THEN 1 ELSE 0 END AS g7_post_base_guard_pass;
