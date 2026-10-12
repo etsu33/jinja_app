@@ -8,6 +8,9 @@ on:
       - "apps/mobile/**"
       - "packages/shared/**"
       - ".github/workflows/mobile-ci.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
   push:
     branches:
       - develop
@@ -15,6 +18,9 @@ on:
       - "apps/mobile/**"
       - "packages/shared/**"
       - ".github/workflows/mobile-ci.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
 
 jobs:
   mobile-test:
