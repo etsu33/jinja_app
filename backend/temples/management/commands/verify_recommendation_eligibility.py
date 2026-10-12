@@ -22,6 +22,15 @@ eligibility ruleとEvidence Gate条件は本commandで定義せず、既存autho
     # JSON出力（Batch QA記録へ貼り付ける用途）
     python manage.py verify_recommendation_eligibility --batch W0-DB01 --json
 
+    # Nationwide handoff単位（Nationwide identity manifest の exact identity で解決）
+    python manage.py verify_recommendation_eligibility --handoff NIIGATA-001-H001
+    python manage.py verify_recommendation_eligibility --handoff NIIGATA-001-H001 --json
+
+`--batch` は Wave0 の Candidate Master `build_batch` 経路のまま（Nationwide には使わない）。
+`--handoff` は `temples/data/shrine_expansion_nationwide_identity_manifest.json` だけを使う。
+2つの group selector の併用は意味が定まらないため拒否する。handoff の identity が manifest に
+あることは eligibility を意味しない（Production に無ければ UNRESOLVED と報告する）。
+
 `--require-all-eligible` を付けると、ELIGIBLE以外が1件でもあれば非0で終了する
 （CI / Gate用途）。既定では終了コードを立てず、観測結果の出力のみを行う。
 """
@@ -33,8 +42,10 @@ import json
 from django.core.management.base import BaseCommand, CommandError
 
 from temples.services.recommendation_eligibility_verifier import (
+    HandoffIdentityError,
     count_batch_candidates,
     load_batch_shrine_identities,
+    load_handoff_shrine_identities,
     render_text_report,
     verify_recommendation_eligibility,
 )
@@ -53,6 +64,14 @@ class Command(BaseCommand):
             help=(
                 "Candidate Masterのbuild_batch（例: W0-DB01）で対象Shrineを解決する。"
                 "canonical identity (official_name, official_address) を使用する"
+            ),
+        )
+        parser.add_argument(
+            "--handoff",
+            dest="handoff",
+            help=(
+                "Nationwide handoff（例: NIIGATA-001-H001）で対象Shrineを解決する。"
+                "Nationwide identity manifest の exact (name, address) を使用する"
             ),
         )
         parser.add_argument(
@@ -85,6 +104,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         batch = options.get("batch")
+        handoff = options.get("handoff")
+        if batch and handoff:
+            raise CommandError(
+                "--batch と --handoff は併用できない（Wave0 build_batch と Nationwide handoff の"
+                "合成規則は定義されていない）"
+            )
         shrine_ids = list(options.get("shrine_ids") or [])
         shrine_names = list(options.get("shrine_names") or [])
 
@@ -106,9 +131,15 @@ class Command(BaseCommand):
                     "未確定Candidateを推測で解決しないため中止する。"
                 )
 
+        if handoff:
+            try:
+                shrine_identities = load_handoff_shrine_identities(handoff)
+            except HandoffIdentityError as exc:
+                raise CommandError(f"--handoff {handoff}: {exc}") from exc
+
         if not shrine_ids and not shrine_names and not shrine_identities:
             raise CommandError(
-                "対象を指定してください（--batch / --shrine-id / --shrine-name のいずれか）"
+                "対象を指定してください（--batch / --handoff / --shrine-id / --shrine-name のいずれか）"
             )
 
         report = verify_recommendation_eligibility(
