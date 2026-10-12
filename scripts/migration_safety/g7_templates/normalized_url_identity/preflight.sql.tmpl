@@ -1,0 +1,234 @@
+-- {{candidate_id}} {{official_name}} G7 Production Import Gate — read-only preflight
+-- SELECT-only. Execute only through scripts/migration_safety/readonly_query.sh.
+-- This file intentionally contains no credential, production hostname, or database identifier.
+--
+-- Source identity is the importer's semantic identity only
+-- (knowledge_seed.resolve_source_identity(): source_type + normalize_source_url()):
+--   source_type = {{source_type}}
+--   normalized  = {{normalized_url}}
+-- Three separate concepts:
+--   source_identity_count            exact importer identity (the only reusable rows)
+--   source_metadata_compatible_count identity rows whose _SOURCE_REUSE_FIELDS match the seed
+--   source_url_lookalike_count       broad diagnostic match; never reusable by itself
+
+SELECT
+  current_database() IS NOT NULL AS database_identity_available,
+  current_user IS NOT NULL AS database_user_available,
+  current_setting('server_version') IS NOT NULL AS server_version_available;
+
+SELECT
+  current_setting('server_version') AS server_version,
+  current_setting('server_version_num') AS server_version_num;
+
+SELECT
+  COALESCE(MAX(name), '') AS latest_temples_migration
+FROM django_migrations
+WHERE app = 'temples';
+
+SELECT
+  to_regclass('public.temples_shrine') IS NOT NULL AS shrine_table_exists,
+  to_regclass('public.temples_shrineknowledgesource') IS NOT NULL AS source_table_exists,
+  to_regclass('public.temples_shrinedeity') IS NOT NULL AS deity_table_exists,
+  to_regclass('public.temples_shrinehistory') IS NOT NULL AS history_table_exists,
+  to_regclass('public.temples_shrinehistory_sources') IS NOT NULL AS history_sources_table_exists,
+  to_regclass('public.temples_shrinesourcefact') IS NOT NULL AS source_fact_table_exists,
+  to_regclass('public.temples_shrine_goriyaku_tags') IS NOT NULL AS goriyaku_tags_table_exists,
+  to_regclass('public.temples_shrinegoriyakuassignment') IS NOT NULL AS goriyaku_assignment_table_exists;
+
+SELECT
+  (SELECT COUNT(*) FROM temples_shrine) AS shrine_total,
+  (SELECT COUNT(*) FROM temples_shrineknowledgesource) AS source_total,
+  (SELECT COUNT(*) FROM temples_shrinedeity) AS deity_total,
+  (SELECT COUNT(*) FROM temples_shrinehistory) AS history_total,
+  (SELECT COUNT(*) FROM temples_shrinesourcefact) AS source_fact_total;
+
+SELECT
+  COUNT(*) FILTER (
+    WHERE name_jp = {{official_name_sql}}
+      AND address = {{official_address_sql}}
+  ) AS target_exact_count,
+{{preflight_same_name_count_columns}}  COUNT(*) FILTER (WHERE address = {{official_address_sql}}) AS same_address_count
+FROM temples_shrine;
+
+SELECT
+  id,
+  name_jp,
+  address,
+  latitude,
+  longitude,
+  place_ref_id,
+  COALESCE(goriyaku, '') AS goriyaku
+FROM temples_shrine
+WHERE name_jp IN ({{name_variants_in_list_sql}})
+   OR address = {{official_address_sql}}
+ORDER BY id;
+
+WITH
+{{source_identity_block}}SELECT
+  l.id,
+  l.source_type,
+  l.title,
+  l.publisher,
+  l.url,
+  l.verification_status,
+  l.confidence,
+  l.language,
+  l.bibliography,
+  l.normalized_url,
+  EXISTS (SELECT 1 FROM source_identity i WHERE i.id = l.id) AS is_source_identity,
+  EXISTS (SELECT 1 FROM source_metadata_compatible m WHERE m.id = l.id) AS is_metadata_compatible
+FROM source_url_lookalike l
+ORDER BY l.id;
+
+WITH
+{{source_identity_block}}SELECT
+  (SELECT COUNT(*) FROM source_identity) AS source_identity_count,
+  (SELECT COUNT(*) FROM source_metadata_compatible) AS source_metadata_compatible_count,
+  (SELECT COUNT(*) FROM source_url_lookalike) AS source_url_lookalike_count,
+  (SELECT COUNT(*) FROM source_url_lookalike l
+     WHERE NOT EXISTS (SELECT 1 FROM source_identity i WHERE i.id = l.id)) AS source_url_lookalike_non_identity_count,
+  (SELECT COUNT(*) FROM source_url_norm
+     WHERE source_type = {{source_type_sql}} AND url <> '' AND normalized_url IS NULL) AS {{source_type}}_url_unparseable_count,
+  CASE
+    WHEN (SELECT COUNT(*) FROM source_identity) > 1 THEN 'CONFLICT_IDENTITY_AMBIGUOUS'
+    WHEN (SELECT COUNT(*) FROM source_identity) = 1
+     AND (SELECT COUNT(*) FROM source_metadata_compatible) = 0 THEN 'CONFLICT_METADATA_DRIFT'
+    WHEN (SELECT COUNT(*) FROM source_url_norm
+           WHERE source_type = {{source_type_sql}} AND url <> '' AND normalized_url IS NULL) > 0
+      THEN 'CONFLICT_IMPORTER_UNPARSEABLE_URL'
+    WHEN (SELECT COUNT(*) FROM source_url_lookalike l
+           WHERE NOT EXISTS (SELECT 1 FROM source_identity i WHERE i.id = l.id)) > 0
+      THEN 'CONFLICT_NON_IDENTITY_LOOKALIKE'
+    WHEN (SELECT COUNT(*) FROM source_identity) = 1 THEN 'REUSABLE'
+    ELSE 'ABSENT'
+  END AS source_identity_state;
+
+SELECT
+  d.id,
+  d.shrine_id,
+  d.display_name,
+  d.role,
+  d.verification_status,
+  d.confidence
+FROM temples_shrinedeity d
+JOIN temples_shrine s ON s.id = d.shrine_id
+WHERE s.name_jp = {{official_name_sql}}
+  AND s.address = {{official_address_sql}}
+ORDER BY d.id;
+
+SELECT
+  h.id,
+  h.shrine_id,
+  h.history_type,
+  h.title,
+  h.period_text,
+  h.event_date,
+  h.verification_status,
+  h.confidence
+FROM temples_shrinehistory h
+JOIN temples_shrine s ON s.id = h.shrine_id
+WHERE s.name_jp = {{official_name_sql}}
+  AND s.address = {{official_address_sql}}
+ORDER BY h.id;
+
+SELECT
+  hs.shrinehistory_id,
+  hs.shrineknowledgesource_id,
+  src.source_type,
+  src.url,
+  src.verification_status
+FROM temples_shrinehistory_sources hs
+JOIN temples_shrinehistory h ON h.id = hs.shrinehistory_id
+JOIN temples_shrine s ON s.id = h.shrine_id
+JOIN temples_shrineknowledgesource src ON src.id = hs.shrineknowledgesource_id
+WHERE s.name_jp = {{official_name_sql}}
+  AND s.address = {{official_address_sql}}
+ORDER BY hs.shrinehistory_id, hs.shrineknowledgesource_id;
+
+SELECT
+  sf.id,
+  sf.shrine_id,
+  sf.stable_key,
+  sf.verification_status,
+  sf.confidence
+FROM temples_shrinesourcefact sf
+JOIN temples_shrine s ON s.id = sf.shrine_id
+WHERE s.name_jp = {{official_name_sql}}
+  AND s.address = {{official_address_sql}}
+ORDER BY sf.id;
+
+SELECT
+  (SELECT COUNT(*)
+     FROM temples_shrine_goriyaku_tags gt
+     JOIN temples_shrine s ON s.id = gt.shrine_id
+    WHERE s.name_jp = {{official_name_sql}}
+      AND s.address = {{official_address_sql}}) AS target_goriyaku_tag_links,
+  (SELECT COUNT(*)
+     FROM temples_shrinegoriyakuassignment ga
+     JOIN temples_shrine s ON s.id = ga.shrine_id
+    WHERE s.name_jp = {{official_name_sql}}
+      AND s.address = {{official_address_sql}}) AS target_goriyaku_assignments;
+
+-- State class candidate (A/B/C/D). Any CONFLICT_* Source state, identity ambiguity,
+-- or unexpected target Knowledge is CONFLICT; Mother Ship confirms the class.
+WITH
+target AS (
+  SELECT id, latitude, longitude, goriyaku
+  FROM temples_shrine
+  WHERE name_jp = {{official_name_sql}}
+    AND address = {{official_address_sql}}
+),
+{{source_identity_block}},
+counts AS (
+  SELECT
+    (SELECT COUNT(*) FROM target) AS target_exact,
+{{counts_same_name_columns}}    (SELECT COUNT(*) FROM temples_shrine WHERE address = {{official_address_sql}}) AS same_address,
+    (SELECT COUNT(*) FROM source_identity) AS identity_count,
+    (SELECT COUNT(*) FROM source_metadata_compatible) AS compatible_count,
+    (SELECT COUNT(*) FROM source_url_lookalike l
+       WHERE NOT EXISTS (SELECT 1 FROM source_identity i WHERE i.id = l.id)) AS lookalike_non_identity,
+    (SELECT COUNT(*) FROM source_url_norm
+       WHERE source_type = {{source_type_sql}} AND url <> '' AND normalized_url IS NULL) AS unparseable,
+    (SELECT COUNT(*) FROM temples_shrinedeity d JOIN target t ON t.id = d.shrine_id) AS deity,
+    (SELECT COUNT(*) FROM temples_shrinesourcefact sf JOIN target t ON t.id = sf.shrine_id) AS source_fact,
+    (SELECT COUNT(*) FROM temples_shrinehistory h JOIN target t ON t.id = h.shrine_id) AS history,
+    (SELECT COUNT(*) FROM temples_shrinehistory h JOIN target t ON t.id = h.shrine_id
+       WHERE h.history_type = {{history_type_sql}} AND h.title = {{history_title_sql}}
+         AND h.period_text = {{history_period_text_sql}} AND h.event_date IS NULL
+         AND h.verification_status = {{history_verification_status_sql}} AND h.confidence = {{history_confidence_sql}}) AS history_expected,
+    (SELECT COUNT(*) FROM temples_shrinehistory_sources hs
+       JOIN temples_shrinehistory h ON h.id = hs.shrinehistory_id
+       JOIN target t ON t.id = h.shrine_id) AS history_relations,
+    (SELECT COUNT(*) FROM temples_shrinehistory_sources hs
+       JOIN temples_shrinehistory h ON h.id = hs.shrinehistory_id
+       JOIN target t ON t.id = h.shrine_id
+       JOIN source_metadata_compatible cs ON cs.id = hs.shrineknowledgesource_id) AS history_relations_accepted,
+    (SELECT COUNT(*) FROM target
+       WHERE abs(latitude - {{latitude}}) < 0.00000001
+         AND abs(longitude - {{longitude}}) < 0.00000001) AS coordinate_ok,
+    (SELECT COUNT(*) FROM target WHERE COALESCE(goriyaku, '') = '') AS goriyaku_empty,
+    (SELECT COUNT(*) FROM temples_shrine_goriyaku_tags gt JOIN target t ON t.id = gt.shrine_id) AS goriyaku_tags,
+    (SELECT COUNT(*) FROM temples_shrinegoriyakuassignment ga JOIN target t ON t.id = ga.shrine_id) AS goriyaku_assignments
+)
+SELECT
+  CASE
+    WHEN identity_count > 1
+      OR (identity_count = 1 AND compatible_count = 0)
+      OR unparseable > 0
+      OR lookalike_non_identity > 0
+      OR target_exact > 1
+{{conflict_same_name_predicates}}      OR same_address <> target_exact
+      THEN 'CONFLICT'
+    WHEN target_exact = 0 THEN 'CLEAN_CREATE'
+    WHEN deity > 0 OR source_fact > 0 OR history > 1
+      OR (history = 1 AND history_expected = 0)
+      OR coordinate_ok = 0 OR goriyaku_empty = 0 OR goriyaku_tags > 0 OR goriyaku_assignments > 0
+      THEN 'CONFLICT'
+    WHEN history = 1 AND history_relations = 1 AND history_relations_accepted = 1
+      AND identity_count = 1 AND compatible_count = 1
+      THEN 'ALREADY_MATERIALIZED'
+    ELSE 'PARTIAL_EXISTING'
+  END AS production_state_class_candidate,
+  identity_count AS source_identity_count,
+  compatible_count AS source_metadata_compatible_count
+FROM counts;

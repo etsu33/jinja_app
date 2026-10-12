@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "candidate": {
+    "candidate_id": "nsrc-000004",
+    "name_jp": "青海神社",
+    "address": "新潟県加茂市大字加茂字宮山229番地",
+    "latitude": 37.65657387,
+    "longitude": 139.0536436,
+    "alternate_names": []
+  },
+  "production_pre_state": {
+    "shrine_total": 120,
+    "source_total": 137,
+    "deity_total": 293,
+    "history_total": 226,
+    "source_fact_total": 23
+  },
+  "base": {
+    "expected_exact_before": 0,
+    "expected_exact_after": 1,
+    "expected_same_name_before": 0,
+    "expected_same_name_after": 1,
+    "expected_goriyaku_tag_links_after": 0,
+    "expected_goriyaku_text": ""
+  },
+  "source_identity": {
+    "strategy": "url_pattern_set",
+    "source_type": "shrine_official",
+    "url_patterns": [
+      "aomi-jinjya.or.jp/history/gosaisin.html",
+      "aomi-jinjya.or.jp/history/yuisyo.html",
+      "aomi-jinjya.or.jp/gokitou/syurui.html"
+    ]
+  },
+  "knowledge": {
+    "expected_source_count": 3,
+    "expected_deity_count": 2,
+    "expected_history_count": 2,
+    "expected_source_fact_count": 11,
+    "expected_goriyaku_tag_links": 0,
+    "deity_names": [
+      "椎根津彦命",
+      "大国魂命"
+    ],
+    "history_titles": [
+      "神亀3年の創建",
+      "明治5年の三社本殿合殿"
+    ],
+    "source_fact_stable_keys": [
+      "aomi_jinja_kamo__prayer__kanai_anzen",
+      "aomi_jinja_kamo__prayer__kosazuke_kigan",
+      "aomi_jinja_kamo__prayer__anzan_kigan",
+      "aomi_jinja_kamo__prayer__kotsu_anzen",
+      "aomi_jinja_kamo__prayer__yakubarai",
+      "aomi_jinja_kamo__prayer__hoi_barai",
+      "aomi_jinja_kamo__prayer__byoki_heiyu_kigan",
+      "aomi_jinja_kamo__prayer__mi_no_anzen_kigan",
+      "aomi_jinja_kamo__prayer__gokaku_kigan",
+      "aomi_jinja_kamo__prayer__shobai_hanjo",
+      "aomi_jinja_kamo__prayer__hissho_kigan"
+    ]
+  },
+  "post_state": {
+    "shrine_total": 121,
+    "source_total": 140,
+    "deity_total": 295,
+    "history_total": 228,
+    "source_fact_total": 34
+  },
+  "url_pattern_set_sql": {
+    "required_temples_migration": "0120_shrine_source_fact_foundation"
+  }
+}

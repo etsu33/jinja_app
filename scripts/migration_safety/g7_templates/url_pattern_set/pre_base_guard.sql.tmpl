@@ -1,0 +1,17 @@
+-- {{candidate_id}} G7 pre-Base Production write guard
+-- SELECT-only; deliberately raises division-by-zero if the frozen pre-state drifted.
+SELECT 1 / CASE WHEN (
+  (SELECT COUNT(*) FROM temples_shrine) = {{pre_shrine_total}}
+  AND (SELECT COUNT(*) FROM temples_shrineknowledgesource) = {{pre_source_total}}
+  AND (SELECT COUNT(*) FROM temples_shrinedeity) = {{pre_deity_total}}
+  AND (SELECT COUNT(*) FROM temples_shrinehistory) = {{pre_history_total}}
+  AND (SELECT COUNT(*) FROM temples_shrinesourcefact) = {{pre_source_fact_total}}
+  AND (SELECT COUNT(*) FROM temples_shrine WHERE name_jp={{name_sql}} AND address={{address_sql}}) = {{expected_exact_before}}
+  AND (SELECT COUNT(*) FROM temples_shrine WHERE name_jp={{name_sql}}) = {{expected_same_name_before}}
+  AND (SELECT COUNT(*) FROM temples_shrineknowledgesource WHERE source_type={{source_type_sql}} AND (
+    {{url_patterns_url_4}}
+  )) = 0
+  AND (SELECT COUNT(*) FROM temples_shrinesourcefact WHERE stable_key IN (
+{{stable_keys_4}}
+  )) = 0
+) THEN 1 ELSE 0 END AS g7_pre_base_guard_pass;

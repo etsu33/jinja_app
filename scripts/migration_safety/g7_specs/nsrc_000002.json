@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "candidate": {
+    "candidate_id": "nsrc-000002",
+    "name_jp": "青澤神社",
+    "address": "新潟県糸魚川市大字青海2696番地",
+    "latitude": 37.00763484,
+    "longitude": 137.79024297,
+    "alternate_names": [
+      "青沢神社"
+    ]
+  },
+  "production_pre_state": {
+    "shrine_total": 121,
+    "source_total": 140,
+    "deity_total": 295,
+    "history_total": 228,
+    "source_fact_total": 34
+  },
+  "base": {
+    "expected_exact_before": 0,
+    "expected_exact_after": 1,
+    "expected_same_name_before": 0,
+    "expected_same_name_after": 1,
+    "expected_goriyaku_tag_links_after": 0,
+    "expected_goriyaku_text": ""
+  },
+  "source_identity": {
+    "strategy": "normalized_url_identity",
+    "source_type": "government",
+    "normalized_url": "https://matsuri.geo-itoigawa.com/calendar/m04",
+    "publisher": "糸魚川市 / 糸魚川ジオパーク協議会",
+    "verification_status": "source_confirmed",
+    "confidence": "high",
+    "language": "ja",
+    "bibliography": "",
+    "diagnostic_host_tokens": [
+      "matsuri.geo-itoigawa.com"
+    ],
+    "diagnostic_path_tokens": [
+      "calendar",
+      "m04"
+    ],
+    "accepted_source_count": 0
+  },
+  "knowledge": {
+    "expected_source_count": 1,
+    "expected_deity_count": 0,
+    "expected_history_count": 1,
+    "expected_source_fact_count": 0,
+    "expected_goriyaku_tag_links": 0,
+    "deity_names": [],
+    "history_titles": [
+      "青沢神社の春季祭礼"
+    ],
+    "source_fact_stable_keys": []
+  },
+  "post_state": {
+    "shrine_total": 122,
+    "source_total": 141,
+    "deity_total": 295,
+    "history_total": 229,
+    "source_fact_total": 34
+  },
+  "normalized_url_identity_sql": {
+    "frozen_evidence": {
+      "server_version": "17.6",
+      "latest_temples_migration": "0120_shrine_source_fact_foundation",
+      "preflight_result": "PASS",
+      "production_state_class": "CLEAN_CREATE",
+      "source_identity_state": "ABSENT"
+    },
+    "sql_labels": {
+      "identity": "aosawa",
+      "canonical": "kyuji",
+      "alternates": {
+        "青沢神社": "shinji"
+      }
+    },
+    "history_attributes": [
+      {
+        "title": "青沢神社の春季祭礼",
+        "history_type": "regional_context",
+        "period_text": "毎年4月第3日曜日",
+        "event_date": null,
+        "verification_status": "source_confirmed",
+        "confidence": "high"
+      }
+    ],
+    "source_identity_regression_test": "backend/temples/tests/test_nsrc_000002_g7_source_identity_sql.py"
+  }
+}

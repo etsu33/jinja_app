@@ -1,0 +1,52 @@
+-- {{candidate_id}} G7 post-Base / pre-Knowledge Production guard
+-- SELECT-only; raises division-by-zero unless exactly the single target Base row was added.
+-- Expected: Shrine = frozen + 1, every Knowledge aggregate unchanged, target Knowledge 0,
+-- canonical coordinate within 1e-8, goriyaku '' and 0 goriyaku tag links / assignments,
+-- Source state unchanged from the frozen pre-state.
+WITH
+frozen AS (
+  -- FROZEN_PRE_STATE: measured by {{candidate_slug}}_g7_preflight.sql on Production (read-only),
+  -- PostgreSQL {{frozen_server_version}}, temples {{frozen_latest_temples_migration}}.
+  -- Mother Ship decision: G7_READ_ONLY_PREFLIGHT = {{frozen_preflight_result}} / PRODUCTION_STATE_CLASS = {{frozen_production_state_class}}
+  -- (source_identity_state = {{frozen_source_identity_state}}). Any drift from these values fails closed.
+  -- The block must be identical in the pre-Base / post-Base / post-Knowledge files.
+  SELECT
+    {{frozen_shrine_total}}::bigint AS shrine_total,
+    {{frozen_source_total}}::bigint AS source_total,
+    {{frozen_deity_total}}::bigint AS deity_total,
+    {{frozen_history_total}}::bigint AS history_total,
+    {{frozen_source_fact_total}}::bigint AS source_fact_total,
+    -- = measured source_identity_count; only 0 (absent) or 1 (metadata compatible) may proceed
+    {{frozen_accepted_source_count}}::bigint AS accepted_source_count
+),
+target AS (
+  SELECT id, latitude, longitude, goriyaku
+  FROM temples_shrine
+  WHERE name_jp = {{official_name_sql}}
+    AND address = {{official_address_sql}}
+),
+{{source_identity_block}}SELECT 1 / CASE WHEN (
+  (SELECT COUNT(*) FROM temples_shrine) = f.shrine_total + 1
+  AND (SELECT COUNT(*) FROM temples_shrineknowledgesource) = f.source_total
+  AND (SELECT COUNT(*) FROM temples_shrinedeity) = f.deity_total
+  AND (SELECT COUNT(*) FROM temples_shrinehistory) = f.history_total
+  AND (SELECT COUNT(*) FROM temples_shrinesourcefact) = f.source_fact_total
+  AND (SELECT COUNT(*) FROM target) = 1
+{{same_name_guard_predicates}}  AND (SELECT COUNT(*) FROM temples_shrine WHERE address = {{official_address_sql}}) = 1
+  AND (SELECT COUNT(*) FROM target
+        WHERE abs(latitude - {{latitude}}) < 0.00000001
+          AND abs(longitude - {{longitude}}) < 0.00000001
+          AND COALESCE(goriyaku, '') = '') = 1
+  AND f.accepted_source_count IN (0, 1)
+  AND (SELECT COUNT(*) FROM source_identity) = f.accepted_source_count
+  AND (SELECT COUNT(*) FROM source_metadata_compatible) = f.accepted_source_count
+  AND (SELECT COUNT(*) FROM source_url_lookalike) = f.accepted_source_count
+  AND (SELECT COUNT(*) FROM source_url_norm
+        WHERE source_type = {{source_type_sql}} AND url <> '' AND normalized_url IS NULL) = 0
+  AND (SELECT COUNT(*) FROM temples_shrinedeity d JOIN target t ON t.id = d.shrine_id) = 0
+  AND (SELECT COUNT(*) FROM temples_shrinehistory h JOIN target t ON t.id = h.shrine_id) = 0
+  AND (SELECT COUNT(*) FROM temples_shrinesourcefact sf JOIN target t ON t.id = sf.shrine_id) = 0
+  AND (SELECT COUNT(*) FROM temples_shrine_goriyaku_tags gt JOIN target t ON t.id = gt.shrine_id) = 0
+  AND (SELECT COUNT(*) FROM temples_shrinegoriyakuassignment ga JOIN target t ON t.id = ga.shrine_id) = 0
+) THEN 1 ELSE 0 END AS g7_post_base_guard_pass
+FROM frozen f;
