@@ -1,22 +1,25 @@
-# Shrine Expansion G-7: G7 Artifact Generator — Phase 1（SQL generation）
+# Shrine Expansion G-7: G7 Artifact Generator
 
-> Status:
+> Status（Phase 2 PR、merge 前）:
 >
 > ```text
-> G7_SQL_GENERATOR = PASS
-> G7_OVERALL       = NOT_CLOSED
+> G7_SQL_GENERATOR             = PASS
+> G7_SUBSET_EXTRACTOR          = PASS
+> G7_RUNTIME_QA_GENERATOR      = PASS
+> G7_CLOSURE_CRITERIA          = PASS
+> G7_OVERALL                   = PENDING_MERGE
 > ```
 >
-> Recorded at: 2026-10-12
+> Mother Ship が本 PR の develop への merge を確認した時点で `G7_OVERALL = CLOSED` とする（merge 前に CLOSED と書かない）。
 >
-> Base: `develop@2ce0fe2cbbd9217b9858482e094384f09ee61bde`（PR #3172 merge）
+> Phase 1（SQL generation）: PR #3173（`develop@eaea0a62`）、Recorded at 2026-10-12。
+> Phase 2（subset + Runtime QA）: 本 PR、Base `develop@eaea0a622767e346384c6c6a3b471fec6c18df42`、Recorded at 2026-10-12。
 >
 > Production write: **NONE** / Production connection: NONE
 > 既存 G7 判定ルール / Importer / Gate semantics 変更: 0
-> Candidate Master / handoff manifest / Base Seed / Knowledge Seed / models / migrations / Recommendation 変更: 0
+> Candidate Master / handoff manifest / Base Seed / Knowledge Seed / models / migrations / Recommendation / Concierge / Compass 変更: 0
 
-Phase 1 は characterization、G7 artifact input contract、generic SQL generation だけを扱う。
-generic subset extractor と generic Runtime QA generator は次の G-7 subphase に回したため、G-7 全体は CLOSED にしない。
+§1〜§11 は Phase 1 の記録である（Phase 1 時点の status / known limit #1 は §12 以降で更新した）。§12 以降が Phase 2 の記録である。
 
 ## 1. Characterization（refactor 前の手書き artifact）
 
@@ -357,4 +360,234 @@ Environment note:
 G7_SQL_GENERATOR = PASS
 G7_OVERALL       = NOT_CLOSED
 Production write = NONE
+```
+
+---
+
+# Phase 2 — Target-only Base subset + Runtime QA generation
+
+## 12. Characterization（Phase 2 対象の手書き artifact）
+
+### 12.1 A. Reusable subset behavior（`nsrc_000002_g7_extract_base_subset.py`）
+
+- canonical Base Seed（`backend/temples/data/shrines_seed_clean.json`）だけを読む。DB / network / credential は使わない。
+- exact `name_jp` + `address` で抽出する（正規化しない）。
+- 1件でなければ `BLOCKED: expected exactly 1 target row, found N` で止める。
+- 抽出した行全体が reviewed frozen row と一致しなければ `BLOCKED: … differs from the frozen G7 row` で止める。
+- 行は書き換えず、`json.dumps([row], ensure_ascii=False, indent=2) + "\n"` で出力する。
+- 出力先は `guard.is_safe_dump_path`（repository 外）に限る。
+- 出力時に `SUBSET_ROWS=1` / identity / `SUBSET_SHA256` を表示する。
+
+### 12.2 B. Candidate-specific subset evidence
+
+| candidate | frozen row の出典 |
+|---|---|
+| nsrc-000002 | 歴史的 extractor の `EXPECTED_ROW`（Production 適用 subset sha256 `d5bcc322…`、G7 preflight audit §14.2） |
+| nsrc-000004 | `docs/audit/niigata-h001-g4-data-materialization-reentry.md` の materialized Base Shrine row（G4 re-entry。nsrc-000004 用の subset script は存在しない） |
+
+どちらも8 key（name_jp / address / latitude / longitude / goriyaku / kyusei / astro_elements / location）だけを持つ。
+
+### 12.3 C. Reusable Runtime QA structure（両 script 共通）
+
+- Django setup（`REPO_ROOT / backend`、`DJANGO_SETTINGS_MODULE` の setdefault）。
+- `main()` 冒頭の `with transaction.atomic():` 内で、最初に `cursor.execute("SET TRANSACTION READ ONLY")` を実行する。
+- exact identity で `Shrine.objects.get(name_jp=…, address=…)` を取得する。
+- 4 surface を検証する。
+  1. `ShrineDetailSerializer`（Detail）
+  2. `build_chat_candidates`（Concierge candidate path）：exact match 1件、id / shrine_id / lat / lng / distance 0 / goriyaku_tag_ids `[]`
+  3. score v3 profile → recommendation input → reason v4（fact / reason_text）
+  4. `_distance_m` / `_bearing` / `_direction_label` / `filter_candidates_by_direction`（Compass）
+- `FORBIDDEN_GUARANTEE_PHRASES`（10語）を reason_text に含めない。
+- 出力 marker は DETAIL_RUNTIME / CONCIERGE_CANDIDATE_PATH / RECOMMENDATION_REASON / COMPASS_DISTANCE / COMPASS_DIRECTION / G7_PRODUCTION_RUNTIME_QA / TRANSACTION_MODE=READ_ONLY。
+
+### 12.4 D. Candidate / strategy-specific Runtime QA assertions
+
+| | nsrc-000002（history_only_v1） | nsrc-000004（deity_history_v1） |
+|---|---|---|
+| Deity | `body["deities"] == []`、candidate `knowledge_deities == []`、profile / fact の deity は None | `EXPECTED_DEITIES` 集合と件数 2、profile の deity_text に全祭神を含み、fact deity == deity_text、reason_text に全祭神を含む |
+| History | 1件、exact title / type / verification、profile の history_type / confidence | `EXPECTED_HISTORY_TITLES` 集合と件数 2 |
+| H1 content | candidate_profile / fact の shrine_history == H1 | 同左 |
+| Source | 1件、source_type、`normalize_source_url()` で比較、verification | 各 Deity / History 行が verification `source_confirmed`、Source 1件、Source も `source_confirmed` |
+| 除外 | `UNSUPPORTED_DEITY_NAMES`（tuple）を detail / reason に含めない | `EXCLUDED_DEITIES`（set）を detail / deity_text / reason に含めない |
+| reason | `「{名}には、{H1}という背景があります。」` を含む | 祭神名を含む |
+| 表現差 | `QA_ORIGIN` / `DIRECTIONS` は module 定数、`ShrineHistory` の id 集合も照合 | `origin` / `directions` は local 変数 |
+
+2つは別の検証規則なので、1つの推論規則に統合しない。
+
+## 13. Spec extension（同じ `g7_specs/*.json` に追加。別 manifest は作らない）
+
+```text
+base_subset
+  expected_row        reviewed frozen Base Seed row（全 key）
+runtime_qa
+  family              history_only_v1 | deity_history_v1
+  trace_id            build_chat_candidates の trace_id
+  qa_origin           {lat, lng}
+  primary_history_content
+  excluded_deity_names
+  forbidden_guarantee_phrases
+  history_only_v1:    source_url
+  deity_history_v1:   knowledge_row_verification_status, sources_per_knowledge_row,
+                      source_verification_status
+```
+
+| field | 出典 |
+|---|---|
+| base_subset.expected_row | §12.2 |
+| runtime_qa.family | 歴史的 script の構造（§12.4）。candidate id / 名前から推論しない明示値 |
+| trace_id | 各 script の `trace_id=` |
+| qa_origin | nsrc-000002 `QA_ORIGIN`、nsrc-000004 `origin` |
+| primary_history_content | 各 script の `H1_CONTENT`（Knowledge Seed の History content と一致を backend test で照合） |
+| excluded_deity_names | nsrc-000002 `UNSUPPORTED_DEITY_NAMES`、nsrc-000004 `EXCLUDED_DEITIES` |
+| forbidden_guarantee_phrases | 各 script の `FORBIDDEN_GUARANTEE_PHRASES`（両 candidate で同値だが、spec ごとに明示する） |
+| source_url | nsrc-000002 `SOURCE_URL`（Knowledge Seed の source url と一致。`normalize_source_url()` 結果が `normalized_url` と一致） |
+| knowledge_row_verification_status / sources_per_knowledge_row / source_verification_status | nsrc-000004 の per-row assertion（Knowledge Seed と一致を照合） |
+
+再利用した既存値（重複させない）:
+
+- `knowledge.deity_names` → EXPECTED_DEITIES
+- `knowledge.history_titles` → EXPECTED_HISTORY_TITLES / HISTORY_TITLE
+- `knowledge.expected_deity_count` / `expected_history_count` → 件数
+- `normalized_url_identity_sql.history_attributes[0]` → HISTORY_TYPE / history verification / confidence
+- `source_identity.source_type` / `verification_status` → SOURCE_TYPE / Source verification
+- `candidate` → identity / 座標
+
+Validation（fail-closed）:
+
+- missing / unknown field を拒否する。
+- `expected_row` は8 key 必須とし、許すのは canonical の任意 key（`visit_style_tags` / `goriyaku_tags`）だけ。
+- `expected_row` の identity と座標は candidate と同値・同型であること。location は mirror、goriyaku は `base.expected_goriyaku_text`、kyusei は null か文字列であること。
+- 未知の family を拒否する。
+- trace_id は `[a-z0-9-]` に限る（Python literal に安全）。
+- excluded と expected deity の重複、空の excluded、空の forbidden を拒否する。
+- `history_only_v1` は `normalized_url_identity` に限る。
+- `deity_history_v1` は Deity と History がそれぞれ1件以上あることを要求する。
+
+schema_version は 1 のまま、`base_subset` / `runtime_qa` を必須 section にした。consumer は repository 内の generator / test だけで、spec と validator を同じ PR で更新した。
+
+## 14. Generic subset proof（`g7_extract_base_subset.py`）
+
+```text
+g7_extract_base_subset.py --spec <G7_SPEC> --output <OUTPUT_PATH> [--overwrite]
+```
+
+- canonical Base Seed だけを読む（CLI に Seed path の入力は無い）。DB / network / credential を使わない。
+- exact name + address で抽出する。0件 / 2件以上 / frozen row との差異はいずれも BLOCKED。正規化しない。
+- 出力は deepcopy した1行で、data と key 順を保つ。1行以外は render しないので、full Base Seed は書けない。
+- 出力先は repository 外に限る。既存ファイルは `--overwrite` 無しでは置換しない。symlink / directory は `--overwrite` があっても拒否する。
+- 歴史的 `nsrc_000002_g7_extract_base_subset.py` は golden reference として残した（無変更）。
+
+| proof | result |
+|---|---|
+| nsrc-000002 | generic 出力 == 歴史的 extractor 出力（byte-identical）、sha256 = `d5bcc322…`（Production 適用値） |
+| nsrc-000004 | canonical 青海神社 row と完全一致（1行） |
+| 0件 / 2件 / drift（latitude / goriyaku / kyusei / astro / location / visit_style_tags / goriyaku_tags） | BLOCKED |
+| 表記揺れ（末尾空白 / 新字 / 全角数字 / 都道府県欠落） | 一致しない（found 0） |
+| 無関係行の追加・並び替え・変更 | 出力不変 |
+| repository 内の出力先 / 既存ファイル / symlink / directory | BLOCKED |
+
+## 15. Runtime QA generation proof（`g7_runtime_qa_generator.py`）
+
+```text
+g7_runtime_qa_generator.py --spec <G7_SPEC> --output <OUTPUT_PATH> [--overwrite]
+```
+
+- `runtime_qa.family` で `g7_templates/runtime_qa/<family>.py.tmpl` を選ぶ。2 family は歴史的 script から件数を assert した置換で機械的に導出した。
+- generator 自身は DB / network / credential を使わず、QA も実行しない（生成物を `compile()` で構文検査するだけ）。
+- `transaction.atomic()` と `SET TRANSACTION READ ONLY` を失った出力は拒否する。
+
+| proof | result |
+|---|---|
+| nsrc-000002 golden | generated == `nsrc_000002_g7_runtime_qa.py`（byte-identical） |
+| nsrc-000004 golden | generated == `nsrc_000004_g7_runtime_qa.py`（byte-identical） |
+| 正規化した差分 | 0（header の例外も無い） |
+| 決定性 | 同一入力・key 順の変更で byte-identical、spec を変更しない |
+
+H1 content の文字列 literal 分割（`。` ごとに1 literal、1文なら1行）は表示上の規則である。両 golden を再現する。
+
+## 16. Generated Runtime QA safety
+
+AST で確認した（両 family）:
+
+- `main()` の最初の文が `with transaction.atomic():` で、その最初の文が `cursor.execute('SET TRANSACTION READ ONLY')`。
+- `execute` の呼び出しはこの1つだけ。
+- save / create / update / delete / bulk_* / get_or_create / update_or_create / add / remove / clear / set / raw / executemany / call_command / subprocess 系の呼び出しが 0。
+- subprocess / psycopg / socket / requests / urllib を import しない。migrate も呼ばない。
+- credential / hostname pattern、`environ[` が無い（`DJANGO_SETTINGS_MODULE` の setdefault のみ）。
+
+isolated DB（transaction=True）でも確認した:
+
+- READ ONLY transaction 内の INSERT は DB 側で拒否される。
+- 生成 Runtime QA の実行前後で、対象10 table の件数は不変。
+
+## 17. Isolated test DB results（Production ではない）
+
+各 candidate で `generic subset → import_shrines_seed --skip-goriyaku-tags → import_shrine_knowledge` を実行し、生成 Runtime QA の `main()` を実行した。
+
+| candidate | result |
+|---|---|
+| nsrc-000002 | DETAIL / CONCIERGE / REASON / COMPASS_DISTANCE / COMPASS_DIRECTION / G7_PRODUCTION_RUNTIME_QA = PASS、TRANSACTION_MODE=READ_ONLY、DB 件数不変 |
+| nsrc-000004 | 同上 |
+| negative: nsrc-000002 の History から Source を外す | AssertionError（fail closed） |
+| negative: nsrc-000004 の Deity を除外祭神名に変える | AssertionError（fail closed） |
+
+## 18. Complete artifact reproducibility
+
+1つの validated spec から、3つの CLI で6 artifact を生成した。
+
+```text
+g7_sql_generator.py generate        -> 1 preflight / 2 pre-Base / 3 post-Base / 4 post-Knowledge
+g7_extract_base_subset.py           -> 5 one-row target-only subset
+g7_runtime_qa_generator.py          -> 6 Runtime QA
+```
+
+| candidate | 1–4 SQL | 5 subset | 6 Runtime QA |
+|---|---|---|---|
+| nsrc-000002 | byte-identical to `sql/nsrc_000002_g7_*.sql` | byte-identical、sha256 = Production 適用値 | byte-identical |
+| nsrc-000004 | byte-identical to `sql/nsrc_000004_g7_*.sql` | canonical row（歴史的 subset 成果物は無い） | byte-identical |
+
+## 19. Validation（Phase 2）
+
+| check | result |
+|---|---|
+| Phase 2 pure tests（`scripts/migration_safety/tests/test_g7_phase2_artifacts.py`） | 97 passed |
+| Phase 2 DB tests（`backend/temples/tests/test_g7_phase2_db.py`） | 7 passed |
+| Phase 1 SQL generator tests（pure + DB） | pass |
+| 既存 nsrc-000002 G7 tests（`test_nsrc_000002_g7_*.py`） | 4 passed（無変更） |
+| G7 関連 test 合計（migration_safety + Phase 1/2 DB + 既存 nsrc-000002 G7） | 342 passed |
+| scripts/tests | 685 passed |
+| Candidate Master consumers | 454 passed |
+| full backend suite（xdist、2回） | 1回目: 1 failed（既知の順序依存 test。§10.1-1）/ 5287 passed、2回目: 5288 passed, 12 skipped |
+| makemigrations --check | No changes detected |
+| ruff check / format（変更・新規ファイル） | pass |
+| git diff --check | clean |
+| Candidate Master / Base Seed / Knowledge Seed / handoff manifest | sha256 22 files 不変 |
+
+Phase 1 の `test_phase_1_generates_no_subset_or_runtime_qa` は、Phase 2 で runtime_qa template を追加したため、次の同等以上に厳格な境界 test に置き換えた（`test_sql_generator_generates_only_the_four_sql_artifacts`）。
+
+- SQL generator の artifact は4本の SQL だけ。
+- strategy template dir には `.sql.tmpl` だけを置く。
+- runtime_qa には `.py.tmpl` だけを置く。
+
+`g7_sql_generator.py` の差分は追加のみ（Phase 1 の SQL 生成 logic は無変更。SQL golden 8本は引き続き byte-identical）。
+
+既知の既存問題（§10.1）は変わっていない。
+
+- `test_migration_0105_…_db_is_not_fresh` は順序に依存する。今回も1回観測し、2回目は PASS。
+- repo root からの単一プロセス collection は、`guard.py` の同名問題で base と同じ1件 error になる。
+
+## 20. Known limits（Phase 2 時点）
+
+1. 対応する Runtime QA family は、2件の歴史的 candidate が示した2形だけである。他の Knowledge 形の Runtime QA は、その期待値（surface ごとの assertion）を決めるまで validation で拒否する。
+2. Runtime QA の期待値（primary history content、除外祭神、forbidden phrases、trace_id、origin）は、G6 / G7 の確認結果から人が spec へ転記する。generator は Knowledge Seed や DB から推論しない。
+3. Runtime QA の除外祭神 / forbidden phrases は部分文字列 assertion であり、歴史的 script と同じ強さである。
+4. `G7_OVERALL` は本 PR の merge 確認後に CLOSED とする。
+
+```text
+G7_SQL_GENERATOR             = PASS
+G7_SUBSET_EXTRACTOR          = PASS
+G7_RUNTIME_QA_GENERATOR      = PASS
+G7_CLOSURE_CRITERIA          = PASS
+G7_OVERALL                   = PENDING_MERGE
+Production write             = NONE
 ```
