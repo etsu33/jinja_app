@@ -119,6 +119,8 @@ COMMON_TOP = {
     "source_identity",
     "knowledge",
     "post_state",
+    "base_subset",
+    "runtime_qa",
 }
 STRATEGY_SECTION = {NORMALIZED: "normalized_url_identity_sql", URL_PATTERNS: "url_pattern_set_sql"}
 CANDIDATE_FIELDS = {
@@ -196,6 +198,41 @@ SUPPORTED_BASE = {
     "expected_goriyaku_tag_links_after": 0,
     "expected_goriyaku_text": "",
 }
+
+
+# Phase 2: target-only Base subset and Runtime QA inputs.
+BASE_SUBSET_FIELDS = {"expected_row"}
+# Canonical Base Seed row keys (shrines_seed_clean.json). The first 8 are on every row.
+BASE_ROW_REQUIRED_KEYS = (
+    "name_jp",
+    "address",
+    "latitude",
+    "longitude",
+    "goriyaku",
+    "kyusei",
+    "astro_elements",
+    "location",
+)
+BASE_ROW_OPTIONAL_KEYS = frozenset({"visit_style_tags", "goriyaku_tags"})
+RUNTIME_HISTORY_ONLY = "history_only_v1"
+RUNTIME_DEITY_HISTORY = "deity_history_v1"
+RUNTIME_COMMON_FIELDS = {
+    "family",
+    "trace_id",
+    "qa_origin",
+    "primary_history_content",
+    "excluded_deity_names",
+    "forbidden_guarantee_phrases",
+}
+RUNTIME_FAMILY_FIELDS = {
+    RUNTIME_HISTORY_ONLY: {"source_url"},
+    RUNTIME_DEITY_HISTORY: {
+        "knowledge_row_verification_status",
+        "sources_per_knowledge_row",
+        "source_verification_status",
+    },
+}
+TRACE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
 class SpecError(ValueError):
@@ -351,7 +388,89 @@ def validate_spec(spec) -> dict:
     delta = {key: post[key] - pre[key] for key in TOTAL_KEYS}
     if delta != want:
         raise SpecError(f"spec.post_state: delta {delta} != expected {want}")
+    _validate_base_subset(spec)
+    _validate_runtime_qa(spec)
     return spec
+
+
+def _validate_base_subset(spec: dict) -> None:
+    where = "spec.base_subset"
+    section = _fields(spec["base_subset"], BASE_SUBSET_FIELDS, where)
+    row = section["expected_row"]
+    if not isinstance(row, dict):
+        raise SpecError(f"{where}.expected_row: must be an object")
+    missing = [key for key in BASE_ROW_REQUIRED_KEYS if key not in row]
+    unknown = sorted(row.keys() - set(BASE_ROW_REQUIRED_KEYS) - BASE_ROW_OPTIONAL_KEYS)
+    if missing:
+        raise SpecError(f"{where}.expected_row: missing field(s) {missing}")
+    if unknown:
+        raise SpecError(f"{where}.expected_row: unknown field(s) {unknown}")
+    candidate = spec["candidate"]
+    for key in ("name_jp", "address", "latitude", "longitude"):
+        if row[key] != candidate[key] or type(row[key]) is not type(candidate[key]):
+            raise SpecError(f"{where}.expected_row.{key}: must equal candidate.{key}")
+    if row["location"] != {"lat": row["latitude"], "lng": row["longitude"]}:
+        raise SpecError(f"{where}.expected_row.location: must mirror latitude/longitude")
+    if row["goriyaku"] != spec["base"]["expected_goriyaku_text"]:
+        raise SpecError(f"{where}.expected_row.goriyaku: must equal base.expected_goriyaku_text")
+    if row["kyusei"] is not None and not isinstance(row["kyusei"], str):
+        raise SpecError(f"{where}.expected_row.kyusei: must be null or a string")
+    for key in ("astro_elements", *sorted(BASE_ROW_OPTIONAL_KEYS & row.keys())):
+        if not isinstance(row[key], list) or not all(isinstance(v, str) for v in row[key]):
+            raise SpecError(f"{where}.expected_row.{key}: must be a list of strings")
+
+
+def _validate_runtime_qa(spec: dict) -> None:
+    where = "spec.runtime_qa"
+    qa = spec["runtime_qa"]
+    if not isinstance(qa, dict) or qa.get("family") not in RUNTIME_FAMILY_FIELDS:
+        raise SpecError(
+            f"{where}.family: must be one of {sorted(RUNTIME_FAMILY_FIELDS)} "
+            f"(got {qa.get('family') if isinstance(qa, dict) else qa!r})"
+        )
+    family = qa["family"]
+    _fields(qa, RUNTIME_COMMON_FIELDS | RUNTIME_FAMILY_FIELDS[family], where)
+    if not isinstance(qa["trace_id"], str) or not TRACE_ID_RE.fullmatch(qa["trace_id"]):
+        raise SpecError(f"{where}.trace_id: must match {TRACE_ID_RE.pattern}")
+    origin = _fields(qa["qa_origin"], {"lat", "lng"}, f"{where}.qa_origin")
+    _coordinate(origin["lat"], f"{where}.qa_origin.lat", 90.0)
+    _coordinate(origin["lng"], f"{where}.qa_origin.lng", 180.0)
+    _text(qa["primary_history_content"], f"{where}.primary_history_content")
+    excluded = _unique_texts(qa["excluded_deity_names"], f"{where}.excluded_deity_names")
+    if set(excluded) & set(spec["knowledge"]["deity_names"]):
+        raise SpecError(f"{where}.excluded_deity_names: must not overlap knowledge.deity_names")
+    phrases = _unique_texts(
+        qa["forbidden_guarantee_phrases"], f"{where}.forbidden_guarantee_phrases"
+    )
+    if not phrases:
+        raise SpecError(f"{where}.forbidden_guarantee_phrases: must not be empty")
+    knowledge = spec["knowledge"]
+    strategy = spec["source_identity"]["strategy"]
+    if family == RUNTIME_HISTORY_ONLY:
+        # History-only Runtime QA compares the Source with normalize_source_url().
+        if strategy != NORMALIZED:
+            raise SpecError(f"{where}.family: {family} requires {NORMALIZED}")
+        _text(qa["source_url"], f"{where}.source_url")
+        if not excluded:
+            raise SpecError(f"{where}.excluded_deity_names: {family} requires >= 1")
+        return
+    if knowledge["expected_deity_count"] < 1 or knowledge["expected_history_count"] < 1:
+        raise SpecError(f"{where}.family: {family} requires >= 1 Deity and >= 1 History")
+    if not excluded:
+        raise SpecError(f"{where}.excluded_deity_names: {family} requires >= 1")
+    _enum(
+        qa["knowledge_row_verification_status"],
+        VERIFICATION_STATUSES,
+        f"{where}.knowledge_row_verification_status",
+    )
+    _enum(
+        qa["source_verification_status"],
+        VERIFICATION_STATUSES,
+        f"{where}.source_verification_status",
+    )
+    count = qa["sources_per_knowledge_row"]
+    if isinstance(count, bool) or not isinstance(count, int) or count < 1:
+        raise SpecError(f"{where}.sources_per_knowledge_row: must be a positive integer")
 
 
 def _validate_normalized(spec: dict, source: dict, knowledge: dict) -> int:

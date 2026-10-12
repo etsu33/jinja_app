@@ -611,7 +611,8 @@ def test_importing_the_generator_does_not_register_a_top_level_guard_module():
     assert g7.is_readonly_sql("SELECT 1;") == (True, "ok")
 
 
-def test_phase_1_generates_no_subset_or_runtime_qa():
+def test_sql_generator_generates_only_the_four_sql_artifacts():
+    """The SQL generator stays SQL-only; Phase 2 subset / Runtime QA live in their own tools."""
     assert [name for _, name in g7.ARTIFACTS] == [
         "g7_preflight.sql",
         "g7_pre_base_guard.sql",
@@ -619,6 +620,15 @@ def test_phase_1_generates_no_subset_or_runtime_qa():
         "g7_post_knowledge_verification.sql",
     ]
     templates = sorted(
-        p.relative_to(g7.TEMPLATE_DIR).as_posix() for p in g7.TEMPLATE_DIR.rglob("*")
+        p.relative_to(g7.TEMPLATE_DIR).as_posix()
+        for p in g7.TEMPLATE_DIR.rglob("*")
+        if p.is_file()
     )
-    assert all(name.endswith(".sql.tmpl") or "/" not in name for name in templates)
+    for name in templates:
+        family = name.split("/", 1)[0]
+        if family in g7.STRATEGIES:
+            assert name.endswith(".sql.tmpl"), name
+        else:
+            assert family == "runtime_qa" and name.endswith(".py.tmpl"), name
+    for spec_path in (N2, N4):
+        assert all(name.endswith(".sql") for name, _ in generate_sql(load_spec(spec_path)))

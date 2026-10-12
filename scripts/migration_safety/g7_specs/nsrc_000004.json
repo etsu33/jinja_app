@@ -69,5 +69,49 @@
   },
   "url_pattern_set_sql": {
     "required_temples_migration": "0120_shrine_source_fact_foundation"
+  },
+  "base_subset": {
+    "expected_row": {
+      "name_jp": "青海神社",
+      "address": "新潟県加茂市大字加茂字宮山229番地",
+      "latitude": 37.65657387,
+      "longitude": 139.0536436,
+      "goriyaku": "",
+      "kyusei": null,
+      "astro_elements": [],
+      "location": {
+        "lat": 37.65657387,
+        "lng": 139.0536436
+      }
+    }
+  },
+  "runtime_qa": {
+    "family": "deity_history_v1",
+    "trace_id": "nsrc-000004-g7-production-runtime",
+    "qa_origin": {
+      "lat": 35.681236,
+      "lng": 139.767125
+    },
+    "primary_history_content": "神亀3年（726）、青海首一族が加茂山山麓に青海神社を創建した。",
+    "excluded_deity_names": [
+      "賀茂別雷命",
+      "多多須玉依媛命",
+      "賀茂建角身命"
+    ],
+    "forbidden_guarantee_phrases": [
+      "必ず",
+      "確実",
+      "保証",
+      "叶う",
+      "効果があります",
+      "ご利益があります",
+      "絶対",
+      "成就します",
+      "治ります",
+      "合格します"
+    ],
+    "knowledge_row_verification_status": "source_confirmed",
+    "sources_per_knowledge_row": 1,
+    "source_verification_status": "source_confirmed"
   }
 }

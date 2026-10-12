@@ -88,5 +88,46 @@
       }
     ],
     "source_identity_regression_test": "backend/temples/tests/test_nsrc_000002_g7_source_identity_sql.py"
+  },
+  "base_subset": {
+    "expected_row": {
+      "name_jp": "青澤神社",
+      "address": "新潟県糸魚川市大字青海2696番地",
+      "latitude": 37.00763484,
+      "longitude": 137.79024297,
+      "goriyaku": "",
+      "kyusei": null,
+      "astro_elements": [],
+      "location": {
+        "lat": 37.00763484,
+        "lng": 137.79024297
+      }
+    }
+  },
+  "runtime_qa": {
+    "family": "history_only_v1",
+    "trace_id": "nsrc-000002-g7-production-runtime",
+    "qa_origin": {
+      "lat": 35.681236,
+      "lng": 139.767125
+    },
+    "primary_history_content": "青沢神社では毎年4月第3日曜日に春季祭礼が行われ、前日の宵宮には神楽が奉納される。祭礼当日は神輿・子供みこしの地区巡回、神楽奉納、手踊りが行われる。",
+    "excluded_deity_names": [
+      "沼河比賣命",
+      "沼河比売命"
+    ],
+    "forbidden_guarantee_phrases": [
+      "必ず",
+      "確実",
+      "保証",
+      "叶う",
+      "効果があります",
+      "ご利益があります",
+      "絶対",
+      "成就します",
+      "治ります",
+      "合格します"
+    ],
+    "source_url": "https://matsuri.geo-itoigawa.com/calendar/m04/"
   }
 }
