@@ -2259,5 +2259,18 @@
       "lat": 37.00763484,
       "lng": 137.79024297
     }
+  },
+  {
+    "name_jp": "赤城社",
+    "address": "新潟県十日町市四日町2534番地",
+    "latitude": 37.14755658,
+    "longitude": 138.76887612,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 37.14755658,
+      "lng": 138.76887612
+    }
   }
 ]
