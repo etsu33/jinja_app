@@ -305,10 +305,30 @@ def test_resolution_does_not_infer_from_membership_or_list_status():
     assert [t.collective.pk for t in targets] == [collective.pk]
 
 
-def test_two_entries_resolving_to_same_collective_is_identity_conflict():
-    # 住所違いの ref が既存 resolve_shrine の name_jp フォールバックで同一 Shrine へ解決される場合。
+def test_wrong_address_ref_does_not_resolve_to_same_name_shrine():
+    # address 付き ref は exact address 一致のみ解決する（同名・別住所 Shrine へフォールバックしない）。
+    shrine = _create_shrine("甲神社", "東京都1")
+    collective = ShrineDeityCollective.objects.create(shrine=shrine, source_attested_label="甲大神")
+    targets, errors = _targets(
+        _entry("甲神社", "東京都1", "甲大神"), _entry("甲神社", "東京都9", "甲大神")
+    )
+    assert [t.collective.pk for t in targets] == [collective.pk]
+    assert any("甲神社 / 甲大神: SHRINE_NOT_FOUND" in e for e in errors)
+    assert not any("IDENTITY_CONFLICT" in e for e in errors)
+
+
+def test_two_entries_resolving_to_same_collective_is_identity_conflict(monkeypatch):
+    # IDENTITY_CONFLICT guard（defense in depth）: 異なる entry が同一 Shrine へ解決された場合。
+    # exact-address 解決では通常到達しないため、resolver を固定して guard 自体を検証する。
+    from temples.services.knowledge_seed import ShrineIdentityResult
+
     shrine = _create_shrine("甲神社", "東京都1")
     ShrineDeityCollective.objects.create(shrine=shrine, source_attested_label="甲大神")
+    monkeypatch.setattr(
+        activation_seed,
+        "resolve_shrine",
+        lambda name_jp, address: ShrineIdentityResult(shrine, "OK"),
+    )
     targets, errors = _targets(
         _entry("甲神社", "東京都1", "甲大神"), _entry("甲神社", "東京都9", "甲大神")
     )
