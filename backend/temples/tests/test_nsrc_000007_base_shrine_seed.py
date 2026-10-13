@@ -150,6 +150,19 @@ def test_nsrc_000007_accounting_allows_later_appended_rows():
             "nsrc-000007 identity occurs 0 times",
         ),
         (lambda rows: rows[122].update(latitude=37.147573), "is not the nsrc-000007 row"),
+        (
+            lambda rows: rows.__setitem__(
+                122, {"name_jp": "後続追加神社", "address": "架空県架空市1-1"}
+            ),
+            "is not the nsrc-000007 row",
+        ),
+        (
+            lambda rows: (
+                rows.append({"name_jp": "後続追加神社", "address": "架空県架空市1-1"}),
+                rows.append(rows.pop(122)),
+            ),
+            "is not the nsrc-000007 row",
+        ),
         (lambda rows: rows.pop(0), "historical prefix fingerprint mismatch"),
         (lambda rows: rows[0].update(goriyaku="変更"), "historical prefix fingerprint mismatch"),
         (
@@ -161,6 +174,8 @@ def test_nsrc_000007_accounting_allows_later_appended_rows():
         "remove-nsrc-000007",
         "change-nsrc-000007-address",
         "change-nsrc-000007-coordinate",
+        "replace-historical-row",
+        "move-historical-row",
         "remove-earlier-prefix-row",
         "mutate-historical-prefix-row",
         "duplicate-nsrc-000007-later",
