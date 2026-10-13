@@ -135,13 +135,13 @@ Name-only matching is not used as evidence anywhere in this materialization.
 
 ## 7. Tests
 
-New: `backend/temples/tests/test_nsrc_000007_base_shrine_seed.py`（20 tests, same append-safe cohort
+New: `backend/temples/tests/test_nsrc_000007_base_shrine_seed.py`（22 tests, same append-safe cohort
 pattern as `test_nsrc_000002_base_shrine_seed.py`）:
 
 - identity occurs exactly once; row equals the frozen values; no inferred fields;
 - cohort position rows[122:123]; existing 122-row prefix fingerprint unchanged;
 - accounting allows later appends and rejects remove / address change / coordinate change /
-  prefix removal / prefix mutation / later duplicate;
+  replace / move / prefix removal / prefix mutation / later duplicate;
 - no duplicate identity; only the nsrc-000007 `赤城社` is in the Base Seed;
 - isolated DB: Base Seed import gives `total_seed=123`, `resolve_shrine` exact target `OK`;
   other H002 `赤城社` addresses → `NOT_FOUND`; same-name rows do not make nsrc-000007 ambiguous.
@@ -157,7 +157,7 @@ Updated（state change caused by this materialization）:
 Results:
 
 ```text
-test_nsrc_000007_base_shrine_seed.py           20 passed
+test_nsrc_000007_base_shrine_seed.py           22 passed
 backend full suite（-n auto）                   5385 passed, 12 skipped
 scripts/tests                                  685 passed
 scripts/migration_safety/tests                 320 passed
