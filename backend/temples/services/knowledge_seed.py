@@ -110,11 +110,14 @@ def resolve_shrine(name_jp: str, address: str = "") -> ShrineIdentityResult:
 
     Never uses a bare `.first()` on an ambiguous match. Resolution order:
 
-    1. Filter by `name_jp`. If `address` is given and narrows the match set
-       to exactly one row, use it.
-    2. If more than one row remains (duplicate-named shrines, or address
-       didn't disambiguate — the historical 0091 case where duplicates share
-       an identical address), prefer the row with `place_ref_id IS NULL`
+    1. Filter by `name_jp`. If `address` is given, keep only rows whose
+       address matches exactly (no normalization). Zero exact-address rows is
+       NOT_FOUND: a same-name Shrine at a different address is never accepted
+       (several distinct real-world Shrines can share a name, e.g. H002 赤城社).
+       Without an address, the name-only candidate set is used.
+    2. If more than one row remains (duplicate rows sharing name and the same
+       exact address — the historical 0091 case — or, without an address,
+       duplicate-named shrines), prefer the row with `place_ref_id IS NULL`
        (the original catalog entry; a non-null `place_ref_id` marks a row
        created later via the map "resolve"/Google Places flow — see the
        0091 remediation doc for how this was established as a reliable
@@ -133,11 +136,13 @@ def resolve_shrine(name_jp: str, address: str = "") -> ShrineIdentityResult:
         return ShrineIdentityResult(None, "NOT_FOUND", f"no shrine with name_jp={name_jp!r}")
 
     if address:
-        addr_candidates = [c for c in candidates if c.address == address]
-        if len(addr_candidates) == 1:
-            return ShrineIdentityResult(addr_candidates[0], "OK")
-        if addr_candidates:
-            candidates = addr_candidates
+        candidates = [c for c in candidates if c.address == address]
+        if not candidates:
+            return ShrineIdentityResult(
+                None,
+                "NOT_FOUND",
+                f"no shrine with name_jp={name_jp!r} and exact address={address!r}",
+            )
 
     if len(candidates) == 1:
         return ShrineIdentityResult(candidates[0], "OK")
