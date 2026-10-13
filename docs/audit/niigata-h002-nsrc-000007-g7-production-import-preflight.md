@@ -1,6 +1,33 @@
-# NIIGATA-001-H002 — nsrc-000007 赤城社 G7 Production Import Preflight（preparation only）
+# NIIGATA-001-H002 — nsrc-000007 赤城社 G7 Production Import Preflight
 
-## 1. Status
+## 0. Current status（Production read-only measurement frozen）
+
+```text
+G7_PREPARATION              = PASS（PR #3193）
+G7_READ_ONLY_PREFLIGHT      = PASS（Mother Ship, after PR #3193）
+PRODUCTION_STATE_CLASS      = CLEAN_CREATE
+FROZEN_PRE_STATE            = SET（§17）
+PRODUCTION_EXPECTED_DELTA   = FROZEN（§17.4）
+
+BACKUP_CLIENT_COMPATIBILITY = HOLD（Production 17.6; observed local client 16.15）
+BACKUP_RESTORE_READINESS    = HOLD
+PRODUCTION_WRITE_READY      = HOLD
+PRODUCTION_WRITE_AUTHORIZED = NO
+PRODUCTION_WRITE            = NONE
+FORMAL_G7                   = NOT EXECUTED
+G8                          = NOT EXECUTED
+```
+
+Chronology:
+
+1. PR #3193 prepared the artifacts with the frozen block UNSET. No Production value was available
+   then; §1–§16 are that preparation record and are kept as written.
+2. After #3193 merged, Mother Ship ran `nsrc_000007_g7_preflight.sql` on Production read-only and
+   supplied the measurements（§17）.
+3. This follow-up PR froze those values into the three guards. It performed no Production connection,
+   backup, or write.
+
+## 1. Status at PR #3193（preparation; historical record）
 
 ```text
 candidate_id                = nsrc-000007
@@ -376,7 +403,9 @@ G8                                        NOT EXECUTED
 Revert the commit. It adds scripts, SQL, a test, and this audit only. Nothing was written to Production.
 The disposable databases were dropped.
 
-## 16. Next（requires Mother Ship）
+## 16. Next at PR #3193（requires Mother Ship; historical record）
+
+Steps 1–3 below were completed by the follow-up recorded in §17.
 
 1. Run `nsrc_000007_g7_preflight.sql` on Production through `readonly_query.sh`（Credential Bridge）.
 2. Mother Ship reviews the measurements and accepts a `production_state_class`. On any CONFLICT or
@@ -387,4 +416,212 @@ The disposable databases were dropped.
 
 ```text
 STOP — no Production write is authorized or performed by this PR.
+```
+
+## 17. Production read-only measurement and freeze（follow-up PR, after #3193）
+
+- Recorded at: 2026-10-13
+- Base: `develop@d99e60ba`（#3193 merged）
+- Branch: `audit/nsrc-000007-g7-freeze-production-prestate`
+
+### 17.1 Measurement（supplied by Mother Ship）
+
+Mother Ship executed:
+
+```text
+scripts/migration_safety/readonly_query.sh \
+  ~/.config/kami-musubi/production-db.env DATABASE_URL \
+  scripts/migration_safety/sql/nsrc_000007_g7_preflight.sql
+```
+
+The query completed successfully. This environment did not connect to Production. The values below are
+Mother Ship's measurement, used verbatim.
+
+```text
+PostgreSQL version        = 17.6
+latest temples migration  = 0120_shrine_source_fact_foundation
+
+Shrine      = 122
+Source      = 141
+Deity       = 295
+History     = 229
+SourceFact  = 34
+Collective  = 6
+
+target exact             = 0
+same-name 赤城社          = 0
+same-name other-address  = 0
+same-address             = 0
+```
+
+| | S2 | S3 |
+|---|---|---|
+| source_identity_count | 0 | 0 |
+| source_metadata_compatible_count | 0 | 0 |
+| source_url_lookalike_count | 0 | 0 |
+| source_url_lookalike_non_identity_count | 0 | 0 |
+| source_type_url_unparseable_count | 0 | 0 |
+| source_identity_state | ABSENT | ABSENT |
+
+```text
+target Deity / History / History-Source / SourceFact / Collective = 0 / 0 / 0 / 0 / 0
+target goriyaku tag links / ShrineGoriyakuAssignment            = 0 / 0
+
+production_state_class_candidate = CLEAN_CREATE
+```
+
+```text
+G7_READ_ONLY_PREFLIGHT = PASS
+PRODUCTION_STATE_CLASS = CLEAN_CREATE
+```
+
+### 17.2 Frozen block（SET）
+
+`-- BEGIN/END nsrc_000007_frozen_pre_state` is byte-identical in:
+
+- `nsrc_000007_g7_pre_base_guard.sql`
+- `nsrc_000007_g7_post_base_guard.sql`
+- `nsrc_000007_g7_post_knowledge_verification.sql`
+
+```text
+frozen_values_set              = true
+shrine_total                   = 122
+source_total                   = 141
+deity_total                    = 295
+history_total                  = 229
+source_fact_total              = 34
+collective_total               = 6
+same_name_other_address_total  = 0
+s2_accepted_source_count       = 0
+s3_accepted_source_count       = 0
+```
+
+Only the frozen block and the three guards' stale "UNSET" header line changed. The Source identity
+block and normalization are byte-unchanged. `nsrc_000007_g7_preflight.sql` is unchanged.
+
+### 17.3 Observation（non-blocking）
+
+Production `Source = 141`. A disposable DB loaded with every repository Knowledge Seed except
+nsrc-000007（§8.1 environment）has 139 Sources, so Production holds 2 Sources that the repository seeds
+do not reproduce. This does not affect the classification: S2 / S3 are ABSENT with 0 lookalikes.
+The guards use the Production value 141, never a repository count.
+
+### 17.4 Expected Production delta（FROZEN）
+
+```text
+EXPECTED_PRODUCTION_DELTA
+Shrine     +1
+Source     +2
+Deity      +0
+History    +2
+SourceFact +0
+Collective +0
+goriyaku   +0
+```
+
+| Aggregate | Pre-state | Post-Base | Post-Knowledge |
+|---|---:|---:|---:|
+| Shrine | 122 | 123 | 123 |
+| Source | 141 | 141 | 143 |
+| Deity | 295 | 295 | 295 |
+| History | 229 | 229 | 231 |
+| SourceFact | 34 | 34 | 34 |
+| Collective | 6 | 6 | 6 |
+
+```text
+PRODUCTION_EXPECTED_DELTA = FROZEN
+```
+
+### 17.5 Disposable sequential rehearsal with the committed frozen blocks
+
+Run in a pytest disposable DB. The committed guard files run unchanged; frozen values were not altered.
+
+The simulated pre-state:
+
+- Base Seed with the target row removed;
+- Shrine count set to 122;
+- unrelated, non-lookalike filler rows bringing Source / Deity / History / SourceFact / Collective to
+  exactly 141 / 295 / 229 / 34 / 6;
+- preflight result `CLEAN_CREATE` with S2 / S3 `ABSENT`.
+
+```text
+exact Production pre-state          -> pre-Base PASS（post-Base FAIL, post-Knowledge FAIL）
+target subset dry-run               -> no write
+target subset apply                 -> created=1; aggregates = 123 / 141 / 295 / 229 / 34 / 6
+second subset dry-run               -> created=0
+post-Base                           -> PASS（pre-Base FAIL, post-Knowledge FAIL）
+Knowledge dry-run                   -> {'source_CREATE': 2, 'history_CREATE': 2}
+Knowledge apply                     -> sources created=2, deities created=0, histories created=2
+                                       aggregates = 123 / 143 / 295 / 231 / 34 / 6
+post-Knowledge                      -> PASS（post-Base FAIL）
+second Knowledge dry-run / apply    -> {'source_REUSE_EXISTING': 2, 'history_SKIP_EXISTS': 2}, no CREATE;
+                                       aggregates unchanged; post-Knowledge PASS
+relations                           -> 安政7年正月の再建 -> S2 only; 赤城社に伝わった越後縮幡 -> S3 only
+goriyaku snapshot                   -> unchanged
+```
+
+Committed pre-Base guard drift（each starts from the exact pre-state, then fails）:
+
+- aggregates: Shrine +1, Source +1, Source −1, Deity +1, History +1, SourceFact +1, Collective +1;
+- target identity: target row exists; a different-name row at the target address（Shrine total kept 122）;
+- same-name other-address: one `赤城社` at another address（total kept）;
+- accepted count: S2 compatible present; S3 compatible present（Source total kept 141）;
+- Source conflicts: S2 / S3 metadata drift, S2 / S3 non-identity lookalike, S2 importer-unparseable,
+  S3 identity ambiguous.
+
+Also:
+
+- the committed post-Base guard fails when an extra unrelated Shrine is added after the target Base row;
+- the committed post-Knowledge verification fails on an extra relation H1 → S3, H1 swapped to S3, a
+  created Deity（`土田岐入彦命`）, a goriyaku text mutation, a goriyaku tag link, and coordinate drift;
+- the committed guards fail on a non-Production state（Base Seed only）.
+
+The earlier in-memory conflict matrix（§8.2）is kept unchanged.
+
+### 17.6 Backup boundary
+
+```text
+Production PostgreSQL       = 17.6
+observed local client       = 16.15
+BACKUP_CLIENT_COMPATIBILITY = HOLD（until a PostgreSQL 17-compatible client is used）
+BACKUP_RESTORE_READINESS    = HOLD
+```
+
+No Production backup is part of this PR. The §11 procedure is still required before any write.
+
+### 17.7 Validation
+
+```text
+guard.py check-readonly-sql（5 nsrc-000007 SQL files）     READONLY_OK × 5
+test_nsrc_000007_g7_source_identity_sql.py                 58 passed
+  （mutation sanity: pre-Base source_total 141 -> 140 -> 21 failed; file restored byte-identical）
+nsrc-000007 tests（base / knowledge / G5 / G6 / G7）         102 passed
+test_nsrc_000002_g7_source_identity_sql.py（precedent）      4 passed
+backend full suite（-n auto）                                5467 passed, 12 skipped
+scripts/tests                                                685 passed
+scripts/migration_safety/tests                               320 passed
+makemigrations --check                                       No changes detected
+ruff check / format --check（test）                           clean
+git diff --check                                             clean
+```
+
+### 17.8 Changed files
+
+```text
+scripts/migration_safety/sql/nsrc_000007_g7_pre_base_guard.sql              frozen block SET + header line
+scripts/migration_safety/sql/nsrc_000007_g7_post_base_guard.sql             frozen block SET + header line
+scripts/migration_safety/sql/nsrc_000007_g7_post_knowledge_verification.sql frozen block SET + header line
+backend/temples/tests/test_nsrc_000007_g7_source_identity_sql.py            SET assertions + committed-guard rehearsal
+docs/audit/niigata-h002-nsrc-000007-g7-production-import-preflight.md       this section, §0, labels
+```
+
+### 17.9 Next（requires Mother Ship）
+
+1. Use a PostgreSQL 17-compatible client and take a **fresh** Production backup outside the repository.
+2. Restore it to a disposable DB. The `nsrc_000007_g7_preflight.sql` output must equal §17.1, and the
+   committed `nsrc_000007_g7_pre_base_guard.sql` must PASS on the restored DB.
+3. Only then can Mother Ship authorize the Production write and the Formal G7 decision.
+
+```text
+STOP — no Production backup or write is performed by this PR.
 ```

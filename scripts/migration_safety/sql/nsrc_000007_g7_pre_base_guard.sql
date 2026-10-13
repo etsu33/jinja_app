@@ -1,6 +1,6 @@
 -- nsrc-000007 G7 pre-Base Production write guard
 -- SELECT-only; raises division-by-zero unless the frozen CLEAN_CREATE pre-state still holds.
--- While the frozen block is UNSET (frozen_values_set = false, values NULL) it always fails.
+-- Frozen values = Mother Ship Production read-only measurement (see the frozen block).
 -- Expected pre-state (CLEAN_CREATE only; other states never reach this guard):
 --   aggregates (Shrine / Source / Deity / History / SourceFact / Collective) = frozen
 --   target exact = 0; same-address = 0; 赤城社 at other addresses = frozen (diagnostic, no drift)
@@ -10,26 +10,26 @@
 WITH
 -- BEGIN nsrc_000007_frozen_pre_state
 frozen AS (
-  -- FROZEN_PRE_STATE: UNSET.
-  -- nsrc_000007_g7_preflight.sql has NOT been executed on Production and Mother Ship has
-  -- not accepted a production_state_class. Every value is NULL and frozen_values_set is
-  -- false, so this guard always fails closed (division by zero) until a separate,
-  -- Mother-Ship-authorized change replaces this block with measured Production values.
-  -- Repository or local counts must never be substituted for Production values.
+  -- FROZEN_PRE_STATE: measured by nsrc_000007_g7_preflight.sql on Production (read-only),
+  -- executed by Mother Ship through readonly_query.sh after PR #3193,
+  -- PostgreSQL 17.6, temples 0120_shrine_source_fact_foundation.
+  -- Mother Ship decision: G7_READ_ONLY_PREFLIGHT = PASS / PRODUCTION_STATE_CLASS = CLEAN_CREATE
+  -- (S2 source_identity_state = ABSENT, S3 source_identity_state = ABSENT).
+  -- Any drift from these values fails closed.
   -- The block must be identical in the pre-Base / post-Base / post-Knowledge files.
   SELECT
-    false AS frozen_values_set,
-    NULL::bigint AS shrine_total,
-    NULL::bigint AS source_total,
-    NULL::bigint AS deity_total,
-    NULL::bigint AS history_total,
-    NULL::bigint AS source_fact_total,
-    NULL::bigint AS collective_total,
+    true AS frozen_values_set,
+    122::bigint AS shrine_total,
+    141::bigint AS source_total,
+    295::bigint AS deity_total,
+    229::bigint AS history_total,
+    34::bigint AS source_fact_total,
+    6::bigint AS collective_total,
     -- 赤城社 rows at other addresses (distinct shrines; frozen only to detect drift)
-    NULL::bigint AS same_name_other_address_total,
+    0::bigint AS same_name_other_address_total,
     -- = measured S2 / S3 source_identity_count; only 0 (absent) or 1 (metadata compatible)
-    NULL::bigint AS s2_accepted_source_count,
-    NULL::bigint AS s3_accepted_source_count
+    0::bigint AS s2_accepted_source_count,
+    0::bigint AS s3_accepted_source_count
 ),
 -- END nsrc_000007_frozen_pre_state
 target AS (
