@@ -2318,7 +2318,7 @@ def test_nsrc_000006_g1_is_confirmed_new_and_stays_discovered():
         g1 = _member_g1(candidate_id)
         assert rows[candidate_id]["identity_status"] == g1["identity_status"], candidate_id
         assert rows[candidate_id]["duplicate_status"] == g1["duplicate_status"], candidate_id
-        assert rows[candidate_id]["candidate_status"] == "DISCOVERED", candidate_id
+        assert rows[candidate_id]["candidate_status"] == _member_spec(candidate_id)["lifecycle"]["candidate_status"], candidate_id
 
     assert _handoff_violations(master, _handoff_spec(H001_HANDOFF_ID)) == []
     wave0 = _wave0_candidates(master)
@@ -2326,18 +2326,20 @@ def test_nsrc_000006_g1_is_confirmed_new_and_stays_discovered():
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
 
 
-def test_nsrc_000007_g1_is_confirmed_same_name_different_shrine_and_stays_discovered():
-    """G1 PASS / SAME_NAME_DIFFERENT_SHRINE。同名の赤城社3件とは別 identity。lifecycle は進めない。"""
+def test_nsrc_000007_is_synced_to_g7_imported_and_stops_before_core_ready():
+    """G7 CLOSED / PASS を Candidate Master の IMPORTED state へ同期する。CORE_READY は G8 の別 Gate。"""
     master = _load_master()
     rows = {row["candidate_id"]: row for row in master["candidates"]}
     row = rows["nsrc-000007"]
 
-    assert row["candidate_status"] == "DISCOVERED"
-    assert row["status_reason_code"] == "REGISTRY_ADMISSION_COMPLETE"
+    assert row["candidate_status"] == "IMPORTED"
+    assert row["candidate_status"] != "CORE_READY"
+    assert row["status_reason_code"] == "PRODUCTION_IMPORT_COMPLETE"
+    assert row["status_reason_code"] != "CORE_READY_CONTRACT_PASS"
     assert row["identity_status"] == "CONFIRMED"
     assert row["duplicate_status"] == "SAME_NAME_DIFFERENT_SHRINE"
-    assert row["official_source_status"] == "AVAILABLE"
-    assert row["knowledge_status"] == "UNREVIEWED"
+    assert row["official_source_status"] == "CONFIRMED"
+    assert row["knowledge_status"] == "FACT_READY"
     assert row["build_batch"] is None
     assert row["wave_id"] is None
     assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
@@ -2356,13 +2358,18 @@ def test_nsrc_000007_g1_is_confirmed_same_name_different_shrine_and_stays_discov
     assert not (HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys())
     assert "reading" not in row
 
-    # 他の赤城社3件は nsrc-000007 の G1 に連動しない（各自の G1 現在値のまま）。別 Candidate のまま。
-    for candidate_id in ("nsrc-000008", "nsrc-000009", "nsrc-000010"):
-        g1 = _member_g1(candidate_id)
-        assert rows[candidate_id]["identity_status"] == g1["identity_status"], candidate_id
-        assert rows[candidate_id]["duplicate_status"] == g1["duplicate_status"], candidate_id
-        assert rows[candidate_id]["candidate_status"] == "DISCOVERED", candidate_id
-        assert rows[candidate_id]["candidate_name"] == "赤城社", candidate_id
+    # 他の H002 Candidate は nsrc-000007 の G7 sync に連動しない。
+    for candidate_id in ("nsrc-000006", "nsrc-000008", "nsrc-000009", "nsrc-000010"):
+        assert rows[candidate_id]["candidate_status"] == _member_spec(candidate_id)["lifecycle"]["candidate_status"], candidate_id
+        assert rows[candidate_id]["status_reason_code"] == "REGISTRY_ADMISSION_COMPLETE", candidate_id
+        assert rows[candidate_id]["official_source_status"] == "AVAILABLE", candidate_id
+        assert rows[candidate_id]["knowledge_status"] == "UNREVIEWED", candidate_id
+
+    # 既に CORE_READY の H001 Candidate は不変。
+    for candidate_id in ("nsrc-000002", "nsrc-000004"):
+        assert rows[candidate_id]["candidate_status"] == "CORE_READY", candidate_id
+        assert rows[candidate_id]["status_reason_code"] == "CORE_READY_CONTRACT_PASS", candidate_id
+
     assert [r["candidate_id"] for r in master["candidates"] if r["candidate_name"] == "赤城社"] == [
         "nsrc-000007",
         "nsrc-000008",
@@ -2370,15 +2377,11 @@ def test_nsrc_000007_g1_is_confirmed_same_name_different_shrine_and_stays_discov
         "nsrc-000010",
     ]
 
-    # nsrc-000006 の G1（CONFIRMED / NEW）は不変。
-    assert rows["nsrc-000006"]["identity_status"] == "CONFIRMED"
-    assert rows["nsrc-000006"]["duplicate_status"] == "NEW"
-
     assert _handoff_violations(master, _handoff_spec(H001_HANDOFF_ID)) == []
+    assert _handoff_violations(master, _handoff_spec(H002_HANDOFF_ID)) == []
     wave0 = _wave0_candidates(master)
     assert len(wave0) == EXPECTED_WAVE0_TOTAL
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
-
 
 def test_nsrc_000008_g1_is_confirmed_same_name_different_shrine_and_stays_discovered():
     """G1 PASS / SAME_NAME_DIFFERENT_SHRINE。他の赤城社3件とは別 identity。lifecycle は進めない。"""
@@ -2415,7 +2418,7 @@ def test_nsrc_000008_g1_is_confirmed_same_name_different_shrine_and_stays_discov
         g1 = _member_g1(candidate_id)
         assert rows[candidate_id]["identity_status"] == g1["identity_status"], candidate_id
         assert rows[candidate_id]["duplicate_status"] == g1["duplicate_status"], candidate_id
-        assert rows[candidate_id]["candidate_status"] == "DISCOVERED", candidate_id
+        assert rows[candidate_id]["candidate_status"] == _member_spec(candidate_id)["lifecycle"]["candidate_status"], candidate_id
 
     # 赤城社4件は別 Candidate のまま（id / source_position が別々）。
     akagi = [r for r in master["candidates"] if r["candidate_name"] == "赤城社"]
@@ -2473,7 +2476,7 @@ def test_nsrc_000009_g1_is_confirmed_same_name_different_shrine_and_stays_discov
         g1 = _member_g1(candidate_id)
         assert rows[candidate_id]["identity_status"] == g1["identity_status"], candidate_id
         assert rows[candidate_id]["duplicate_status"] == g1["duplicate_status"], candidate_id
-        assert rows[candidate_id]["candidate_status"] == "DISCOVERED", candidate_id
+        assert rows[candidate_id]["candidate_status"] == _member_spec(candidate_id)["lifecycle"]["candidate_status"], candidate_id
 
     # nsrc-000006 / nsrc-000007 の G1 は不変。
     assert {
@@ -2484,7 +2487,7 @@ def test_nsrc_000009_g1_is_confirmed_same_name_different_shrine_and_stays_discov
     } == {
         "identity_status": "CONFIRMED",
         "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
-        "candidate_status": "DISCOVERED",
+        "candidate_status": "IMPORTED",
     }
 
     # 赤城社4件は別 Candidate のまま（id / source_position が別々）。
@@ -2543,7 +2546,7 @@ def test_nsrc_000010_g1_is_confirmed_same_name_different_shrine_and_stays_discov
         g1 = _member_g1(candidate_id)
         assert rows[candidate_id]["identity_status"] == g1["identity_status"], candidate_id
         assert rows[candidate_id]["duplicate_status"] == g1["duplicate_status"], candidate_id
-        assert rows[candidate_id]["candidate_status"] == "DISCOVERED", candidate_id
+        assert rows[candidate_id]["candidate_status"] == _member_spec(candidate_id)["lifecycle"]["candidate_status"], candidate_id
 
     # 赤城社4件は別 Candidate のまま（id / source_position が別々）。
     akagi = [r for r in master["candidates"] if r["candidate_name"] == "赤城社"]
@@ -2566,8 +2569,8 @@ def test_nsrc_000010_g1_is_confirmed_same_name_different_shrine_and_stays_discov
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
 
 
-def test_niigata_h002_g1_is_resolved_for_all_five_candidates():
-    """H002 の G1 は全5件 resolved。G1 は lifecycle を進めない（全件 DISCOVERED のまま）。"""
+def test_niigata_h002_g1_is_resolved_with_independent_lifecycle_states():
+    """H002 の G1 は全5件 resolved。Lifecycle は Candidate ごとに独立して進む。"""
     master = _load_master()
     h002 = [
         row
@@ -2583,12 +2586,18 @@ def test_niigata_h002_g1_is_resolved_for_all_five_candidates():
         "nsrc-000009": ("CONFIRMED", "SAME_NAME_DIFFERENT_SHRINE"),
         "nsrc-000010": ("CONFIRMED", "SAME_NAME_DIFFERENT_SHRINE"),
     }
-    assert all(row["candidate_status"] == "DISCOVERED" for row in h002)
+    assert {row["candidate_id"]: row["candidate_status"] for row in h002} == {
+        "nsrc-000006": "DISCOVERED",
+        "nsrc-000007": "IMPORTED",
+        "nsrc-000008": "DISCOVERED",
+        "nsrc-000009": "DISCOVERED",
+        "nsrc-000010": "DISCOVERED",
+    }
     assert not any(
         row["identity_status"] == "UNREVIEWED" or row["duplicate_status"] == "UNREVIEWED"
         for row in h002
     )
-
+    assert _handoff_violations(master, _handoff_spec(H002_HANDOFF_ID)) == []
 
 def _h002_reorder(master, rows):
     candidates = master["candidates"]
@@ -2613,7 +2622,7 @@ def _h002_extra_member(master, rows):
     master["candidates"].append(extra)
 
 
-# H002 各 Candidate の G1 結果（regression / G1 越境 / 同名統合）の mutation。
+# H002 各 Candidate の current identity / lifecycle（regression / premature advancement / 同名統合）の mutation。
 @pytest.mark.parametrize(
     "mutate",
     [
@@ -2696,16 +2705,30 @@ def _h002_extra_member(master, rows):
             _set_provenance("nsrc-000006", "source_url", "https://example.invalid/"),
             id="n6-changed-provenance",
         ),
-        # nsrc-000007（G1 PASS / SAME_NAME_DIFFERENT_SHRINE）の regression と G1 を超えた advancement。
+        # nsrc-000007（G7 IMPORTED）の lifecycle / immutable evidence regression と premature CORE_READY。
         pytest.param(_set("nsrc-000007", "identity_status", "UNREVIEWED"), id="n7-identity-regression"),
         pytest.param(_set("nsrc-000007", "duplicate_status", "UNREVIEWED"), id="n7-duplicate-regression"),
         pytest.param(_set("nsrc-000007", "duplicate_status", "NEW"), id="n7-duplicate-new"),
         pytest.param(_set("nsrc-000007", "duplicate_status", "SAME_SHRINE"), id="n7-duplicate-same-shrine"),
-        pytest.param(_set("nsrc-000007", "candidate_status", "BUILD_READY"), id="n7-lifecycle-beyond-g1"),
+        pytest.param(_set("nsrc-000007", "candidate_status", "CORE_READY"), id="n7-premature-core-ready"),
         pytest.param(
-            _set("nsrc-000007", "official_source_status", "CONFIRMED"), id="n7-official-source-beyond-g1"
+            _set("nsrc-000007", "status_reason_code", "CORE_READY_CONTRACT_PASS"),
+            id="n7-premature-core-ready-reason",
         ),
-        pytest.param(_set("nsrc-000007", "knowledge_status", "FACT_READY"), id="n7-knowledge-beyond-g1"),
+        pytest.param(_set("nsrc-000007", "candidate_status", "DISCOVERED"), id="n7-regressed-to-discovered"),
+        pytest.param(
+            _set("nsrc-000007", "status_reason_code", "REGISTRY_ADMISSION_COMPLETE"),
+            id="n7-imported-reason-mismatch",
+        ),
+        pytest.param(_set("nsrc-000007", "candidate_status", "BUILD_READY"), id="n7-regressed-to-build-ready"),
+        pytest.param(
+            _set("nsrc-000007", "official_source_status", "AVAILABLE"),
+            id="n7-official-source-regression",
+        ),
+        pytest.param(_set("nsrc-000007", "knowledge_status", "UNREVIEWED"), id="n7-knowledge-regression"),
+        pytest.param(_set("nsrc-000007", "build_batch", "W0-DB08"), id="n7-invented-wave0-build-batch"),
+        pytest.param(_set("nsrc-000007", "build_batch", "NIIGATA-001"), id="n7-build-batch-source"),
+        pytest.param(_set("nsrc-000007", "build_batch", "NIIGATA-001-H002"), id="n7-build-batch-handoff"),
         pytest.param(
             _set("nsrc-000007", "official_address", "新潟県十日町市四日町2534番地"),
             id="n7-official-address-hydrated",
@@ -2716,7 +2739,7 @@ def _h002_extra_member(master, rows):
             _set_provenance("nsrc-000007", "source_position", "page001-row008"),
             id="n7-changed-provenance",
         ),
-        # nsrc-000008（G1 PASS / SAME_NAME_DIFFERENT_SHRINE）の regression と G1 を超えた advancement。
+                # nsrc-000008（G1 PASS / SAME_NAME_DIFFERENT_SHRINE）の regression と G1 を超えた advancement。
         # 旧 h002-n8-unapproved-* は nsrc-000008 の G1 PASS で no-op になるため置き換えた。
         pytest.param(_set("nsrc-000008", "identity_status", "UNREVIEWED"), id="n8-identity-regression"),
         pytest.param(_set("nsrc-000008", "duplicate_status", "UNREVIEWED"), id="n8-duplicate-regression"),
