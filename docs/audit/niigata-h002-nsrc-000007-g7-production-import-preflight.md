@@ -2,7 +2,6 @@
 
 ## 0. Final classification（G7 CLOSED / PASS）
 
-
 - Recorded at: `2026-10-14`
 - Candidate: `nsrc-000007`
 - Shrine: 赤城社（新潟県十日町市四日町2534番地）
@@ -312,7 +311,7 @@ The committed SQL is never modified, and the database is never mutated to make a
 | Base subset | extractor deterministic, exactly the frozen row; fails closed on a missing row, coordinate drift, or other-address-only data; refuses an in-repository output path |
 | Base + Knowledge rehearsal（sources absent / S2 reused / both reused） | pre-guard PASS → subset dry-run（no write）→ apply `created=1` → second dry-run `created=0` → post-Base PASS（pre-Base now FAIL, post-Knowledge still FAIL）→ Knowledge dry-run plan matches the reuse state → apply → second dry-run `{'source_REUSE_EXISTING': 2, 'history_SKIP_EXISTS': 2}`, no CREATE → post-Knowledge PASS; goriyaku snapshot unchanged |
 | Post-Knowledge negatives | an extra H1 -> S3 relation → FAIL（removed → PASS）; a Deity row `土田岐入彦命` on the target → FAIL |
-| Runtime QA rehearsal | `nsrc_000007_g7_runtime_qa.main()` on the rehearsed state prints all PASS lines + `TRANSACTION_MODE=READ_ONLYLY`; aggregates unchanged |
+| Runtime QA rehearsal | `nsrc_000007_g7_runtime_qa.main()` on the rehearsed state prints all PASS lines + `TRANSACTION_MODE=READ_ONLY`; aggregates unchanged |
 
 Sources-absent rehearsal Knowledge plan: `source_CREATE: 2`, `history_CREATE: 2`.
 With S2 pre-existing compatibly: `source_CREATE: 1`, `source_REUSE_EXISTING: 1`, `history_CREATE: 2`.
