@@ -9,8 +9,9 @@ PRODUCTION_STATE_CLASS      = CLEAN_CREATE
 FROZEN_PRE_STATE            = SET（§17）
 PRODUCTION_EXPECTED_DELTA   = FROZEN（§17.4）
 
-BACKUP_CLIENT_COMPATIBILITY = HOLD（Production 17.6; observed local client 16.15）
-BACKUP_RESTORE_READINESS    = HOLD
+BACKUP_CLIENT_COMPATIBILITY = PASS（Production 17.6 / client 17.10）
+BACKUP_RESTORE_READINESS    = PASS（§18）
+
 PRODUCTION_WRITE_READY      = HOLD
 PRODUCTION_WRITE_AUTHORIZED = NO
 PRODUCTION_WRITE            = NONE
@@ -26,6 +27,9 @@ Chronology:
    supplied the measurements（§17）.
 3. This follow-up PR froze those values into the three guards. It performed no Production connection,
    backup, or write.
+4. After #3194 merged, Mother Ship took a fresh Production backup with PostgreSQL 17.10 clients,
+   restored it into an isolated PostgreSQL 17.10 environment, verified the restore fingerprint,
+   and confirmed that the committed pre-Base guard passes. See §18.
 
 ## 1. Status at PR #3193（preparation; historical record）
 
@@ -615,7 +619,7 @@ backend/temples/tests/test_nsrc_000007_g7_source_identity_sql.py            SET 
 docs/audit/niigata-h002-nsrc-000007-g7-production-import-preflight.md       this section, §0, labels
 ```
 
-### 17.9 Next（requires Mother Ship）
+### 17.9 Next at PR #3194（historical record）
 
 1. Use a PostgreSQL 17-compatible client and take a **fresh** Production backup outside the repository.
 2. Restore it to a disposable DB. The `nsrc_000007_g7_preflight.sql` output must equal §17.1, and the
@@ -625,3 +629,94 @@ docs/audit/niigata-h002-nsrc-000007-g7-production-import-preflight.md       this
 ```text
 STOP — no Production backup or write is performed by this PR.
 ```
+## 18. Backup / Restore Readiness Closure
+
+### 18.1 Fresh Production backup
+
+Production PostgreSQL = 17.6
+Backup client          = PostgreSQL 17.10
+
+roles.sql  = 5,792 bytes
+schema.sql = 134,714 bytes
+data.sql   = 11,762,122 bytes
+
+FRESH_PRODUCTION_BACKUP = PASS
+
+### 18.2 Isolated restore
+
+Restore PostgreSQL = 17.10
+
+ISOLATED_RESTORE = PASS
+
+### 18.3 Restore fingerprint
+
+latest_temples_migration = 0120_shrine_source_fact_foundation
+
+Shrine      = 122
+Source      = 141
+Deity       = 295
+History     = 229
+SourceFact  = 34
+Collective  = 6
+
+target exact            = 0
+same-name other-address = 0
+same-address            = 0
+
+S2 = ABSENT
+S3 = ABSENT
+
+production_state_class_candidate = CLEAN_CREATE
+
+### 18.4 Active restore fingerprint contract
+
+The historical §11 wording required the restored preflight output to equal the Production
+preflight output exactly.
+
+For the active G7 restore-readiness decision, the restore fingerprint consists of:
+
+- latest temples migration
+- required table existence
+- aggregate counts
+- target identity state
+- same-name / same-address state
+- S2 Source identity state
+- S3 Source identity state
+- target Knowledge counts and relations
+- goriyaku links / assignments
+- production_state_class_candidate
+
+Server version is compatibility metadata and is not part of the restored application-data fingerprint.
+
+Required server compatibility:
+
+Production PostgreSQL major = 17
+Restore PostgreSQL major    = 17
+Backup / restore client     = 17
+
+Patch-version equality is not required.
+
+### 18.5 Frozen guard verification
+
+RESTORE_PRE_BASE_GUARD = PASS
+
+g7_pre_base_guard_pass = 1
+
+### 18.6 Readiness decision
+
+BACKUP_CLIENT_COMPATIBILITY = PASS
+ISOLATED_RESTORE            = PASS
+DATA_FINGERPRINT            = MATCH
+MIGRATION_FINGERPRINT       = MATCH
+IDENTITY_FINGERPRINT        = MATCH
+SOURCE_STATE_FINGERPRINT    = MATCH
+SERVER_MAJOR_COMPATIBILITY  = PASS
+RESTORE_PRE_BASE_GUARD      = PASS
+
+BACKUP_RESTORE_READINESS    = PASS
+
+PRODUCTION_WRITE_READY      = HOLD
+PRODUCTION_WRITE_AUTHORIZED = NO
+PRODUCTION_WRITE            = NONE
+FORMAL_G7                   = NOT EXECUTED
+G8                          = NOT EXECUTED
