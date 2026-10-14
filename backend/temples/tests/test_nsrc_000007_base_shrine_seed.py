@@ -217,7 +217,7 @@ def _import_base_seed() -> str:
 @pytest.mark.django_db
 def test_base_seed_import_resolves_the_exact_nsrc_000007_row():
     summary = _import_base_seed()
-    assert "total_seed=123" in summary
+    assert f"total_seed={len(_rows())}" in summary
     target = Shrine.objects.get(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS)
     assert (target.latitude, target.longitude) == (LATITUDE, LONGITUDE)
 

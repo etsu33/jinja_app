@@ -2272,5 +2272,18 @@
       "lat": 37.14755658,
       "lng": 138.76887612
     }
+  },
+  {
+    "name_jp": "赤井神社",
+    "address": "新潟県佐渡市加茂歌代2662番地",
+    "latitude": 38.085938,
+    "longitude": 138.418312,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 38.085938,
+      "lng": 138.418312
+    }
   }
 ]

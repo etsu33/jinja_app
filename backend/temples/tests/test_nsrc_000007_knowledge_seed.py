@@ -225,7 +225,8 @@ def test_nsrc_000007_seed_has_no_unauthorized_deity_or_derived_data():
 
 @pytest.mark.django_db
 def test_nsrc_000007_base_shrine_resolves_exactly():
-    assert "total_seed=123" in _import_base_seed()
+    base_count = len(json.loads(BASE_SEED_PATH.read_text(encoding="utf-8")))
+    assert f"total_seed={base_count}" in _import_base_seed()
 
     exact = Shrine.objects.filter(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS)
     assert exact.count() == 1

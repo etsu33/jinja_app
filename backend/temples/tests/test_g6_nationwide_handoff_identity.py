@@ -511,16 +511,23 @@ def test_handoff_text_output_and_h002_unresolved_state():
     assert "ALL_ELIGIBLE = FAIL" in text
 
     payload = _run_json("--handoff", H002)
-    # nsrc-000007 の Base Shrine materialization 後: Shrine は exact identity で解決されるが
-    # Knowledge 未投入のため INELIGIBLE（Shrine DB presence != eligibility）。他4件は UNRESOLVED。
+    # nsrc-000006 / nsrc-000007 の Base Shrine materialization 後:
+    # 両Shrineは exact identity で解決されるが、この helper は対象Knowledgeを投入しないため INELIGIBLE。
+    # nsrc-000008 / 000009 / 000010 は未materializeのため UNRESOLVED。
     assert [r["status"] for r in payload["results"]] == [
-        UNRESOLVED,
+        INELIGIBLE,
         INELIGIBLE,
         UNRESOLVED,
         UNRESOLVED,
         UNRESOLVED,
     ]
-    assert payload["summary"]["eligible_count"] == 0
+    assert payload["summary"] == {
+        "requested_count": 5,
+        "eligible_count": 0,
+        "ineligible_count": 2,
+        "unresolved_count": 3,
+        "all_eligible": False,
+    }
 
 
 @pytest.mark.django_db
