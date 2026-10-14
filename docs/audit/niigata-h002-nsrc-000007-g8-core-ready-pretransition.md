@@ -15,14 +15,13 @@
 COMPLETION_CONTRACT_PRE_TRANSITION         = 12/12 SATISFIED
 G8_CONDITION_08                            = PASS_WITH_LIMITATION
 G8_CONDITION_12_POST_TRANSITION            = NOT_EXECUTED
-MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = PENDING
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TARGET_ONLY
 TARGET                                     = nsrc-000007
 CORE_READY_TRANSITION                      = NOT_EXECUTED
 G8_STATUS                                  = OPEN
 ```
 
-本書は Completion Contract #1〜#12 の PRE_TRANSITION evidence を記録する。
-Mother Ship の CORE_READY transition 判断は本書作成時点では未決定であり、推論しない。
+本書は Completion Contract #1〜#12 の PRE_TRANSITION evidence と、2026-10-14 にMother Shipが明示した target-only CORE_READY transition承認を記録する。
 Candidate Master の `IMPORTED -> CORE_READY` transition は本PRでは実行しない。
 
 ---
@@ -373,19 +372,19 @@ G8_CONDITION_12_POST_TRANSITION    = NOT_EXECUTED
 
 ---
 
-## 7. Mother Ship Decision Gate
+## 7. Mother Ship Decision Record
 
-Current state:
+Recorded at: `2026-10-14`
 
 ```text
-MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = PENDING
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TARGET_ONLY
 TARGET                                     = nsrc-000007
 ```
 
-この監査は技術的なPRE_TRANSITION条件が12/12満たされたことまでを確定する。
-CORE_READYへの最終lifecycle transitionはMother Shipの明示判断なしに実行しない。
+Mother ShipはCompletion Contract PRE_TRANSITION 12/12 SATISFIEDを確認したうえで、
+`nsrc-000007` 1件だけのCORE_READY transitionを承認した。
 
-承認時に許可できるdeltaは次の2fieldだけ。
+許可されるdeltaは次の2fieldだけ。
 
 ```text
 candidate_status:
@@ -467,9 +466,9 @@ G8_CONDITION_12_PRE_TRANSITION        = PASS
 G8_CONDITION_12_POST_TRANSITION       = NOT_EXECUTED
 
 COMPLETION_CONTRACT_PRE_TRANSITION    = 12/12 SATISFIED
-MOTHER_SHIP_CORE_READY_TRANSITION     = PENDING
+MOTHER_SHIP_CORE_READY_TRANSITION     = APPROVED_TARGET_ONLY
 CORE_READY_TRANSITION                 = NOT_EXECUTED
 G8_STATUS                             = OPEN
 ```
 
-Next action is Mother Ship decision only. No transition is authorized by this audit.
+Next action is the approved target-only CORE_READY transition PR. G8 remains OPEN until POST_TRANSITION verification and Closure pass.
