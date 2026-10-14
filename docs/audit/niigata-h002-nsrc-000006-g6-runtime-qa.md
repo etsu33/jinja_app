@@ -11,14 +11,14 @@ knowledge_shape          = History-only（Deity 0 / History 3）
 UPSTREAM_G4              = PASS / CLOSED
 UPSTREAM_G5              = PASS / ELIGIBLE
 
-DETAIL_RUNTIME           = PENDING_CI_MEASUREMENT
-CONCIERGE_CANDIDATE_PATH = PENDING_CI_MEASUREMENT
-RECOMMENDATION_REASON    = PENDING_CI_MEASUREMENT
-COMPASS_DISTANCE         = PENDING_CI_MEASUREMENT
-COMPASS_DIRECTION        = PENDING_CI_MEASUREMENT
-IDENTITY_FAIL_CLOSED     = PENDING_CI_MEASUREMENT
+DETAIL_RUNTIME           = PASS
+CONCIERGE_CANDIDATE_PATH = PASS
+RECOMMENDATION_REASON    = PASS
+COMPASS_DISTANCE         = PASS
+COMPASS_DIRECTION        = PASS
+IDENTITY_FAIL_CLOSED     = PASS
 
-FORMAL_G6                = PENDING_CI_MEASUREMENT
+FORMAL_G6                = PASS
 
 runtime implementation change = NONE
 Ranking / Score change        = NONE
@@ -81,7 +81,7 @@ Production is not connected.
 
 ## 4. Surface A — Shrine Detail
 
-Expected API:
+Observed API:
 
 ```text
 GET /api/shrines/<target-pk>/
@@ -91,7 +91,7 @@ deities   = 0
 histories = 3
 ```
 
-Expected History / Source relation:
+Observed History / Source relation:
 
 ```text
 H1 regional_context
@@ -135,7 +135,7 @@ lat = 38.085938
 lng = 138.418312
 ```
 
-Expected target candidate:
+Observed target candidate:
 
 ```text
 exact target match count = 1
@@ -180,7 +180,7 @@ coordinate, usable Knowledge, and no inferred goriyaku tags.
 
 ## 7. Surface C — Recommendation Reason / Copy
 
-Expected unchanged chain:
+Observed unchanged chain:
 
 ```text
 candidate
@@ -226,13 +226,19 @@ QA origin:
 35.681236, 139.767125
 ```
 
-Required:
+Observed:
 
-- distance is finite integer > 0;
-- bearing is in [0, 360);
-- direction label is valid;
-- matching direction retains target;
-- the other seven direction labels exclude target.
+```text
+distance_m      = 293058
+bearing         = 336.239174645045°
+direction_label = 北西
+
+reference_directions=[北西]          -> [target]
+reference_directions=[other 7 labels] -> []
+```
+
+The adopted G2 coordinate is used unchanged.
+No alternate POI / viewport / address centroid is substituted.
 
 ```text
 COMPASS
@@ -259,7 +265,7 @@ Research-observed noncanonical identities:
 赤井神社 / 新潟県佐渡市加茂歌代1164-7
 ```
 
-Required result:
+Observed result:
 
 ```text
 canonical candidate = exactly one target
@@ -271,22 +277,22 @@ no runtime candidate address substitution
 
 ## 10. Acceptance matrix
 
-| Surface | Pre-CI result |
+| Surface | Result |
 |---|---|
-| Detail: Deity 0 / History 3 | PENDING |
-| Detail: exact Fact-Source relations | PENDING |
-| Detail: no historical Deity promotion | PENDING |
-| Concierge: exact candidate once | PENDING |
-| Concierge: adopted coordinate | PENDING |
-| Concierge: History 3 / Deity 0 | PENDING |
-| Concierge: no inferred goriyaku tags | PENDING |
-| Reason: target Source-backed H1 | PENDING |
-| Reason: no current Deity inference | PENDING |
-| Reason: no efficacy guarantee | PENDING |
-| Compass: distance | PENDING |
-| Compass: direction | PENDING |
-| Compass: matching keeps / other seven exclude | PENDING |
-| Identity fail-closed | PENDING |
+| Detail: Deity 0 / History 3 | PASS |
+| Detail: exact Fact-Source relations | PASS |
+| Detail: no historical Deity promotion | PASS |
+| Concierge: exact candidate once | PASS |
+| Concierge: adopted coordinate | PASS |
+| Concierge: History 3 / Deity 0 | PASS |
+| Concierge: no inferred goriyaku tags | PASS |
+| Reason: target Source-backed H1 | PASS |
+| Reason: no current Deity inference | PASS |
+| Reason: no efficacy guarantee | PASS |
+| Compass: distance | PASS |
+| Compass: direction | PASS |
+| Compass: matching keeps / other seven exclude | PASS |
+| Identity fail-closed | PASS |
 | Runtime implementation change | NONE |
 | Ranking / Score change | NONE |
 | Production | NONE |
@@ -316,18 +322,58 @@ Production
 other H002 candidates
 ```
 
-## 12. Current classification
+## 12. CI measurement
+
+Initial measured head:
 
 ```text
-FORMAL_G6       = PENDING_CI_MEASUREMENT
-G7              = NOT_EXECUTED
-PRODUCTION_WRITE = NONE
-STOP            = TRUE
+362d4397f201207ca15b2d9e4a729e0ea816ea99
 ```
 
-If any surface fails, G6 becomes HOLD. Do not modify unrelated runtime logic to make the target pass.
+Observed CI:
 
-## 13. STOP
+```text
+target G6 tests      = 5 PASS
+backend unit suite   = 5521 passed, 8 skipped
+dependency-review    = PASS
+CodeQL               = PASS
+Vercel               = PASS
+```
+
+Target G6 tests:
+
+```text
+Detail runtime                                  = PASS
+Concierge shared candidate path                 = PASS
+Recommendation Reason history-backed + safe     = PASS
+Compass adopted-coordinate distance/direction   = PASS
+noncanonical identity fail-closed               = PASS
+```
+
+## 13. Final G6 classification
+
+```text
+DETAIL_RUNTIME           = PASS
+CONCIERGE_CANDIDATE_PATH = PASS
+RECOMMENDATION_REASON    = PASS
+COMPASS_DISTANCE         = PASS
+COMPASS_DIRECTION        = PASS
+IDENTITY_FAIL_CLOSED     = PASS
+
+FORMAL_G6                = PASS
+G6_CLOSED                = PASS
+
+NEXT_GATE                = G7 Production Import Gate
+G7                       = NOT_EXECUTED
+PRODUCTION_ACCESS        = NONE
+PRODUCTION_WRITE         = NONE
+STOP                     = TRUE
+```
+
+G6 PASS does not mean Top1 Recommendation, Compass Top1, Production imported, or CORE_READY.
+
+## 14. STOP
 
 Do not execute G7 in this PR.
 Do not connect to or write Production.
+Production write requires the separate G7 authority and explicit Mother Ship approval.
