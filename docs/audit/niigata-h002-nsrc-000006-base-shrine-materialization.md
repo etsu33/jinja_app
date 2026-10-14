@@ -209,11 +209,33 @@ Updated:
 
 Only the expected H002 read-only current-state output changes from one Base-resolved candidate to two.
 
+First CI run exposed one stale append-safety expectation in existing nsrc-000007 tests:
+
 ```text
-CI_RESULT = PENDING
+test_nsrc_000007_base_shrine_seed.py
+  expected total_seed=123
+  actual   total_seed=124
 ```
 
-Merge is prohibited until required PR checks pass.
+The nsrc-000007 cohort contract already allows later appends; only the importer-summary assertion was stale.
+The same hard-coded count in `test_nsrc_000007_knowledge_seed.py` was corrected at the same time.
+
+Both now derive the current Base Seed count dynamically. No runtime or historical cohort boundary changed.
+
+Second code-head validation:
+
+```text
+dependency-review = PASS
+CodeQL             = PASS
+backend-pr         = PASS
+Vercel             = PASS
+
+schema drift check = PASS
+unit job           = PASS
+integration job    = SKIPPED by workflow contract
+
+CI_RESULT          = PASS
+```
 
 ## 9. Impact boundary
 
