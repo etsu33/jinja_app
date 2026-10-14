@@ -5,12 +5,12 @@
 ```text
 record_kind              = position_resolution_record
 candidate_id             = nsrc-000006
-position_status          = HOLD_POSITION_REVIEW
-new_latitude             = PENDING_TRACEABLE_PRIMARY_POI
-new_longitude            = PENDING_TRACEABLE_PRIMARY_POI
-new_position_source_type = PENDING_TRACEABLE_PRIMARY_POI
-new_position_source_url  = PENDING_TRACEABLE_PRIMARY_POI
-verified_at              = 2026-10-11
+position_status          = PASS
+new_latitude             = 38.08593800
+new_longitude            = 138.41831200
+new_position_source_type = google_maps_coordinate_target
+new_position_source_url  = https://www.google.com/maps/search/?api=1&query=Akai%20Shrine&query_place_id=ChIJVe2qSFtd818RDds8FxmeTzw
+verified_at              = 2026-10-14
 production_write         = NONE
 seed_write               = NONE
 candidate_master_write   = NONE
@@ -101,6 +101,152 @@ https://www.wikidata.org/wiki/Wikidata:WikiProject_Japan/%E3%82%B5%E3%83%96%E3%8
 Position Contract上、Wikidata / OSM classのcorroborationだけをprimary coordinateへ昇格させない。
 今回観測したlistingには赤井神社のcoordinate自体も無い。
 
+
+### 4. Current Google Maps shrine POI（2026-10-14 re-check）
+
+Current map-provider searchで、G1-confirmed identityと整合するshrine-specific POIを1件確認した。
+
+```text
+provider   = Google Maps / Places
+poi_name   = Akai Shrine
+category   = Shinto shrine
+address    = Kamoutashiro, Sado, Niigata 952-0028, Japan
+place_id   = ChIJVe2qSFtd818RDds8FxmeTzw
+rating     = 4.5
+reviews    = 4
+```
+
+Stable navigation URL:
+
+```text
+https://www.google.com/maps/search/?api=1&query=Akai%20Shrine&query_place_id=ChIJVe2qSFtd818RDds8FxmeTzw
+```
+
+このPOIは名称・地域・categoryがG1-confirmed赤井神社と整合する。
+さらに新潟県神社庁のcanonical addressおよび佐渡芸能アーカイブのvisitor destinationが
+`佐渡市加茂歌代2662`で一致しているため、別市町村の同名神社や周辺施設ではなく、
+target Shrineのcurrent map-provider POIとして説明可能である。
+
+```text
+SHRINE_SPECIFIC_MAP_PROVIDER_POI = OBTAINED
+PRIMARY_POI_ENTITY_MATCH         = PASS
+PARKING_OR_AUXILIARY_POINT_RISK  = NONE_OBSERVED
+```
+
+ただし、今回取得できたmap-provider resultはPlace IDとPOI metadataを返す一方、
+同POI自身の数値latitude / longitudeを監査可能な形では返していない。
+
+Place IDはopaque provider identifierであり、Position Contractに従い、
+Place ID・住所・map viewportから座標を逆算または推測しない。
+
+```text
+PRIMARY_POI_NUMERIC_COORDINATE = NOT_TRACEABLE_FROM_OBSERVED_RESULT
+LATITUDE                       = NOT_ADOPTED
+LONGITUDE                      = NOT_ADOPTED
+```
+
+したがって、primary POIの存在確認はrelease conditionを一段進めるが、
+Visitor / Navigation Anchor採用条件はまだ満たさない。
+
+
+### 5. Mother Ship manual Google Maps QA + direct numeric coordinate（2026-10-14）
+
+Mother ShipがGoogle Maps上で、canonical address、赤井神社POI、数値coordinate targetを目視確認した。
+
+#### A. canonical address search
+
+```text
+query / place = 〒952-0028 新潟県佐渡市加茂歌代2662
+Plus Code     = 3CP9+98 佐渡市、新潟県
+visual target = shrine property / building cluster
+```
+
+#### B. 赤井神社 POI
+
+```text
+poi_name      = 赤井神社
+category      = 神社
+display_area  = 〒952-0028 新潟県佐渡市加茂歌代
+Plus Code     = 3CP9+98 佐渡市、新潟県
+visual target = same shrine property / building cluster
+```
+
+#### C. Google Maps numeric coordinate target
+
+Google Mapsに次の座標を直接入力した画面で、赤ピンが同じ社叢 / 建物群を指し、
+同じPlus Code `3CP9+98 佐渡市、新潟県` が表示された。
+
+```text
+DMS     = 38°05'09.4"N 138°25'05.9"E
+decimal = 38.085938, 138.418312
+Plus Code = 3CP9+98 佐渡市、新潟県
+```
+
+したがって、今回のadopted coordinateはGoogle Maps自身のdirect numeric coordinate表示から追跡する。
+
+```text
+PRIMARY_POSITION_SOURCE       = Google Maps / 赤井神社 location
+PRIMARY_NUMERIC_COORDINATE    = 38.085938, 138.418312
+PRIMARY_POSITION_LOCATOR      = Plus Code 3CP9+98 佐渡市、新潟県
+VIEWPORT_CENTER_AS_COORDINATE = NOT_USED
+ADDRESS_GEOCODING             = NOT_USED
+PIXEL / IMAGE_COORD_INFERENCE = NOT_USED
+```
+
+周辺の江西院、加茂歌代墓地、建設会社等の別entityとは位置・labelが分離されている。
+
+```text
+CANONICAL_ADDRESS_TO_POI_VISUAL_MATCH = PASS
+DIRECT_COORDINATE_TO_POI_VISUAL_MATCH = PASS
+SAME_PLUS_CODE                         = PASS
+SEPARATE_NEARBY_ENTITY_RISK            = NONE_OBSERVED
+```
+
+### 5.1 Plus Code deterministic corroboration
+
+Google Plus Codes公式仕様ではPlus Codeはlatitude / longitudeから生成され、
+2 characters after `+` のcodeは14m × 14m未満のareaを表す。
+
+References:
+
+```text
+https://maps.google.com/pluscodes/support/
+https://maps.google.com/pluscodes/technology/
+https://github.com/google/open-location-code/blob/main/python/openlocationcode/openlocationcode.py
+```
+
+Observed local Plus Code:
+
+```text
+3CP9+98 佐渡市、新潟県
+```
+
+Official Open Location Code recovery / decode:
+
+```text
+recovered full code = 8QCW3CP9+98
+
+latitude_low    = 38.08587500
+latitude_high   = 38.08600000
+longitude_low   = 138.41825000
+longitude_high  = 138.41837500
+
+OLC area center = 38.08593750, 138.41831250
+```
+
+Google Maps direct numeric coordinateとの差は約0.1m未満で、rounding差の範囲に収まる。
+
+```text
+DIRECT_GOOGLE_COORDINATE = 38.08593800, 138.41831200
+OLC_DECODED_CENTER       = 38.08593750, 138.41831250
+PLUS_CODE_CORROBORATION  = PASS
+```
+
+Plus Codeはprimary numeric coordinateの代替ではなく、Google Maps direct coordinateと同じlocation cellを示す
+deterministic corroborationとして扱う。
+
+採用意味はVisitor / Navigation Anchorであり、exact torii / entrance / honden centerとは断定しない。
+
 ## Position Contract evaluation
 
 `docs/knowledge/shrine-position-contract.md` のSource Adoption Ruleを確認した。
@@ -109,48 +255,78 @@ Position Contract上、Wikidata / OSM classのcorroborationだけをprimary coor
 |---|---|---|
 | G1-confirmed same Shrine identity | PASS | G1 PASS / NEW |
 | current authoritative visitor-facing identity | PASS | 新潟県神社庁 + 佐渡芸能アーカイブ |
-| primary source is same Shrine POI / navigation target | NOT SATISFIED | coordinate-bearing current shrine POIを取得できず |
-| latitude / longitude directly traceable from primary source | NOT SATISFIED | 神社庁linkは住所query、visitor pageに数値座標なし |
+| primary source is same Shrine POI / navigation target | PASS | Google Maps 赤井神社 POI + same Plus Code manual QA |
+| latitude / longitude directly traceable from primary source | PASS | Google Maps direct coordinate display = 38.085938, 138.418312 |
 | no address-geocoding / viewport inference | PASS | inferred coordinateを採用していない |
-| deterministic Visitor / Navigation Anchor | NOT DETERMINED | primary numeric coordinate不足 |
+| deterministic Visitor / Navigation Anchor | PASS | direct Google coordinate, Plus Code decodeでcorroborated |
 
-## HOLD reason
+## Previous HOLD resolution
 
 ```text
-hold_reason    = CURRENT_PRIMARY_COORDINATE_UNAVAILABLE
-adopted_anchor = NOT_DETERMINED
+previous_hold_reason = PRIMARY_POI_COORDINATE_NOT_TRACEABLE
+resolution           = DIRECT_GOOGLE_COORDINATE_CONFIRMED
+adopted_anchor        = 38.08593800, 138.41831200
 ```
 
 G1 identityとvisitor-facing addressは説明可能だが、Position Contractが要求する
-**same-shrine primary position sourceから直接追跡可能な数値latitude / longitude** が本executionでは得られていない。
+same-shrine primary POIと、そのPOIに表示されたPlus CodeをMother Ship manual QAで確認した。
+Plus Codeはlatitude / longitude由来のopen location codeであり、公式OLC algorithmから
+数値areaとcenterをdeterministicに追跡できる。
 
-したがって、住所のgeocoding、Google Mapsのviewport center、opaque provider ID、
-または推測座標をVisitor / Navigation Anchorへ昇格させない。
+住所geocoding、Google Maps viewport center、opaque provider ID、pixel位置からの推測は
+Visitor / Navigation Anchor採用に使用していない。
 
 ## Gate result
 
 ```text
-NSRC_000006_G1             = PASS / NEW
-NSRC_000006_G2             = HOLD_POSITION_REVIEW
-PRIMARY_POSITION_SOURCE    = NOT_YET_OBTAINED
-ADOPTED_VISITOR_ANCHOR     = NOT_DETERMINED
-POSITION_COORDINATE_WRITE  = NONE
+NSRC_000006_G1                     = PASS / NEW
+NSRC_000006_G2                     = PASS
+POSITION_STATUS                    = PASS
+PRIMARY_POSITION_SOURCE            = Google Maps 赤井神社 POI / direct numeric coordinate
+CORROBORATION                      = Plus Code 3CP9+98 / OLC decode
+ADOPTED_VISITOR_ANCHOR             = 38.08593800, 138.41831200
+UNRESOLVED_POSITION_CONFLICT       = NONE
+POSITION_COORDINATE_WRITE          = NONE
+MOTHER_SHIP_G2_DECISION            = PASS
 ```
 
-## Release condition
+## Mother Ship decision record
 
-次のいずれかのprimary-class evidenceから、G1-confirmed赤井神社に直接結び付く
-数値latitude / longitudeを追跡可能にした後、G2を再実行する。
+Recorded at: `2026-10-14`
 
-- 神社公式が直接掲載・linkするnavigation map / map provider
-- 自治体・都道府県等の公的visitor pageが赤井神社として示すcoordinate-bearing map / navigation target
-- current map providerの同一赤井神社POI / route target
+Mother Shipは、Google Mapsの赤井神社POI・canonical address・direct numeric coordinate・
+Plus Code corroborationを確認したうえで、次のVisitor / Navigation Anchorを正式採用した。
 
-競合座標が観測された場合は、independent corroborationを追加して説明する。
+```text
+MOTHER_SHIP_G2_DECISION   = PASS
+TARGET                    = nsrc-000006
+ADOPTED_VISITOR_ANCHOR    = 38.08593800, 138.41831200
+POSITION_STATUS           = PASS
+```
+
+この決定はG2 Positionだけを閉じる。
+Base Seed / Knowledge Seed / Production DB / Candidate Masterへの座標writeは本PRでは実行しない。
+
+## 2026-10-14 re-check summary
+
+```text
+official identity / canonical address = PASS
+shrine-specific map-provider POI       = PASS
+primary POI entity match               = PASS
+Plus Code traceability                 = PASS
+adopted coordinate candidate           = 38.08593800, 138.41831200
+coordinate conflict                    = NONE_OBSERVED
+G2 technical proposal                  = PASS
+Mother Ship G2 decision                = PASS
+G2 final status                        = PASS
+```
+
+今回のmanual QA、Google Maps direct numeric coordinate、Plus Code corroborationにより、旧HOLD理由だったnumeric coordinate traceabilityは解消した。
+Mother Shipが座標を正式Visitor / Navigation Anchorとして採用したため、G2をPASSで閉じる。
 
 ## Boundary
 
-本recordはG2のHOLD判定だけを記録する。
+本recordはnsrc-000006のG2 Position PASSを記録する。
 
 変更しない:
 
@@ -166,9 +342,10 @@ other H002 candidates
 ```
 
 座標writeは0。
-G2 HOLD中は座標をSeed / Productionへ投入しない。
+本G2 PASSはVisitor / Navigation Anchorの採用決定であり、Seed / Productionへのmaterializationは後続Gateの別作業とする。
 
 ```text
-NEXT_STATE = WAIT_FOR_TRACEABLE_PRIMARY_POSITION_SOURCE
-STOP       = TRUE
+NEXT_GATE = G3 Source + Knowledge Model Fit
+G2_CLOSED = PASS
+STOP      = TRUE
 ```
