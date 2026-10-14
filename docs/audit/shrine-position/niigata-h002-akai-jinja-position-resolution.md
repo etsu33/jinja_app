@@ -5,7 +5,7 @@
 ```text
 record_kind              = position_resolution_record
 candidate_id             = nsrc-000006
-position_status          = HOLD_POSITION_REVIEW
+position_status          = PASS
 new_latitude             = 38.08593800
 new_longitude            = 138.41831200
 new_position_source_type = google_maps_coordinate_target
@@ -231,14 +231,14 @@ latitude_high   = 38.08600000
 longitude_low   = 138.41825000
 longitude_high  = 138.41837500
 
-OLC area center = 38.08593800, 138.41831200
+OLC area center = 38.08593750, 138.41831250
 ```
 
 Google Maps direct numeric coordinateとの差は約0.1m未満で、rounding差の範囲に収まる。
 
 ```text
 DIRECT_GOOGLE_COORDINATE = 38.08593800, 138.41831200
-OLC_DECODED_CENTER       = 38.08593800, 138.41831200
+OLC_DECODED_CENTER       = 38.08593750, 138.41831250
 PLUS_CODE_CORROBORATION  = PASS
 ```
 
@@ -260,11 +260,12 @@ deterministic corroborationとして扱う。
 | no address-geocoding / viewport inference | PASS | inferred coordinateを採用していない |
 | deterministic Visitor / Navigation Anchor | PASS | direct Google coordinate, Plus Code decodeでcorroborated |
 
-## HOLD reason
+## Previous HOLD resolution
 
 ```text
-hold_reason    = RESOLVED_BY_PLUS_CODE_TRACEABILITY
-adopted_anchor = 38.08593800, 138.41831200
+previous_hold_reason = PRIMARY_POI_COORDINATE_NOT_TRACEABLE
+resolution           = DIRECT_GOOGLE_COORDINATE_CONFIRMED
+adopted_anchor        = 38.08593800, 138.41831200
 ```
 
 G1 identityとvisitor-facing addressは説明可能だが、Position Contractが要求する
@@ -278,30 +279,33 @@ Visitor / Navigation Anchor採用に使用していない。
 ## Gate result
 
 ```text
-NSRC_000006_G1             = PASS / NEW
-NSRC_000006_G2_TECHNICAL_PROPOSAL = PASS
-PRIMARY_POSITION_SOURCE            = Google Maps 赤井神社 POI / Plus Code
+NSRC_000006_G1                     = PASS / NEW
+NSRC_000006_G2                     = PASS
+POSITION_STATUS                    = PASS
+PRIMARY_POSITION_SOURCE            = Google Maps 赤井神社 POI / direct numeric coordinate
+CORROBORATION                      = Plus Code 3CP9+98 / OLC decode
 ADOPTED_VISITOR_ANCHOR             = 38.08593800, 138.41831200
+UNRESOLVED_POSITION_CONFLICT       = NONE
 POSITION_COORDINATE_WRITE          = NONE
-MOTHER_SHIP_G2_DECISION            = PENDING
+MOTHER_SHIP_G2_DECISION            = PASS
 ```
 
-## Mother Ship decision gate
+## Mother Ship decision record
 
-今回の追加evidenceで、旧HOLDのtechnical release conditionは満たされた。
+Recorded at: `2026-10-14`
+
+Mother Shipは、Google Mapsの赤井神社POI・canonical address・direct numeric coordinate・
+Plus Code corroborationを確認したうえで、次のVisitor / Navigation Anchorを正式採用した。
 
 ```text
-SHRINE_SPECIFIC_POI           = PASS
-POI / CANONICAL_ADDRESS_MATCH = PASS
-TRACEABLE_POSITION_LOCATOR    = PASS (Plus Code)
-DETERMINISTIC_COORDINATE      = PASS
-UNRESOLVED_POSITION_CONFLICT  = NONE_OBSERVED
-TECHNICAL_G2_PROPOSAL         = PASS
-MOTHER_SHIP_G2_DECISION       = PENDING
+MOTHER_SHIP_G2_DECISION   = PASS
+TARGET                    = nsrc-000006
+ADOPTED_VISITOR_ANCHOR    = 38.08593800, 138.41831200
+POSITION_STATUS           = PASS
 ```
 
-Mother ShipがG2 PASSを明示した場合のみ、最終classificationを
-`G2 = PASS`へ更新する。
+この決定はG2 Positionだけを閉じる。
+Base Seed / Knowledge Seed / Production DB / Candidate Masterへの座標writeは本PRでは実行しない。
 
 ## 2026-10-14 re-check summary
 
@@ -313,17 +317,16 @@ Plus Code traceability                 = PASS
 adopted coordinate candidate           = 38.08593800, 138.41831200
 coordinate conflict                    = NONE_OBSERVED
 G2 technical proposal                  = PASS
-Mother Ship G2 decision                = PENDING
+Mother Ship G2 decision                = PASS
+G2 final status                        = PASS
 ```
 
-今回のmanual QAとPlus Code decodeにより、旧HOLD理由だったnumeric coordinate traceabilityは解消した。
-技術的にはG2 PASS条件が揃ったと評価する。
-
-ただし本記録更新だけでMother Shipの最終G2判断を推論しない。
+今回のmanual QA、Google Maps direct numeric coordinate、Plus Code corroborationにより、旧HOLD理由だったnumeric coordinate traceabilityは解消した。
+Mother Shipが座標を正式Visitor / Navigation Anchorとして採用したため、G2をPASSで閉じる。
 
 ## Boundary
 
-本recordはG2のHOLD判定だけを記録する。
+本recordはnsrc-000006のG2 Position PASSを記録する。
 
 変更しない:
 
@@ -339,9 +342,10 @@ other H002 candidates
 ```
 
 座標writeは0。
-G2 HOLD中は座標をSeed / Productionへ投入しない。
+本G2 PASSはVisitor / Navigation Anchorの採用決定であり、Seed / Productionへのmaterializationは後続Gateの別作業とする。
 
 ```text
-NEXT_STATE = WAIT_FOR_MOTHER_SHIP_G2_DECISION
-STOP       = TRUE
+NEXT_GATE = G3 Source + Knowledge Model Fit
+G2_CLOSED = PASS
+STOP      = TRUE
 ```
