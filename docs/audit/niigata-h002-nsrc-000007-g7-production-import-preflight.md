@@ -3,20 +3,44 @@
 ## 0. Current status（Production read-only measurement frozen）
 
 ```text
-G7_PREPARATION              = PASS（PR #3193）
-G7_READ_ONLY_PREFLIGHT      = PASS（Mother Ship, after PR #3193）
-PRODUCTION_STATE_CLASS      = CLEAN_CREATE
-FROZEN_PRE_STATE            = SET（§17）
-PRODUCTION_EXPECTED_DELTA   = FROZEN（§17.4）
+## 0. Final classification（G7 CLOSED / PASS）
 
-BACKUP_CLIENT_COMPATIBILITY = PASS（Production 17.6 / client 17.10）
-BACKUP_RESTORE_READINESS    = PASS（§18）
+- Recorded at: `2026-10-14`
+- Candidate: `nsrc-000007`
+- Shrine: 赤城社（新潟県十日町市四日町2534番地）
+- Gate: `G7 Production Import`
+- Result: **`CLOSED / PASS`**
+- G8 CORE READY: **`NOT_EXECUTED`**
+- Full canonical Base Seed Production apply: **`PROHIBITED`**
+- Production write after closure: **`PROHIBITED`**
 
-PRODUCTION_WRITE_READY      = HOLD
-PRODUCTION_WRITE_AUTHORIZED = NO
-PRODUCTION_WRITE            = NONE
-FORMAL_G7                   = NOT EXECUTED
-G8                          = NOT EXECUTED
+```text
+G7_READ_ONLY_PREFLIGHT          = PASS
+G7_PRODUCTION_BACKUP_RESTORE    = PASS
+G7_BASE_IMPORT                  = PASS
+G7_BASE_IDEMPOTENCY             = PASS
+G7_KNOWLEDGE_IMPORT             = PASS
+G7_KNOWLEDGE_IDEMPOTENCY        = PASS
+G7_AGGREGATE_INVARIANT          = PASS
+G7_KNOWLEDGE_INTEGRITY          = PASS
+G7_SOURCE_RELATION_INTEGRITY    = PASS
+G7_GORIYAKU_ISOLATION           = PASS
+G7_PRODUCTION_RUNTIME_QA        = PASS
+G7_BLOCKERS_REMAINING           = NONE
+G7_STATUS                       = CLOSED
+G7_RESULT                       = PASS
+
+Production final delta:
+Shrine        +1
+Source        +2
+Deity         +0
+History       +2
+SourceFact    +0
+Collective    +0
+goriyaku系    +0
+
+PRODUCTION_WRITE_AFTER_CLOSURE  = PROHIBITED
+G8_CORE_READY                   = NOT_EXECUTED
 ```
 
 Chronology:
@@ -30,6 +54,9 @@ Chronology:
 4. After #3194 merged, Mother Ship took a fresh Production backup with PostgreSQL 17.10 clients,
    restored it into an isolated PostgreSQL 17.10 environment, verified the restore fingerprint,
    and confirmed that the committed pre-Base guard passes. See §18.
+5. After backup / restore readiness closed, Mother Ship explicitly authorized the scoped Production
+   write. The target-only Base row and nsrc-000007 Knowledge Seed were applied with guards between
+   phases, followed by idempotency checks and read-only Production Runtime QA. See §19–§25.
 
 ## 1. Status at PR #3193（preparation; historical record）
 
@@ -720,3 +747,195 @@ PRODUCTION_WRITE_AUTHORIZED = NO
 PRODUCTION_WRITE            = NONE
 FORMAL_G7                   = NOT EXECUTED
 G8                          = NOT EXECUTED
+
+
+## 19. Production write authorization
+
+```text
+PRODUCTION_WRITE_AUTHORIZED = YES   (Mother Ship)
+authorized target           = nsrc-000007 赤城社 / 新潟県十日町市四日町2534番地
+
+scope =
+  target-only Base import
+  nsrc-000007 Knowledge import
+  G7 verification / runtime QA
+
+full Base Seed apply        = PROHIBITED
+G8                          = NOT AUTHORIZED
+```
+
+## 20. Base Shrine Production import
+### 20.1 Pre-Base guard
+
+g7_pre_base_guard_pass = 1
+
+### 20.2 Target-only subset
+
+SUBSET_ROWS   = 1
+name_jp       = 赤城社
+address       = 新潟県十日町市四日町2534番地
+SUBSET_SHA256 = e59cda286f1b25edab166a340244a374db7739d5bf112b967845b7b6d9225b10
+
+### 20.3 Dry-run
+
+CREATE 赤城社
+goriyaku_tags rows=0 updated=0 added_links=0 removed_links=0
+done created=1 updated=0 skipped=0 total_seed=1
+
+### 20.4 Apply
+
+The committed pre-Base guard was re-run immediately before the write and passed.
+g7_pre_base_guard_pass = 1
+
+CREATE 赤城社
+goriyaku_tags rows=0 updated=0 added_links=0 removed_links=0
+done created=1 updated=0 skipped=0 total_seed=1
+
+### 20.5 Post-Base guard
+
+g7_post_base_guard_pass = 1
+
+G7_BASE_IMPORT = PASS
+
+### 21. Knowledge Production import
+
+Target:
+backend/temples/data/knowledge_seeds/nsrc_000007_seed.json
+
+### 21.1 Dry-run
+
+source_CREATE  = 2
+history_CREATE = 2
+
+plan summary:
+{'source_CREATE': 2, 'history_CREATE': 2}
+
+### 21.2 Apply
+
+The post-Base guard was re-run immediately before the write and passed.
+g7_post_base_guard_pass = 1
+
+plan summary:
+{'source_CREATE': 2, 'history_CREATE': 2}
+
+import complete:
+sources created=2
+deities created=0
+histories created=2
+collectives created=0
+memberships created=0
+source_facts created=0
+
+G7_KNOWLEDGE_IMPORT = PASS
+
+### 22. Post-Knowledge verification
+
+Production aggregates:
+Shrine      = 123
+Source      = 143
+Deity       = 295
+History     = 231
+SourceFact  = 34
+Collective  = 6
+
+Target state:
+target Shrine                = 1
+target Deity                 = 0
+target History               = 2
+target SourceFact            = 0
+target Collective            = 0
+History-Source relations     = 2
+source-less History          = 0
+target goriyaku tag links    = 0
+target goriyaku assignments  = 0
+
+Persisted relations:
+安政7年正月の再建
+  -> government / 歴史文化基本構想 資料集
+
+赤城社に伝わった越後縮幡
+  -> museum_or_archive / 越後縮幡
+
+Committed verification result:
+g7_post_knowledge_verification_pass = 1
+
+G7_AGGREGATE_INVARIANT       = PASS
+G7_KNOWLEDGE_INTEGRITY       = PASS
+G7_SOURCE_RELATION_INTEGRITY = PASS
+G7_GORIYAKU_ISOLATION        = PASS
+
+## 23. Production idempotency
+### 23.1 Knowledge
+
+Second Knowledge dry-run:
+source_REUSE_EXISTING = 2
+history_SKIP_EXISTS   = 2
+
+plan summary:
+{'source_REUSE_EXISTING': 2, 'history_SKIP_EXISTS': 2}
+
+CREATE = 0
+
+G7_KNOWLEDGE_IDEMPOTENCY = PASS
+
+### 23.2 Base
+
+Second target-only Base dry-run:
+SKIP id=128 赤城社
+goriyaku_tags rows=0 updated=0 added_links=0 removed_links=0
+done created=0 updated=0 skipped=1 total_seed=1
+
+Production numeric id 128 is point-in-time provenance only.
+Canonical identity remains exact (name_jp, address).
+G7_BASE_IDEMPOTENCY = PASS
+
+## 24. Production Runtime QA
+
+The committed Production Runtime QA ran inside a PostgreSQL READ ONLY transaction.
+DETAIL_RUNTIME=PASS
+CONCIERGE_CANDIDATE_PATH=PASS
+RECOMMENDATION_REASON=PASS
+COMPASS_DISTANCE=PASS
+COMPASS_DIRECTION=PASS
+G7_PRODUCTION_RUNTIME_QA=PASS
+TRANSACTION_MODE=READ_ON
+
+Recommendation Top1 and Compass Top1 were not required.
+
+## 25. Formal G7 closure
+
+No-scope-change invariants:
+Full Base Seed                         NOT APPLIED
+other H002 candidates                  UNCHANGED
+Deity                                  +0
+Collective                             +0
+SourceFact                             +0
+goriyaku / goriyaku tags               +0
+Ranking / Score                         UNCHANGED
+Recommendation contracts               UNCHANGED
+Position decision                       UNCHANGED
+models / migrations                     UNCHANGED
+Candidate Master                        UNCHANGED
+G1-G6 historical results                UNCHANGED
+G8                                      NOT EXECUTED
+
+Final Production delta:
+Shrine      +1
+Source      +2
+Deity       +0
+History     +2
+SourceFact  +0
+Collective  +0
+goriyaku    +0
+
+G7_BLOCKERS_REMAINING          = NONE
+G7_STATUS                      = CLOSED
+G7_RESULT                      = PASS
+FORMAL_G7                      = PASS
+
+PRODUCTION_WRITE_AFTER_CLOSURE = PROHIBITED
+G8_CORE_READY                  = NOT_EXECUTED
+
+G7 PASS does not imply G8 CORE READY.
+Candidate Master alignment and G8 closure remain a separate gate.
+```
