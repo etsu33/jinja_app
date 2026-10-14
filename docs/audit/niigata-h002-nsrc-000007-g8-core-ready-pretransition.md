@@ -1,28 +1,34 @@
-# nsrc-000007 G8 CORE READY PRE_TRANSITION
+# nsrc-000007 G8 CORE READY Closure
 
 ## Status
 
 - Candidate: `nsrc-000007` 赤城社（新潟県十日町市四日町2534番地）
 - Recorded at: `2026-10-14`
-- Gate: `G8 CORE READY`（PRE_TRANSITION）
+- Gate: `G8 CORE READY Closure`
 - Audit base: `develop@071d9b4f5e06ccccfccdbf41040ecfdb80b4c7ea`（PR #3198 merge）
+- PRE_TRANSITION record: `MERGED`（PR #3199）
+- Mother Ship decision: `APPROVED_TARGET_ONLY`（PR #3200）
+- CORE_READY transition: `APPLIED`（PR #3201）
+- Closure base: `develop@8d9d6bc872719f69222f1a07229e8bd76987bb51`
 - G7 Production Import: `CLOSED / PASS`（PR #3196）
 - Candidate Master G7 sync: `MERGED`（PR #3197）
 - G7 audit recording fix: `MERGED`（PR #3198）
-- Production write in this G8 audit: `0`
+- Production write in this G8 audit / transition / closure: `0`
 
 ```text
 COMPLETION_CONTRACT_PRE_TRANSITION         = 12/12 SATISFIED
 G8_CONDITION_08                            = PASS_WITH_LIMITATION
-G8_CONDITION_12_POST_TRANSITION            = NOT_EXECUTED
+G8_CONDITION_12_POST_TRANSITION            = PASS
 MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TARGET_ONLY
 TARGET                                     = nsrc-000007
-CORE_READY_TRANSITION                      = NOT_EXECUTED
-G8_STATUS                                  = OPEN
+CORE_READY_TRANSITION                      = APPLIED
+NSRC_000007_POST_TRANSITION_ALIGNMENT      = PASS
+NSRC_000007_CORE_READY                     = PASS
+G8_STATUS                                  = CLOSED
 ```
 
-本書は Completion Contract #1〜#12 の PRE_TRANSITION evidence と、2026-10-14 にMother Shipが明示した target-only CORE_READY transition承認を記録する。
-Candidate Master の `IMPORTED -> CORE_READY` transition は本PRでは実行しない。
+本書はPRE_TRANSITION evidenceとMother Ship判断を保持し、PR #3201 merge後のPOST_TRANSITION verificationとG8 Closureを追記する。
+Candidate MasterのCORE_READY transition自体はPR #3201で適用済みであり、本ClosureではProduction DB / Seed / lifecycle dataを変更しない。
 
 ---
 
@@ -472,3 +478,138 @@ G8_STATUS                             = OPEN
 ```
 
 Next action is the approved target-only CORE_READY transition PR. G8 remains OPEN until POST_TRANSITION verification and Closure pass.
+
+---
+
+## 10. POST_TRANSITION verification / G8 Closure
+
+### 10.1 Transition merge
+
+CORE_READY transitionはPR #3201で`develop`へmerge済み。
+
+```text
+PR                              = #3201
+merge_commit                    = 8d9d6bc872719f69222f1a07229e8bd76987bb51
+candidate_id                    = nsrc-000007
+candidate_status                = CORE_READY
+status_reason_code              = CORE_READY_CONTRACT_PASS
+knowledge_status                = FACT_READY
+official_source_status          = CONFIRMED
+build_batch                     = null
+```
+
+PR #3201はCandidate Master、H002 lifecycle fixture、Candidate Master regression testの3ファイルだけを変更した。
+Production DB / Base Seed / Knowledge Seed / Recommendation / Ranking / Compass / GoriyakuTagへのwriteはない。
+
+### 10.2 Required POST_TRANSITION verification result
+
+| # | Verification | Result | Evidence |
+| ---: | --- | --- | --- |
+| 1 | `candidate_status == CORE_READY` | PASS | current `develop` Candidate Master |
+| 2 | `status_reason_code == CORE_READY_CONTRACT_PASS` | PASS | current `develop` Candidate Master |
+| 3 | `knowledge_status == FACT_READY` | PASS | transition前後で不変 |
+| 4 | `official_source_status == CONFIRMED` | PASS | transition前後で不変 |
+| 5 | `build_batch == null` | PASS | Nationwide Source Track boundaryどおり |
+| 6 | admission provenance完全一致 | PASS | track / prefecture / source_batch_id / handoff_id / source_position / source_snapshot_sha256 / source_url / source_verified_at / captured_at 全て不変 |
+| 7 | identity / duplicate evidence完全一致 | PASS | `CONFIRMED / SAME_NAME_DIFFERENT_SHRINE` を保持 |
+| 8 | 他H002 4候補に差分なし | PASS | nsrc-000006 / 000008 / 000009 / 000010 before/after diff = 0 |
+| 9 | 既存CORE_READY候補に差分なし | PASS | nsrc-000002 / nsrc-000004 before/after diff = 0 |
+| 10 | Historical Wave0 accounting不変 | PASS | 44件 -> 44件、changed IDs = 0、status counts不変 |
+| 11 | Candidate Master tests / relevant consumers PASS | PASS | PR #3201 backend-pr / dependency-review / CodeQL / Vercel success |
+| 12 | Completion Contract #1〜#11 evidenceに後退なし | PASS | transition PRはlifecycle 2 field + fixture / regression testだけ。Production / Runtime / Knowledge evidence変更なし |
+
+### 10.3 Minimal-diff result
+
+Transition直前の`develop@5ca0c54fbbf7bb8ea30e3c145000e5203810028c`とPOST_TRANSITION current stateを比較した。
+
+```text
+changed Candidate IDs = [nsrc-000007]
+
+candidate_status:
+IMPORTED -> CORE_READY
+
+status_reason_code:
+PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS
+
+other H002 candidates unchanged = true
+nsrc-000002 / nsrc-000004 unchanged = true
+
+Historical Wave0 count       = 44 -> 44
+Historical Wave0 changed IDs = []
+Historical Wave0 status:
+  CORE_READY 12
+  HOLD        9
+  IMPORTED    5
+  REVIEW      1
+  BUILD_READY 17
+
+Candidate Master total rows = 54 -> 54
+```
+
+対象のimmutable / evidence fieldsは保持された。
+
+```text
+official_source_status = CONFIRMED
+knowledge_status       = FACT_READY
+identity_status        = CONFIRMED
+duplicate_status       = SAME_NAME_DIFFERENT_SHRINE
+build_batch            = null
+wave_id                = null
+candidate_reason       = official_source_full_enumeration_candidate
+admission_provenance   = unchanged
+```
+
+H002 handoff fixtureもtargetだけがCORE_READY lifecycleへ同期され、他H002 memberは不変。
+
+### 10.4 Transition PR validation
+
+PR #3201:
+
+```text
+dependency-review = success
+codeql             = success
+backend-pr         = success
+Vercel             = success
+```
+
+backend-pr内ではschema drift checkを通過し、unit test jobがsuccess。
+integration jobはworkflow contractどおりskipped。
+
+### 10.5 Final G8 classification
+
+Completion Contract #1〜#11はPRE_TRANSITION evidenceから判定変更なし。
+#12はtransition後のGovernance Synchronizationを確認し、POST_TRANSITION PASSとする。
+
+```text
+G1                                    = PASS
+G2                                    = PASS
+G3                                    = PASS / NORMAL_MODEL_FIT
+G4                                    = PASS
+G5                                    = PASS / ELIGIBLE
+G6                                    = PASS
+G7                                    = CLOSED / PASS
+
+G8_CONDITIONS_01_TO_07                = PASS
+G8_CONDITION_08                       = PASS_WITH_LIMITATION
+G8_CONDITIONS_09_TO_11                = PASS
+G8_CONDITION_12_PRE_TRANSITION        = PASS
+G8_CONDITION_12_POST_TRANSITION       = PASS
+
+MOTHER_SHIP_CORE_READY_TRANSITION     = APPROVED_TARGET_ONLY
+CORE_READY_TRANSITION                 = APPLIED
+NSRC_000007_POST_TRANSITION_ALIGNMENT = PASS
+NSRC_000007_CORE_READY                = PASS
+COMPLETION_CONTRACT                   = 12/12 SATISFIED
+G8_STATUS                             = CLOSED
+```
+
+Condition #8の既存limitationはClosure後も保持する。
+G8 ClosureはG1〜G7のhistorical evidenceや途中時点のHOLD / NOT_EXECUTEDを遡及的に書き換えない。
+
+### 10.6 Closure
+
+```text
+NSRC_000007_G8_CLOSURE = PASS
+NEXT_GATE              = NONE
+STOP                   = TRUE
+```
