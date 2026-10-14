@@ -2385,6 +2385,7 @@ def test_nsrc_000007_is_core_ready_with_unchanged_evidence():
     assert len(wave0) == EXPECTED_WAVE0_TOTAL
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
 
+
 def test_nsrc_000008_g1_is_confirmed_same_name_different_shrine_and_stays_discovered():
     """G1 PASS / SAME_NAME_DIFFERENT_SHRINE。他の赤城社3件とは別 identity。lifecycle は進めない。"""
     master = _load_master()
@@ -2745,7 +2746,7 @@ def _h002_extra_member(master, rows):
             _set_provenance("nsrc-000007", "source_position", "page001-row008"),
             id="n7-changed-provenance",
         ),
-                # nsrc-000008（G1 PASS / SAME_NAME_DIFFERENT_SHRINE）の regression と G1 を超えた advancement。
+        # nsrc-000008（G1 PASS / SAME_NAME_DIFFERENT_SHRINE）の regression と G1 を超えた advancement。
         # 旧 h002-n8-unapproved-* は nsrc-000008 の G1 PASS で no-op になるため置き換えた。
         pytest.param(_set("nsrc-000008", "identity_status", "UNREVIEWED"), id="n8-identity-regression"),
         pytest.param(_set("nsrc-000008", "duplicate_status", "UNREVIEWED"), id="n8-duplicate-regression"),
