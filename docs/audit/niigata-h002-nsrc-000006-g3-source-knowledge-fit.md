@@ -1,6 +1,6 @@
 # NIIGATA-001-H002 nsrc-000006 赤井神社 G3 Source + Knowledge Model Fit
 
-> Status: **TECHNICAL PROPOSAL — PASS / NORMAL_MODEL_FIT**
+> Status: **PASS — NORMAL_MODEL_FIT**
 >
 > Recorded at: 2026-10-14
 >
@@ -22,7 +22,7 @@
 >
 > G4 execution: 0
 >
-> Mother Ship G3 decision: **PENDING**
+> Mother Ship G3 decision: **A / PASS / NORMAL_MODEL_FIT**
 
 ## Scope
 
@@ -559,30 +559,29 @@ G4 must not:
 
 ---
 
-## Mother Ship G3 decision gate
+## Mother Ship G3 decision
 
-Technical review is complete.
+Recorded at: `2026-10-14`
 
-```text
-TECHNICAL_G3_PROPOSAL = PASS / NORMAL_MODEL_FIT
-
-MOTHER_SHIP_G3_DECISION = PENDING
-```
-
-Recommended selectable decision:
+Mother Ship selected option A.
 
 ```text
-A = PASS / NORMAL_MODEL_FIT
-    current Deity remains NOT_FROZEN
-    ShrineDeity authorized rows = 0
-    G4 allowed scope = accepted Source-backed ShrineHistory only
+MOTHER_SHIP_G3_DECISION = A
 
-B = HOLD / RESEARCH_REQUIRED_BEFORE_RELEASE
-    G4 not authorized
-    continue Source research before materialization
+G3 = PASS
+classification = NORMAL_MODEL_FIT
+
+CURRENT_DEITY = NOT_FROZEN
+SHRINE_DEITY_ROWS_AUTHORIZED = 0
+
+G4_ALLOWED_SCOPE
+= accepted Source-backed ShrineHistory only
 ```
 
-This audit does not infer the Mother Ship selection.
+This decision preserves the unresolved current Deity boundary instead of inferring or inserting a current Deity set.
+
+The accepted G4 entry path is limited to Source-backed `ShrineHistory` candidates already described in this audit.
+No current `ShrineDeity` row is authorized by G3.
 
 ---
 
@@ -628,9 +627,33 @@ NSRC_000006_G0 = PASS
 NSRC_000006_G1 = PASS / NEW
 NSRC_000006_G2 = CLOSED / PASS
 
-NSRC_000006_G3_TECHNICAL_PROPOSAL = PASS / NORMAL_MODEL_FIT
-MOTHER_SHIP_G3_DECISION            = PENDING
+NSRC_000006_G3                    = PASS
+classification                     = NORMAL_MODEL_FIT
+MOTHER_SHIP_G3_DECISION            = A
+CURRENT_DEITY                      = NOT_FROZEN
+SHRINE_DEITY_ROWS_AUTHORIZED       = 0
+G4_ALLOWED_SCOPE                   = accepted Source-backed ShrineHistory only
 
+G3_CLOSED = PASS
 G4 = NOT_EXECUTED
 STOP = TRUE
 ```
+
+## Final classification
+
+```text
+NIIGATA_H002_NSRC_000006_G3 = PASS / NORMAL_MODEL_FIT
+
+MOTHER_SHIP_G3_DECISION      = A
+CURRENT_DEITY                = NOT_FROZEN
+SHRINE_DEITY_ROWS_AUTHORIZED = 0
+G4_ALLOWED_SCOPE             = accepted Source-backed ShrineHistory only
+
+NEXT_GATE = G4 Knowledge Fact + Evidence
+G3_CLOSED = PASS
+STOP      = TRUE
+```
+
+G3 PASS does not imply Fact materialization, Recommendation eligibility, Production import, or CORE_READY.
+Proceed to G4 only after this PR is merged.
+
