@@ -6,9 +6,9 @@
 record_kind              = position_resolution_record
 candidate_id             = nsrc-000006
 position_status          = HOLD_POSITION_REVIEW
-new_latitude             = PENDING_TRACEABLE_PRIMARY_POI
-new_longitude            = PENDING_TRACEABLE_PRIMARY_POI
-new_position_source_type = map_provider_poi_identified_coordinate_pending
+new_latitude             = 38.08593750
+new_longitude            = 138.41831250
+new_position_source_type = google_maps_poi_plus_code
 new_position_source_url  = https://www.google.com/maps/search/?api=1&query=Akai%20Shrine&query_place_id=ChIJVe2qSFtd818RDds8FxmeTzw
 verified_at              = 2026-10-14
 production_write         = NONE
@@ -148,6 +148,108 @@ LONGITUDE                      = NOT_ADOPTED
 したがって、primary POIの存在確認はrelease conditionを一段進めるが、
 Visitor / Navigation Anchor採用条件はまだ満たさない。
 
+
+### 5. Mother Ship manual Google Maps QA + Plus Code decode（2026-10-14）
+
+Mother ShipがGoogle Maps上で次の2画面を目視確認した。
+
+#### A. canonical address search
+
+```text
+query / place = 〒952-0028 新潟県佐渡市加茂歌代2662
+Plus Code     = 3CP9+98 佐渡市、新潟県
+visual target = shrine property / building cluster
+```
+
+#### B. 赤井神社 POI
+
+```text
+poi_name      = 赤井神社
+category      = 神社
+display_area  = 〒952-0028 新潟県佐渡市加茂歌代
+Plus Code     = 3CP9+98 佐渡市、新潟県
+visual target = same shrine property / building cluster
+```
+
+両画面の赤ピンは同一社叢・同一建物群を指し、両panelが同じlocal Plus Codeを表示する。
+周辺の江西院、加茂歌代墓地、建設会社等の別entityとは位置・labelが分離されている。
+
+```text
+CANONICAL_ADDRESS_TO_POI_VISUAL_MATCH = PASS
+SAME_PLUS_CODE                         = PASS
+SEPARATE_NEARBY_ENTITY_RISK            = NONE_OBSERVED
+```
+
+Google Plus Codes公式仕様ではPlus Codeはlatitude / longitudeから生成され、
+2 characters after `+` のcodeは14m × 14m未満のareaを表す。
+
+Reference:
+
+```text
+https://maps.google.com/pluscodes/support/
+https://maps.google.com/pluscodes/technology/
+https://github.com/google/open-location-code/blob/main/python/openlocationcode/openlocationcode.py
+```
+
+Observed short code:
+
+```text
+3CP9+98 佐渡市、新潟県
+```
+
+Short codeはlocalityを伴うlocal Plus Codeであり、Google Open Location Codeの
+`recoverNearest`規則でfull codeへ復元する。
+
+今回のGoogle Maps map contextのnearby referenceは
+`38.0859951, 138.4157727`。
+これは**adopted coordinateとしては使用せず**、short codeで省略されたprefixを
+復元するためだけのneighborhood referenceとする。
+
+```text
+reference full code = 8QCW3CP8+98
+recovered full code = 8QCW3CP9+98
+```
+
+`8QCW3CP9+98` をOpen Location Code標準でdecodeしたarea:
+
+```text
+latitude_low    = 38.08587500
+latitude_high   = 38.08600000
+longitude_low   = 138.41825000
+longitude_high  = 138.41837500
+
+area_center_lat = 38.08593750
+area_center_lng = 138.41831250
+```
+
+このcellはおよそ:
+
+```text
+north-south ≈ 13.9m
+east-west   ≈ 11.0m at latitude 38.09
+```
+
+であり、Visitor / Navigation Anchorとして採用するrepresentative pointは
+Plus Code area centerとする。
+
+```text
+PRIMARY_POSITION_SOURCE        = Google Maps 赤井神社 POI
+PRIMARY_POSITION_LOCATOR       = Plus Code 3CP9+98 佐渡市、新潟県
+FULL_OPEN_LOCATION_CODE        = 8QCW3CP9+98
+ADOPTED_VISITOR_ANCHOR         = 38.08593750, 138.41831250
+COORDINATE_DERIVATION          = deterministic Plus Code decode
+VIEWPORT_CENTER_AS_COORDINATE  = NOT_USED
+ADDRESS_GEOCODING              = NOT_USED
+PIXEL / IMAGE_COORD_INFERENCE  = NOT_USED
+```
+
+Limitation:
+
+Plus Codeはpointではなくareaを表すため、本coordinateはGoogle POIの
+内部pointそのものと断定せず、同POIに紐づくPlus Code cellのdeterministic centerとして扱う。
+Position Contractの用途はVisitor / Navigation Anchorであり、
+exact torii / entrance / honden centerを要求しない。
+
 ## Position Contract evaluation
 
 `docs/knowledge/shrine-position-contract.md` のSource Adoption Ruleを確認した。
@@ -156,62 +258,71 @@ Visitor / Navigation Anchor採用条件はまだ満たさない。
 |---|---|---|
 | G1-confirmed same Shrine identity | PASS | G1 PASS / NEW |
 | current authoritative visitor-facing identity | PASS | 新潟県神社庁 + 佐渡芸能アーカイブ |
-| primary source is same Shrine POI / navigation target | PARTIAL / ENTITY PASS | Google Maps / Places `Akai Shrine` / `ChIJVe2qSFtd818RDds8FxmeTzw` を確認 |
-| latitude / longitude directly traceable from primary source | NOT SATISFIED | shrine-specific Google POIは取得したが、observed resultに数値座標が露出していない |
+| primary source is same Shrine POI / navigation target | PASS | Google Maps 赤井神社 POI + same Plus Code manual QA |
+| latitude / longitude directly traceable from primary source | PASS WITH REPRESENTATION NOTE | POIに表示されたPlus Codeをofficial OLC algorithmでdecodeしcell centerを採用 |
 | no address-geocoding / viewport inference | PASS | inferred coordinateを採用していない |
-| deterministic Visitor / Navigation Anchor | NOT DETERMINED | primary numeric coordinate不足 |
+| deterministic Visitor / Navigation Anchor | PASS | Plus Code cell center = 38.08593750, 138.41831250 |
 
 ## HOLD reason
 
 ```text
-hold_reason    = PRIMARY_POI_COORDINATE_NOT_TRACEABLE
-adopted_anchor = NOT_DETERMINED
+hold_reason    = RESOLVED_BY_PLUS_CODE_TRACEABILITY
+adopted_anchor = 38.08593750, 138.41831250
 ```
 
 G1 identityとvisitor-facing addressは説明可能だが、Position Contractが要求する
-**same-shrine primary POIは取得できたが、そのPOIから直接追跡可能な数値latitude / longitude** が本executionでは得られていない。
+same-shrine primary POIと、そのPOIに表示されたPlus CodeをMother Ship manual QAで確認した。
+Plus Codeはlatitude / longitude由来のopen location codeであり、公式OLC algorithmから
+数値areaとcenterをdeterministicに追跡できる。
 
-したがって、住所のgeocoding、Google Mapsのviewport center、opaque provider ID、
-または推測座標をVisitor / Navigation Anchorへ昇格させない。
+住所geocoding、Google Maps viewport center、opaque provider ID、pixel位置からの推測は
+Visitor / Navigation Anchor採用に使用していない。
 
 ## Gate result
 
 ```text
 NSRC_000006_G1             = PASS / NEW
-NSRC_000006_G2             = HOLD_POSITION_REVIEW
-PRIMARY_POSITION_SOURCE    = GOOGLE_MAPS_POI_IDENTIFIED_COORDINATE_PENDING
-ADOPTED_VISITOR_ANCHOR     = NOT_DETERMINED
-POSITION_COORDINATE_WRITE  = NONE
+NSRC_000006_G2_TECHNICAL_PROPOSAL = PASS
+PRIMARY_POSITION_SOURCE            = Google Maps 赤井神社 POI / Plus Code
+ADOPTED_VISITOR_ANCHOR             = 38.08593750, 138.41831250
+POSITION_COORDINATE_WRITE          = NONE
+MOTHER_SHIP_G2_DECISION            = PENDING
 ```
 
-## Release condition
+## Mother Ship decision gate
 
-取得済みGoogle Maps / Places POI（Place ID `ChIJVe2qSFtd818RDds8FxmeTzw`）または同一Shrineの別primary-class sourceから、
-G1-confirmed赤井神社に直接結び付く数値latitude / longitudeを追跡可能にした後、G2を再実行する。
+今回の追加evidenceで、旧HOLDのtechnical release conditionは満たされた。
 
-- 神社公式が直接掲載・linkするnavigation map / map provider
-- 自治体・都道府県等の公的visitor pageが赤井神社として示すcoordinate-bearing map / navigation target
-- current map providerの同一赤井神社POI / route target
+```text
+SHRINE_SPECIFIC_POI           = PASS
+POI / CANONICAL_ADDRESS_MATCH = PASS
+TRACEABLE_POSITION_LOCATOR    = PASS (Plus Code)
+DETERMINISTIC_COORDINATE      = PASS
+UNRESOLVED_POSITION_CONFLICT  = NONE_OBSERVED
+TECHNICAL_G2_PROPOSAL         = PASS
+MOTHER_SHIP_G2_DECISION       = PENDING
+```
 
-競合座標が観測された場合は、independent corroborationを追加して説明する。
-
+Mother ShipがG2 PASSを明示した場合のみ、最終classificationを
+`G2 = PASS`へ更新する。
 
 ## 2026-10-14 re-check summary
 
 ```text
 official identity / canonical address = PASS
-shrine-specific map-provider POI       = OBTAINED
+shrine-specific map-provider POI       = PASS
 primary POI entity match               = PASS
-numeric latitude / longitude           = NOT TRACEABLE
-coordinate conflict                    = NOT EVALUABLE
-G2 current state                       = HOLD_POSITION_REVIEW
+Plus Code traceability                 = PASS
+adopted coordinate candidate           = 38.08593750, 138.41831250
+coordinate conflict                    = NONE_OBSERVED
+G2 technical proposal                  = PASS
+Mother Ship G2 decision                = PENDING
 ```
 
-今回のre-checkではHOLD解除条件のうち「同一Shrine POIの存在」は満たした。
-しかし数値coordinateのtraceabilityが未充足のため、既存G2 HOLDを維持する。
+今回のmanual QAとPlus Code decodeにより、旧HOLD理由だったnumeric coordinate traceabilityは解消した。
+技術的にはG2 PASS条件が揃ったと評価する。
 
-これは新しいMother Ship PASS判断ではない。
-G2をPASSへ遷移させるには、traceable numeric coordinate取得後の再判定が必要である。
+ただし本記録更新だけでMother Shipの最終G2判断を推論しない。
 
 ## Boundary
 
@@ -234,6 +345,6 @@ other H002 candidates
 G2 HOLD中は座標をSeed / Productionへ投入しない。
 
 ```text
-NEXT_STATE = WAIT_FOR_TRACEABLE_PRIMARY_POSITION_SOURCE
+NEXT_STATE = WAIT_FOR_MOTHER_SHIP_G2_DECISION
 STOP       = TRUE
 ```
