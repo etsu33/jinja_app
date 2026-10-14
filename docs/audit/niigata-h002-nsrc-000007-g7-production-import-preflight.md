@@ -1,8 +1,5 @@
 # NIIGATA-001-H002 — nsrc-000007 赤城社 G7 Production Import Preflight
 
-## 0. Current status（Production read-only measurement frozen）
-
-```text
 ## 0. Final classification（G7 CLOSED / PASS）
 
 - Recorded at: `2026-10-14`
