@@ -13,11 +13,12 @@ G2                  = PASS
 G3                  = PASS / NORMAL_MODEL_FIT
 G4                  = PASS / CLOSED
 
-FORMAL_G5           = PENDING_CI_MEASUREMENT
-ELIGIBILITY_STATUS  = PENDING_CI_MEASUREMENT
+FORMAL_G5           = PASS
+ELIGIBILITY_STATUS  = ELIGIBLE
 
-expected usable Deity Fact   = 0
-expected usable History Fact = 3
+usable Deity Fact   = 0
+usable History Fact = 3
+usable Fact total   = 3
 
 runtime implementation change = NONE
 Ranking / Score change        = NONE
@@ -98,7 +99,7 @@ Canonical identity:
 
 No name-only resolution is used.
 
-## 5. Expected verifier result
+## 5. Read-only verifier result（actual）
 
 ```text
 verify_recommendation_eligibility(
@@ -111,7 +112,7 @@ verify_recommendation_eligibility(
 )
 ```
 
-Expected:
+Observed:
 
 ```text
 summary_counts() = (1, 0, 0)
@@ -123,7 +124,7 @@ usable_history_fact_count = 3
 usable_fact_count         = 3
 ```
 
-## 6. Expected shared partition
+## 6. Shared partition result（actual）
 
 ```text
 partition_recommendation_eligible_shrines([target])
@@ -133,7 +134,7 @@ eligible_count   = 1
 ineligible_count = 0
 ```
 
-Expected target Knowledge:
+Observed target Knowledge:
 
 ```text
 Deity = 0
@@ -146,9 +147,9 @@ History = 3
 
 The `tradition` row remains a tradition. G5 does not reinterpret it.
 
-## 7. Runtime candidate filter
+## 7. Runtime candidate filter（actual）
 
-Expected:
+Observed:
 
 ```text
 candidate = {
@@ -167,7 +168,7 @@ It does not prove Top1 ranking, purpose match, reason-copy quality, or Compass s
 
 ## 8. goriyaku boundary
 
-Expected current Base values:
+Observed current Base values:
 
 ```text
 Shrine.goriyaku              = ""
@@ -193,7 +194,7 @@ Research observed noncanonical addresses:
 
 Neither may inherit the canonical target's G5 eligibility.
 
-Expected verifier result:
+Observed verifier result:
 
 ```text
 summary_counts() = (0, 0, 2)
@@ -203,17 +204,17 @@ shrine_id        = None / None
 
 ## 10. Acceptance matrix
 
-| Condition | Pre-CI state |
+| Condition | Result |
 |---|---|
-| exact canonical identity resolves | PENDING |
-| shared verifier status = ELIGIBLE | PENDING |
-| usable Deity count = 0 | PENDING |
-| usable History count = 3 | PENDING |
-| usable Fact total = 3 | PENDING |
-| shared partition keeps target | PENDING |
-| runtime candidate filter keeps target | PENDING |
-| goriyaku absent but eligibility preserved | PENDING |
-| noncanonical addresses remain UNRESOLVED | PENDING |
+| exact canonical identity resolves | PASS |
+| shared verifier status = ELIGIBLE | PASS |
+| usable Deity count = 0 | PASS |
+| usable History count = 3 | PASS |
+| usable Fact total = 3 | PASS |
+| shared partition keeps target | PASS |
+| runtime candidate filter keeps target | PASS |
+| goriyaku absent but eligibility preserved | PASS |
+| noncanonical addresses remain UNRESOLVED | PASS |
 | Ranking / Score change | NONE |
 | runtime implementation change | NONE |
 | Production write | NONE |
@@ -243,21 +244,68 @@ other H002 candidates
 Production DB
 ```
 
-## 12. Current classification
+## 12. CI measurement
 
-Before CI:
+Initial measured head:
 
 ```text
-FORMAL_G5          = PENDING_CI_MEASUREMENT
-ELIGIBILITY_STATUS = PENDING_CI_MEASUREMENT
+6d0041716224ff72e5ba89de903b22ab60829819
+```
+
+Observed:
+
+```text
+target G5 regression tests = 2 PASS
+backend unit suite         = 5516 passed, 8 skipped
+dependency-review          = PASS
+CodeQL                     = PASS
+Vercel                     = PASS
+```
+
+The target regression proves:
+
+```text
+summary_counts()          = (1, 0, 0)
+all_eligible              = True
+status                    = ELIGIBLE
+
+usable_deity_fact_count   = 0
+usable_history_fact_count = 3
+usable_fact_count         = 3
+
+partition source_count     = 1
+partition eligible_count   = 1
+partition ineligible_count = 0
+
+runtime candidate filter   = preserves target
+goriyaku tags              = 0
+noncanonical addresses     = UNRESOLVED / UNRESOLVED
+```
+
+## 13. Final classification
+
+```text
+FORMAL_G5          = PASS
+ELIGIBILITY_STATUS = ELIGIBLE
+G5_CLOSED          = PASS
+
+usable Deity Fact   = 0
+usable History Fact = 3
+usable Fact total   = 3
+
+NEXT_GATE          = G6 Runtime QA
 G6                 = NOT_EXECUTED
 PRODUCTION_WRITE   = NONE
 STOP               = TRUE
 ```
 
-If any verifier or shared-partition assertion fails, G5 becomes HOLD and no runtime contract is changed to force PASS.
+G5 PASS means only that nsrc-000006 may participate in the shared Recommendation candidate set.
 
-## 13. STOP
+It does not mean Top1, high score, strong purpose match, copy quality PASS, Compass final selection,
+Production import, or CORE_READY.
+
+## 14. STOP
 
 Do not execute G6 in this PR.
 Do not write Production.
+Do not modify Ranking / Score / Recommendation contracts to strengthen this result.
