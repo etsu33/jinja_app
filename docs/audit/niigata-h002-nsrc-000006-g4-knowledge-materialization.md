@@ -13,30 +13,33 @@ G3                           = PASS / NORMAL_MODEL_FIT
 G4 Source Packet             = PASS / FROZEN / G4_EVIDENCE_READY
 Base Shrine prerequisite     = PASS / 124 rows / exact target 1
 
-Knowledge Seed schema        = READY_FOR_CI_MEASUREMENT
-Source conflict              = NOT_OBSERVED_IN_REPOSITORY_SCAN
-Source ambiguity             = NOT_OBSERVED_IN_REPOSITORY_SCAN
+Knowledge Seed schema        = PASS
+Source conflict              = 0
+Source ambiguity             = 0
 
 H1 relation                  = S2 exactly
 H2 relation                  = S2 exactly
 H3 relation                  = S3 exactly
 
-source-less History          = expected 0
+source-less History          = 0
 Deity                        = 0
 Collective                   = 0
 SourceFact                   = 0
 
-Evidence Gate                = PENDING_CI_MEASUREMENT
-validate-only                = PENDING_CI_MEASUREMENT
-dry-run                      = PENDING_CI_MEASUREMENT
-apply                        = PENDING_CI_MEASUREMENT
-second import                = PENDING_CI_MEASUREMENT
+actual H1 Evidence Gate      = measured / usable=True
+actual H2 Evidence Gate      = measured / usable=True
+actual H3 Evidence Gate      = measured / usable=True
 
-goriyaku state               = expected unchanged
+validate-only                = PASS
+dry-run                      = PASS
+apply                        = PASS
+second import                = IDEMPOTENT
+
+goriyaku state               = unchanged
 Production write             = NONE
 G5                           = NOT_EXECUTED
 
-FORMAL_G4                    = PENDING_CI_MEASUREMENT
+FORMAL_G4                    = PASS
 ```
 
 - Recorded at: 2026-10-14
@@ -284,41 +287,103 @@ Production DB
 |---|---|
 | Fact owner matches G1/G3 | PASS |
 | exact Base Shrine exists | PASS |
-| source-less Fact = 0 | PENDING isolated apply |
-| Source identity conflict = 0 | STATIC PASS / runtime PENDING |
-| Fact / Source verification fits contract | payload PASS / runtime PENDING |
-| usable Deity or History >= 1 | PENDING Evidence Gate |
+| source-less Fact = 0 | PASS / measured 0 |
+| Source identity conflict = 0 | PASS / no reuse conflict or ambiguity observed |
+| Fact / Source verification fits contract | PASS / persisted source_confirmed + high |
+| usable Deity or History >= 1 | PASS / H1 H2 H3 usable=True |
 | tradition not promoted to historical_event | PASS in Seed |
 | AI-only material used as confirmed Source | NO |
 | Deity inference | NONE |
-| goriyaku isolation | PENDING regression |
-| idempotency | PENDING regression |
+| goriyaku isolation | PASS / unchanged |
+| idempotency | PASS / second import creates 0 rows |
 | Production write | NONE |
 
-## 12. Current classification
+## 12. CI / isolated G4 measurement
 
-Before CI measurement:
-
-```text
-G4_PAYLOAD_FREEZE = PASS
-G4_SEED_CREATED   = YES
-FORMAL_G4         = PENDING_CI_MEASUREMENT
-FACT_READY        = NO
-G5                = NOT_EXECUTED
-PRODUCTION_WRITE  = NONE
-```
-
-Do not infer Formal G4 PASS from Seed presence alone.
-
-## 13. STOP boundary
-
-If any target regression or importer STOP code fails:
+PR #3207 initial measurement head:
 
 ```text
-FORMAL_G4 = HOLD
-STOP      = TRUE
+head = 510da344b355f374b854d0e5c67b45f78cf4278c
 ```
 
-Do not modify Production, Recommendation, Ranking, or current Deity to make the test pass.
+Required CI:
 
-After all required CI measurements pass, update this audit to the observed results and close G4.
+```text
+backend-pr         = PASS
+dependency-review  = PASS
+codeql             = PASS
+Vercel             = PASS
+```
+
+The backend unit job executed the target-specific G4 regression against an isolated PostgreSQL test DB.
+
+Observed target results:
+
+```text
+seed exists exactly once                         = PASS
+parser contract                                  = PASS
+Source payload S2 / S3                           = PASS
+Source URL reuse against other Seeds             = PASS
+History frozen wording H1 / H2 / H3              = PASS
+Fact-Source relation H1->S2 H2->S2 H3->S3       = PASS
+verified_at date-level placeholder               = PASS
+current Deity / derived-data exclusion           = PASS
+
+exact Base Shrine resolution                     = PASS
+noncanonical address 2622                        = NOT_FOUND / PASS
+noncanonical address 1164-7                      = NOT_FOUND / PASS
+
+validate-only                                    = PASS / zero writes
+dry-run                                          = PASS / Source +2 History +3 Deity +0
+isolated apply                                   = PASS / Source +2 History +3 Deity +0
+source-less target History                       = 0
+
+H1 Evidence Gate                                 = usable=True
+H2 Evidence Gate                                 = usable=True
+H3 Evidence Gate                                 = usable=True
+
+second import                                    = IDEMPOTENT
+second import Source CREATE                      = 0
+second import History CREATE                     = 0
+
+goriyaku / tag / assignment state                = unchanged
+```
+
+No G4 STOP code was observed.
+
+## 13. Formal G4 classification
+
+```text
+G4_PAYLOAD_FREEZE      = PASS
+G4_SEED_CREATED        = YES
+G4_FACT_SOURCE_RELATION = PASS
+G4_EVIDENCE_GATE       = PASS
+G4_IDEMPOTENCY         = PASS
+G4_GORIYAKU_ISOLATION  = PASS
+
+FACT_READY             = YES
+FORMAL_G4              = PASS
+G4_CLOSED              = PASS
+
+G5                     = NOT_EXECUTED
+PRODUCTION_WRITE       = NONE
+```
+
+`FACT_READY = YES` here is the G4 Fact/Evidence result.
+It does not mutate or imply the Candidate Master `knowledge_status`, which remains under its own lifecycle contract.
+
+## 14. STOP boundary
+
+The required G4 measurements passed.
+
+```text
+NEXT_GATE  = G5 Shared Recommendation Eligibility
+FORMAL_G4  = PASS
+G4_CLOSED  = PASS
+STOP       = TRUE
+```
+
+Do not execute G5 in this PR.
+Do not modify Candidate Master.
+Do not write Production.
+Do not modify current Deity, Recommendation, Ranking, Position, or goriyaku state.
