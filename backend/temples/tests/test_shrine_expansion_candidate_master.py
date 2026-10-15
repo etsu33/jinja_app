@@ -2291,16 +2291,14 @@ def test_niigata_h001_contract_rejects_mutations(mutate):
     assert _handoff_violations(_mutated(master, mutate), spec) != []
 
 
-def test_nsrc_000006_is_synced_to_g7_imported_and_stops_before_core_ready():
-    """G7 CLOSED / PASS を Candidate Master の IMPORTED state へ同期する。CORE_READY は G8 の別 Gate。"""
+def test_nsrc_000006_is_core_ready_with_unchanged_evidence():
+    """G8 Mother Ship decision（APPROVED_TARGET_ONLY）による CORE_READY。他の field は不変。"""
     master = _load_master()
     rows = {row["candidate_id"]: row for row in master["candidates"]}
     row = rows["nsrc-000006"]
 
-    assert row["candidate_status"] == "IMPORTED"
-    assert row["candidate_status"] != "CORE_READY"
-    assert row["status_reason_code"] == "PRODUCTION_IMPORT_COMPLETE"
-    assert row["status_reason_code"] != "CORE_READY_CONTRACT_PASS"
+    assert row["candidate_status"] == "CORE_READY"
+    assert row["status_reason_code"] == "CORE_READY_CONTRACT_PASS"
     assert row["identity_status"] == "CONFIRMED"
     assert row["duplicate_status"] == "NEW"
     assert row["official_source_status"] == "CONFIRMED"
@@ -2310,7 +2308,7 @@ def test_nsrc_000006_is_synced_to_g7_imported_and_stops_before_core_ready():
     assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
     assert row == {
         **_expected_member_immutable("nsrc-000006", "赤井神社", "page001-row006"),
-        **NATIONWIDE_IMPORTED_LIFECYCLE,
+        **NATIONWIDE_CORE_READY_LIFECYCLE,
     }
     assert row["admission_provenance"] == {
         "track": "nationwide_source_candidate",
@@ -2496,7 +2494,7 @@ def test_nsrc_000009_g1_is_confirmed_same_name_different_shrine_and_stays_discov
     # nsrc-000006 / nsrc-000007 の G1 は不変。
     assert {
         k: rows["nsrc-000006"][k] for k in ("identity_status", "duplicate_status", "candidate_status")
-    } == {"identity_status": "CONFIRMED", "duplicate_status": "NEW", "candidate_status": "IMPORTED"}
+    } == {"identity_status": "CONFIRMED", "duplicate_status": "NEW", "candidate_status": "CORE_READY"}
     assert {
         k: rows["nsrc-000007"][k] for k in ("identity_status", "duplicate_status", "candidate_status")
     } == {
@@ -2603,7 +2601,7 @@ def test_niigata_h002_g1_is_resolved_with_independent_lifecycle_states():
         "nsrc-000010": ("CONFIRMED", "SAME_NAME_DIFFERENT_SHRINE"),
     }
     assert {row["candidate_id"]: row["candidate_status"] for row in h002} == {
-        "nsrc-000006": "IMPORTED",
+        "nsrc-000006": "CORE_READY",
         "nsrc-000007": "CORE_READY",
         "nsrc-000008": "DISCOVERED",
         "nsrc-000009": "DISCOVERED",
@@ -2665,10 +2663,10 @@ def _h002_extra_member(master, rows):
         ),
         pytest.param(_set("nsrc-000006", "candidate_status", "DISCOVERED"), id="h002-n6-regressed-discovered"),
         pytest.param(_set("nsrc-000006", "candidate_status", "BUILD_READY"), id="h002-n6-regressed-build-ready"),
-        pytest.param(_set("nsrc-000006", "candidate_status", "CORE_READY"), id="h002-n6-premature-core-ready"),
+        pytest.param(_set("nsrc-000006", "candidate_status", "IMPORTED"), id="h002-n6-regressed-imported"),
         pytest.param(
-            _set("nsrc-000006", "status_reason_code", "CORE_READY_CONTRACT_PASS"),
-            id="h002-n6-premature-core-ready-reason",
+            _set("nsrc-000006", "status_reason_code", "PRODUCTION_IMPORT_COMPLETE"),
+            id="h002-n6-core-ready-reason-regression",
         ),
         pytest.param(
             _set("nsrc-000006", "official_source_status", "AVAILABLE"),
