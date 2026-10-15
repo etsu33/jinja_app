@@ -100,10 +100,10 @@
           "identity_status": "CONFIRMED",
           "duplicate_status": "NEW",
           "lifecycle": {
-            "candidate_status": "DISCOVERED",
-            "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
-            "official_source_status": "AVAILABLE",
-            "knowledge_status": "UNREVIEWED",
+            "candidate_status": "IMPORTED",
+            "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+            "official_source_status": "CONFIRMED",
+            "knowledge_status": "FACT_READY",
             "build_batch": null
           }
         },
