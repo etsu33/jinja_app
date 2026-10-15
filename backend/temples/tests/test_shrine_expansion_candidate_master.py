@@ -2714,7 +2714,8 @@ def _h002_extra_member(master, rows):
         pytest.param(_h002_reorder, id="h002-member-reordered"),
         pytest.param(_h002_remove("nsrc-000006"), id="h002-member-removed"),
         pytest.param(_h002_extra_member, id="h002-member-added"),
-        # nsrc-000006（G1 PASS / NEW）の regression と G1 を超えた premature advancement。
+        # nsrc-000006（G7 IMPORTED / G1 NEW）の identity / duplicate / forbidden hydration regression。
+        # lifecycle / official_source / knowledge の G7 regression と premature CORE_READY は上の n6 cases で固定済み。
         pytest.param(_set("nsrc-000006", "identity_status", "UNREVIEWED"), id="n6-identity-regression"),
         pytest.param(_set("nsrc-000006", "duplicate_status", "UNREVIEWED"), id="n6-duplicate-regression"),
         pytest.param(_set("nsrc-000006", "duplicate_status", "SAME_SHRINE"), id="n6-duplicate-same-shrine"),
@@ -2722,11 +2723,6 @@ def _h002_extra_member(master, rows):
             _set("nsrc-000006", "duplicate_status", "SAME_NAME_DIFFERENT_SHRINE"),
             id="n6-duplicate-same-name-different-shrine",
         ),
-        pytest.param(_set("nsrc-000006", "candidate_status", "BUILD_READY"), id="n6-lifecycle-beyond-g1"),
-        pytest.param(
-            _set("nsrc-000006", "official_source_status", "CONFIRMED"), id="n6-official-source-beyond-g1"
-        ),
-        pytest.param(_set("nsrc-000006", "knowledge_status", "FACT_READY"), id="n6-knowledge-beyond-g1"),
         pytest.param(
             _set("nsrc-000006", "official_address", "新潟県佐渡市加茂歌代2662番地"),
             id="n6-official-address-hydrated",
