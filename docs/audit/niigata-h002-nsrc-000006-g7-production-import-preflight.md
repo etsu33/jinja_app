@@ -13,10 +13,10 @@ PRODUCTION_EXPECTED_DELTA   = FROZEN
 PRODUCTION_SERVER_VERSION   = 17.6
 LATEST_TEMPLES_MIGRATION    = 0120_shrine_source_fact_foundation
 
-PRODUCTION_WRITE_READY      = READY_FOR_MOTHER_SHIP_DECISION
-PRODUCTION_WRITE_AUTHORIZED = NO
-PRODUCTION_WRITE            = NONE
-FORMAL_G7                   = NOT_EXECUTED
+PRODUCTION_WRITE_READY      = CLOSED
+PRODUCTION_WRITE_AUTHORIZED = YES
+PRODUCTION_WRITE            = COMPLETED
+FORMAL_G7                   = PASS
 G8                          = NOT_EXECUTED
 ```
 
@@ -79,9 +79,9 @@ BACKUP_CLIENT_COMPATIBILITY = HOLD（Production server version not measured; loc
 BACKUP_RESTORE_READINESS    = HOLD
 PRODUCTION_WRITE_READY      = HOLD
 
-PRODUCTION_WRITE_AUTHORIZED = NO
-PRODUCTION_WRITE            = NONE
-FORMAL_G7                   = NOT_EXECUTED
+PRODUCTION_WRITE_AUTHORIZED = YES
+PRODUCTION_WRITE            = COMPLETED
+FORMAL_G7                   = PASS
 G8                          = NOT_EXECUTED
 STOP                        = TRUE
 ```
@@ -512,7 +512,185 @@ acceptance evidence.
 
 ```text
 PRODUCTION_WRITE_READY      = HOLD
-PRODUCTION_WRITE_AUTHORIZED = NO
-PRODUCTION_WRITE            = NONE
+PRODUCTION_WRITE_AUTHORIZED = YES
+PRODUCTION_WRITE            = COMPLETED
 STOP                        = TRUE
 ```
+
+
+## 19. Production write authorization and Formal G7 execution
+
+Mother Ship explicitly authorized the scoped Production write for:
+
+```text
+candidate_id = nsrc-000006
+name_jp      = 赤井神社
+address      = 新潟県佐渡市加茂歌代2662番地
+
+scope =
+  target-only Base import
+  nsrc-000006 Knowledge import
+  G7 verification / runtime QA
+
+full Base Seed apply = PROHIBITED
+G8                   = NOT AUTHORIZED
+```
+
+### 19.1 Target-only Base import
+
+The deterministic subset matched the frozen artifact:
+
+```text
+SUBSET_ROWS   = 1
+name_jp       = 赤井神社
+address       = 新潟県佐渡市加茂歌代2662番地
+SUBSET_SHA256 = 1d0fe560f9caa2a49638f6963ed27ef768117c867a714f38f8cab6b04df99c32
+```
+
+Production dry-run:
+
+```text
+CREATE 赤井神社
+done created=1 updated=0 skipped=0 total_seed=1
+```
+
+Production apply:
+
+```text
+CREATE 赤井神社
+done created=1 updated=0 skipped=0 total_seed=1
+```
+
+Post-Base guard:
+
+```text
+g7_post_base_guard_pass = 1
+G7_BASE_IMPORT          = PASS
+```
+
+### 19.2 Knowledge Production import
+
+Dry-run:
+
+```text
+source_CREATE  = 2
+history_CREATE = 3
+plan summary   = {'source_CREATE': 2, 'history_CREATE': 3}
+```
+
+The post-Base guard was re-run immediately before the Knowledge write and still passed.
+
+Apply:
+
+```text
+sources created     = 2
+deities created     = 0
+histories created   = 3
+collectives created = 0
+memberships created = 0
+source_facts created= 0
+
+G7_KNOWLEDGE_IMPORT = PASS
+```
+
+### 19.3 Post-Knowledge verification
+
+```text
+Shrine      = 124
+Source      = 145
+Deity       = 295
+History     = 234
+SourceFact  = 34
+Collective  = 6
+
+target_shrine              = 1
+target_deity               = 0
+target_history             = 3
+target_source_fact         = 0
+target_collective          = 0
+history_source_relations   = 3
+sourceless_history         = 0
+target_goriyaku_tag_links  = 0
+target_goriyaku_assignments= 0
+
+g7_post_knowledge_verification_pass = 1
+```
+
+Relations observed:
+
+```text
+H1 4月16日の赤井神社例祭と鬼太鼓奉納 -> S2
+H2 元日午前0時の鬼太鼓奉納           -> S2
+H3 加茂の五神社としての記録          -> S3
+```
+
+### 19.4 Production idempotency
+
+Knowledge second dry-run:
+
+```text
+source_REUSE_EXISTING = 2
+history_SKIP_EXISTS   = 3
+CREATE                = 0
+G7_KNOWLEDGE_IDEMPOTENCY = PASS
+```
+
+Base second dry-run:
+
+```text
+SKIP id=129 赤井神社
+done created=0 updated=0 skipped=1 total_seed=1
+G7_BASE_IDEMPOTENCY = PASS
+```
+
+Production numeric id 129 is point-in-time provenance only. Canonical identity remains exact
+`(name_jp, address)`.
+
+### 19.5 Production Runtime QA
+
+The committed runtime QA ran inside a PostgreSQL READ ONLY transaction:
+
+```text
+EXACT_TARGET=PASS
+DETAIL_RUNTIME=PASS
+SHARED_RECOMMENDATION_ELIGIBILITY=PASS
+CONCIERGE_CANDIDATE_PATH=PASS
+RECOMMENDATION_REASON=PASS
+COMPASS_DISTANCE=PASS
+COMPASS_DIRECTION=PASS
+AGGREGATES_UNCHANGED=PASS
+G7_PRODUCTION_RUNTIME_QA=PASS
+TRANSACTION_MODE=READ_ONLY
+```
+
+Recommendation Top1 / Compass Top1 were not required.
+
+### 19.6 Formal G7 closure
+
+No-scope-change invariants:
+
+```text
+Full Base Seed                         NOT APPLIED
+other H002 candidates                  UNCHANGED
+Deity                                  +0
+Collective                             +0
+SourceFact                             +0
+goriyaku / goriyaku tags              +0
+Ranking / Score                        UNCHANGED
+Recommendation contracts              UNCHANGED
+Position decision                      UNCHANGED
+G8                                     NOT EXECUTED
+```
+
+Final status:
+
+```text
+G7_STATUS                       = CLOSED
+G7_RESULT                       = PASS
+FORMAL_G7                       = PASS
+PRODUCTION_WRITE_AFTER_CLOSURE  = PROHIBITED
+G8_CORE_READY                   = NOT_EXECUTED
+```
+
+G7 PASS does not imply G8 CORE READY. G8 remains a separate gate.
+
