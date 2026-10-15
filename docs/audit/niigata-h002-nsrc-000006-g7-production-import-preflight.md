@@ -13,7 +13,7 @@ PRODUCTION_EXPECTED_DELTA   = FROZEN
 PRODUCTION_SERVER_VERSION   = 17.6
 LATEST_TEMPLES_MIGRATION    = 0120_shrine_source_fact_foundation
 
-PRODUCTION_WRITE_READY      = HOLD
+PRODUCTION_WRITE_READY      = READY_FOR_MOTHER_SHIP_DECISION
 PRODUCTION_WRITE_AUTHORIZED = NO
 PRODUCTION_WRITE            = NONE
 FORMAL_G7                   = NOT_EXECUTED
@@ -354,8 +354,8 @@ Recommendation Top1 and Compass Top1 are not required.
 ```text
 PRODUCTION_SERVER_VERSION   = 17.6
 LOCAL_CLIENT                = pg_dump / psql / pg_restore 16.15 (previously observed; re-check before backup)
-BACKUP_CLIENT_COMPATIBILITY = HOLD
-BACKUP_RESTORE_READINESS    = HOLD
+BACKUP_CLIENT_COMPATIBILITY = PASS
+BACKUP_RESTORE_READINESS    = PASS
 ```
 
 Required before any Production write（`scripts/migration_safety/README.md` Credential Bridge; credential
@@ -444,6 +444,62 @@ G8                                                    NOT_EXECUTED
 ## 16. Rollback
 
 Revert the commit. It adds scripts, SQL, a test, and this audit only.
+
+## 16.1 Production backup / isolated restore execution
+
+Mother Ship completed the fresh Production backup and restored it into the disposable local database
+`kami_musubi_restore_test_20261015210158`.
+
+Observed restore target:
+
+```text
+restore PostgreSQL version = 18.0 (Homebrew)
+latest temples migration   = 0120_shrine_source_fact_foundation
+```
+
+The restored database reproduced the accepted Production data fingerprint:
+
+```text
+Shrine      123
+Source      143
+Deity       295
+History     231
+SourceFact   34
+Collective    6
+
+target_exact_count            = 0
+same_name_akai_count          = 0
+same_name_other_address_count = 0
+same_address_count            = 0
+
+S2 source_identity_state      = ABSENT
+S3 source_identity_state      = ABSENT
+production_state_class        = CLEAN_CREATE
+```
+
+The committed pre-Base guard was then executed unchanged on the restored database:
+
+```text
+g7_pre_base_guard_pass = 1
+```
+
+Therefore:
+
+```text
+PRODUCTION_FRESH_BACKUP       = PASS
+ISOLATED_RESTORE              = PASS
+RESTORE_FINGERPRINT_MATCH     = PASS
+COMMITTED_PRE_BASE_GUARD      = PASS
+BACKUP_RESTORE_READINESS      = PASS
+PRODUCTION_WRITE_READY        = READY_FOR_MOTHER_SHIP_DECISION
+PRODUCTION_WRITE_AUTHORIZED   = NO
+PRODUCTION_WRITE              = NONE
+FORMAL_G7                     = NOT_EXECUTED
+```
+
+The restore server major version differs from Production (18 vs 17), so server-version equality is not part of
+the data fingerprint. The migration ledger, aggregate counts, target/source states, and committed guard are the
+acceptance evidence.
 
 ## 17. Next
 
