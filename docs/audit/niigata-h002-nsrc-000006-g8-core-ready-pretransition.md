@@ -15,12 +15,12 @@ G8_CONDITIONS_01_TO_07                = PASS
 G8_CONDITION_08                       = PASS_WITH_LIMITATION
 G8_CONDITIONS_09_TO_11                = PASS
 G8_CONDITION_12_PRE_TRANSITION        = PASS
-G8_CONDITION_12_POST_TRANSITION       = NOT_EXECUTED
+G8_CONDITION_12_POST_TRANSITION       = PASS
 
 COMPLETION_CONTRACT_PRE_TRANSITION    = 12/12 SATISFIED
-MOTHER_SHIP_CORE_READY_TRANSITION     = PENDING
-CORE_READY_TRANSITION                 = NOT_EXECUTED
-G8_STATUS                             = OPEN
+MOTHER_SHIP_CORE_READY_TRANSITION     = APPROVED_TARGET_ONLY
+CORE_READY_TRANSITION                 = APPLIED
+G8_STATUS                             = CLOSED
 ```
 
 本書は `nsrc-000006` の G8 PRE_TRANSITION evidence を current state で再構成する。
@@ -350,7 +350,7 @@ Source batch / handoffを `build_batch` へ推論しない。
 
 ```text
 G8_CONDITION_12_PRE_TRANSITION_ALIGNMENT  = PASS
-G8_CONDITION_12_POST_TRANSITION_ALIGNMENT = NOT_EXECUTED
+G8_CONDITION_12_POST_TRANSITION_ALIGNMENT = PASS
 ```
 
 ---
@@ -384,10 +384,10 @@ G8_BLOCKER                         = NONE
 Completion Contract PRE_TRANSITIONは12/12 satisfied。CORE_READY transitionの技術入力は揃った。
 
 ```text
-MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = PENDING
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TARGET_ONLY
 TARGET                                     = nsrc-000006
-CORE_READY_TRANSITION                      = NOT_EXECUTED
-G8_STATUS                                  = OPEN
+CORE_READY_TRANSITION                      = APPLIED
+G8_STATUS                                  = CLOSED
 ```
 
 Mother Shipが判断できるtarget-only deltaは次の2fieldだけ。
@@ -463,11 +463,162 @@ G8_CONDITIONS_01_TO_07                = PASS
 G8_CONDITION_08                       = PASS_WITH_LIMITATION
 G8_CONDITIONS_09_TO_11                = PASS
 G8_CONDITION_12_PRE_TRANSITION        = PASS
-G8_CONDITION_12_POST_TRANSITION       = NOT_EXECUTED
+G8_CONDITION_12_POST_TRANSITION       = PASS
 
 COMPLETION_CONTRACT_PRE_TRANSITION    = 12/12 SATISFIED
-MOTHER_SHIP_CORE_READY_TRANSITION     = PENDING
-CORE_READY_TRANSITION                 = NOT_EXECUTED
-G8_STATUS                             = OPEN
+MOTHER_SHIP_CORE_READY_TRANSITION     = APPROVED_TARGET_ONLY
+CORE_READY_TRANSITION                 = APPLIED
+G8_STATUS                             = CLOSED
 STOP                                  = TRUE
 ```
+
+
+## 9. Mother Ship decision / CORE_READY transition
+
+Mother Ship explicitly approved the target-only transition:
+
+```text
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TARGET_ONLY
+TARGET                                     = nsrc-000006
+```
+
+Applied by PR #3220.
+
+```text
+transition branch = feature/nsrc-000006-g8-core-ready-transition
+merge commit      = 7ed6587bc62759ce1c8006312888b4a1cd1b5f09
+
+candidate_status:
+IMPORTED -> CORE_READY
+
+status_reason_code:
+PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS
+```
+
+The transition changed no Production DB state and did not modify Base Seed, Knowledge Seed,
+Recommendation, Ranking, Compass, GoriyakuTag, Position, or G1-G7 evidence.
+
+---
+
+## 10. POST_TRANSITION verification / G8 Closure
+
+### 10.1 Current target state
+
+Current `develop` after PR #3220:
+
+```text
+candidate_id           = nsrc-000006
+candidate_status       = CORE_READY
+status_reason_code     = CORE_READY_CONTRACT_PASS
+official_source_status = CONFIRMED
+knowledge_status       = FACT_READY
+identity_status        = CONFIRMED
+duplicate_status       = NEW
+build_batch            = null
+wave_id                = null
+candidate_reason       = official_source_full_enumeration_candidate
+```
+
+### 10.2 Required POST_TRANSITION verification result
+
+| # | Verification | Result | Evidence |
+| ---: | --- | --- | --- |
+| 1 | `candidate_status == CORE_READY` | PASS | current develop Candidate Master |
+| 2 | `status_reason_code == CORE_READY_CONTRACT_PASS` | PASS | current develop Candidate Master |
+| 3 | `knowledge_status == FACT_READY` | PASS | unchanged across transition |
+| 4 | `official_source_status == CONFIRMED` | PASS | unchanged across transition |
+| 5 | `build_batch == null` | PASS | Nationwide Source Track boundary preserved |
+| 6 | admission provenance完全一致 | PASS | before/after equality |
+| 7 | identity / duplicate evidence完全一致 | PASS | `CONFIRMED / NEW` preserved |
+| 8 | 他H002 4候補に差分なし | PASS | nsrc-000007 / 000008 / 000009 / 000010 unchanged |
+| 9 | 既存CORE_READY候補に差分なし | PASS | nsrc-000002 / 000004 / 000007 unchanged |
+| 10 | Historical Wave0 accounting不変 | PASS | Candidate Master changed IDs = `[nsrc-000006]` only |
+| 11 | Candidate Master tests / relevant consumers PASS | PASS | PR #3220 backend-pr / dependency-review / CodeQL success |
+| 12 | Completion Contract #1〜#11 evidenceに後退なし | PASS | transition touched lifecycle governance only; Production / Knowledge / Runtime evidence unchanged |
+
+### 10.3 Minimal-diff result
+
+PRE_TRANSITION base:
+
+```text
+develop@84a412458409a244bd70c69b4384bf3ed442ac90
+```
+
+POST_TRANSITION:
+
+```text
+develop@7ed6587bc62759ce1c8006312888b4a1cd1b5f09
+```
+
+Observed Candidate Master diff:
+
+```text
+changed Candidate IDs = [nsrc-000006]
+
+candidate_status:
+IMPORTED -> CORE_READY
+
+status_reason_code:
+PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS
+```
+
+No other target field changed.
+
+```text
+admission_provenance   = unchanged
+official_source_status = CONFIRMED
+knowledge_status       = FACT_READY
+identity_status        = CONFIRMED
+duplicate_status       = NEW
+build_batch            = null
+wave_id                = null
+candidate_reason       = unchanged
+```
+
+Other tracked candidates:
+
+```text
+nsrc-000007 = CORE_READY / unchanged
+nsrc-000008 = DISCOVERED / unchanged
+nsrc-000009 = DISCOVERED / unchanged
+nsrc-000010 = DISCOVERED / unchanged
+nsrc-000002 = CORE_READY / unchanged
+nsrc-000004 = CORE_READY / unchanged
+```
+
+### 10.4 Final G8 classification
+
+Completion Contract #1〜#11 retains the PRE_TRANSITION result.
+Condition #12 now has both PRE_TRANSITION and POST_TRANSITION alignment PASS.
+
+```text
+G1                                    = PASS / NEW
+G2                                    = PASS
+G3                                    = PASS / NORMAL_MODEL_FIT
+G4                                    = PASS
+G5                                    = PASS / ELIGIBLE
+G6                                    = PASS
+G7                                    = CLOSED / PASS
+
+G8_CONDITIONS_01_TO_07                = PASS
+G8_CONDITION_08                       = PASS_WITH_LIMITATION
+G8_CONDITIONS_09_TO_11                = PASS
+G8_CONDITION_12_PRE_TRANSITION        = PASS
+G8_CONDITION_12_POST_TRANSITION       = PASS
+
+COMPLETION_CONTRACT_PRE_TRANSITION    = 12/12 SATISFIED
+MOTHER_SHIP_CORE_READY_TRANSITION     = APPROVED_TARGET_ONLY
+CORE_READY_TRANSITION                 = APPLIED
+
+NSRC_000006_POST_TRANSITION_ALIGNMENT = PASS
+NSRC_000006_CORE_READY                = PASS
+G8_STATUS                             = CLOSED
+G8_RESULT                             = PASS
+FORMAL_G8                             = PASS
+```
+
+The Condition #8 limitation remains part of the final audit record.
+It does not downgrade current-state CORE_READY because the accepted G8 precedent uses the same
+`PASS_WITH_LIMITATION` classification.
+
+No further G8 transition write is authorized after closure.
