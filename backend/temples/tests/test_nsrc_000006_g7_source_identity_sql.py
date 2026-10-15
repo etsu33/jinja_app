@@ -4,10 +4,14 @@ scripts/migration_safety/sql/nsrc_000006_g7_*.sql は同一の `nsrc_000006_sour
 block を持ち、S2 / S3 を独立した importer semantic identity（source_type +
 knowledge_seed.normalize_source_url()）として数える。近似一致は使わない。
 
-guard（pre-Base / post-Base / post-Knowledge）の FROZEN_PRE_STATE は Production 実測前のため
-UNSET（NULL / frozen_values_set=false）であり、committed guard は常に fail closed する。
-rehearsal / negative では test 内メモリ上だけで frozen block を disposable DB の実測値へ置き換えて
-guard の意味を検証する。commit された SQL / Seed / DB 定義は変更しない。Production には接続しない。
+guard（pre-Base / post-Base / post-Knowledge）の FROZEN_PRE_STATE は Mother Ship が
+Production で read-only 実行した nsrc_000006_g7_preflight.sql の実測値（PRODUCTION_PRESTATE）で固定済み。
+
+- committed guard は、PRODUCTION_PRESTATE と完全一致させた disposable DB の simulated pre-state に対して
+  そのまま（frozen 値を変えずに）実行し、sequential rehearsal / drift / negative を検証する。
+- Source-state の conflict matrix と既存 rehearsal / negative は、test 内メモリ上だけで frozen block を
+  disposable DB の実測値へ置き換え、guard の意味を引き続き検証する。
+commit された SQL / Seed / DB 定義は変更しない。Production には接続しない。
 """
 
 from __future__ import annotations
@@ -94,6 +98,35 @@ H1_TITLE = "4月16日の赤井神社例祭と鬼太鼓奉納"
 H2_TITLE = "元日午前0時の鬼太鼓奉納"
 H3_TITLE = "加茂の五神社としての記録"
 EXPECTED_RELATIONS = {H1_TITLE: [S2["url"]], H2_TITLE: [S2["url"]], H3_TITLE: [S3["url"]]}
+
+# Mother Ship が Production で read-only 実行した nsrc_000006_g7_preflight.sql の実測値（PR #3210 後）。
+PRODUCTION_PRESTATE = {
+    "shrine_total": 123,
+    "source_total": 143,
+    "deity_total": 295,
+    "history_total": 231,
+    "source_fact_total": 34,
+    "collective_total": 6,
+    "same_name_other_address_total": 0,
+    "s2_accepted_source_count": 0,
+    "s3_accepted_source_count": 0,
+}
+AGGREGATE_KEYS = {
+    "shrine": "shrine_total",
+    "source": "source_total",
+    "deity": "deity_total",
+    "history": "history_total",
+    "source_fact": "source_fact_total",
+    "collective": "collective_total",
+}
+PRODUCTION_AGGREGATES = {key: PRODUCTION_PRESTATE[name] for key, name in AGGREGATE_KEYS.items()}
+EXPECTED_POST_BASE = {**PRODUCTION_AGGREGATES, "shrine": 124}
+EXPECTED_POST_KNOWLEDGE = {
+    **PRODUCTION_AGGREGATES,
+    "shrine": 124,
+    "source": 145,
+    "history": 234,
+}
 
 # importer と同じ semantic identity になる表記揺れ
 IDENTITY_VARIANTS = {
@@ -238,6 +271,11 @@ def _guard_passes(name: str, frozen: str) -> bool:
     return _passes(_with_frozen(name, frozen))
 
 
+def _committed_guard_passes(name: str) -> bool:
+    """Run the committed guard file unchanged（frozen = Production measurement）."""
+    return _passes(_sql(name))
+
+
 def _state_class() -> tuple:
     return _run_all(_sql("nsrc_000006_g7_preflight.sql"))[-1][0]
 
@@ -346,14 +384,18 @@ def test_identity_block_is_identical_in_every_g7_sql_file():
     assert len(set(blocks)) == 1
 
 
-def test_frozen_pre_state_is_identical_unset_and_fail_closed_in_every_guard():
+def test_frozen_pre_state_is_identical_and_equals_the_production_measurement():
     frozen = [FROZEN_RE.findall(_sql(name)) for name in GUARD_FILES]
     assert all(len(found) == 1 for found in frozen)
     assert len({found[0] for found in frozen}) == 1
     text = frozen[0][0]
-    assert "false AS frozen_values_set" in text
-    # no Production value is frozen yet: every numeric value is NULL
-    assert re.findall(r"^\s+(\S+)::bigint AS", text, re.MULTILINE) == ["NULL"] * 9
+    assert "    true AS frozen_values_set,\n" in text
+    values = {
+        name: int(value)
+        for value, name in re.findall(r"^\s+(\d+)::bigint AS (\w+)", text, re.MULTILINE)
+    }
+    assert values == PRODUCTION_PRESTATE
+    assert "NULL" not in text
     for name in GUARD_FILES:
         assert "  f.frozen_values_set\n" in _sql(name)
 
@@ -459,17 +501,14 @@ def test_metadata_compatibility_is_a_subset_of_identity(spec):
 
 
 @pytest.mark.django_db
-def test_unset_committed_guards_always_fail_closed(tmp_path):
+def test_committed_frozen_guards_reject_non_production_local_state(tmp_path):
     _base_state()
     for name in GUARD_FILES:
-        with pytest.raises(DataError, match="division by zero"):
-            with transaction.atomic():
-                _run_all(_sql(name))
-    # even on a correctly materialized state the UNSET guards still fail
+        assert _committed_guard_passes(name) is False
     _import_subset(tmp_path)
     _import_knowledge()
     for name in GUARD_FILES:
-        assert _passes(_sql(name)) is False
+        assert _committed_guard_passes(name) is False
 
 
 SOURCE_STATE_CASES = {
@@ -908,3 +947,214 @@ def test_runtime_qa_rehearsal_passes_read_only(tmp_path, capsys):
         "TRANSACTION_MODE=READ_ONLY",
     ):
         assert line in out, line
+
+# --------------------------------------------------------------------------------------
+# 9. Committed frozen guards（Production measurement）on a simulated exact Production pre-state
+# --------------------------------------------------------------------------------------
+
+FILLER_SHRINE = "G7filler赤井神社"
+
+
+def _filler_shrine() -> Shrine:
+    return Shrine.objects.get_or_create(
+        name_jp=FILLER_SHRINE, address="架空県架空市0-0", defaults={"kind": "shrine"}
+    )[0]
+
+
+def _simulate_production_prestate() -> None:
+    """Disposable DB の aggregate を Production 実測値と完全一致させる（frozen 値は変えない）。"""
+    _base_state()
+    filler = _filler_shrine()
+    surplus = Shrine.objects.count() - PRODUCTION_PRESTATE["shrine_total"]
+    if surplus > 0:
+        removable = (
+            Shrine.objects.exclude(pk=filler.pk)
+            .exclude(name_jp=SHRINE_NAME)
+            .exclude(address=SHRINE_ADDRESS)
+            .order_by("-id")[:surplus]
+        )
+        Shrine.objects.filter(pk__in=list(removable.values_list("pk", flat=True))).delete()
+    for index in range(PRODUCTION_PRESTATE["shrine_total"] - Shrine.objects.count()):
+        Shrine.objects.create(
+            name_jp=f"G7filler追加{index}", kind="shrine", address=f"架空県{index}"
+        )
+
+    def missing(model, key: str) -> range:
+        count = PRODUCTION_PRESTATE[key] - model.objects.count()
+        assert count >= 0, (key, model.objects.count(), PRODUCTION_PRESTATE[key])
+        return range(count)
+
+    ShrineKnowledgeSource.objects.bulk_create(
+        ShrineKnowledgeSource(
+            source_type="internal_research",
+            title=f"filler source {i}",
+            url=f"https://example.invalid/g7-nsrc-000006-filler/{i}",
+        )
+        for i in missing(ShrineKnowledgeSource, "source_total")
+    )
+    ShrineDeity.objects.bulk_create(
+        ShrineDeity(shrine=filler, display_name=f"filler deity {i}")
+        for i in missing(ShrineDeity, "deity_total")
+    )
+    ShrineHistory.objects.bulk_create(
+        ShrineHistory(
+            shrine=filler,
+            history_type="tradition",
+            title=f"filler history {i}",
+            content="filler",
+        )
+        for i in missing(ShrineHistory, "history_total")
+    )
+    ShrineSourceFact.objects.bulk_create(
+        ShrineSourceFact(
+            shrine=filler,
+            stable_key=f"g7-nsrc-000006-filler-source-fact-{i}",
+            source_attested_wording="filler",
+            evidence_characterization="official_prayer_supported",
+        )
+        for i in missing(ShrineSourceFact, "source_fact_total")
+    )
+    ShrineDeityCollective.objects.bulk_create(
+        ShrineDeityCollective(shrine=filler, source_attested_label=f"filler collective {i}")
+        for i in missing(ShrineDeityCollective, "collective_total")
+    )
+
+    assert _aggregates() == PRODUCTION_AGGREGATES
+    assert _state_class()[0] == "CLEAN_CREATE"
+    assert _source_states() == {"S2": "ABSENT", "S3": "ABSENT"}
+
+
+def _swap_filler_source(spec: dict, url: str, *, compatible: bool = True) -> None:
+    """Keep source_total equal to the frozen value while changing S2 / S3 state."""
+    filler = (
+        ShrineKnowledgeSource.objects.filter(
+            url__startswith="https://example.invalid/g7-nsrc-000006-filler/"
+        )
+        .order_by("id")
+        .first()
+    )
+    assert filler is not None
+    filler.delete()
+    _create_source(spec, url, compatible=compatible)
+
+
+def _swap_filler_shrine(name_jp: str, address: str) -> None:
+    """Keep shrine_total equal to the frozen value while changing identity state."""
+    removable = (
+        Shrine.objects.exclude(name_jp__in=(SHRINE_NAME, FILLER_SHRINE))
+        .exclude(address=SHRINE_ADDRESS)
+        .order_by("-id")
+        .first()
+    )
+    assert removable is not None
+    removable.delete()
+    Shrine.objects.create(name_jp=name_jp, kind="shrine", address=address)
+
+
+@pytest.mark.django_db
+def test_committed_pre_base_guard_passes_on_the_exact_production_prestate():
+    _simulate_production_prestate()
+    assert _committed_guard_passes(PRE) is True
+    assert _committed_guard_passes(POST_BASE) is False
+    assert _committed_guard_passes(POST_KNOWLEDGE) is False
+
+
+COMMITTED_PRESTATE_DRIFT = {
+    "shrine+1": lambda: Shrine.objects.create(
+        name_jp="無関係神社", kind="shrine", address="架空県drift1"
+    ),
+    "source+1": lambda: ShrineKnowledgeSource.objects.create(
+        source_type="internal_research", title="x", url="https://example.invalid/g7-extra"
+    ),
+    "source-1": lambda: ShrineKnowledgeSource.objects.order_by("id").first().delete(),
+    "deity+1": lambda: ShrineDeity.objects.create(shrine=_filler_shrine(), display_name="extra"),
+    "history+1": lambda: ShrineHistory.objects.create(
+        shrine=_filler_shrine(), history_type="tradition", title="extra", content="x"
+    ),
+    "source-fact+1": lambda: ShrineSourceFact.objects.create(
+        shrine=_filler_shrine(),
+        stable_key="g7-nsrc-000006-extra",
+        source_attested_wording="x",
+        evidence_characterization="official_prayer_supported",
+    ),
+    "collective+1": lambda: ShrineDeityCollective.objects.create(
+        shrine=_filler_shrine(), source_attested_label="extra"
+    ),
+    "target-exists": lambda: _swap_filler_shrine(SHRINE_NAME, SHRINE_ADDRESS),
+    "same-address-other-name": lambda: _swap_filler_shrine("赤井社", SHRINE_ADDRESS),
+    "same-name-other-address": lambda: _swap_filler_shrine(
+        SHRINE_NAME, NON_CANONICAL_ADDRESSES[0]
+    ),
+    "s2-accepted-drift": lambda: _swap_filler_source(S2, S2["url"]),
+    "s3-accepted-drift": lambda: _swap_filler_source(S3, S3["url"]),
+    "s2-metadata-drift": lambda: _swap_filler_source(S2, S2["url"], compatible=False),
+    "s3-metadata-drift": lambda: _swap_filler_source(S3, S3["url"], compatible=False),
+    "s2-non-identity-lookalike": lambda: _swap_filler_source(
+        S2, NON_IDENTITY_LOOKALIKE_VARIANTS["s2"][0]
+    ),
+    "s3-non-identity-lookalike": lambda: _swap_filler_source(
+        S3, NON_IDENTITY_LOOKALIKE_VARIANTS["s3"][0]
+    ),
+    "s2-importer-unparseable": lambda: _swap_filler_source(
+        S2, IMPORTER_UNPARSEABLE["s2"][0]
+    ),
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("drift", sorted(COMMITTED_PRESTATE_DRIFT))
+def test_committed_pre_base_guard_fails_on_any_drift(drift):
+    _simulate_production_prestate()
+    assert _committed_guard_passes(PRE) is True
+    COMMITTED_PRESTATE_DRIFT[drift]()
+    assert _committed_guard_passes(PRE) is False
+
+
+@pytest.mark.django_db
+def test_committed_sequential_rehearsal(tmp_path):
+    _simulate_production_prestate()
+    goriyaku_before = _goriyaku_snapshot()
+    assert _committed_guard_passes(PRE) is True
+
+    _import_subset(tmp_path, "--dry-run")
+    assert _aggregates() == PRODUCTION_AGGREGATES
+    assert "created=1 updated=0 skipped=0 total_seed=1" in _import_subset(tmp_path)
+    second = _import_subset(tmp_path, "--dry-run")
+    assert "created=0" in second and "total_seed=1" in second
+    assert _aggregates() == EXPECTED_POST_BASE
+    assert _committed_guard_passes(POST_BASE) is True
+    assert _committed_guard_passes(PRE) is False
+    assert _committed_guard_passes(POST_KNOWLEDGE) is False
+
+    dry = _import_knowledge("--dry-run")
+    assert "plan summary: {'source_CREATE': 2, 'history_CREATE': 3}" in dry
+    _import_knowledge()
+    assert _aggregates() == EXPECTED_POST_KNOWLEDGE
+    assert _committed_guard_passes(POST_KNOWLEDGE) is True
+    assert _committed_guard_passes(POST_BASE) is False
+
+    second_dry = _import_knowledge("--dry-run")
+    assert "plan summary: {'source_REUSE_EXISTING': 2, 'history_SKIP_EXISTS': 3}" in second_dry
+    assert "CREATE" not in second_dry
+    _import_knowledge()
+    assert _aggregates() == EXPECTED_POST_KNOWLEDGE
+    assert _committed_guard_passes(POST_KNOWLEDGE) is True
+    assert _goriyaku_snapshot() == goriyaku_before
+
+    relations = {
+        h.title: [s.url for s in h.sources.all()]
+        for h in ShrineHistory.objects.filter(shrine=_target())
+    }
+    assert relations == EXPECTED_RELATIONS
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("case", sorted(POST_KNOWLEDGE_NEGATIVES))
+def test_committed_post_knowledge_verification_fails_closed(tmp_path, case):
+    _simulate_production_prestate()
+    _import_subset(tmp_path)
+    _import_knowledge()
+    assert _committed_guard_passes(POST_KNOWLEDGE) is True
+    POST_KNOWLEDGE_NEGATIVES[case](_target())
+    assert _committed_guard_passes(POST_KNOWLEDGE) is False
+
