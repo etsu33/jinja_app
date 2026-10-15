@@ -416,18 +416,18 @@ Mother Ship acceptance                                         CLEAN_CREATE
 Frozen values vs Production measurement                         MATCH
 ```
 
-### 14.2 Required on the freeze branch before PR
+### 14.2 Freeze-branch validation
 
 ```text
-committed guard rehearsal                                      PENDING
-committed drift / negative tests                               PENDING
-test_nsrc_000006_g7_source_identity_sql.py                     PENDING
-nsrc-000006 regression set                                     PENDING
-guard.py check-readonly-sql                                    PENDING
-git diff --check                                               PENDING
+committed guard rehearsal                                      PASS
+committed drift / negative tests                               PASS
+test_nsrc_000006_g7_source_identity_sql.py                     PASS
+nsrc-000006 regression set                                     142 passed
+guard.py check-readonly-sql                                    SAFE × 5
+git diff --check                                               clean
 ```
 
-No PASS count is copied forward from the preparation PR. The freeze branch must record fresh results.
+The 142-test regression run covered the current nsrc-000006 Base / Knowledge / G5 / G6 / G7 set, including committed Production-prestate guard rehearsal and fail-closed drift / negative cases. No PASS count was copied forward from the preparation PR.
 
 ## 15. Impact boundary
 
