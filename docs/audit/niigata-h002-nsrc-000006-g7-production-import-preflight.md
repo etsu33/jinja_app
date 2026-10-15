@@ -1,5 +1,68 @@
 # NIIGATA-001-H002 — nsrc-000006 赤井神社 G7 Production Import Preflight（preparation only）
 
+## 0. Current status — Production read-only measured and frozen
+
+Mother Ship executed `nsrc_000006_g7_preflight.sql` against Production through the Credential Bridge after PR #3210 and accepted the measured state as `CLEAN_CREATE`.
+
+```text
+G7_READ_ONLY_PREFLIGHT      = PASS
+PRODUCTION_STATE_CLASS      = CLEAN_CREATE
+FROZEN_PRE_STATE            = SET
+PRODUCTION_EXPECTED_DELTA   = FROZEN
+
+PRODUCTION_SERVER_VERSION   = 17.6
+LATEST_TEMPLES_MIGRATION    = 0120_shrine_source_fact_foundation
+
+PRODUCTION_WRITE_READY      = HOLD
+PRODUCTION_WRITE_AUTHORIZED = NO
+PRODUCTION_WRITE            = NONE
+FORMAL_G7                   = NOT_EXECUTED
+G8                          = NOT_EXECUTED
+```
+
+Frozen Production pre-state:
+
+```text
+Shrine      123
+Source      143
+Deity       295
+History     231
+SourceFact   34
+Collective    6
+
+same_name_other_address_total = 0
+S2 source_identity_state      = ABSENT
+S3 source_identity_state      = ABSENT
+s2_accepted_source_count      = 0
+s3_accepted_source_count      = 0
+```
+
+Frozen expected delta:
+
+```text
+Shrine      +1
+Source      +2
+Deity       +0
+History     +3
+SourceFact  +0
+Collective  +0
+goriyaku    +0
+```
+
+Expected aggregate checkpoints:
+
+| Aggregate | Pre | Post-Base | Post-Knowledge |
+|---|---:|---:|---:|
+| Shrine | 123 | 124 | 124 |
+| Source | 143 | 143 | 145 |
+| Deity | 295 | 295 | 295 |
+| History | 231 | 231 | 234 |
+| SourceFact | 34 | 34 | 34 |
+| Collective | 6 | 6 | 6 |
+
+No Production write was performed by the read-only measurement or by this freeze change.
+
+
 ## 1. Status
 
 ```text
@@ -201,16 +264,18 @@ The DB was dropped afterwards.
 
 ### 8.2 Regression rehearsals（pytest disposable DB）
 
-`backend/temples/tests/test_nsrc_000006_g7_source_identity_sql.py`, 64 tests. Frozen values are
-substituted **in memory only**, from the disposable DB's own counts, to exercise guard semantics. The
-committed SQL is never modified, and the DB is never mutated to make a guard pass.
+The test now carries the Mother-Ship-accepted `PRODUCTION_PRESTATE` and validates the committed frozen
+guards unchanged against a disposable DB shaped to the exact Production aggregates. Existing in-memory
+Source-state matrix / rehearsal / negative coverage remains in place so accepted-count variants and conflict
+states continue to exercise guard semantics without weakening the fail-closed checks. Production is never
+contacted by pytest.
 
 | Area | Result |
 |---|---|
-| File contract | identity block identical in 4 files; frozen block identical, all NULL, `frozen_values_set=false`; SELECT / WITH only; no connection identifiers |
+| File contract | identity block identical in 4 files; frozen block byte-identical in all 3 guards and equal to the accepted Production measurement; no NULLs; `frozen_values_set=true`; SELECT / WITH only; no connection identifiers |
 | Importer equivalence | SQL `normalized_url` == `normalize_source_url()` for S2 / S3 identity variants, lookalikes, unparseable URLs, and a general corpus |
 | Identity semantics（S2, S3） | variants = identity; lookalikes ≠ identity but flagged; unparseable = NULL; wrong source_type ≠ identity; S2 / S3 never match each other; drifted metadata = identity but not compatible |
-| Committed UNSET guards | all three fail, on the pre-state and on a fully materialized state |
+| Committed frozen guards | reject ordinary local/Base states; exact simulated Production pre-state passes pre-Base only; committed sequential rehearsal and drift/negative checks cover the frozen guards unchanged |
 | Source-state matrix（12 cases） | ABSENT / REUSABLE combinations → CLEAN_CREATE, pass only with the matching accepted counts（wrong S2 or S3 count fails）; METADATA_DRIFT / IDENTITY_AMBIGUOUS / NON_IDENTITY_LOOKALIKE / IMPORTER_UNPARSEABLE_URL for S2 and S3 → CONFLICT, pre-Base fails for every accepted-count combination |
 | Exact identity | both noncanonical-address `赤井神社` rows → still CLEAN_CREATE, frozen `same_name_other_address_total=2`, pre-Base PASS; a different-name row at the target address → CONFLICT / FAIL |
 | Base subset | deterministic; exactly the canonical row; fails closed on a missing row, coordinate drift, or noncanonical-address-only data; refuses in-repository output |
@@ -287,8 +352,8 @@ Recommendation Top1 and Compass Top1 are not required.
 ## 11. Backup / restore readiness（procedure; not executed）
 
 ```text
-PRODUCTION_SERVER_VERSION   = NOT MEASURED
-LOCAL_CLIENT                = pg_dump / psql / pg_restore 16.15
+PRODUCTION_SERVER_VERSION   = 17.6
+LOCAL_CLIENT                = pg_dump / psql / pg_restore 16.15 (previously observed; re-check before backup)
 BACKUP_CLIENT_COMPATIBILITY = HOLD
 BACKUP_RESTORE_READINESS    = HOLD
 ```
@@ -318,9 +383,10 @@ outside the repository, mode 600, never printed）:
 3. **Runtime QA scope.** It adds `EXACT_TARGET`, `SHARED_RECOMMENDATION_ELIGIBILITY`, and
    `AGGREGATES_UNCHANGED`, as requested. The nsrc-000007 script covered Detail / Concierge / Reason /
    Compass only.
-4. **Negative tests at the UNSET stage.** The full negative list was added now. Because the committed
-   values are UNSET, the negatives run with in-memory frozen values from the disposable DB. nsrc-000007
-   added committed-value negatives only in its freeze PR（#3194）. Rehearsal also covers an `s3-reused` case.
+4. **Negative tests across preparation and freeze.** The preparation PR already carried the full in-memory
+   negative list. This freeze change keeps that coverage and adds committed-guard validation against an exact
+   simulated Production pre-state plus committed drift / post-Knowledge negative checks. Rehearsal still covers
+   the `s3-reused` case.
 5. **Lookalike breadth.** The S3 path token `pid%971197` also flags other NDL IDs that start with
    `971197`（e.g. `pid/9711970`）, as well as page sub-paths. Such rows classify as
    `CONFLICT_NON_IDENTITY_LOOKALIKE`. This is conservative and fails closed; Mother Ship reviews any such
@@ -338,18 +404,30 @@ A UTC calendar-date rendering would show `2026-10-13`. The Knowledge Seed is unc
 
 ## 14. Validation
 
+Freeze-change validation is intentionally recorded in two phases.
+
+### 14.1 Completed before this freeze change
+
 ```text
-guard.py check-readonly-sql（5 nsrc-000006 SQL files）        READONLY_OK × 5
-test_nsrc_000006_g7_source_identity_sql.py                    64 passed
-nsrc-000006 tests（base / knowledge / G5 / G6 / G7）            111 passed
-precedent G7 tests（nsrc-000007 + nsrc-000002）                 62 passed
-backend full suite（-n auto）                                   5585 passed, 12 skipped
-scripts/tests                                                   685 passed
-scripts/migration_safety/tests                                  320 passed
-makemigrations --check                                          No changes detected
-ruff check / format --check（new Python files）                  clean
-git diff --check                                                clean
+Production readonly_query / nsrc_000006_g7_preflight.sql       PASS
+Production state candidate                                     CLEAN_CREATE
+Mother Ship acceptance                                         CLEAN_CREATE
+3 guard frozen blocks                                           byte-identical
+Frozen values vs Production measurement                         MATCH
 ```
+
+### 14.2 Required on the freeze branch before PR
+
+```text
+committed guard rehearsal                                      PENDING
+committed drift / negative tests                               PENDING
+test_nsrc_000006_g7_source_identity_sql.py                     PENDING
+nsrc-000006 regression set                                     PENDING
+guard.py check-readonly-sql                                    PENDING
+git diff --check                                               PENDING
+```
+
+No PASS count is copied forward from the preparation PR. The freeze branch must record fresh results.
 
 ## 15. Impact boundary
 
@@ -367,14 +445,18 @@ G8                                                    NOT_EXECUTED
 
 Revert the commit. It adds scripts, SQL, a test, and this audit only.
 
-## 17. Next（requires Mother Ship）
+## 17. Next
 
-1. Run `nsrc_000006_g7_preflight.sql` on Production through `readonly_query.sh`（Credential Bridge）.
-2. Mother Ship accepts a `production_state_class`. STOP on any CONFLICT or unexpected state.
-3. A separate PR freezes the measured values into the three guards' frozen block.
-4. Fresh backup → isolated restore → fingerprint match（§11）.
-5. Only then can Mother Ship authorize the Production write and the Formal G7 decision.
+1. Run the freeze-branch committed guard rehearsal and drift / negative tests.
+2. Run the full nsrc-000006 G7 regression set and read-only SQL checks; record fresh counts in §14.
+3. Open the freeze PR only after those checks are green.
+4. After merge, take a fresh Production backup with a PostgreSQL 17-compatible client.
+5. Restore to an isolated DB; require Production-preflight fingerprint equivalence and committed pre-Base guard PASS.
+6. Only then can Mother Ship separately authorize the Production write and Formal G7.
 
 ```text
-STOP = TRUE — no Production write is authorized or performed by this PR.
+PRODUCTION_WRITE_READY      = HOLD
+PRODUCTION_WRITE_AUTHORIZED = NO
+PRODUCTION_WRITE            = NONE
+STOP                        = TRUE
 ```
