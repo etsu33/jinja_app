@@ -58,7 +58,7 @@ SELECT
   COUNT(*) FILTER (WHERE address = '新潟県佐渡市加茂歌代2662番地') AS same_address_count
 FROM temples_shrine;
 
--- Diagnostics only: same-name rows at other addresses are other shrines, not the target.
+-- Diagnostics only: same-name rows at other addresses do not identify the canonical target.
 SELECT
   id,
   name_jp,
