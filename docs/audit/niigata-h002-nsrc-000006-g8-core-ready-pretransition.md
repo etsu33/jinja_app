@@ -12,12 +12,12 @@
 
 ```text
 G8_CONDITIONS_01_TO_07                = PASS
-G8_CONDITION_08                       = PENDING_FRESH_PRODUCTION_READ
+G8_CONDITION_08                       = PASS_WITH_LIMITATION
 G8_CONDITIONS_09_TO_11                = PASS
 G8_CONDITION_12_PRE_TRANSITION        = PASS
 G8_CONDITION_12_POST_TRANSITION       = NOT_EXECUTED
 
-COMPLETION_CONTRACT_PRE_TRANSITION    = 11/12 SATISFIED
+COMPLETION_CONTRACT_PRE_TRANSITION    = 12/12 SATISFIED
 MOTHER_SHIP_CORE_READY_TRANSITION     = PENDING
 CORE_READY_TRANSITION                 = NOT_EXECUTED
 G8_STATUS                             = OPEN
@@ -25,7 +25,7 @@ G8_STATUS                             = OPEN
 
 本書は `nsrc-000006` の G8 PRE_TRANSITION evidence を current state で再構成する。
 G7 PASS や Candidate Master の IMPORTED state を理由に CORE_READY を推論しない。
-Condition #8 の fresh Production read-only が未実測のため、12/12 は宣言しない。
+Condition #8 の fresh Production read-onlyも完了し、PRE_TRANSITION 12/12を満たした。
 
 ---
 
@@ -241,10 +241,24 @@ goriyaku_tag_max_id       = 39
 goriyaku_tag_distinct_ids = 39
 ```
 
-本監査作成環境から Mother Ship local credential へ接続できないため、この値を推測・転記しない。
+2026-10-15 Mother Ship端末からSELECT-only wrapperでfresh Production read-onlyを実行し、次を実測した。
 
 ```text
-G8_CONDITION_08_NO_NEW_GORIYAKU_TAG = PENDING_FRESH_PRODUCTION_READ
+goriyaku_tag_total        = 39
+goriyaku_tag_min_id       = 1
+goriyaku_tag_max_id       = 39
+goriyaku_tag_distinct_ids = 39
+```
+
+`readonly_query.sh` は SQL read-only check を通過し、Production write は0。
+
+Limitation:
+G7 apply直前・直後のGoriyakuTag master countを独立計測した記録はないため、
+G7実行中の一時的CREATE/DELETEが絶対になかったことを時系列実測だけで証明したとは扱わない。
+先行G8 precedentと同じく、このlimitationは保持する。
+
+```text
+G8_CONDITION_08_NO_NEW_GORIYAKU_TAG = PASS_WITH_LIMITATION
 ```
 
 ### #9 Concierge shared eligibility / candidate path
@@ -352,22 +366,22 @@ G8_CONDITION_12_POST_TRANSITION_ALIGNMENT = NOT_EXECUTED
 | 5 | Fact-ready Source relation / Evidence Gate | PASS |
 | 6 | Shrine.goriyaku approved-only | PASS |
 | 7 | goriyaku_tags canonical safe subset | PASS |
-| 8 | no automatic GoriyakuTag creation | **PENDING_FRESH_PRODUCTION_READ** |
+| 8 | no automatic GoriyakuTag creation | **PASS_WITH_LIMITATION** |
 | 9 | Concierge shared eligibility / candidate path | PASS |
 | 10 | Compass distance / direction | PASS |
 | 11 | re-import idempotency | PASS |
 | 12 | Candidate Master / Production PRE_TRANSITION alignment | PASS |
 
 ```text
-COMPLETION_CONTRACT_PRE_TRANSITION = 11/12 SATISFIED
-G8_BLOCKER                         = CONDITION_08_FRESH_PRODUCTION_READ
+COMPLETION_CONTRACT_PRE_TRANSITION = 12/12 SATISFIED
+G8_BLOCKER                         = NONE
 ```
 
 ---
 
 ## 6. Mother Ship Decision Gate
 
-現在はCORE_READY transition判断の技術入力が1件不足している。
+Completion Contract PRE_TRANSITIONは12/12 satisfied。CORE_READY transitionの技術入力は揃った。
 
 ```text
 MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = PENDING
@@ -376,7 +390,7 @@ CORE_READY_TRANSITION                      = NOT_EXECUTED
 G8_STATUS                                  = OPEN
 ```
 
-Condition #8がPASS_WITH_LIMITATIONまで閉じた場合、Mother Shipが判断できるtarget-only deltaは次の2fieldだけ。
+Mother Shipが判断できるtarget-only deltaは次の2fieldだけ。
 
 ```text
 candidate_status:
@@ -446,12 +460,12 @@ G6                                    = PASS
 G7                                    = CLOSED / PASS
 
 G8_CONDITIONS_01_TO_07                = PASS
-G8_CONDITION_08                       = PENDING_FRESH_PRODUCTION_READ
+G8_CONDITION_08                       = PASS_WITH_LIMITATION
 G8_CONDITIONS_09_TO_11                = PASS
 G8_CONDITION_12_PRE_TRANSITION        = PASS
 G8_CONDITION_12_POST_TRANSITION       = NOT_EXECUTED
 
-COMPLETION_CONTRACT_PRE_TRANSITION    = 11/12 SATISFIED
+COMPLETION_CONTRACT_PRE_TRANSITION    = 12/12 SATISFIED
 MOTHER_SHIP_CORE_READY_TRANSITION     = PENDING
 CORE_READY_TRANSITION                 = NOT_EXECUTED
 G8_STATUS                             = OPEN
