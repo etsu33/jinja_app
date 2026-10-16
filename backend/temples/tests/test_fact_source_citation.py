@@ -570,6 +570,36 @@ def test_same_source_url_reused_by_two_facts_with_different_locators(tmp_path):
     ) == sorted([(TITLE_A, LOC_A), (TITLE_B, LOC_B)])
 
 
+def test_legacy_p398_source_reused_with_p445_fact_citation(tmp_path):
+    """Production legacy Source の p.398 metadataを維持し、後続Factのp.445はcitationへ分離する。"""
+    _shrine()
+
+    legacy = _seed(
+        version="1.2",
+        histories=[_history_entry(TITLE_A, locator=None)],
+        sources=[_source_entry(bibliography=LOC_A)],
+    )
+    first = _run(_write(tmp_path, legacy, "legacy-p398.json"))
+    assert "[source] CREATE" in first
+
+    followup = _seed(
+        histories=[_history_entry(TITLE_B, LOC_B)],
+        sources=[_source_entry(bibliography=LOC_A, url=PDF_URL + "#page=445")],
+    )
+    out = _run(_write(tmp_path, followup, "followup-p445.json"))
+
+    assert "[source] REUSE_EXISTING" in out
+    assert "SOURCE_REUSE_CONFLICT" not in out
+    assert "[citation] CREATE" in out
+
+    source = ShrineKnowledgeSource.objects.get()
+    assert source.bibliography == LOC_A
+    history_b = ShrineHistory.objects.get(title=TITLE_B)
+    citation = ShrineFactSourceCitation.objects.get(shrine_history=history_b)
+    assert citation.source == source
+    assert citation.locator_text == LOC_B
+
+
 def test_source_reuse_conflict_is_not_weakened(tmp_path):
     """bibliography に Fact 固有の頁を入れた Source は従来どおり CONFLICT で止まる。"""
     _shrine()
