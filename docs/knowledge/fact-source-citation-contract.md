@@ -30,6 +30,33 @@
 - 既存 Production の Source（例: nsrc-000007 の `bibliography` に頁を含むもの）は書き換えない。
   本 PR はデータ移行を含まない。
 
+### Legacy Source reuse rule
+
+既存 Production Source が Fact 固有の頁を `bibliography` に含んでいる場合、その Source を
+schema 1.3 seed から再利用するときも、Source metadata は既存 row と完全一致させる。
+
+例:
+
+```text
+existing Source
+  normalized URL = .../rekibun_shiryou.pdf
+  bibliography   = 中魚沼郡誌上 p.398
+
+new Fact
+  Source bibliography         = 中魚沼郡誌上 p.398   # existing row と一致させる
+  citations[].locator_text    = 中魚沼郡誌上 p.445  # new Fact 固有の locator
+```
+
+この場合、legacy `bibliography = 中魚沼郡誌上 p.398` は後続 Fact の locator を意味しない。
+後続 Fact の根拠位置の authority は `ShrineFactSourceCitation.locator_text` とする。
+
+移行期も次を維持する。
+
+- `SOURCE_REUSE_CONFLICT` は弱めない。
+- importer は既存 Source の `bibliography` を自動更新しない。
+- legacy Source を reuse するためだけに document-level 値へ書き換えない。
+- Fact 固有の新しい位置情報は `citations[].locator_text` に記録する。
+
 ## 3. Model: `ShrineFactSourceCitation`
 
 | field | 型 | 制約 |
