@@ -12,7 +12,7 @@ TECHNICAL_G2_PROPOSAL    = PASS
 MOTHER_SHIP_G2_DECISION  = PENDING
 TARGET_SPECIFIC_POI      = CONFIRMED
 DIRECT_NUMERIC_COORDINATE= CONFIRMED
-ADOPTED_COORDINATE       = 37.0853302, 138.7523173
+ADOPTED_COORDINATE       = 37.089683, 138.748108
 
 Production write         = NONE
 Seed write               = NONE
@@ -176,7 +176,7 @@ reason_codes:
 - TARGET_NUMERIC_COORDINATE_CONFIRMED
 
 TARGET_SPECIFIC_POI = CONFIRMED
-ADOPTED_COORDINATE  = 37.0853302, 138.7523173
+ADOPTED_COORDINATE  = 37.089683, 138.748108
 ```
 
 This is not a Mother Ship decision.
@@ -236,7 +236,7 @@ DIRECT_NUMERIC_COORDINATE         = NOT_CONFIRMED
 TECHNICAL_G2_PROPOSAL             = HOLD_POSITION_REVIEW
 MOTHER_SHIP_G2_DECISION           = PENDING
 POSITION_STATUS                   = READY_FOR_MOTHER_SHIP_DECISION
-ADOPTED_VISITOR_ANCHOR            = 37.0853302, 138.7523173
+ADOPTED_VISITOR_ANCHOR            = 37.089683, 138.748108
 NEXT_GATE                         = MOTHER_SHIP_G2_DECISION
 G3                                = NOT_EXECUTED
 STOP                              = TRUE
@@ -247,20 +247,19 @@ STOP                              = TRUE
 
 Mother Ship supplied a fresh Google Maps screenshot for the target area.
 
-The visible Google Maps URL contains two distinct coordinate contexts:
+The fresh manual QA contains two distinct coordinate observations:
 
 ```text
-viewport center:
-@37.0856861,138.7471641,1890m
+map viewport / independently searched pin:
+37.085330, 138.752317
 
-target place coordinate:
-!3d37.0853302!4d138.7523173
+target 赤城社 marker right-click coordinate:
+37.089683, 138.748108
 ```
 
-The viewport coordinate is not adopted.
+The independently searched/dropped pin coordinate is not adopted.
 
-The target place coordinate is the coordinate encoded in the Google Maps place URL for the
-confirmed 赤城社 POI at 〒949-8522 新潟県十日町市伊達乙48.
+The adopted candidate is the coordinate displayed by Google Maps when the confirmed 赤城社 marker itself is right-clicked in the Mother Ship manual QA screenshot.
 
 Adopted technical candidate:
 
@@ -275,14 +274,14 @@ target-specific POI  = CONFIRMED
 sibling risk         = EXCLUDED
 ```
 
-The coordinate is not inferred from the viewport, address centroid, or sibling shrine.
+The coordinate is not inferred from the independently searched pin, viewport center, address centroid, or sibling shrine.
 
 ### Updated technical G2 result
 
 ```text
 TARGET_SPECIFIC_POI       = CONFIRMED
 DIRECT_NUMERIC_COORDINATE = CONFIRMED
-ADOPTED_COORDINATE        = 37.0853302, 138.7523173
+ADOPTED_COORDINATE        = 37.089683, 138.748108
 
 TECHNICAL_G2_PROPOSAL     = PASS
 MOTHER_SHIP_G2_DECISION   = PENDING
@@ -291,3 +290,28 @@ STOP                      = TRUE
 ```
 
 G3 remains blocked until Mother Ship explicitly selects G2 PASS.
+
+
+## 11. Manual QA correction
+
+A second Mother Ship screenshot distinguishes the shrine marker from a separately searched coordinate pin.
+
+Observed:
+
+```text
+赤城社 marker right-click coordinate = 37.089683, 138.748108
+
+separate searched coordinate pin      = 37.085330, 138.752317
+```
+
+The latter pin is visibly located away from the 赤城社 marker and is therefore rejected.
+
+```text
+REJECTED_COORDINATE = 37.0853302, 138.7523173
+reason              = separate searched/dropped pin; not shrine marker
+
+ADOPTED_CANDIDATE   = 37.089683, 138.748108
+reason              = direct right-click coordinate on confirmed 赤城社 marker
+```
+
+This supersedes the earlier interpretation of `37.0853302, 138.7523173` as a target place coordinate.
