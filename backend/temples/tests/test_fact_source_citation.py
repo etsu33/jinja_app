@@ -384,16 +384,18 @@ def test_schema_1_3_is_supported_and_older_versions_are_kept():
     assert CITATION_SCHEMA_VERSION == "1.3"
 
 
-def test_all_repository_seeds_still_parse_without_citations():
+def test_all_repository_seeds_parse_and_legacy_versions_remain_citation_free():
     paths = sorted(SEED_DIR.glob("*.json"))
     assert paths
     for path in paths:
         raw = json.loads(path.read_text(encoding="utf-8"))
         parsed = parse_seed(raw)
         assert parsed.errors == [], (path.name, parsed.errors)
-        for block in parsed.shrines:
-            assert all(h.citations == [] for h in block.histories), path.name
-            assert all(d.citations == [] for d in block.deities), path.name
+
+        if parsed.schema_version != CITATION_SCHEMA_VERSION:
+            for block in parsed.shrines:
+                assert all(h.citations == [] for h in block.histories), path.name
+                assert all(d.citations == [] for d in block.deities), path.name
 
 
 def test_schema_1_3_parses_history_and_deity_citations():
