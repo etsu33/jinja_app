@@ -1,12 +1,17 @@
 """Import a versioned Shrine Knowledge seed (ShrineKnowledgeSource/ShrineDeity/
 ShrineHistory, for schema 1.1+ ShrineDeityCollective/ShrineDeityCollectiveMembership,
-and for schema 1.2 ShrineSourceFact) safely and idempotently.
+for schema 1.2+ ShrineSourceFact, and for schema 1.3 ShrineFactSourceCitation)
+safely and idempotently.
 
 Schema 1.1 Collective / Membership contract:
 docs/audit/collective-deity-knowledge-seed-v1-1-contract.md
 
 Schema 1.2 Source Fact contract (create-only; same stable_key + any difference = CONFLICT):
 docs/audit/shrine-expansion-wave0-db04-f1-goriyaku-mapping-boundary.md §12.15.C / §12.15.G
+
+Schema 1.3 Fact Source citation contract (create-only; identity = Fact + Source + locator_text;
+the cited Source must be related through the Fact's sources, otherwise fail closed):
+docs/knowledge/fact-source-citation-contract.md
 
 See docs/audit/knowledge-production-import-foundation.md for the full
 design rationale (seed format, shrine identity strategy, idempotency,
@@ -42,11 +47,13 @@ from temples.models import (
     ShrineDeity,
     ShrineDeityCollective,
     ShrineDeityCollectiveMembership,
+    ShrineFactSourceCitation,
     ShrineHistory,
     ShrineKnowledgeSource,
     ShrineSourceFact,
 )
 from temples.services.knowledge_seed import (
+    CitationEntry,
     CollectiveEntry,
     MembershipEntry,
     ParsedSeed,
@@ -67,7 +74,8 @@ from temples.services.knowledge_seed import (
 
 @dataclass
 class PlanItem:
-    kind: str  # "source" | "deity" | "history" | "collective" | "membership" | "source_fact"
+    # "source" | "deity" | "history" | "citation" | "collective" | "membership" | "source_fact"
+    kind: str
     shrine_name: str
     label: str
     action: str  # "CREATE" | "REUSE_EXISTING" | "SKIP_EXISTS" | blocking status
@@ -292,6 +300,80 @@ def _plan_source_facts(
     return plans
 
 
+def _fact_citation_filter(fact: ShrineDeity | ShrineHistory) -> dict:
+    if isinstance(fact, ShrineHistory):
+        return {"shrine_history": fact}
+    return {"shrine_deity": fact}
+
+
+def _plan_citations(
+    block_name: str,
+    fact_label: str,
+    citations: list[CitationEntry],
+    existing_fact: ShrineDeity | ShrineHistory | None,
+    source_existing: dict[str, ShrineKnowledgeSource | None],
+    items: list[PlanItem],
+    errors: list[str],
+) -> None:
+    """schema 1.3 の Fact 単位 citation を plan する（create-only・fail closed）。
+
+    - 新規 Fact: Fact の sources は seed の source_keys で作られ、parser が citation の source_key を
+      source_keys に含むことを保証しているので CREATE。
+    - 既存 Fact: importer は既存 Fact の sources を変更しない。cited Source が既存 Fact の sources に
+      既に関連付いていなければ CITATION_SOURCE_NOT_RELATED で全体を止める（新規作成予定の Source も
+      同様）。同じ Fact + Source + locator_text の既存 citation は SKIP_EXISTS。
+    """
+    for c in citations:
+        label = f"{fact_label} [{c.source_key}] {c.locator_text}"
+        if existing_fact is None:
+            items.append(PlanItem("citation", block_name, label, "CREATE"))
+            continue
+        source = source_existing.get(c.source_key)
+        if source is None or not existing_fact.sources.filter(pk=source.pk).exists():
+            detail = (
+                f"source {c.source_key!r} would be newly created"
+                if source is None
+                else f"source id={source.pk} is not in existing fact id={existing_fact.pk} sources"
+            )
+            items.append(
+                PlanItem("citation", block_name, label, "CITATION_SOURCE_NOT_RELATED", detail)
+            )
+            errors.append(
+                f"citation {block_name!r} {fact_label!r} [{c.source_key}] {c.locator_text!r}: "
+                f"CITATION_SOURCE_NOT_RELATED ({detail})"
+            )
+            continue
+        existing = ShrineFactSourceCitation.objects.filter(
+            source=source, locator_text=c.locator_text, **_fact_citation_filter(existing_fact)
+        ).first()
+        items.append(
+            PlanItem(
+                "citation",
+                block_name,
+                label,
+                "SKIP_EXISTS" if existing else "CREATE",
+                f"matched existing id={existing.pk}" if existing else "",
+            )
+        )
+
+
+def _apply_citations(
+    fact: ShrineDeity | ShrineHistory,
+    citations: list[CitationEntry],
+    source_objs: dict[str, ShrineKnowledgeSource],
+    created: dict[str, int],
+) -> None:
+    for c in citations:
+        source = source_objs[c.source_key]
+        lookup = {"source": source, "locator_text": c.locator_text, **_fact_citation_filter(fact)}
+        if ShrineFactSourceCitation.objects.filter(**lookup).exists():
+            continue
+        # save() が full_clean() し、cited Source が Fact の sources に無ければ ValidationError
+        # （caller の atomic transaction ごと rollback する）。
+        ShrineFactSourceCitation(**lookup).save()
+        created["citation"] += 1
+
+
 def _build_plan(parsed: ParsedSeed) -> tuple[Plan, dict[str, ShrineKnowledgeSource | None]]:
     """Resolve every shrine identity and compute the CREATE/SKIP plan.
 
@@ -344,6 +426,15 @@ def _build_plan(parsed: ParsedSeed) -> tuple[Plan, dict[str, ShrineKnowledgeSour
                     detail=f"matched existing id={existing.pk}" if existing else "",
                 )
             )
+            _plan_citations(
+                block.name_jp,
+                f"deity: {d.display_name}",
+                d.citations,
+                existing,
+                source_existing,
+                items,
+                errors,
+            )
 
         for h in block.histories:
             existing = find_existing_history(shrine, h.history_type, h.title)
@@ -355,6 +446,15 @@ def _build_plan(parsed: ParsedSeed) -> tuple[Plan, dict[str, ShrineKnowledgeSour
                     action="SKIP_EXISTS" if existing else "CREATE",
                     detail=f"matched existing id={existing.pk}" if existing else "",
                 )
+            )
+            _plan_citations(
+                block.name_jp,
+                f"history: {h.history_type}: {h.title}",
+                h.citations,
+                existing,
+                source_existing,
+                items,
+                errors,
             )
 
         collective_plans += _plan_collectives(
@@ -508,6 +608,7 @@ def _apply(
         "source": 0,
         "deity": 0,
         "history": 0,
+        "citation": 0,
         "collective": 0,
         "membership": 0,
         "source_fact": 0,
@@ -545,6 +646,7 @@ def _apply(
         for d in block.deities:
             existing = find_existing_deity(shrine, d.display_name)
             if existing is not None:
+                _apply_citations(existing, d.citations, source_objs, created)
                 continue
             obj = ShrineDeity(
                 shrine=shrine,
@@ -562,10 +664,12 @@ def _apply(
             if d.source_keys:
                 obj.sources.set([source_objs[k] for k in d.source_keys])
             created["deity"] += 1
+            _apply_citations(obj, d.citations, source_objs, created)
 
         for h in block.histories:
             existing = find_existing_history(shrine, h.history_type, h.title)
             if existing is not None:
+                _apply_citations(existing, h.citations, source_objs, created)
                 continue
             obj = ShrineHistory(
                 shrine=shrine,
@@ -585,6 +689,7 @@ def _apply(
             if h.source_keys:
                 obj.sources.set([source_objs[k] for k in h.source_keys])
             created["history"] += 1
+            _apply_citations(obj, h.citations, source_objs, created)
 
     # 全 shrine block の Deity を作成した後に Collective / Membership を作る
     # （same-seed Deity を Membership が参照できるように）。
@@ -652,7 +757,7 @@ class Command(BaseCommand):
 
         expected = {
             kind: sum(1 for item in plan.items if item.kind == kind and item.action == "CREATE")
-            for kind in ("collective", "membership", "source_fact")
+            for kind in ("citation", "collective", "membership", "source_fact")
         }
         with transaction.atomic():
             created = _apply(parsed, source_existing, plan.collectives, plan.source_facts)
@@ -663,17 +768,19 @@ class Command(BaseCommand):
                         "rolled back"
                     )
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                "import complete: "
-                f"sources created={created['source']}, "
-                f"deities created={created['deity']}, "
-                f"histories created={created['history']}, "
-                f"collectives created={created['collective']}, "
-                f"memberships created={created['membership']}, "
-                f"source_facts created={created['source_fact']}"
-            )
+        summary = (
+            "import complete: "
+            f"sources created={created['source']}, "
+            f"deities created={created['deity']}, "
+            f"histories created={created['history']}, "
+            f"collectives created={created['collective']}, "
+            f"memberships created={created['membership']}, "
+            f"source_facts created={created['source_fact']}"
         )
+        # citation を持たない seed の出力は従来と byte 単位で同一に保つ。
+        if any(item.kind == "citation" for item in plan.items):
+            summary += f", citations created={created['citation']}"
+        self.stdout.write(self.style.SUCCESS(summary))
 
     def _report_errors(self, errors: list[str]) -> None:
         for err in errors:
