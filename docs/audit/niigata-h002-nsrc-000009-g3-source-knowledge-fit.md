@@ -1,6 +1,6 @@
 # NIIGATA-001-H002 nsrc-000009 赤城社 G3 Source + Knowledge Model Fit
 
-> Status: **TECHNICAL PASS PROPOSAL — NORMAL_MODEL_FIT**
+> Status: **PASS — NORMAL_MODEL_FIT**
 >
 > Recorded at: 2026-10-16
 >
@@ -22,7 +22,7 @@
 >
 > G4 execution: 0
 >
-> Mother Ship G3 decision: **PENDING**
+> Mother Ship G3 decision: **A / PASS / NORMAL_MODEL_FIT**
 
 ## Scope
 
@@ -429,7 +429,7 @@ G4 must not:
 ## Mother Ship G3 decision
 
 ```text
-MOTHER_SHIP_G3_DECISION = PENDING
+MOTHER_SHIP_G3_DECISION = A
 ```
 
 Technical proposal:
@@ -496,9 +496,52 @@ CURRENT_DEITY                     = NOT_FROZEN
 SHRINE_DEITY_ROWS_AUTHORIZED      = 0
 G4_ALLOWED_SCOPE_PROPOSAL         = accepted Source-backed ShrineHistory only
 
-G3_STATUS                         = OPEN
-G4                               = NOT_EXECUTED
+G3_STATUS                         = CLOSED / PASS
+G4                               = AUTHORIZED_TO_START
 STOP                              = TRUE
 ```
 
 G3 does not close until Mother Ship explicitly selects the G3 option.
+
+
+## Mother Ship G3 decision — confirmed
+
+Mother Ship explicitly selected:
+
+```text
+MOTHER_SHIP_G3_DECISION = A
+TARGET                  = nsrc-000009
+
+G3                      = PASS
+classification          = NORMAL_MODEL_FIT
+
+CURRENT_DEITY                 = NOT_FROZEN
+SHRINE_DEITY_ROWS_AUTHORIZED  = 0
+
+G4_ALLOWED_SCOPE
+= accepted Source-backed ShrineHistory only
+```
+
+This closes G3.
+
+Authorized G4 scope is limited to:
+
+```text
+ShrineHistory
+- H1 天明3年8月の創立記録 / historical_event
+- H2 大正2年の改築記録 / historical_event
+
+ShrineDeity
+- 0 rows
+
+ShrineDeityCollective
+- 0 rows
+```
+
+No current Deity inference is authorized.
+
+```text
+G3_CLOSED = PASS
+NEXT_GATE = G4 Knowledge Fact + Evidence
+STOP_AT_G3 = FALSE
+```
