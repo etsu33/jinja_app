@@ -798,6 +798,96 @@ class ShrineHistory(models.Model):
         _validate_verified_at_consistency(self.verification_status, self.verified_at)
 
 
+class ShrineFactSourceCitation(models.Model):
+    """Fact 単位の Source 内 locator（頁・節など）provenance。
+
+    docs/knowledge/fact-source-citation-contract.md の実装。ShrineKnowledgeSource は
+    document-level のまま（identity = source_type + normalized URL）とし、同じ Source 文書内の
+    Fact ごとに異なる位置を bibliography に持たせない。
+
+    - 既存の ShrineHistory.sources / ShrineDeity.sources M2M は置き換えない。runtime / Evidence Gate は
+      従来どおり M2M だけを読み、本 model を参照しない（additive provenance only）。
+    - 対象 Fact は shrine_history / shrine_deity の exactly one。
+    - source は対象 Fact の `.sources` に既に関連付いている Source でなければならない（application
+      validation。save() で full_clean() する）。
+    - 同じ Fact + Source + locator_text の重複は拒否する。同じ Fact + Source に別 locator は許容する。
+    """
+
+    source = models.ForeignKey(
+        ShrineKnowledgeSource, on_delete=models.CASCADE, related_name="fact_citations"
+    )
+    shrine_history = models.ForeignKey(
+        ShrineHistory,
+        on_delete=models.CASCADE,
+        related_name="source_citations",
+        null=True,
+        blank=True,
+    )
+    shrine_deity = models.ForeignKey(
+        ShrineDeity,
+        on_delete=models.CASCADE,
+        related_name="source_citations",
+        null=True,
+        blank=True,
+    )
+    locator_text = models.CharField(max_length=255, validators=[_validate_not_blank])
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["id"]
+        constraints = [
+            CheckConstraint(
+                condition=(
+                    Q(shrine_history__isnull=False, shrine_deity__isnull=True)
+                    | Q(shrine_history__isnull=True, shrine_deity__isnull=False)
+                ),
+                name="chk_fact_source_citation_exactly_one_fact",
+            ),
+            CheckConstraint(
+                condition=Q(locator_text__regex=r"\S"),
+                name="chk_fact_source_citation_locator_not_blank",
+            ),
+            UniqueConstraint(
+                fields=["shrine_history", "source", "locator_text"],
+                condition=Q(shrine_history__isnull=False),
+                name="uq_fact_source_citation_history",
+            ),
+            UniqueConstraint(
+                fields=["shrine_deity", "source", "locator_text"],
+                condition=Q(shrine_deity__isnull=False),
+                name="uq_fact_source_citation_deity",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        fact = (
+            f"history:{self.shrine_history_id}"
+            if self.shrine_history_id
+            else f"deity:{self.shrine_deity_id}"
+        )
+        return f"{fact}:{self.source_id}:{self.locator_text}"
+
+    @property
+    def fact(self):
+        return self.shrine_history if self.shrine_history_id else self.shrine_deity
+
+    def clean(self) -> None:
+        super().clean()
+        if (self.shrine_history_id is None) == (self.shrine_deity_id is None):
+            raise ValidationError(
+                "exactly one of shrine_history / shrine_deity must be set", code="fact_selector"
+            )
+        if self.source_id is not None and not self.fact.sources.filter(pk=self.source_id).exists():
+            raise ValidationError(
+                {"source": "source must already be related through the Fact's sources"},
+                code="source_not_related",
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
 class ShrineSourceFact(models.Model):
     """Source が述べる祈祷・現行案内の記載をそのまま保存する Knowledge Fact（Policy C / Channel B）。
 

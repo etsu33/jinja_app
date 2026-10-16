@@ -44,9 +44,24 @@ COLLECTIVE_SCHEMA_VERSION = "1.1"
 # 1.2 では shrine block と source_facts の要素の未知 key をエラーにする（1.0 / 1.1 は従来どおり）。
 # docs/audit/shrine-expansion-wave0-db04-f1-goriyaku-mapping-boundary.md §12.15.F
 SOURCE_FACT_SCHEMA_VERSION = "1.2"
-SUPPORTED_SCHEMA_VERSIONS = (SCHEMA_VERSION, COLLECTIVE_SCHEMA_VERSION, SOURCE_FACT_SCHEMA_VERSION)
-# collectives を受け付ける version（1.2 は 1.1 の上位互換）。
-_COLLECTIVE_SCHEMA_VERSIONS = (COLLECTIVE_SCHEMA_VERSION, SOURCE_FACT_SCHEMA_VERSION)
+# 1.3 は 1.2 に History / Deity 要素の optional な `citations`（ShrineFactSourceCitation）を追加する。
+# 1.3 でも shrine block と source_facts / citations の要素の未知 key をエラーにする。
+# docs/knowledge/fact-source-citation-contract.md
+CITATION_SCHEMA_VERSION = "1.3"
+SUPPORTED_SCHEMA_VERSIONS = (
+    SCHEMA_VERSION,
+    COLLECTIVE_SCHEMA_VERSION,
+    SOURCE_FACT_SCHEMA_VERSION,
+    CITATION_SCHEMA_VERSION,
+)
+# collectives を受け付ける version（1.2 / 1.3 は 1.1 の上位互換）。
+_COLLECTIVE_SCHEMA_VERSIONS = (
+    COLLECTIVE_SCHEMA_VERSION,
+    SOURCE_FACT_SCHEMA_VERSION,
+    CITATION_SCHEMA_VERSION,
+)
+# source_facts を受け付け、shrine block の未知 key をエラーにする version（1.3 は 1.2 の上位互換）。
+_SOURCE_FACT_SCHEMA_VERSIONS = (SOURCE_FACT_SCHEMA_VERSION, CITATION_SCHEMA_VERSION)
 
 _VALID_VERIFICATION_STATUSES = {v for v, _ in KNOWLEDGE_VERIFICATION_STATUS_CHOICES}
 _VALID_CONFIDENCES = {v for v, _ in KNOWLEDGE_CONFIDENCE_CHOICES} | {""}
@@ -73,6 +88,7 @@ _SOURCE_FACT_KEYS = frozenset(
         "verified_at",
     }
 )
+_CITATION_KEYS = frozenset({"source_key", "locator_text"})
 
 ShrineIdentityStatus = Literal["OK", "OK_CANONICAL_PREFERRED", "NOT_FOUND", "AMBIGUOUS"]
 SourceIdentityStatus = Literal["CREATE", "REUSE_EXISTING", "CONFLICT", "AMBIGUOUS"]
@@ -464,6 +480,14 @@ class SourceEntry:
 
 
 @dataclass
+class CitationEntry:
+    """schema 1.3 の ShrineFactSourceCitation 1件。source_key は親 Fact の source_keys に含まれる。"""
+
+    source_key: str
+    locator_text: str
+
+
+@dataclass
 class DeityEntry:
     display_name: str
     canonical_name: str = ""
@@ -474,6 +498,7 @@ class DeityEntry:
     verified_at: datetime | None = None
     note: str = ""
     source_keys: list[str] = field(default_factory=list)
+    citations: list[CitationEntry] = field(default_factory=list)
 
 
 @dataclass
@@ -489,6 +514,7 @@ class HistoryEntry:
     verified_at: datetime | None = None
     note: str = ""
     source_keys: list[str] = field(default_factory=list)
+    citations: list[CitationEntry] = field(default_factory=list)
 
 
 @dataclass
@@ -617,7 +643,63 @@ def _parse_source(
     )
 
 
-def _parse_deity(raw: dict, prefix: str, sources: dict, errors: list[str]) -> DeityEntry:
+def _parse_citations(
+    raw: dict, schema_version: Any, prefix: str, source_keys: list, errors: list[str]
+) -> list[CitationEntry]:
+    """schema 1.3 の Fact 単位 citation locator。
+
+    - 1.3 未満では `citations` key 自体を拒否する（空リストでも黙って無視しない）。
+    - source_key は同じ Fact の source_keys に含まれていなければならない。
+    - locator_text は非空白・前後の空白なし（trim / 正規化はしない）。
+    - 同じ Fact 内の (source_key, locator_text) 重複は拒否する。
+    """
+    if "citations" not in raw:
+        return []
+    if schema_version != CITATION_SCHEMA_VERSION:
+        errors.append(
+            f"{prefix}.citations: not allowed in schema_version {schema_version!r}; "
+            f"requires {CITATION_SCHEMA_VERSION!r}"
+        )
+        return []
+    raw_citations = raw["citations"]
+    if not isinstance(raw_citations, list):
+        errors.append(f"{prefix}.citations: must be a list")
+        return []
+    citations: list[CitationEntry] = []
+    seen: set[tuple[str, str]] = set()
+    for k, c in enumerate(raw_citations):
+        cprefix = f"{prefix}.citations[{k}]"
+        if not isinstance(c, dict):
+            errors.append(f"{cprefix}: must be an object")
+            continue
+        unknown = sorted(set(c) - _CITATION_KEYS)
+        if unknown:
+            errors.append(f"{cprefix}: unknown key(s) {unknown!r}")
+        source_key = c.get("source_key")
+        if not isinstance(source_key, str) or not source_key:
+            errors.append(f"{cprefix}.source_key: required, must be a non-empty string")
+            source_key = ""
+        elif source_key not in source_keys:
+            errors.append(f"{cprefix}.source_key: {source_key!r} is not in this fact's source_keys")
+        locator_text = _parse_exact_text(c, "locator_text", cprefix, errors)
+        if source_key and locator_text:
+            if (source_key, locator_text) in seen:
+                errors.append(
+                    f"{cprefix}: duplicate citation ({source_key!r}, {locator_text!r}) "
+                    "within this fact"
+                )
+            seen.add((source_key, locator_text))
+        citations.append(CitationEntry(source_key=source_key, locator_text=locator_text))
+    return citations
+
+
+def _parse_deity(
+    raw: dict,
+    prefix: str,
+    sources: dict,
+    errors: list[str],
+    schema_version: Any = SCHEMA_VERSION,
+) -> DeityEntry:
     display_name = raw.get("display_name")
     if not display_name or not str(display_name).strip():
         errors.append(f"{prefix}.display_name: required, must not be blank")
@@ -641,10 +723,17 @@ def _parse_deity(raw: dict, prefix: str, sources: dict, errors: list[str]) -> De
         verified_at=verified_at,
         note=raw.get("note", "") or "",
         source_keys=list(source_keys),
+        citations=_parse_citations(raw, schema_version, prefix, source_keys, errors),
     )
 
 
-def _parse_history(raw: dict, prefix: str, sources: dict, errors: list[str]) -> HistoryEntry:
+def _parse_history(
+    raw: dict,
+    prefix: str,
+    sources: dict,
+    errors: list[str],
+    schema_version: Any = SCHEMA_VERSION,
+) -> HistoryEntry:
     history_type = raw.get("history_type")
     if history_type not in _VALID_HISTORY_TYPES:
         errors.append(f"{prefix}.history_type: invalid value {history_type!r}")
@@ -674,6 +763,7 @@ def _parse_history(raw: dict, prefix: str, sources: dict, errors: list[str]) -> 
         verified_at=verified_at,
         note=raw.get("note", "") or "",
         source_keys=list(source_keys),
+        citations=_parse_citations(raw, schema_version, prefix, source_keys, errors),
     )
 
 
@@ -949,11 +1039,11 @@ def _parse_source_facts(
 ) -> list[SourceFactEntry]:
     if "source_facts" not in raw:
         return []
-    if schema_version != SOURCE_FACT_SCHEMA_VERSION:
+    if schema_version not in _SOURCE_FACT_SCHEMA_VERSIONS:
         # 古い version では空リストでも黙って無視しない（collectives と同じ）。
         errors.append(
             f"{prefix}.source_facts: not allowed in schema_version {schema_version!r}; "
-            f"requires {SOURCE_FACT_SCHEMA_VERSION!r}"
+            f"requires one of {list(_SOURCE_FACT_SCHEMA_VERSIONS)!r}"
         )
         return []
     raw_facts = raw["source_facts"]
@@ -971,7 +1061,7 @@ def _parse_source_facts(
 def _parse_shrine_block(
     raw: dict, prefix: str, sources: dict, errors: list[str], schema_version: Any = SCHEMA_VERSION
 ) -> ShrineBlock:
-    if schema_version == SOURCE_FACT_SCHEMA_VERSION:
+    if schema_version in _SOURCE_FACT_SCHEMA_VERSIONS:
         unknown = sorted(set(raw) - _SHRINE_BLOCK_KEYS_V1_2)
         if unknown:
             errors.append(f"{prefix}: unknown key(s) {unknown!r}")
@@ -983,11 +1073,11 @@ def _parse_shrine_block(
     address = shrine_ref.get("address", "") or ""
 
     deities = [
-        _parse_deity(d, f"{prefix}.deities[{j}]", sources, errors)
+        _parse_deity(d, f"{prefix}.deities[{j}]", sources, errors, schema_version)
         for j, d in enumerate(raw.get("deities") or [])
     ]
     histories = [
-        _parse_history(h, f"{prefix}.histories[{j}]", sources, errors)
+        _parse_history(h, f"{prefix}.histories[{j}]", sources, errors, schema_version)
         for j, h in enumerate(raw.get("histories") or [])
     ]
 
@@ -1057,7 +1147,9 @@ __all__ = [
     "SCHEMA_VERSION",
     "COLLECTIVE_SCHEMA_VERSION",
     "SOURCE_FACT_SCHEMA_VERSION",
+    "CITATION_SCHEMA_VERSION",
     "SUPPORTED_SCHEMA_VERSIONS",
+    "CitationEntry",
     "SourceFactEntry",
     "find_source_fact_by_stable_key",
     "diff_source_fact_fields",

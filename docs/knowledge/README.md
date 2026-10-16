@@ -22,6 +22,7 @@ KAMI MUSUBIが、神社の事実をどのように意味へ変換し、推薦・
 | `shrine-position-contract.md` | `Shrine.latitude` / `longitude` をVisitor / Navigation Anchorとして採用する意味、Source要件、競合時のHOLD/PASS判定を定義 |
 | `shrine-orientation-evidence-contract.md` | 神社方位Evidenceの3 Layer（PHYSICAL / RITUAL / SYMBOLIC）、3 Status、`orientation_subject`、Source Authority、推論禁止則を定義 |
 | `canonical-anchor-adjudication-procedure.md` | 神社中心座標PHASE_2のread-only調査・判定手順、Evidence Packet適用順、subject_type × point_method適用、停止条件、Human QAを定義 |
+| `fact-source-citation-contract.md` | document-level Sourceと、Fact単位のSource内位置（`ShrineFactSourceCitation.locator_text`）の分離、Knowledge Seed schema 1.3 `citations`、importerのfail-closed規則を定義 |
 | `production-candidate-linkage-contract.md` | Candidate identityとProduction Shrine rowのcanonical linkage authority、status、evidence、失効およびfail-closed規則を定義 |
 | `recommendation-copy-guide.md` | 推薦理由の共通文章構造を定義 |
 | `action-guide.md` | 行動提案の生成原則を定義 |

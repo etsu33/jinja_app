@@ -161,8 +161,9 @@ def _counts() -> dict[str, int]:
 
 
 def test_supported_versions_and_export_version_is_unchanged():
-    # 1.2（ShrineSourceFact の source_facts block）は test_knowledge_seed_source_fact_import.py で検証する。
-    assert SUPPORTED_SCHEMA_VERSIONS == ("1.0", "1.1", "1.2")
+    # 1.2（ShrineSourceFact の source_facts block）は test_knowledge_seed_source_fact_import.py、
+    # 1.3（Fact 単位の citations）は test_fact_source_citation.py で検証する。
+    assert SUPPORTED_SCHEMA_VERSIONS == ("1.0", "1.1", "1.2", "1.3")
     assert SCHEMA_VERSION == "1.0"
 
 
@@ -200,7 +201,7 @@ def test_schema_1_0_rejects_collectives_key_even_when_empty(collectives):
     assert any("shrines[0].collectives: not allowed in schema_version '1.0'" in e for e in errors)
 
 
-@pytest.mark.parametrize("version", ["0.9", "1.3", "", None, 1.1])
+@pytest.mark.parametrize("version", ["0.9", "1.4", "", None, 1.1])
 def test_unsupported_schema_version_rejected(version):
     seed = _seed_v11(collectives=[])
     seed["schema_version"] = version
