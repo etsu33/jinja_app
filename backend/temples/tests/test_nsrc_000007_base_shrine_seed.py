@@ -243,7 +243,7 @@ def test_same_name_rows_do_not_make_nsrc_000007_ambiguous():
     _import_base_seed()
     target = Shrine.objects.get(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS)
     others = [
-        Shrine.objects.create(name_jp=SHRINE_NAME, kind="shrine", address=address)
+        Shrine.objects.get_or_create(name_jp=SHRINE_NAME, kind="shrine", address=address)[0]
         for address in OTHER_AKAGI_ADDRESSES
     ]
     result = resolve_shrine(SHRINE_NAME, SHRINE_ADDRESS)
