@@ -258,3 +258,58 @@ NEXT_GATE                         = BLOCKED
 G3                                = NOT_EXECUTED
 STOP                              = TRUE
 ```
+
+
+## 10. 2026-10-16 fresh manual QA
+
+Fresh external lookup was performed after PR #3222 merge.
+
+Observed authoritative identity:
+
+```text
+新潟県神社庁
+赤城社 / あかぎしゃ
+十日町市上組2059番地子
+```
+
+Independent identity corroboration:
+
+```text
+法人名   = 赤城社
+法人番号 = 7110005010266
+住所     = 新潟県十日町市上組2059番地子
+郵便番号 = 949-8602
+```
+
+Map-provider structured lookup did not return the target `上組2059番地子` POI.
+It returned same-name sibling POIs including:
+
+```text
+赤城社 / 十日町市伊達乙48
+赤城社 / 十日町市四日町
+```
+
+Neither is nsrc-000008.
+
+Additional shrine directories identify the exact target by name/address and expose map links,
+but no directly traceable target-specific numeric latitude/longitude was obtained from the observed evidence.
+
+```text
+TARGET_SPECIFIC_POI                    = NOT_CONFIRMED
+DIRECT_NUMERIC_COORDINATE              = NOT_CONFIRMED
+SIBLING_POI_COLLISION                  = CONFIRMED
+ADDRESS_GEOCODING_USED_FOR_ADOPTION    = NO
+VIEWPORT_INFERENCE_USED_FOR_ADOPTION   = NO
+```
+
+### Technical result after fresh QA
+
+```text
+TECHNICAL_G2_PROPOSAL   = HOLD_POSITION_REVIEW
+ADOPTED_COORDINATE      = NONE
+MOTHER_SHIP_G2_DECISION = PENDING
+G3                      = NOT_EXECUTED
+STOP                    = TRUE
+```
+
+No evidence currently supports a G2 PASS without violating the Position Contract.
