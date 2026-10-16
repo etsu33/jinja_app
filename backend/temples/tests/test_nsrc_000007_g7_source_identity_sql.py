@@ -833,6 +833,12 @@ def _simulate_production_prestate() -> None:
     target / S2 / S3 と無関係な filler 行で実測値まで埋める。filler は lookalike にならない。
     """
     _base_state()
+
+    # Historical Production pre-state had no same-name / other-address 赤城社 rows.
+    # Current Base Seed may contain later materialized H002 candidates (e.g. nsrc-000009),
+    # so remove those future rows from this historical simulation only.
+    Shrine.objects.filter(name_jp=SHRINE_NAME).exclude(address=SHRINE_ADDRESS).delete()
+
     filler = _filler_shrine()
     surplus = Shrine.objects.count() - PRODUCTION_PRESTATE["shrine_total"]
     if surplus > 0:
