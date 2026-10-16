@@ -631,12 +631,17 @@ def test_pre_base_guard_fails_on_aggregate_or_target_drift():
 def test_same_name_other_address_rows_are_diagnostics_not_the_target():
     _base_state()
     for address in OTHER_AKAGI_ADDRESSES:
-        Shrine.objects.create(name_jp=SHRINE_NAME, kind="shrine", address=address)
+        Shrine.objects.get_or_create(name_jp=SHRINE_NAME, kind="shrine", address=address)
 
     state_class = _state_class()[0]
     assert state_class == "CLEAN_CREATE"
+    same_name_other_address_total = Shrine.objects.filter(name_jp=SHRINE_NAME).exclude(
+        address=SHRINE_ADDRESS
+    ).count()
     frozen = _frozen_values(s2_accepted=0, s3_accepted=0)
-    assert "3::bigint AS same_name_other_address_total" in frozen
+    assert (
+        f"{same_name_other_address_total}::bigint AS same_name_other_address_total" in frozen
+    )
     assert _guard_passes("nsrc_000007_g7_pre_base_guard.sql", frozen) is True
 
     # a same-address collision is a CONFLICT, whatever the name
@@ -828,6 +833,12 @@ def _simulate_production_prestate() -> None:
     target / S2 / S3 と無関係な filler 行で実測値まで埋める。filler は lookalike にならない。
     """
     _base_state()
+
+    # Historical Production pre-state had no same-name / other-address 赤城社 rows.
+    # Current Base Seed may contain later materialized H002 candidates (e.g. nsrc-000009),
+    # so remove those future rows from this historical simulation only.
+    Shrine.objects.filter(name_jp=SHRINE_NAME).exclude(address=SHRINE_ADDRESS).delete()
+
     filler = _filler_shrine()
     surplus = Shrine.objects.count() - PRODUCTION_PRESTATE["shrine_total"]
     if surplus > 0:

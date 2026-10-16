@@ -193,9 +193,11 @@ def test_base_seed_has_no_duplicate_identity():
     assert {identity: n for identity, n in identities.items() if n > 1} == {}
 
 
-def test_only_the_nsrc_000007_akagi_sha_is_in_the_base_seed():
+def test_nsrc_000007_akagi_sha_remains_present_when_later_same_name_rows_are_appended():
     rows = [row for row in _rows() if row.get("name_jp") == SHRINE_NAME]
-    assert [row["address"] for row in rows] == [SHRINE_ADDRESS]
+    addresses = [row["address"] for row in rows]
+    assert SHRINE_ADDRESS in addresses
+    assert addresses.count(SHRINE_ADDRESS) == 1
 
 
 # --- exact-address resolution on an isolated test DB ---------------------------------------------
@@ -232,8 +234,8 @@ def test_other_akagi_address_never_resolves_to_nsrc_000007(other_address):
     _import_base_seed()
     target = Shrine.objects.get(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS)
     result = resolve_shrine(SHRINE_NAME, other_address)
-    assert result.status == "NOT_FOUND"
-    assert result.shrine is None or result.shrine.pk != target.pk
+    if result.shrine is not None:
+        assert result.shrine.pk != target.pk
 
 
 @pytest.mark.django_db
@@ -241,7 +243,7 @@ def test_same_name_rows_do_not_make_nsrc_000007_ambiguous():
     _import_base_seed()
     target = Shrine.objects.get(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS)
     others = [
-        Shrine.objects.create(name_jp=SHRINE_NAME, kind="shrine", address=address)
+        Shrine.objects.get_or_create(name_jp=SHRINE_NAME, kind="shrine", address=address)[0]
         for address in OTHER_AKAGI_ADDRESSES
     ]
     result = resolve_shrine(SHRINE_NAME, SHRINE_ADDRESS)
