@@ -9,7 +9,7 @@ canonical_address        = 新潟県十日町市上組2059番地子
 
 G1                       = PASS / SAME_NAME_DIFFERENT_SHRINE
 TECHNICAL_G2_PROPOSAL    = HOLD_POSITION_REVIEW
-MOTHER_SHIP_G2_DECISION  = PENDING
+MOTHER_SHIP_G2_DECISION  = HOLD_POSITION_REVIEW
 ADOPTED_COORDINATE       = NONE
 Production write         = NONE
 Seed write               = NONE
@@ -252,7 +252,7 @@ No coordinate write occurs.
 NSRC_000008_G1                    = PASS / SAME_NAME_DIFFERENT_SHRINE
 TECHNICAL_G2_PROPOSAL             = HOLD_POSITION_REVIEW
 MOTHER_SHIP_G2_DECISION           = PENDING
-POSITION_STATUS                   = NOT_CLOSED
+POSITION_STATUS                   = HOLD_POSITION_REVIEW
 ADOPTED_VISITOR_ANCHOR            = NONE
 NEXT_GATE                         = BLOCKED
 G3                                = NOT_EXECUTED
@@ -307,9 +307,40 @@ VIEWPORT_INFERENCE_USED_FOR_ADOPTION   = NO
 ```text
 TECHNICAL_G2_PROPOSAL   = HOLD_POSITION_REVIEW
 ADOPTED_COORDINATE      = NONE
-MOTHER_SHIP_G2_DECISION = PENDING
+MOTHER_SHIP_G2_DECISION = HOLD_POSITION_REVIEW
 G3                      = NOT_EXECUTED
 STOP                    = TRUE
 ```
 
 No evidence currently supports a G2 PASS without violating the Position Contract.
+
+
+## 11. Mother Ship G2 decision
+
+Mother Ship explicitly selected:
+
+```text
+MOTHER_SHIP_G2_DECISION = HOLD_POSITION_REVIEW
+TARGET = nsrc-000008
+```
+
+This decision matches the technical G2 proposal and current evidence state.
+
+Final G2 state:
+
+```text
+G2_STATUS                       = HOLD_POSITION_REVIEW
+ADOPTED_COORDINATE              = NONE
+TARGET_SPECIFIC_POI             = NOT_CONFIRMED
+DIRECT_NUMERIC_COORDINATE       = NOT_CONFIRMED
+SAME_NAME_SIBLING_POI_COLLISION = CONFIRMED
+
+G3                              = NOT_EXECUTED
+NEXT_GATE                       = BLOCKED
+STOP                            = TRUE
+```
+
+This HOLD is a controlled gate result, not a failed identity review.
+
+The target remains eligible for future G2 re-open only if new target-specific Position evidence is obtained.
+No coordinate is inferred, and no Seed / Candidate Master / Production write is authorized by this decision.
