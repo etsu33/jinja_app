@@ -23,6 +23,7 @@ from temples.services.concierge_chat_candidates import (
 )
 from temples.services.recommendation_eligibility_verifier import (
     ELIGIBLE,
+    INELIGIBLE,
     UNRESOLVED,
     ShrineIdentity,
     verify_recommendation_eligibility,
@@ -120,6 +121,14 @@ def test_other_akagi_identities_never_inherit_nsrc_000007_eligibility():
         ]
     )
 
-    assert report.summary_counts() == (0, 0, 3)
-    assert [r.status for r in report.results] == [UNRESOLVED] * 3
-    assert all(r.shrine_id is None for r in report.results)
+    assert report.summary_counts() == (0, 1, 2)
+    assert [r.status for r in report.results] == [UNRESOLVED, INELIGIBLE, UNRESOLVED]
+
+    # 伊達乙48番地（nsrc-000009）は Base Shrine として materialize 済みだが、
+    # この helper では nsrc-000009 Knowledge を投入しないため INELIGIBLE。
+    # 同名別住所が nsrc-000007 の usable History を継承していないことを確認する。
+    ineligible = report.results[1]
+    assert ineligible.shrine_id is not None
+    assert ineligible.usable_fact_count == 0
+    assert report.results[0].shrine_id is None
+    assert report.results[2].shrine_id is None
