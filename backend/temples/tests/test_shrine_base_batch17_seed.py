@@ -90,13 +90,11 @@ def test_shrine_base_seed_batch17_coordinates_and_address():
         }
 
 
-def test_shrine_base_seed_no_duplicate_name_or_address():
+def test_shrine_base_seed_exact_identity_pairs_are_unique():
+    """同名・別住所は許容するが、exact (name_jp, address) identity は重複させない。"""
     data = _load_seed()
-    names = [e["name_jp"] for e in data]
-    assert len(names) == len(set(names))
-
-    addresses = [(e["name_jp"], e["address"]) for e in data]
-    assert len(addresses) == len(set(addresses))
+    identities = [(e["name_jp"], e["address"]) for e in data]
+    assert len(identities) == len(set(identities))
 
 
 def test_shrine_base_seed_existing_100_entries_unchanged():
