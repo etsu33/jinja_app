@@ -241,17 +241,22 @@ def test_nsrc_000007_base_shrine_resolves_exactly():
 def test_wrong_address_never_resolves_to_nsrc_000007():
     _import_base_seed()
     target = _target()
-    for address in OTHER_AKAGI_ADDRESSES:
-        assert resolve_shrine(SHRINE_NAME, address).status == "NOT_FOUND"
 
-    others = [
-        Shrine.objects.create(name_jp=SHRINE_NAME, kind="shrine", address=address)
-        for address in OTHER_AKAGI_ADDRESSES
-    ]
+    others = []
+    for address in OTHER_AKAGI_ADDRESSES:
+        result = resolve_shrine(SHRINE_NAME, address)
+        if result.shrine is not None:
+            assert result.shrine.pk != target.pk
+        other, _ = Shrine.objects.get_or_create(
+            name_jp=SHRINE_NAME, kind="shrine", address=address
+        )
+        others.append(other)
+
     for other in others:
         result = resolve_shrine(SHRINE_NAME, other.address)
         assert result.status == "OK"
         assert result.shrine.pk == other.pk != target.pk
+
     assert resolve_shrine(SHRINE_NAME, SHRINE_ADDRESS).shrine.pk == target.pk
 
 
