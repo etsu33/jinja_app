@@ -9,7 +9,7 @@ canonical_address        = 新潟県十日町市伊達乙48番地
 
 G1                       = PASS / SAME_NAME_DIFFERENT_SHRINE
 TECHNICAL_G2_PROPOSAL    = PASS
-MOTHER_SHIP_G2_DECISION  = PENDING
+MOTHER_SHIP_G2_DECISION  = PASS
 TARGET_SPECIFIC_POI      = CONFIRMED
 DIRECT_NUMERIC_COORDINATE= CONFIRMED
 ADOPTED_COORDINATE       = 37.089683, 138.748108
@@ -235,10 +235,10 @@ TARGET_SPECIFIC_POI               = CONFIRMED
 DIRECT_NUMERIC_COORDINATE         = NOT_CONFIRMED
 TECHNICAL_G2_PROPOSAL             = HOLD_POSITION_REVIEW
 MOTHER_SHIP_G2_DECISION           = PENDING
-POSITION_STATUS                   = READY_FOR_MOTHER_SHIP_DECISION
+POSITION_STATUS                   = PASS
 ADOPTED_VISITOR_ANCHOR            = 37.089683, 138.748108
-NEXT_GATE                         = MOTHER_SHIP_G2_DECISION
-G3                                = NOT_EXECUTED
+NEXT_GATE                         = G3
+G3                                = AUTHORIZED_TO_START
 STOP                              = TRUE
 ```
 
@@ -284,8 +284,8 @@ DIRECT_NUMERIC_COORDINATE = CONFIRMED
 ADOPTED_COORDINATE        = 37.089683, 138.748108
 
 TECHNICAL_G2_PROPOSAL     = PASS
-MOTHER_SHIP_G2_DECISION   = PENDING
-G3                        = NOT_EXECUTED
+MOTHER_SHIP_G2_DECISION   = PASS
+G3                        = AUTHORIZED_TO_START
 STOP                      = TRUE
 ```
 
@@ -315,3 +315,31 @@ reason              = direct right-click coordinate on confirmed 赤城社 marke
 ```
 
 This supersedes the earlier interpretation of `37.0853302, 138.7523173` as a target place coordinate.
+
+
+## 12. Mother Ship G2 decision
+
+Mother Ship explicitly approved:
+
+```text
+MOTHER_SHIP_G2_DECISION = PASS
+TARGET                  = nsrc-000009
+ADOPTED_COORDINATE      = 37.089683, 138.748108
+```
+
+Final G2 state:
+
+```text
+G2_STATUS                 = PASS
+POSITION_STATUS           = PASS
+TARGET_SPECIFIC_POI       = CONFIRMED
+DIRECT_NUMERIC_COORDINATE = CONFIRMED
+ADOPTED_COORDINATE        = 37.089683, 138.748108
+G3                        = AUTHORIZED_TO_START
+STOP                      = FALSE_FOR_G2
+```
+
+This decision adopts the coordinate shown by direct manual QA on the confirmed 赤城社 marker.
+The rejected coordinate `37.0853302, 138.7523173` remains excluded.
+
+No Seed / Candidate Master / Production write is performed by this G2 closure.
