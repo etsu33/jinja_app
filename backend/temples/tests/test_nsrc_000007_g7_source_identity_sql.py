@@ -631,12 +631,17 @@ def test_pre_base_guard_fails_on_aggregate_or_target_drift():
 def test_same_name_other_address_rows_are_diagnostics_not_the_target():
     _base_state()
     for address in OTHER_AKAGI_ADDRESSES:
-        Shrine.objects.create(name_jp=SHRINE_NAME, kind="shrine", address=address)
+        Shrine.objects.get_or_create(name_jp=SHRINE_NAME, kind="shrine", address=address)
 
     state_class = _state_class()[0]
     assert state_class == "CLEAN_CREATE"
+    same_name_other_address_total = Shrine.objects.filter(name_jp=SHRINE_NAME).exclude(
+        address=SHRINE_ADDRESS
+    ).count()
     frozen = _frozen_values(s2_accepted=0, s3_accepted=0)
-    assert "3::bigint AS same_name_other_address_total" in frozen
+    assert (
+        f"{same_name_other_address_total}::bigint AS same_name_other_address_total" in frozen
+    )
     assert _guard_passes("nsrc_000007_g7_pre_base_guard.sql", frozen) is True
 
     # a same-address collision is a CONFLICT, whatever the name
