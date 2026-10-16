@@ -8,11 +8,11 @@ name                     = 赤城社
 canonical_address        = 新潟県十日町市伊達乙48番地
 
 G1                       = PASS / SAME_NAME_DIFFERENT_SHRINE
-TECHNICAL_G2_PROPOSAL    = HOLD_POSITION_REVIEW
+TECHNICAL_G2_PROPOSAL    = PASS
 MOTHER_SHIP_G2_DECISION  = PENDING
 TARGET_SPECIFIC_POI      = CONFIRMED
-DIRECT_NUMERIC_COORDINATE= NOT_CONFIRMED
-ADOPTED_COORDINATE       = NONE
+DIRECT_NUMERIC_COORDINATE= CONFIRMED
+ADOPTED_COORDINATE       = 37.0853302, 138.7523173
 
 Production write         = NONE
 Seed write               = NONE
@@ -131,7 +131,7 @@ The returned POI is not the 四日町2534 or 上組2059番地子 sibling.
 The evidence available to this audit does not expose a directly traceable numeric latitude / longitude for the confirmed target POI.
 
 ```text
-DIRECT_NUMERIC_COORDINATE = NOT_CONFIRMED
+DIRECT_NUMERIC_COORDINATE = CONFIRMED
 ```
 
 A place identifier or map-provider entity reference is useful evidence of target identity but is not silently converted into a stored coordinate.
@@ -157,10 +157,10 @@ Current result:
 | current authoritative identity | PASS |
 | same-name collision understood | PASS |
 | target-specific primary POI confirmed | PASS |
-| target-specific numeric coordinate traceable | NOT YET |
+| target-specific numeric coordinate traceable | PASS |
 | visitor-facing identity alignment | PASS |
 | sibling POI substitution avoided | PASS |
-| deterministic Visitor / Navigation Anchor | NOT YET |
+| deterministic Visitor / Navigation Anchor | PASS |
 
 The target is closer to PASS than nsrc-000008 because the correct POI is identified.
 However, the active Contract still requires traceable numeric coordinates before adoption.
@@ -170,13 +170,13 @@ However, the active Contract still requires traceable numeric coordinates before
 ## 6. Technical G2 proposal
 
 ```text
-TECHNICAL_G2_PROPOSAL = HOLD_POSITION_REVIEW
+TECHNICAL_G2_PROPOSAL = PASS
 
 reason_codes:
-- TARGET_NUMERIC_COORDINATE_NOT_TRACEABLE
+- TARGET_NUMERIC_COORDINATE_CONFIRMED
 
 TARGET_SPECIFIC_POI = CONFIRMED
-ADOPTED_COORDINATE  = NONE
+ADOPTED_COORDINATE  = 37.0853302, 138.7523173
 ```
 
 This is not a Mother Ship decision.
@@ -235,9 +235,59 @@ TARGET_SPECIFIC_POI               = CONFIRMED
 DIRECT_NUMERIC_COORDINATE         = NOT_CONFIRMED
 TECHNICAL_G2_PROPOSAL             = HOLD_POSITION_REVIEW
 MOTHER_SHIP_G2_DECISION           = PENDING
-POSITION_STATUS                   = NOT_CLOSED
-ADOPTED_VISITOR_ANCHOR            = NONE
-NEXT_GATE                         = BLOCKED
+POSITION_STATUS                   = READY_FOR_MOTHER_SHIP_DECISION
+ADOPTED_VISITOR_ANCHOR            = 37.0853302, 138.7523173
+NEXT_GATE                         = MOTHER_SHIP_G2_DECISION
 G3                                = NOT_EXECUTED
 STOP                              = TRUE
 ```
+
+
+## 10. 2026-10-16 numeric coordinate follow-up
+
+Mother Ship supplied a fresh Google Maps screenshot for the target area.
+
+The visible Google Maps URL contains two distinct coordinate contexts:
+
+```text
+viewport center:
+@37.0856861,138.7471641,1890m
+
+target place coordinate:
+!3d37.0853302!4d138.7523173
+```
+
+The viewport coordinate is not adopted.
+
+The target place coordinate is the coordinate encoded in the Google Maps place URL for the
+confirmed 赤城社 POI at 〒949-8522 新潟県十日町市伊達乙48.
+
+Adopted technical candidate:
+
+```text
+latitude  = 37.0853302
+longitude = 138.7523173
+
+position_source_type = map_provider_poi_manual_qa
+position_source      = Google Maps target place URL
+target identity      = 赤城社 / 新潟県十日町市伊達乙48番地
+target-specific POI  = CONFIRMED
+sibling risk         = EXCLUDED
+```
+
+The coordinate is not inferred from the viewport, address centroid, or sibling shrine.
+
+### Updated technical G2 result
+
+```text
+TARGET_SPECIFIC_POI       = CONFIRMED
+DIRECT_NUMERIC_COORDINATE = CONFIRMED
+ADOPTED_COORDINATE        = 37.0853302, 138.7523173
+
+TECHNICAL_G2_PROPOSAL     = PASS
+MOTHER_SHIP_G2_DECISION   = PENDING
+G3                        = NOT_EXECUTED
+STOP                      = TRUE
+```
+
+G3 remains blocked until Mother Ship explicitly selects G2 PASS.
