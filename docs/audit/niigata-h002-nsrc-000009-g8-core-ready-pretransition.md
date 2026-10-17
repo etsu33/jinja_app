@@ -1,6 +1,36 @@
-# nsrc-000009 G8 CORE READY PRE_TRANSITION
+# nsrc-000009 G8 CORE READY PRE_TRANSITION / Closure
 
-## Status
+## Final classification（G8 CLOSED / PASS）
+
+- Candidate: `nsrc-000009` 赤城社（新潟県十日町市伊達乙48番地）
+- Closure recorded at: `2026-10-17`
+- PRE_TRANSITION record: `MERGED`（PR #3242）
+- Mother Ship decision: `APPROVED_TARGET_ONLY`
+- CORE_READY transition: `APPLIED`（PR #3243, `develop@10fb31534e9f4055ac8a7f8706de9f69b4bc3ef4`）
+- Production write in this G8 audit / transition / closure: `0`
+
+```text
+COMPLETION_CONTRACT_PRE_TRANSITION         = 12/12 SATISFIED
+G8_CONDITION_08                            = PASS_WITH_LIMITATION
+G8_CONDITION_12_POST_TRANSITION            = PASS
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TARGET_ONLY
+TARGET                                     = nsrc-000009
+CORE_READY_TRANSITION                      = APPLIED
+NSRC_000009_POST_TRANSITION_ALIGNMENT      = PASS
+NSRC_000009_CORE_READY                     = PASS
+G8_STATUS                                  = CLOSED
+G8_RESULT                                  = PASS
+FORMAL_G8                                  = PASS
+```
+
+The Status and §1–§9 below are the PRE_TRANSITION record（PR #3242）and are kept as written, including
+`MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = NOT_RECORDED` / `CORE_READY_TRANSITION = NOT_EXECUTED` /
+`G8_STATUS = OPEN` at that time. The decision, transition, POST_TRANSITION verification, and Closure are
+recorded in §10.
+
+---
+
+## Status（PRE_TRANSITION; historical record）
 
 - Candidate: `nsrc-000009` 赤城社（新潟県十日町市伊達乙48番地）
 - Recorded at: `2026-10-17`
@@ -482,3 +512,181 @@ FACT_READY != CORE_READY
 ```
 
 Next action is the Mother Ship CORE_READY transition decision. G8 remains OPEN until a target-only transition is approved, applied, and POST_TRANSITION verification passes.
+
+---
+
+## 10. POST_TRANSITION verification / G8 Closure
+
+### 10.1 Mother Ship Decision Record
+
+```text
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TARGET_ONLY
+TARGET                                     = nsrc-000009
+```
+
+Mother ShipはCompletion Contract PRE_TRANSITION 12/12 SATISFIED（§9）を確認したうえで、
+`nsrc-000009` 1件だけのCORE_READY transitionを承認した。許可されたdeltaは§7の2fieldだけ。
+
+```text
+candidate_status:
+IMPORTED -> CORE_READY
+
+status_reason_code:
+PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS
+```
+
+### 10.2 Transition merge
+
+CORE_READY transitionはPR #3243で`develop`へmerge済み。
+
+```text
+PR                              = #3243
+merge_commit                    = 10fb31534e9f4055ac8a7f8706de9f69b4bc3ef4
+candidate_id                    = nsrc-000009
+candidate_status                = CORE_READY
+status_reason_code              = CORE_READY_CONTRACT_PASS
+official_source_status          = CONFIRMED
+knowledge_status                = FACT_READY
+identity_status                 = CONFIRMED
+duplicate_status                = SAME_NAME_DIFFERENT_SHRINE
+build_batch                     = null
+wave_id                         = null
+candidate_reason                = official_source_full_enumeration_candidate
+```
+
+admission provenance（current `develop`）:
+
+```text
+track                  = nationwide_source_candidate
+prefecture             = 新潟県
+source_batch_id        = NIIGATA-001
+handoff_id             = NIIGATA-001-H002
+source_position        = page001-row009
+source_snapshot_sha256 = f54022303700821672ee4ee65e9967a7e8f343715a66ad987cc0b43530850380
+source_url             = https://niigata-jinjacho.jp/shrine_niigata/search.php
+source_verified_at     = 2026-10-08
+captured_at            = 2026-10-08T14:27:00+09:00
+```
+
+PR #3243はCandidate Master、H002 lifecycle fixture、Candidate Master regression testの3ファイルだけを変更した。
+Production DB / Base Seed / Knowledge Seed / Recommendation / Ranking / Concierge / Compass / GoriyakuTagへのwriteはない。
+
+### 10.3 Required POST_TRANSITION verification result
+
+| # | Verification | Result | Evidence |
+| ---: | --- | --- | --- |
+| 1 | `candidate_status == CORE_READY` | PASS | current `develop` Candidate Master |
+| 2 | `status_reason_code == CORE_READY_CONTRACT_PASS` | PASS | current `develop` Candidate Master |
+| 3 | `knowledge_status == FACT_READY` | PASS | transition前後で不変 |
+| 4 | `official_source_status == CONFIRMED` | PASS | transition前後で不変 |
+| 5 | `build_batch == null` | PASS | Nationwide Source Track boundaryどおり |
+| 6 | admission provenance完全一致 | PASS | track / prefecture / source_batch_id / handoff_id / source_position / source_snapshot_sha256 / source_url / source_verified_at / captured_at 全て不変 |
+| 7 | identity / duplicate evidence完全一致 | PASS | `CONFIRMED / SAME_NAME_DIFFERENT_SHRINE` を保持 |
+| 8 | 他H002 4候補に差分なし | PASS | nsrc-000006 / 000007 / 000008 / 000010 before/after diff = 0 |
+| 9 | 既存CORE_READY候補に差分なし | PASS | 既存CORE_READY Candidate before/after diff = 0 |
+| 10 | Historical Wave0 accounting不変 | PASS | 44件 -> 44件、changed IDs = 0、status counts不変 |
+| 11 | Candidate Master tests / relevant consumers PASS | PASS | PR #3243 backend-pr / CodeQL / dependency-review PASS |
+| 12 | Completion Contract #1〜#11 evidenceに後退なし | PASS | transition PRはlifecycle 2 field + fixture / regression testだけ。Production / Runtime / Knowledge evidence変更なし |
+
+H002 current lifecycle:
+
+```text
+nsrc-000006 = CORE_READY
+nsrc-000007 = CORE_READY
+nsrc-000008 = DISCOVERED
+nsrc-000009 = CORE_READY
+nsrc-000010 = DISCOVERED
+```
+
+### 10.4 Minimal-diff result
+
+Transition直前の`develop@04f4e6fb5c0dcca679c523d0f9935abbf40ff6ea`（PR #3242 merge）とPOST_TRANSITION current state
+（`develop@10fb31534e9f4055ac8a7f8706de9f69b4bc3ef4`）のCandidate Masterをrepository上で比較した（Production queryなし）。
+
+```text
+changed Candidate IDs = [nsrc-000009]
+
+candidate_status:
+IMPORTED -> CORE_READY
+
+status_reason_code:
+PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS
+
+other target fields changed  = none
+top-level metadata changed   = none
+
+Historical Wave0 count       = 44 -> 44
+Historical Wave0 changed IDs = []
+Historical Wave0 status:
+  CORE_READY  12
+  HOLD         9
+  IMPORTED     5
+  REVIEW       1
+  BUILD_READY 17
+
+Candidate Master total rows = 54 -> 54
+```
+
+H002 handoff fixtureもtargetだけがCORE_READY lifecycleへ同期され、他H002 memberは不変。
+
+### 10.5 Transition PR validation
+
+PR #3243:
+
+```text
+backend-pr        = PASS
+codeql            = PASS
+dependency-review = PASS
+
+Candidate Master tests = 386 passed
+full backend suite     = 5833 passed, 8 skipped
+ruff                   = clean
+git diff --check       = clean
+```
+
+### 10.6 Final G8 classification
+
+Completion Contract #1〜#11はPRE_TRANSITION evidenceから判定変更なし。
+#12はtransition後のGovernance Synchronizationを確認し、POST_TRANSITION PASSとする。
+
+```text
+G1                                    = PASS / SAME_NAME_DIFFERENT_SHRINE
+G2                                    = PASS
+G3                                    = PASS / NORMAL_MODEL_FIT
+G4                                    = PASS
+G5                                    = PASS / ELIGIBLE
+G6                                    = PASS
+G7                                    = CLOSED / PASS
+
+G8_CONDITIONS_01_TO_07                = PASS
+G8_CONDITION_08                       = PASS_WITH_LIMITATION
+G8_CONDITIONS_09_TO_11                = PASS
+G8_CONDITION_12_PRE_TRANSITION        = PASS
+G8_CONDITION_12_POST_TRANSITION       = PASS
+
+COMPLETION_CONTRACT_PRE_TRANSITION    = 12/12 SATISFIED
+
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TARGET_ONLY
+CORE_READY_TRANSITION                      = APPLIED
+
+NSRC_000009_POST_TRANSITION_ALIGNMENT = PASS
+NSRC_000009_CORE_READY                = PASS
+
+G8_STATUS = CLOSED
+G8_RESULT = PASS
+FORMAL_G8 = PASS
+```
+
+Condition #8のlimitation（G7 apply直前・直後のGoriyakuTag master countを独立計測した記録がない）はClosure後も恒久的に保持する。
+G8 ClosureはG1〜G7のhistorical evidenceや本書§Status〜§9のPRE_TRANSITION時点の記録（NOT_RECORDED / NOT_EXECUTED / OPEN）を遡及的に書き換えない。
+
+### 10.7 Closure
+
+```text
+NSRC_000009_G8_CLOSURE              = PASS
+FURTHER_G8_TRANSITION_WRITE         = NOT_AUTHORIZED
+NEXT_GATE                           = NONE
+STOP                                = TRUE
+```
+
+Closure後、nsrc-000009に対する追加のG8 transition write（Candidate Master / fixture / Production）は承認されていない。
