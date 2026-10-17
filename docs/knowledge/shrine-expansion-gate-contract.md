@@ -10,6 +10,7 @@
 - DB schema change: なし
 - Production write: なし
 - Candidate Master schema change: なし
+- Catalog Track extension: 2026-10-17
 
 ## 目的
 
@@ -19,12 +20,16 @@
 このContractが守る不変条件は次である。
 
 ~~~text
-Shrine DB presence
-!= Position PASS
-!= Knowledge Model Fit
-!= Fact usability
+Shrine Registry presence
+!= Production Catalog presence
 != Recommendation eligibility
 != CORE_READY
+
+CATALOG_READY
+!= Recommendation eligible
+
+CORE_READY
+=> Recommendation eligibility PASS
 ~~~
 
 1つのGateを通過しても、他GateのPASSを意味しない。
@@ -57,7 +62,7 @@ Shrine DB presence
 
 ## 2. Unified Gate Chain
 
-標準フローを次に固定する。
+G0〜G3までは全Candidateで共通とし、G3のProduct Surface DecisionでRecommendation TrackとCatalog-only Trackを分離する。
 
 ~~~text
 G0 Discovery / Registry
@@ -71,16 +76,23 @@ G2 Position / Navigation Anchor
         v
 G3 Source + Knowledge Model Fit
         |
-        v
-G4 Knowledge Fact + Evidence
-        |
-        v
-G5 Shared Recommendation Eligibility
-        |
-        v
-G6 Runtime QA
-   Concierge / Compass / Detail
-        |
+        +-------------------------------+
+        |                               |
+        v                               v
+PRODUCT_SURFACE                  PRODUCT_SURFACE
+= RECOMMENDATION                 = CATALOG_ONLY
+        |                               |
+        v                               v
+G4 Knowledge Fact + Evidence     C4 Catalog Evidence
+        |                               |
+        v                               v
+G5 Shared Recommendation         C5 Catalog Runtime QA
+Eligibility                             |
+        |                               v
+        v                        C6 Production Import
+G6 Runtime QA                           |
+Concierge / Compass / Detail            v
+        |                        C7 CATALOG_READY Closure
         v
 G7 Production Import Gate
         |
@@ -88,16 +100,25 @@ G7 Production Import Gate
 G8 CORE READY Closure
 ~~~
 
-Product DecisionおよびModel Riskは、G3で分岐するside gateとして扱う。
+Product DecisionおよびModel RiskはG3で扱う。
 
 ~~~text
 G3
-├─ CURATION / normal fit -> G4
+├─ CURATION / normal fit -> Product Surface Decision
 ├─ RESEARCH_REQUIRED    -> HOLD
 ├─ MODEL_REVIEW         -> HOLD
 ├─ MODEL_CHANGE         -> dedicated model track
 └─ PRODUCT_DECISION     -> Mother Ship
 ~~~
+
+Product Surface Decisionの許可値:
+
+~~~text
+PRODUCT_SURFACE = RECOMMENDATION
+PRODUCT_SURFACE = CATALOG_ONLY
+~~~
+
+同一handoff内のCandidateへ同じsurfaceを強制しない。判定はCandidate単位で行う。
 
 ---
 
@@ -251,6 +272,27 @@ Product scope判断は技術Gateで代替しない。
 
 Modelが保存可能でも、Product HOLDが解除されたことにはならない。
 
+### Product Surface Decision
+
+G3のSource / Model Fit評価後、Mother ShipのProduct判断としてCandidate単位で次のいずれかを確定する。
+
+~~~text
+PRODUCT_SURFACE = RECOMMENDATION
+PRODUCT_SURFACE = CATALOG_ONLY
+~~~
+
+`RECOMMENDATION` は、Source-backed Knowledgeを安全に構築でき、G4以降のShared Recommendation Eligibilityへ進める対象。
+
+`CATALOG_ONLY` は、real-world ShrineとしてIdentity / Position / accepted Sourceは説明可能だが、Recommendation参加に必要なusable Deity / History Factを現時点で安全に構築できない、またはRecommendation surfaceへ進めないとMother Shipが判断した対象。
+
+~~~text
+CATALOG_ONLY != inferior shrine
+CATALOG_ONLY != G5 FAIL
+CATALOG_ONLY -> G5 NOT_APPLICABLE
+~~~
+
+Catalog-only判定を理由にunsupportedな祭神・由緒・ご利益を生成してはならない。
+
 ### Eligibility Bypass禁止
 
 usable History >= 1 を作れることだけを理由に、未解決Model Riskを通過させない。
@@ -258,6 +300,8 @@ usable History >= 1 を作れることだけを理由に、未解決Model Risk�
 ---
 
 ## 7. G4 Knowledge Fact + Evidence Gate
+
+本Gateは `PRODUCT_SURFACE = RECOMMENDATION` のCandidateに適用する。
 
 ### 目的
 
@@ -303,6 +347,9 @@ Factを増やすために座標・candidate identity・Product scopeを変更し
 
 ## 8. G5 Shared Recommendation Eligibility Gate
 
+本Gateは `PRODUCT_SURFACE = RECOMMENDATION` のCandidateに適用する。
+`PRODUCT_SURFACE = CATALOG_ONLY` のCandidateでは `G5 = NOT_APPLICABLE` とし、FAILやPASSへ読み替えない。
+
 ### Authority
 
 docs/knowledge/recommendation-eligibility-contract.md
@@ -330,7 +377,9 @@ Candidate setへ参加するための構造条件を満たす。
 
 ### FAIL
 
-INELIGIBLEのShrineをfallbackでRecommendationへ戻さない。
+Recommendation TrackでINELIGIBLEとなったShrineをfallbackでRecommendationへ戻さない。
+
+Catalog-only ShrineもShared Eligibilityを迂回してRecommendationへ戻さない。
 
 Legacy goriyaku / history_theme でEligibilityを代替しない。
 
@@ -338,6 +387,7 @@ Legacy goriyaku / history_theme でEligibilityを代替しない。
 
 ## 9. G6 Runtime QA Gate
 
+本GateはRecommendation TrackのRuntime QAである。
 G5通過後、実際のRuntime利用で各責務が壊れていないことを確認する。
 
 ### Detail
@@ -385,6 +435,9 @@ Ranking weights
 ---
 
 ## 10. G7 Production Import Gate
+
+本GateはRecommendation TrackのProduction Import Gateである。
+Catalog-only TrackのProduction writeはC6を使用する。
 
 Production writeはMother Shipの明示承認後にのみ実行する。
 
@@ -439,6 +492,116 @@ IMPORTEDはCORE_READYではない。
 FACT_READYもCORE_READYではない。
 
 BUILD_READYもCORE_READYではない。
+
+---
+
+## 11A. Catalog-only Track
+
+Catalog-only Trackは、Recommendation Eligibilityを弱めたり迂回したりする例外経路ではない。
+Recommendationを目的としない別Product Surfaceである。
+
+### C4 Catalog Evidence
+
+最低条件:
+
+~~~text
+G1 canonical identity PASS
+G2 Visitor / Navigation Anchor PASS
+accepted Sourceが追跡可能
+canonical name / address frozen
+Source provenance traceable
+~~~
+
+Catalog-onlyのために次を要求しない。
+
+~~~text
+usable Deity Fact >= 1
+usable History Fact >= 1
+G5 Shared Recommendation Eligibility PASS
+~~~
+
+ただし、Fact不足を埋めるためにunsupportedなDeity / History / goriyakuを生成してはならない。
+
+### C5 Catalog Runtime QA
+
+最低確認:
+
+~~~text
+Shrine Detail basic identity表示 PASS
+Shrine list / API basic presence PASS
+map / navigation uses adopted coordinate
+Concierge recommendation participation = NO
+Compass recommendation participation   = NO
+~~~
+
+Recommendation不参加は既存Shared Eligibility Contractのfail-closed挙動で守る。
+Catalog-only Shrineをscore低下、fallback、legacy goriyaku / history_theme等でRecommendationへ戻さない。
+
+### C6 Catalog Production Import
+
+Production writeはMother Shipの明示承認後にのみ実行する。
+
+Precondition:
+
+~~~text
+C4 Catalog Evidence PASS
+C5 Catalog Runtime QA PASS
+expected Production delta explainable
+identity collision resolved
+adopted coordinate frozen
+isolated preflight PASS
+~~~
+
+Import中に想定外差分が出た場合はSTOPし、即興の追加writeで状態を合わせない。
+
+Catalog-only importはBase Shrine identity / positionのProduction presenceを許可するが、Recommendation eligibilityやCORE_READYを意味しない。
+
+### C7 CATALOG_READY Closure
+
+Catalog-only Trackのclosure stateをaudit上 `CATALOG_READY` と記録できる。
+
+最低条件:
+
+~~~text
+Identity PASS
+Position PASS
+Catalog Evidence PASS
+Catalog Runtime QA PASS
+Production state一致
+Idempotency PASS
+Candidate Master / audit整合
+Recommendation participation = NO
+~~~
+
+現時点では `CATALOG_READY` をCandidate Masterの `candidate_status` enumへ追加しない。
+
+~~~text
+Candidate Master lifecycle after Catalog import = IMPORTED
+Catalog audit closure                           = CATALOG_READY
+Recommendation eligibility                      = NOT_APPLICABLE
+CORE_READY                                      = NO
+~~~
+
+Candidate Masterへmachine-readableなCatalog stateが必要になった場合は、schema変更として別PRで設計する。
+
+### Catalog -> Recommendation Re-entry
+
+Catalog-only Shrineは永久固定ではない。
+
+新しいaccepted Sourceが得られ、Recommendation Trackへ進める可能性が生じた場合:
+
+~~~text
+CATALOG_READY
+-> G3へ再入場
+-> Product Surface Decision = RECOMMENDATION
+-> G4
+-> G5 PASS
+-> G6
+-> required Production Knowledge update
+-> G8 CORE_READY
+~~~
+
+Catalog closureだけを理由にG4 / G5を自動PASSさせない。
 
 ---
 
@@ -497,7 +660,8 @@ Candidate Masterへ新しいfieldは追加しない。
 | G3 Model Fit | unresolved | MODEL_REVIEW_REMAINS |
 | G3 Model Fit | schema不足 | MODEL_CHANGE_REQUIRED（Candidate Master: `HOLD` / `MODEL_CHANGE_REQUIRED`） |
 | G3 Product | scope判断必要 | PRODUCT_DECISION_REQUIRED |
-| G4 Evidence | usable Factなし | Evidence / Knowledge HOLD |
+| G3 Product Surface | Recommendation向けKnowledgeを安全に構築できないがCatalog要件は満たせる | CATALOG_ONLY |
+| G4 Evidence | usable Factなし（Recommendation Track） | Evidence / Knowledge HOLD |
 | G5 Eligibility | ineligible | Recommendationへ参加させない |
 | G6 Runtime QA | runtime不整合 | IMPORTED等の現stateを維持しCORE_READYへ上げない |
 | G7 Import | unexpected Production delta | STOP、推測修正しない |
@@ -532,6 +696,12 @@ RESEARCH_REQUIRED
 PRODUCT_DECISION_REQUIRED
 -> Mother Ship scope decision
 -> 許可されたsurfaceだけ次Gateへ
+
+CATALOG_READY
+-> 新しいaccepted Sourceを確認
+-> G3へ再入場
+-> Mother ShipがRECOMMENDATION surfaceを明示決定
+-> G4以降を再判定
 ~~~
 
 HOLD解除したから全Gate PASSという自動昇格は禁止する。
@@ -600,6 +770,22 @@ Recommendation Quality変更と同一PRへ束ねない。
 
 既存Fact・Positionの正本値を勝手に変更しない。
 
+### Catalog-only Data PR
+
+許可:
+
+- frozen Base Shrine identity / address / adopted coordinate
+- Catalog用Source provenance
+- Catalog runtime test
+- Catalog audit
+
+原則含めない:
+
+- unsupported Knowledge Factの生成
+- Recommendation eligibilityの緩和
+- Ranking / scoring変更
+- Candidate Master schemaへのCATALOG_READY追加
+
 ---
 
 ## 17. Wave0 Mapping
@@ -624,7 +810,13 @@ Wave0既存Batch membership、Candidate status、Production実測値は本Contra
 
 ## 18. Completion Contract for Future New Shrines
 
-今後の新規Shrineは、最低限次のchecklistを閉じてからCORE_READYとする。
+新規Shrineは全件をCORE_READYまで進める必要はない。
+
+~~~text
+ALL_CANDIDATES_MUST_REACH_CORE_READY = FALSE
+~~~
+
+Recommendation TrackでCORE_READYとする場合は、最低限次のchecklistを閉じる。
 
 ~~~markdown
 - [ ] G0 Candidate Registry
@@ -643,6 +835,23 @@ Wave0既存Batch membership、Candidate status、Production実測値は本Contra
 - [ ] G7 idempotency PASS
 - [ ] G8 Candidate Master / Production整合
 - [ ] G8 CORE_READY Closure
+~~~
+
+Catalog-only TrackでCATALOG_READYとする場合:
+
+~~~markdown
+- [ ] G0 Candidate Registry
+- [ ] G1 canonical identity / duplicate PASS
+- [ ] G2 Visitor / Navigation Anchor PASS
+- [ ] G3 accepted Source PASS
+- [ ] G3 Product Surface = CATALOG_ONLY
+- [ ] C4 Catalog Evidence PASS
+- [ ] C5 Catalog Runtime QA PASS
+- [ ] C6 Production expected delta PASS
+- [ ] C6 idempotency PASS
+- [ ] C7 Candidate Master / Production整合
+- [ ] C7 CATALOG_READY Closure
+- [ ] Recommendation participation = NO
 ~~~
 
 ---
@@ -676,9 +885,11 @@ KnowledgeはSourceとModel Fitを先に確認する
 Model Riskをusable Historyで迂回しない
 Evidence Gateを通らないFactでeligibilityを作らない
 Eligibilityを通らないShrineをfallbackでRecommendationへ戻さない
+Catalog-only ShrineをRecommendationへ暗黙昇格させない
+Catalog-only Production presenceをCORE_READYとみなさない
 Product HOLDを技術判断で解除しない
 新規Shrine追加だけを理由にRanking logicを変更しない
-CORE_READYは全Gate closure後にのみ宣言する
+CORE_READYはRecommendation Trackの全Gate closure後にのみ宣言する
 ~~~
 
 これにより、神社数を増やしても、座標・Knowledge・提案理由・Recommendation eligibility・Product判断を別責務として追跡できる状態を維持する。
