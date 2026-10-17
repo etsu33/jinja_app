@@ -43,6 +43,10 @@ DECISION = "docs/audit/niigata-h001-g6-verifier-identity-decision.md"
 
 H001 = "NIIGATA-001-H001"
 H002 = "NIIGATA-001-H002"
+# G0 登録済み（Candidate Master）だが G1 未実施のため identity manifest には無い handoff。
+H003 = "NIIGATA-001-H003"
+# どこにも登録されていない handoff（frozen Ready Set の範囲外）。
+UNREGISTERED_HANDOFF = "NIIGATA-001-H999"
 # docs/audit/niigata-h001-g6-verifier-identity-decision.md §3（Mother Ship freeze）
 H001_IDENTITIES = [
     ShrineIdentity("相吉神社", "新潟県中魚沼郡津南町大字谷内4797番地"),
@@ -323,9 +327,27 @@ def _write(tmp_path, name, data) -> Path:
 
 
 def test_unknown_handoff_fails_closed():
-    for handoff_id in ("NIIGATA-001-H003", "W0-DB01", "", "niigata-001-h001"):
+    for handoff_id in (UNREGISTERED_HANDOFF, "W0-DB01", "", "niigata-001-h001"):
         with pytest.raises(HandoffIdentityError, match="unknown handoff"):
             load_handoff_shrine_identities(handoff_id)
+
+
+def test_g0_only_handoff_is_not_a_reviewed_identity_handoff():
+    """H003 は G0 Admission だけ（identity / duplicate UNREVIEWED）。G1 前は manifest に無く fail closed。"""
+    master = _master()
+    rows = _cm_rows(master, H003)
+    assert [r["candidate_id"] for r in rows] == [
+        "nsrc-000011",
+        "nsrc-000012",
+        "nsrc-000013",
+        "nsrc-000014",
+        "nsrc-000015",
+    ]
+    assert all(r["identity_status"] == "UNREVIEWED" for r in rows)
+    assert all(r["duplicate_status"] == "UNREVIEWED" for r in rows)
+    assert H003 not in [h["handoff_id"] for h in _manifest()["handoffs"]]
+    with pytest.raises(HandoffIdentityError, match="unknown handoff"):
+        load_handoff_shrine_identities(H003)
 
 
 def test_loader_rejects_mutated_files(tmp_path):
@@ -545,7 +567,7 @@ def test_handoff_input_contract():
         call_command(
             "verify_recommendation_eligibility",
             "--handoff",
-            "NIIGATA-001-H003",
+            UNREGISTERED_HANDOFF,
             stdout=io.StringIO(),
         )
     with pytest.raises(CommandError, match="--handoff"):
