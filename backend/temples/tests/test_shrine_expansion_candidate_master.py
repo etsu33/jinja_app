@@ -2453,19 +2453,17 @@ def test_nsrc_000008_g1_is_confirmed_same_name_different_shrine_and_stays_discov
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
 
 
-def test_nsrc_000009_is_synced_to_g7_imported_and_stops_before_core_ready():
-    """G7 CLOSED / PASS を Candidate Master の IMPORTED state へ同期する。CORE_READY は G8 の別 Gate。
+def test_nsrc_000009_is_core_ready_with_unchanged_evidence():
+    """G8 Mother Ship decision（APPROVED_TARGET_ONLY）による CORE_READY。他の field は不変。
 
-    docs/audit/niigata-h002-nsrc-000009-g7-production-import-preflight.md（G8_CORE_READY = NOT_EXECUTED）。
+    docs/audit/niigata-h002-nsrc-000009-g8-core-ready-pretransition.md（PRE_TRANSITION 12/12 SATISFIED）。
     """
     master = _load_master()
     rows = {row["candidate_id"]: row for row in master["candidates"]}
     row = rows["nsrc-000009"]
 
-    assert row["candidate_status"] == "IMPORTED"
-    assert row["candidate_status"] != "CORE_READY"
-    assert row["status_reason_code"] == "PRODUCTION_IMPORT_COMPLETE"
-    assert row["status_reason_code"] != "CORE_READY_CONTRACT_PASS"
+    assert row["candidate_status"] == "CORE_READY"
+    assert row["status_reason_code"] == "CORE_READY_CONTRACT_PASS"
     assert row["identity_status"] == "CONFIRMED"
     assert row["duplicate_status"] == "SAME_NAME_DIFFERENT_SHRINE"
     assert row["official_source_status"] == "CONFIRMED"
@@ -2475,7 +2473,7 @@ def test_nsrc_000009_is_synced_to_g7_imported_and_stops_before_core_ready():
     assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
     assert row == {
         **_expected_member_immutable("nsrc-000009", "赤城社", "page001-row009"),
-        **NATIONWIDE_IMPORTED_LIFECYCLE,
+        **NATIONWIDE_CORE_READY_LIFECYCLE,
     }
     assert row["admission_provenance"] == {
         "track": "nationwide_source_candidate",
@@ -2491,7 +2489,7 @@ def test_nsrc_000009_is_synced_to_g7_imported_and_stops_before_core_ready():
     assert not (HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys())
     assert "reading" not in row
 
-    # 他の赤城社2件は nsrc-000009 の G7 sync に連動しない（DISCOVERED のまま）。
+    # 他の赤城社2件は nsrc-000009 の target-only transition に連動しない（DISCOVERED のまま）。
     for candidate_id in ("nsrc-000008", "nsrc-000010"):
         g1 = _member_g1(candidate_id)
         assert rows[candidate_id]["identity_status"] == g1["identity_status"], candidate_id
@@ -2499,14 +2497,24 @@ def test_nsrc_000009_is_synced_to_g7_imported_and_stops_before_core_ready():
         for field, value in NATIONWIDE_DISCOVERED_LIFECYCLE.items():
             assert rows[candidate_id][field] == value, (candidate_id, field)
 
-    # PRODUCTION_IMPORT_COMPLETE は H002 で nsrc-000009 だけ。
-    h002_import_complete = [
-        r["candidate_id"]
+    # H002 の CORE_READY は nsrc-000006 / nsrc-000007 / nsrc-000009 だけ。IMPORTED は残らない。
+    h002_lifecycle = {
+        r["candidate_id"]: (r["candidate_status"], r["status_reason_code"])
         for r in master["candidates"]
         if (r.get("admission_provenance") or {}).get("handoff_id") == H002_HANDOFF_ID
-        and r["status_reason_code"] == "PRODUCTION_IMPORT_COMPLETE"
-    ]
-    assert h002_import_complete == ["nsrc-000009"]
+    }
+    assert h002_lifecycle == {
+        "nsrc-000006": ("CORE_READY", "CORE_READY_CONTRACT_PASS"),
+        "nsrc-000007": ("CORE_READY", "CORE_READY_CONTRACT_PASS"),
+        "nsrc-000008": ("DISCOVERED", "REGISTRY_ADMISSION_COMPLETE"),
+        "nsrc-000009": ("CORE_READY", "CORE_READY_CONTRACT_PASS"),
+        "nsrc-000010": ("DISCOVERED", "REGISTRY_ADMISSION_COMPLETE"),
+    }
+
+    # 既存 CORE_READY Candidate は不変。
+    for candidate_id in ("nsrc-000002", "nsrc-000004"):
+        assert rows[candidate_id]["candidate_status"] == "CORE_READY", candidate_id
+        assert rows[candidate_id]["status_reason_code"] == "CORE_READY_CONTRACT_PASS", candidate_id
 
     # nsrc-000006 / nsrc-000007（既に CORE_READY）は不変。
     assert {
@@ -2622,7 +2630,7 @@ def test_niigata_h002_g1_is_resolved_with_independent_lifecycle_states():
         "nsrc-000006": "CORE_READY",
         "nsrc-000007": "CORE_READY",
         "nsrc-000008": "DISCOVERED",
-        "nsrc-000009": "IMPORTED",
+        "nsrc-000009": "CORE_READY",
         "nsrc-000010": "DISCOVERED",
     }
     assert not any(
@@ -2806,20 +2814,20 @@ def _h002_extra_member(master, rows):
             _set_provenance("nsrc-000008", "source_position", "page001-row007"),
             id="n8-changed-provenance",
         ),
-        # nsrc-000009（G7 IMPORTED）の lifecycle / immutable evidence regression と premature CORE_READY。
+        # nsrc-000009（G8 CORE_READY）の lifecycle / immutable evidence regression。
         pytest.param(_set("nsrc-000009", "identity_status", "UNREVIEWED"), id="n9-identity-regression"),
         pytest.param(_set("nsrc-000009", "duplicate_status", "UNREVIEWED"), id="n9-duplicate-regression"),
         pytest.param(_set("nsrc-000009", "duplicate_status", "NEW"), id="n9-duplicate-new"),
         pytest.param(_set("nsrc-000009", "duplicate_status", "SAME_SHRINE"), id="n9-duplicate-same-shrine"),
-        pytest.param(_set("nsrc-000009", "candidate_status", "CORE_READY"), id="n9-premature-core-ready"),
+        pytest.param(_set("nsrc-000009", "candidate_status", "IMPORTED"), id="n9-regressed-to-imported"),
         pytest.param(
-            _set("nsrc-000009", "status_reason_code", "CORE_READY_CONTRACT_PASS"),
-            id="n9-premature-core-ready-reason",
+            _set("nsrc-000009", "status_reason_code", "PRODUCTION_IMPORT_COMPLETE"),
+            id="n9-core-ready-reason-mismatch",
         ),
         pytest.param(_set("nsrc-000009", "candidate_status", "DISCOVERED"), id="n9-regressed-to-discovered"),
         pytest.param(
             _set("nsrc-000009", "status_reason_code", "REGISTRY_ADMISSION_COMPLETE"),
-            id="n9-imported-reason-mismatch",
+            id="n9-discovered-reason-mismatch",
         ),
         pytest.param(_set("nsrc-000009", "candidate_status", "BUILD_READY"), id="n9-regressed-to-build-ready"),
         pytest.param(
