@@ -2896,9 +2896,9 @@ def test_niigata_h002_contract_rejects_mutations(mutate):
     assert _handoff_violations(_mutated(master, mutate), spec) != []
 
 
-# --- NIIGATA-001-H003（G0 Admission only） -------------------------------------------------
+# --- NIIGATA-001-H003（G1 PASS） -----------------------------------------------------------
 #
-# H003 は G0 Registry Admission だけ。G1（identity / duplicate）は未実施。
+# H003 は G1 Identity / Duplicate Gate PASS。G2 以降は未実施。
 # 同名の赤城神社5件は別々の Candidate であり、名前から identity / duplicate を推論しない。
 # 期待値は manifest から独立した literal を使う。
 
@@ -2911,7 +2911,7 @@ H003_MEMBERS = (
 )
 
 
-def test_niigata_h003_is_registered_at_g0_only():
+def test_niigata_h003_is_g1_confirmed_only():
     master = _load_master()
     rows = {row["candidate_id"]: row for row in master["candidates"]}
     h003 = [
@@ -2930,9 +2930,9 @@ def test_niigata_h003_is_registered_at_g0_only():
             "candidate_status": "DISCOVERED",
             "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
             "build_batch": None,
-            "duplicate_status": "UNREVIEWED",
+            "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
             "wave_id": None,
-            "identity_status": "UNREVIEWED",
+            "identity_status": "CONFIRMED",
             "official_source_status": "AVAILABLE",
             "knowledge_status": "UNREVIEWED",
             "candidate_reason": NATIONWIDE_CANDIDATE_REASON,
@@ -2950,13 +2950,10 @@ def test_niigata_h003_is_registered_at_g0_only():
                 "captured_at": "2026-10-08T14:27:00+09:00",
             },
         }, candidate_id
-        # G1 の結論を持たない。
-        assert row["identity_status"] != "CONFIRMED", candidate_id
-        assert row["duplicate_status"] not in {"NEW", "SAME_NAME_DIFFERENT_SHRINE"}, candidate_id
         assert not (HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys()), candidate_id
         assert "reading" not in row, candidate_id
 
-    # H003 の G0 登録は H001 / H002 に連動しない。
+    # H003 の G1確定は H001 / H002 に連動しない。
     assert _handoff_violations(master, _handoff_spec(H001_HANDOFF_ID)) == []
     assert _handoff_violations(master, _handoff_spec(H002_HANDOFF_ID)) == []
     assert _handoff_violations(master, _handoff_spec(H003_HANDOFF_ID)) == []
@@ -2965,22 +2962,22 @@ def test_niigata_h003_is_registered_at_g0_only():
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
 
 
-# H003（G0 only）の premature G1 / hydration / 同名統合の mutation。
+# H003（G1 PASS）の regression / premature G2+ / 同名統合の mutation。
 @pytest.mark.parametrize(
     "mutate",
     [
-        pytest.param(_set("nsrc-000011", "identity_status", "CONFIRMED"), id="h003-premature-identity"),
-        pytest.param(_set("nsrc-000012", "duplicate_status", "NEW"), id="h003-premature-duplicate-new"),
+        pytest.param(_set("nsrc-000011", "identity_status", "UNREVIEWED"), id="h003-identity-regression"),
+        pytest.param(_set("nsrc-000012", "duplicate_status", "NEW"), id="h003-duplicate-new"),
         pytest.param(
-            _set("nsrc-000013", "duplicate_status", "SAME_NAME_DIFFERENT_SHRINE"),
-            id="h003-premature-same-name-different-shrine",
+            _set("nsrc-000013", "duplicate_status", "UNREVIEWED"),
+            id="h003-duplicate-regression",
         ),
-        pytest.param(_set("nsrc-000014", "duplicate_status", "SAME_SHRINE"), id="h003-premature-same-shrine"),
-        pytest.param(_set("nsrc-000015", "candidate_status", "BUILD_READY"), id="h003-lifecycle-beyond-g0"),
+        pytest.param(_set("nsrc-000014", "duplicate_status", "SAME_SHRINE"), id="h003-duplicate-same-shrine"),
+        pytest.param(_set("nsrc-000015", "candidate_status", "BUILD_READY"), id="h003-lifecycle-beyond-g1"),
         pytest.param(
-            _set("nsrc-000011", "official_source_status", "CONFIRMED"), id="h003-official-source-beyond-g0"
+            _set("nsrc-000011", "official_source_status", "CONFIRMED"), id="h003-official-source-beyond-g1"
         ),
-        pytest.param(_set("nsrc-000012", "knowledge_status", "FACT_READY"), id="h003-knowledge-beyond-g0"),
+        pytest.param(_set("nsrc-000012", "knowledge_status", "FACT_READY"), id="h003-knowledge-beyond-g1"),
         pytest.param(_set("nsrc-000013", "build_batch", "NIIGATA-001-H003"), id="h003-build-batch-handoff"),
         pytest.param(_set("nsrc-000014", "wave_id", "W0"), id="h003-wave-id-assigned"),
         pytest.param(_set("nsrc-000015", "official_name", "赤城神社"), id="h003-official-name-hydrated"),

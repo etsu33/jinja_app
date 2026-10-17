@@ -43,8 +43,9 @@ DECISION = "docs/audit/niigata-h001-g6-verifier-identity-decision.md"
 
 H001 = "NIIGATA-001-H001"
 H002 = "NIIGATA-001-H002"
-# G0 登録済み（Candidate Master）だが G1 未実施のため identity manifest には無い handoff。
+# G1 reviewed canonical identity 登録済みの handoff。
 H003 = "NIIGATA-001-H003"
+H003_AUDIT = "docs/audit/niigata-h003-g1-identity-duplicate.md"
 # どこにも登録されていない handoff（frozen Ready Set の範囲外）。
 UNREGISTERED_HANDOFF = "NIIGATA-001-H999"
 # docs/audit/niigata-h001-g6-verifier-identity-decision.md §3（Mother Ship freeze）
@@ -63,6 +64,13 @@ H002_IDENTITIES = [
     ShrineIdentity("赤城社", "新潟県十日町市伊達乙48番地"),
     ShrineIdentity("赤城社", "新潟県南魚沼市芹田79番地"),
 ]
+H003_IDENTITIES = [
+    ShrineIdentity("赤城神社", "新潟県新潟市江南区二本木1丁目7番16号"),
+    ShrineIdentity("赤城神社", "新潟県長岡市四郎丸2丁目5番33号"),
+    ShrineIdentity("赤城神社", "新潟県長岡市山屋314番地"),
+    ShrineIdentity("赤城神社", "新潟県五泉市上杉川1310番地2"),
+    ShrineIdentity("赤城神社", "新潟県魚沼市湯之谷芋川311番地"),
+]
 
 
 def _manifest() -> dict:
@@ -79,6 +87,7 @@ def _master() -> dict:
 def test_handoff_identities_are_the_frozen_exact_strings():
     assert load_handoff_shrine_identities(H001) == H001_IDENTITIES
     assert load_handoff_shrine_identities(H002) == H002_IDENTITIES
+    assert load_handoff_shrine_identities(H003) == H003_IDENTITIES
 
 
 def test_nsrc_000003_keeps_707_without_banchi():
@@ -109,6 +118,22 @@ def test_h002_identities_equal_each_g1_audit_record():
         ]
 
 
+def test_h003_identities_equal_g1_audit_record():
+    members = next(h for h in _manifest()["handoffs"] if h["handoff_id"] == H003)["members"]
+    assert all(
+        member["identity_evidence"]["verifier_identity_authority"] == H003_AUDIT
+        and member["identity_evidence"]["g1_identity_audit"] == H003_AUDIT
+        for member in members
+    )
+    text = (REPO_ROOT / H003_AUDIT).read_text(encoding="utf-8")
+    assert re.findall(r"^official_name\s*=\s*(.+)$", text, re.MULTILINE)[:5] == [
+        member["name"] for member in members
+    ]
+    assert re.findall(r"^official_address\s*=\s*(.+)$", text, re.MULTILINE)[:5] == [
+        member["address"] for member in members
+    ]
+
+
 def test_every_evidence_reference_exists_in_the_repository():
     for handoff in _manifest()["handoffs"]:
         for member in handoff["members"]:
@@ -117,15 +142,19 @@ def test_every_evidence_reference_exists_in_the_repository():
 
 
 def test_same_name_is_allowed_but_exact_pairs_are_unique():
-    identities = load_handoff_shrine_identities(H002)
-    assert [i.name for i in identities].count("赤城社") == 4
-    assert len(set(identities)) == len(identities)
+    h002 = load_handoff_shrine_identities(H002)
+    assert [i.name for i in h002].count("赤城社") == 4
+    assert len(set(h002)) == len(h002)
+    h003 = load_handoff_shrine_identities(H003)
+    assert [i.name for i in h003].count("赤城神社") == 5
+    assert len(set(h003)) == len(h003)
 
 
 def test_loader_does_not_touch_the_database(django_assert_num_queries):
     with django_assert_num_queries(0):
         load_handoff_shrine_identities(H001)
         load_handoff_shrine_identities(H002)
+        load_handoff_shrine_identities(H003)
 
 
 # --- fail-closed mutations ----------------------------------------------------------------------
@@ -285,6 +314,11 @@ def _authority_identities() -> dict[str, tuple[str, str]]:
         (name,) = re.findall(r"^official_name\s*=\s*(.+)$", audit, re.MULTILINE)
         (address,) = re.findall(r"^official_address\s*=\s*(.+)$", audit, re.MULTILINE)
         frozen[candidate_id] = (name, address)
+    h003_text = (REPO_ROOT / H003_AUDIT).read_text(encoding="utf-8")
+    h003_names = re.findall(r"^official_name\s*=\s*(.+)$", h003_text, re.MULTILINE)[:5]
+    h003_addresses = re.findall(r"^official_address\s*=\s*(.+)$", h003_text, re.MULTILINE)[:5]
+    for n, name, address in zip(range(11, 16), h003_names, h003_addresses, strict=True):
+        frozen[f"nsrc-{n:06d}"] = (name, address)
     return frozen
 
 
@@ -306,6 +340,9 @@ ADDRESS_MUTATIONS = {
     "707-banchi-added": lambda m: _member(m, H001, 2).update(address="新潟県長岡市悠久町707番地"),
     "h002-address-rewritten": lambda m: _member(m, H002, 2).update(
         address="新潟県十日町市上組2059番地"
+    ),
+    "h003-address-rewritten": lambda m: _member(m, H003, 3).update(
+        address="新潟県五泉市上杉川1310番地"
     ),
     "width-normalized": lambda m: _member(m, H001, 4).update(
         address="新潟県柏崎市荒浜４丁目1754番地2"
@@ -332,8 +369,8 @@ def test_unknown_handoff_fails_closed():
             load_handoff_shrine_identities(handoff_id)
 
 
-def test_g0_only_handoff_is_not_a_reviewed_identity_handoff():
-    """H003 は G0 Admission だけ（identity / duplicate UNREVIEWED）。G1 前は manifest に無く fail closed。"""
+def test_h003_is_a_reviewed_identity_handoff_after_g1():
+    """H003 は G1 PASS 後の reviewed identity handoff。G2 / eligibility はまだ主張しない。"""
     master = _master()
     rows = _cm_rows(master, H003)
     assert [r["candidate_id"] for r in rows] == [
@@ -343,11 +380,10 @@ def test_g0_only_handoff_is_not_a_reviewed_identity_handoff():
         "nsrc-000014",
         "nsrc-000015",
     ]
-    assert all(r["identity_status"] == "UNREVIEWED" for r in rows)
-    assert all(r["duplicate_status"] == "UNREVIEWED" for r in rows)
-    assert H003 not in [h["handoff_id"] for h in _manifest()["handoffs"]]
-    with pytest.raises(HandoffIdentityError, match="unknown handoff"):
-        load_handoff_shrine_identities(H003)
+    assert all(r["identity_status"] == "CONFIRMED" for r in rows)
+    assert all(r["duplicate_status"] == "SAME_NAME_DIFFERENT_SHRINE" for r in rows)
+    assert H003 in [h["handoff_id"] for h in _manifest()["handoffs"]]
+    assert load_handoff_shrine_identities(H003) == H003_IDENTITIES
 
 
 def test_loader_rejects_mutated_files(tmp_path):
