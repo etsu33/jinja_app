@@ -25,9 +25,11 @@ Chronology:
    are kept as written.
 2. Mother Ship's first Production read-only preflight stopped as designed: the citation table did not
    exist（Production at `0120`）. PR #3238 created the separate temples 0121 Production Migration Gate.
-3. After 0121, Mother Ship re-ran `nsrc_000009_g7_preflight.sql` on Production read-only and supplied the
+3. Mother Ship executed the separately authorized temples 0121 Production migration（PASS; recorded in
+   `docs/audit/production-temples-0121-migration-gate.md` §0 / §15）.
+4. After 0121, Mother Ship re-ran `nsrc_000009_g7_preflight.sql` on Production read-only and supplied the
    measurements（§18.1）.
-4. This PR froze those values into the three guards. It performed no Production connection, backup, or
+5. This PR froze those values into the three guards. It performed no Production connection, backup, or
    write.
 
 ## 1. Status at PR #3237（preparation; historical record）
@@ -428,7 +430,7 @@ Recommendation Top1 and Compass Top1 are not required.
 
 ```text
 LOCAL_CLIENT（this environment） = psql 16.15
-PRODUCTION_SERVER_VERSION       = NOT MEASURED（PostgreSQL 17.6 at the nsrc-000007 measurement; not reused）
+PRODUCTION_SERVER_VERSION       = NOT MEASURED at PR #3237（later measured 17.6 / 170006; §18.1）
 BACKUP_RESTORE_READINESS        = HOLD
 ```
 
@@ -522,8 +524,11 @@ Mother Ship executed `scripts/migration_safety/sql/nsrc_000009_g7_preflight.sql`
 measurement and approval, used verbatim.
 
 ```text
+server_version                     = 17.6
+server_version_num                 = 170006
 latest temples migration           = 0121_shrine_fact_source_citation
-temples_shrinefactsourcecitation   = exists
+fact_source_citation_migration_applied = true
+temples_shrinefactsourcecitation exists = true
 citation_total                     = 0
 
 Shrine      = 124
@@ -541,10 +546,11 @@ accepted_shared_source_count       = 1
 production_state_class             = CLEAN_CREATE
 ```
 
-Not supplied to this PR and therefore not recorded here: the server version string and the per-row
-diagnostic listings. `docs/audit/production-temples-0121-migration-gate.md` in the repository still
-shows its pre-execution status（HOLD）; this PR does not update that document. The 0121 application is
-taken from Mother Ship's measurement（latest temples migration = 0121, citation table exists）.
+The schema prerequisite of §5 is satisfied: 0121 is applied and the citation table exists with 0 rows.
+The 0121 migration itself was a separate, separately authorized gate
+（`docs/audit/production-temples-0121-migration-gate.md`）; that authorization covered the migration
+only and does not authorize the nsrc-000009 Production import. The per-row diagnostic listings of the
+preflight are not reproduced here.
 
 ```text
 G7_READ_ONLY_PREFLIGHT = PASS
@@ -663,11 +669,12 @@ scripts/migration_safety/sql/nsrc_000009_g7_post_base_guard.sql             froz
 scripts/migration_safety/sql/nsrc_000009_g7_post_knowledge_verification.sql frozen block SET + header line
 backend/temples/tests/test_nsrc_000009_g7_source_identity_sql.py            SET assertions + committed-guard rehearsal
 docs/audit/niigata-h002-nsrc-000009-g7-production-import-preflight.md       §0, §1 label, this section
+docs/audit/production-temples-0121-migration-gate.md                        completed migration record（follow-up commit）
 ```
 
 ### 18.7 Next（requires Mother Ship）
 
-1. Use a PostgreSQL client of the Production major version and take a **fresh** Production backup outside
+1. Use a PostgreSQL 17-compatible client（Production server 17.6 / 170006）and take a **fresh** Production backup outside
    the repository.
 2. Restore it to a disposable DB. The `nsrc_000009_g7_preflight.sql` fingerprint must equal §18.1, and
    the committed `nsrc_000009_g7_pre_base_guard.sql` must PASS on the restored DB.

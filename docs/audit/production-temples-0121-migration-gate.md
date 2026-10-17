@@ -1,6 +1,49 @@
 # Production temples 0121 Migration Gate
 
-## 1. Status
+## 0. Current status（migration completed）
+
+```text
+target migration              = temples 0121_shrine_fact_source_citation
+production latest temples     = 0121_shrine_fact_source_citation
+0121 applied                  = YES
+citation table exists         = YES（temples_shrinefactsourcecitation）
+citation row count            = 0
+Production PostgreSQL         = 17.6 / server_version_num 170006
+
+FRESH_PRODUCTION_BACKUP       = COMPLETED
+ISOLATED_RESTORE              = COMPLETED
+RESTORE_FINGERPRINT           = MATCHED
+
+PRODUCTION_MIGRATION_AUTHORIZED = YES（Mother Ship, explicit; temples 0121 ONLY）
+MIGRATION_EXECUTION           = PASS
+showmigrations temples        = [X] 0121_shrine_fact_source_citation
+manage.py check               = PASS
+migrate temples 0121 --plan   = No planned migration operations
+
+TEMPLES_0121_MIGRATION_GATE   = CLOSED / PASS
+```
+
+Scope of the authorization:
+
+```text
+authorized       = temples 0121_shrine_fact_source_citation migration only
+not authorized   = nsrc-000009 Base import / Knowledge import / any other Production write
+nsrc-000009 G7   = PRODUCTION_WRITE_AUTHORIZED = NO（see
+                   docs/audit/niigata-h002-nsrc-000009-g7-production-import-preflight.md）
+```
+
+0121 PASS does not imply nsrc-000009 G7 PASS（§13）.
+
+Chronology:
+
+1. PR #3238 created this gate in HOLD（§1–§14, kept as written as the pre-execution record）.
+2. Mother Ship took a fresh Production backup, completed the isolated restore, and matched the restore
+   fingerprint（§8 / §9）.
+3. Mother Ship explicitly authorized the temples 0121 Production migration and executed it.
+4. Post-migration verification passed（§15）. The records in §0 / §15 are Mother Ship's observations;
+   this repository change made no Production connection or write.
+
+## 1. Status at PR #3238（pre-execution; historical record）
 
 ```text
 target migration              = temples 0121_shrine_fact_source_citation
@@ -340,3 +383,44 @@ FINGERPRINT_MATCH                   = NOT EXECUTED
 PRODUCTION_MIGRATION_READY          = HOLD
 PRODUCTION_WRITE                    = NONE
 ```
+
+## 15. Execution record（Mother Ship; after PR #3238）
+
+Pre-execution（§8 / §9）:
+
+```text
+FRESH_PRODUCTION_BACKUP     = COMPLETED
+ISOLATED_RESTORE            = COMPLETED
+RESTORE_FINGERPRINT         = MATCHED
+```
+
+Authorization:
+
+```text
+PRODUCTION_MIGRATION_AUTHORIZED = YES（Mother Ship, explicit）
+scope                           = temples 0121_shrine_fact_source_citation only
+```
+
+Post-migration verification（§11）:
+
+```text
+Production PostgreSQL       = 17.6 / 170006
+latest temples migration    = 0121_shrine_fact_source_citation
+showmigrations temples      = [X] 0121_shrine_fact_source_citation
+citation table exists       = YES
+citation row count          = 0
+manage.py check             = PASS
+migrate temples 0121 --plan = No planned migration operations
+
+MIGRATION_EXECUTION         = PASS
+```
+
+Routing after closure:
+
+```text
+temples 0121 migration gate = CLOSED / PASS
+nsrc-000009 G7              -> Production read-only preflight rerun（done; nsrc-000009 audit §18）
+                            -> PRODUCTION_WRITE_AUTHORIZED = NO
+```
+
+No nsrc-000009 Knowledge or Base data was imported as part of this migration.
