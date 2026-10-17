@@ -1,6 +1,36 @@
 # NIIGATA-001-H002 — nsrc-000009 赤城社 G7 Production Import Preflight
 
-## 1. Status（preparation only）
+## 0. Current status（Production pre-state frozen）
+
+```text
+G7_PREPARATION              = PASS（PR #3237）
+PRODUCTION_READ_ONLY        = EXECUTED（Mother Ship, read-only）
+G7_READ_ONLY_PREFLIGHT      = PASS
+PRODUCTION_STATE_CLASS      = CLEAN_CREATE
+SHARED_SOURCE_STATE         = REUSABLE
+FROZEN_PRE_STATE            = SET（guards frozen; §18）
+PRODUCTION_EXPECTED_DELTA   = FROZEN
+BACKUP_RESTORE_READINESS    = HOLD
+PRODUCTION_WRITE_READY      = HOLD
+
+PRODUCTION_WRITE_AUTHORIZED = NO
+PRODUCTION_WRITE            = NONE
+FORMAL_G7                   = NOT EXECUTED
+G8                          = NOT EXECUTED
+```
+
+Chronology:
+
+1. PR #3237 prepared the artifacts with the frozen block UNSET. §1–§17 are that preparation record and
+   are kept as written.
+2. Mother Ship's first Production read-only preflight stopped as designed: the citation table did not
+   exist（Production at `0120`）. PR #3238 created the separate temples 0121 Production Migration Gate.
+3. After 0121, Mother Ship re-ran `nsrc_000009_g7_preflight.sql` on Production read-only and supplied the
+   measurements（§18.1）.
+4. This PR froze those values into the three guards. It performed no Production connection, backup, or
+   write.
+
+## 1. Status at PR #3237（preparation; historical record）
 
 ```text
 candidate_id                = nsrc-000009
@@ -477,4 +507,177 @@ Production. The disposable databases were dropped.
 
 ```text
 STOP — no Production read, backup, or write is authorized or performed by this PR.
+```
+
+## 18. Production read-only measurement and freeze（follow-up PR, after #3237 / #3238）
+
+- Recorded at: 2026-10-17
+- Base: `develop@e1d953c`（#3238 merged）
+- Branch: `audit/nsrc-000009-g7-freeze-production-prestate`
+
+### 18.1 Measurement（supplied by Mother Ship）
+
+Mother Ship executed `scripts/migration_safety/sql/nsrc_000009_g7_preflight.sql` on Production through
+`readonly_query.sh`. This environment did not connect to Production. The values below are Mother Ship's
+measurement and approval, used verbatim.
+
+```text
+latest temples migration           = 0121_shrine_fact_source_citation
+temples_shrinefactsourcecitation   = exists
+citation_total                     = 0
+
+Shrine      = 124
+Source      = 145
+Deity       = 295
+History     = 234
+Citation    = 0
+SourceFact  = 34
+Collective  = 6
+
+same_name_other_address_total      = 1
+shared Source source_identity_state = REUSABLE
+accepted_shared_source_count       = 1
+
+production_state_class             = CLEAN_CREATE
+```
+
+Not supplied to this PR and therefore not recorded here: the server version string and the per-row
+diagnostic listings. `docs/audit/production-temples-0121-migration-gate.md` in the repository still
+shows its pre-execution status（HOLD）; this PR does not update that document. The 0121 application is
+taken from Mother Ship's measurement（latest temples migration = 0121, citation table exists）.
+
+```text
+G7_READ_ONLY_PREFLIGHT = PASS
+PRODUCTION_STATE_CLASS = CLEAN_CREATE
+```
+
+### 18.2 Frozen block（SET）
+
+`-- BEGIN/END nsrc_000009_frozen_pre_state` is byte-identical in:
+
+- `scripts/migration_safety/sql/nsrc_000009_g7_pre_base_guard.sql`
+- `scripts/migration_safety/sql/nsrc_000009_g7_post_base_guard.sql`
+- `scripts/migration_safety/sql/nsrc_000009_g7_post_knowledge_verification.sql`
+
+```text
+frozen_values_set              = true
+shrine_total                   = 124
+source_total                   = 145
+deity_total                    = 295
+history_total                  = 234
+citation_total                 = 0
+source_fact_total              = 34
+collective_total               = 6
+same_name_other_address_total  = 1
+accepted_shared_source_count   = 1
+```
+
+Only the frozen block and each guard's stale "UNSET" header line changed. The Source identity block,
+URL normalization, target facts block, coordinates, citation locator, and delta logic are
+byte-unchanged. `nsrc_000009_g7_preflight.sql` is unchanged.
+
+### 18.3 Expected Production delta（FROZEN）
+
+```text
+EXPECTED_PRODUCTION_DELTA
+Shrine     +1
+Source     +0   （shared Source REUSABLE: 1 - accepted_shared_source_count = 0）
+Deity      +0
+History    +2
+Citation   +2
+SourceFact +0
+Collective +0
+goriyaku   +0
+```
+
+| Aggregate | Pre-state | Post-Base | Post-Knowledge |
+|---|---:|---:|---:|
+| Shrine | 124 | 125 | 125 |
+| Source | 145 | 145 | 145 |
+| Deity | 295 | 295 | 295 |
+| History | 234 | 234 | 236 |
+| Citation | 0 | 0 | 2 |
+| SourceFact | 34 | 34 | 34 |
+| Collective | 6 | 6 | 6 |
+
+```text
+PRODUCTION_EXPECTED_DELTA = FROZEN
+```
+
+### 18.4 Disposable rehearsal with the committed frozen blocks
+
+pytest disposable DB only. The committed guard files run unchanged.
+
+Simulated pre-state: Base Seed without the target, nsrc-000007 Knowledge imported（shared Source
+REUSABLE, the 四日町 `赤城社` as the one same-name row）, then unrelated non-lookalike filler rows bringing
+the aggregates to exactly 124 / 145 / 295 / 234 / 0 / 34 / 6; preflight `CLEAN_CREATE`.
+
+```text
+exact Production pre-state      -> pre-Base PASS（post-Base FAIL, post-Knowledge FAIL）
+target subset dry-run           -> no write
+target subset apply             -> created=1; aggregates = 125 / 145 / 295 / 234 / 0 / 34 / 6
+second subset dry-run           -> skipped=1
+post-Base                       -> PASS（pre-Base FAIL, post-Knowledge FAIL）
+Knowledge dry-run               -> {'source_REUSE_EXISTING': 1, 'history_CREATE': 2, 'citation_CREATE': 2}
+Knowledge apply                 -> sources created=0, histories created=2, citations created=2
+                                   aggregates = 125 / 145 / 295 / 236 / 2 / 34 / 6
+post-Knowledge                  -> PASS（post-Base FAIL）
+second Knowledge dry-run/apply  -> {'source_REUSE_EXISTING': 1, 'history_SKIP_EXISTS': 2,
+                                   'citation_SKIP_EXISTS': 2}, no CREATE, citations created=0;
+                                   post-Knowledge PASS; ALREADY_MATERIALIZED
+shared Source row               -> byte-unchanged（bibliography 中魚沼郡誌上 p.398）
+goriyaku snapshot               -> unchanged
+```
+
+Committed pre-Base guard drift（each starts from the exact pre-state, then fails）: Shrine / Source /
+Deity / History / Citation / SourceFact / Collective +1, Source −1, same-name other address +1 and
+swapped, target exists, different-name row at the target address, shared Source metadata drift /
+bibliography → p.445 / identity ambiguous / non-identity lookalike（added and swapped）/
+importer-unparseable / absent.
+
+Committed post-Base guard fails on coordinate drift, goriyaku text, goriyaku tag, an extra citation
+elsewhere, and an extra Shrine. Committed post-Knowledge verification fails on every CONFLICT and
+PARTIAL mutation of §9.2. The committed guards also fail on a non-Production state（disposable lineage
+aggregates）. The in-memory Source-state / state-class matrix（§9.2）is kept unchanged.
+
+Mutation sanity（temporary, restored byte-identical）: pre-Base `source_total` 145 → 144 → 22 failed.
+
+### 18.5 Validation
+
+```text
+guard.py check-readonly-sql（5 nsrc-000009 SQL files）        SAFE × 5
+frozen block identical in 3 guard files                       1 distinct block
+test_nsrc_000009_g7_source_identity_sql.py                    126 passed
+nsrc-000009 base / knowledge / G5 / G6 / G7, nsrc-000007 G7,
+  test_fact_source_citation.py                                268 passed
+scripts/migration_safety/tests                                320 passed
+ruff check / format --check（test）                            clean
+git diff --check                                              clean
+```
+
+### 18.6 Changed files
+
+```text
+scripts/migration_safety/sql/nsrc_000009_g7_pre_base_guard.sql              frozen block SET + header line
+scripts/migration_safety/sql/nsrc_000009_g7_post_base_guard.sql             frozen block SET + header line
+scripts/migration_safety/sql/nsrc_000009_g7_post_knowledge_verification.sql frozen block SET + header line
+backend/temples/tests/test_nsrc_000009_g7_source_identity_sql.py            SET assertions + committed-guard rehearsal
+docs/audit/niigata-h002-nsrc-000009-g7-production-import-preflight.md       §0, §1 label, this section
+```
+
+### 18.7 Next（requires Mother Ship）
+
+1. Use a PostgreSQL client of the Production major version and take a **fresh** Production backup outside
+   the repository.
+2. Restore it to a disposable DB. The `nsrc_000009_g7_preflight.sql` fingerprint must equal §18.1, and
+   the committed `nsrc_000009_g7_pre_base_guard.sql` must PASS on the restored DB.
+3. Only then can Mother Ship authorize the Production write and the Formal G7 decision.
+
+```text
+PRODUCTION_WRITE_READY      = HOLD
+PRODUCTION_WRITE_AUTHORIZED = NO
+PRODUCTION_WRITE            = NONE
+FORMAL_G7                   = NOT EXECUTED
+
+STOP — no Production backup or write is performed by this PR.
 ```
