@@ -2453,22 +2453,30 @@ def test_nsrc_000008_g1_is_confirmed_same_name_different_shrine_and_stays_discov
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
 
 
-def test_nsrc_000009_g1_is_confirmed_same_name_different_shrine_and_stays_discovered():
-    """G1 PASS / SAME_NAME_DIFFERENT_SHRINE。他の赤城社3件とは別 identity。lifecycle は進めない。"""
+def test_nsrc_000009_is_synced_to_g7_imported_and_stops_before_core_ready():
+    """G7 CLOSED / PASS を Candidate Master の IMPORTED state へ同期する。CORE_READY は G8 の別 Gate。
+
+    docs/audit/niigata-h002-nsrc-000009-g7-production-import-preflight.md（G8_CORE_READY = NOT_EXECUTED）。
+    """
     master = _load_master()
     rows = {row["candidate_id"]: row for row in master["candidates"]}
     row = rows["nsrc-000009"]
 
-    assert row["candidate_status"] == "DISCOVERED"
-    assert row["status_reason_code"] == "REGISTRY_ADMISSION_COMPLETE"
+    assert row["candidate_status"] == "IMPORTED"
+    assert row["candidate_status"] != "CORE_READY"
+    assert row["status_reason_code"] == "PRODUCTION_IMPORT_COMPLETE"
+    assert row["status_reason_code"] != "CORE_READY_CONTRACT_PASS"
     assert row["identity_status"] == "CONFIRMED"
     assert row["duplicate_status"] == "SAME_NAME_DIFFERENT_SHRINE"
-    assert row["official_source_status"] == "AVAILABLE"
-    assert row["knowledge_status"] == "UNREVIEWED"
+    assert row["official_source_status"] == "CONFIRMED"
+    assert row["knowledge_status"] == "FACT_READY"
     assert row["build_batch"] is None
     assert row["wave_id"] is None
     assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
-    assert row == _expected_member_row("nsrc-000009", "赤城社", "page001-row009")
+    assert row == {
+        **_expected_member_immutable("nsrc-000009", "赤城社", "page001-row009"),
+        **NATIONWIDE_IMPORTED_LIFECYCLE,
+    }
     assert row["admission_provenance"] == {
         "track": "nationwide_source_candidate",
         "prefecture": "新潟県",
@@ -2483,15 +2491,24 @@ def test_nsrc_000009_g1_is_confirmed_same_name_different_shrine_and_stays_discov
     assert not (HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys())
     assert "reading" not in row
 
-    # 他の赤城社2件は nsrc-000009 の G1 に連動しない（各自の G1 現在値のまま）。
+    # 他の赤城社2件は nsrc-000009 の G7 sync に連動しない（DISCOVERED のまま）。
     for candidate_id in ("nsrc-000008", "nsrc-000010"):
         g1 = _member_g1(candidate_id)
         assert rows[candidate_id]["identity_status"] == g1["identity_status"], candidate_id
         assert rows[candidate_id]["duplicate_status"] == g1["duplicate_status"], candidate_id
-        expected_status = _member_spec(candidate_id)["lifecycle"]["candidate_status"]
-        assert rows[candidate_id]["candidate_status"] == expected_status, candidate_id
+        for field, value in NATIONWIDE_DISCOVERED_LIFECYCLE.items():
+            assert rows[candidate_id][field] == value, (candidate_id, field)
 
-    # nsrc-000006 / nsrc-000007 の G1 は不変。
+    # PRODUCTION_IMPORT_COMPLETE は H002 で nsrc-000009 だけ。
+    h002_import_complete = [
+        r["candidate_id"]
+        for r in master["candidates"]
+        if (r.get("admission_provenance") or {}).get("handoff_id") == H002_HANDOFF_ID
+        and r["status_reason_code"] == "PRODUCTION_IMPORT_COMPLETE"
+    ]
+    assert h002_import_complete == ["nsrc-000009"]
+
+    # nsrc-000006 / nsrc-000007（既に CORE_READY）は不変。
     assert {
         k: rows["nsrc-000006"][k] for k in ("identity_status", "duplicate_status", "candidate_status")
     } == {"identity_status": "CONFIRMED", "duplicate_status": "NEW", "candidate_status": "CORE_READY"}
@@ -2519,6 +2536,7 @@ def test_nsrc_000009_g1_is_confirmed_same_name_different_shrine_and_stays_discov
     ]
 
     assert _handoff_violations(master, _handoff_spec(H001_HANDOFF_ID)) == []
+    assert _handoff_violations(master, _handoff_spec(H002_HANDOFF_ID)) == []
     wave0 = _wave0_candidates(master)
     assert len(wave0) == EXPECTED_WAVE0_TOTAL
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
@@ -2604,7 +2622,7 @@ def test_niigata_h002_g1_is_resolved_with_independent_lifecycle_states():
         "nsrc-000006": "CORE_READY",
         "nsrc-000007": "CORE_READY",
         "nsrc-000008": "DISCOVERED",
-        "nsrc-000009": "DISCOVERED",
+        "nsrc-000009": "IMPORTED",
         "nsrc-000010": "DISCOVERED",
     }
     assert not any(
@@ -2788,15 +2806,27 @@ def _h002_extra_member(master, rows):
             _set_provenance("nsrc-000008", "source_position", "page001-row007"),
             id="n8-changed-provenance",
         ),
-        # nsrc-000009（G1 PASS / SAME_NAME_DIFFERENT_SHRINE）の regression と G1 を超えた advancement。
+        # nsrc-000009（G7 IMPORTED）の lifecycle / immutable evidence regression と premature CORE_READY。
         pytest.param(_set("nsrc-000009", "identity_status", "UNREVIEWED"), id="n9-identity-regression"),
         pytest.param(_set("nsrc-000009", "duplicate_status", "UNREVIEWED"), id="n9-duplicate-regression"),
         pytest.param(_set("nsrc-000009", "duplicate_status", "NEW"), id="n9-duplicate-new"),
-        pytest.param(_set("nsrc-000009", "candidate_status", "BUILD_READY"), id="n9-lifecycle-beyond-g1"),
+        pytest.param(_set("nsrc-000009", "duplicate_status", "SAME_SHRINE"), id="n9-duplicate-same-shrine"),
+        pytest.param(_set("nsrc-000009", "candidate_status", "CORE_READY"), id="n9-premature-core-ready"),
         pytest.param(
-            _set("nsrc-000009", "official_source_status", "CONFIRMED"), id="n9-official-source-beyond-g1"
+            _set("nsrc-000009", "status_reason_code", "CORE_READY_CONTRACT_PASS"),
+            id="n9-premature-core-ready-reason",
         ),
-        pytest.param(_set("nsrc-000009", "knowledge_status", "FACT_READY"), id="n9-knowledge-beyond-g1"),
+        pytest.param(_set("nsrc-000009", "candidate_status", "DISCOVERED"), id="n9-regressed-to-discovered"),
+        pytest.param(
+            _set("nsrc-000009", "status_reason_code", "REGISTRY_ADMISSION_COMPLETE"),
+            id="n9-imported-reason-mismatch",
+        ),
+        pytest.param(_set("nsrc-000009", "candidate_status", "BUILD_READY"), id="n9-regressed-to-build-ready"),
+        pytest.param(
+            _set("nsrc-000009", "official_source_status", "AVAILABLE"),
+            id="n9-official-source-regression",
+        ),
+        pytest.param(_set("nsrc-000009", "knowledge_status", "UNREVIEWED"), id="n9-knowledge-regression"),
         pytest.param(
             _set("nsrc-000009", "official_address", "新潟県十日町市伊達乙48番地"),
             id="n9-official-address-hydrated",
