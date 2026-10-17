@@ -111,6 +111,61 @@
           }
         }
       ]
+    },
+    {
+      "handoff_id": "NIIGATA-001-H003",
+      "members": [
+        {
+          "candidate_id": "nsrc-000011",
+          "source_position": "page002-row001",
+          "name": "赤城神社",
+          "address": "新潟県新潟市江南区二本木1丁目7番16号",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h003-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h003-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000012",
+          "source_position": "page002-row002",
+          "name": "赤城神社",
+          "address": "新潟県長岡市四郎丸2丁目5番33号",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h003-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h003-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000013",
+          "source_position": "page002-row003",
+          "name": "赤城神社",
+          "address": "新潟県長岡市山屋314番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h003-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h003-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000014",
+          "source_position": "page002-row004",
+          "name": "赤城神社",
+          "address": "新潟県五泉市上杉川1310番地2",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h003-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h003-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000015",
+          "source_position": "page002-row005",
+          "name": "赤城神社",
+          "address": "新潟県魚沼市湯之谷芋川311番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h003-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h003-g1-identity-duplicate.md"
+          }
+        }
+      ]
     }
   ]
 }
