@@ -1252,6 +1252,7 @@ FROZEN_READY_SET_PATH = (
 
 H001_HANDOFF_ID = "NIIGATA-001-H001"
 H002_HANDOFF_ID = "NIIGATA-001-H002"
+H003_HANDOFF_ID = "NIIGATA-001-H003"
 
 HANDOFF_LIFECYCLE_FIELDS = (
     "candidate_status",
@@ -2658,8 +2659,9 @@ def _h002_remove(candidate_id: str):
 
 def _h002_extra_member(master, rows):
     extra = json.loads(json.dumps(rows["nsrc-000010"]))
-    extra["candidate_id"] = "nsrc-000011"
-    extra["admission_provenance"]["source_position"] = "page002-row001"
+    # 未登録の candidate_id（nsrc-000011〜000015 は H003 が使用済み）。
+    extra["candidate_id"] = "nsrc-000016"
+    extra["admission_provenance"]["source_position"] = "page002-row006"
     master["candidates"].append(extra)
 
 
@@ -2890,5 +2892,121 @@ def _h002_extra_member(master, rows):
 def test_niigata_h002_contract_rejects_mutations(mutate):
     master = _load_master()
     spec = _handoff_spec(H002_HANDOFF_ID)
+    assert _handoff_violations(master, spec) == []
+    assert _handoff_violations(_mutated(master, mutate), spec) != []
+
+
+# --- NIIGATA-001-H003（G0 Admission only） -------------------------------------------------
+#
+# H003 は G0 Registry Admission だけ。G1（identity / duplicate）は未実施。
+# 同名の赤城神社5件は別々の Candidate であり、名前から identity / duplicate を推論しない。
+# 期待値は manifest から独立した literal を使う。
+
+H003_MEMBERS = (
+    ("nsrc-000011", "赤城神社", "page002-row001"),
+    ("nsrc-000012", "赤城神社", "page002-row002"),
+    ("nsrc-000013", "赤城神社", "page002-row003"),
+    ("nsrc-000014", "赤城神社", "page002-row004"),
+    ("nsrc-000015", "赤城神社", "page002-row005"),
+)
+
+
+def test_niigata_h003_is_registered_at_g0_only():
+    master = _load_master()
+    rows = {row["candidate_id"]: row for row in master["candidates"]}
+    h003 = [
+        row
+        for row in master["candidates"]
+        if (row.get("admission_provenance") or {}).get("handoff_id") == H003_HANDOFF_ID
+    ]
+    assert [row["candidate_id"] for row in h003] == [m[0] for m in H003_MEMBERS]
+
+    for candidate_id, name, position in H003_MEMBERS:
+        row = rows[candidate_id]
+        assert row == {
+            "candidate_id": candidate_id,
+            "candidate_name": name,
+            "prefecture": "新潟県",
+            "candidate_status": "DISCOVERED",
+            "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+            "build_batch": None,
+            "duplicate_status": "UNREVIEWED",
+            "wave_id": None,
+            "identity_status": "UNREVIEWED",
+            "official_source_status": "AVAILABLE",
+            "knowledge_status": "UNREVIEWED",
+            "candidate_reason": NATIONWIDE_CANDIDATE_REASON,
+            "admission_provenance": {
+                "track": "nationwide_source_candidate",
+                "prefecture": "新潟県",
+                "source_batch_id": "NIIGATA-001",
+                "handoff_id": "NIIGATA-001-H003",
+                "source_position": position,
+                "source_snapshot_sha256": (
+                    "f54022303700821672ee4ee65e9967a7e8f343715a66ad987cc0b43530850380"
+                ),
+                "source_url": "https://niigata-jinjacho.jp/shrine_niigata/search.php",
+                "source_verified_at": "2026-10-08",
+                "captured_at": "2026-10-08T14:27:00+09:00",
+            },
+        }, candidate_id
+        # G1 の結論を持たない。
+        assert row["identity_status"] != "CONFIRMED", candidate_id
+        assert row["duplicate_status"] not in {"NEW", "SAME_NAME_DIFFERENT_SHRINE"}, candidate_id
+        assert not (HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys()), candidate_id
+        assert "reading" not in row, candidate_id
+
+    # H003 の G0 登録は H001 / H002 に連動しない。
+    assert _handoff_violations(master, _handoff_spec(H001_HANDOFF_ID)) == []
+    assert _handoff_violations(master, _handoff_spec(H002_HANDOFF_ID)) == []
+    assert _handoff_violations(master, _handoff_spec(H003_HANDOFF_ID)) == []
+    wave0 = _wave0_candidates(master)
+    assert len(wave0) == EXPECTED_WAVE0_TOTAL
+    assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
+
+
+# H003（G0 only）の premature G1 / hydration / 同名統合の mutation。
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(_set("nsrc-000011", "identity_status", "CONFIRMED"), id="h003-premature-identity"),
+        pytest.param(_set("nsrc-000012", "duplicate_status", "NEW"), id="h003-premature-duplicate-new"),
+        pytest.param(
+            _set("nsrc-000013", "duplicate_status", "SAME_NAME_DIFFERENT_SHRINE"),
+            id="h003-premature-same-name-different-shrine",
+        ),
+        pytest.param(_set("nsrc-000014", "duplicate_status", "SAME_SHRINE"), id="h003-premature-same-shrine"),
+        pytest.param(_set("nsrc-000015", "candidate_status", "BUILD_READY"), id="h003-lifecycle-beyond-g0"),
+        pytest.param(
+            _set("nsrc-000011", "official_source_status", "CONFIRMED"), id="h003-official-source-beyond-g0"
+        ),
+        pytest.param(_set("nsrc-000012", "knowledge_status", "FACT_READY"), id="h003-knowledge-beyond-g0"),
+        pytest.param(_set("nsrc-000013", "build_batch", "NIIGATA-001-H003"), id="h003-build-batch-handoff"),
+        pytest.param(_set("nsrc-000014", "wave_id", "W0"), id="h003-wave-id-assigned"),
+        pytest.param(_set("nsrc-000015", "official_name", "赤城神社"), id="h003-official-name-hydrated"),
+        pytest.param(
+            _set("nsrc-000011", "official_address", "新潟県新潟市江南区二本木1丁目7番16号"),
+            id="h003-official-address-hydrated",
+        ),
+        pytest.param(_set("nsrc-000012", "reading", "あかぎじんじゃ"), id="h003-reading-hydrated"),
+        pytest.param(_set("nsrc-000013", "latitude", 37.8), id="h003-coordinate-hydrated"),
+        pytest.param(_set("nsrc-000014", "shrine_id", 123), id="h003-shrine-id-hydrated"),
+        pytest.param(_set("nsrc-000015", "goriyaku", "家内安全"), id="h003-goriyaku-hydrated"),
+        pytest.param(
+            _set_provenance("nsrc-000011", "source_position", "page002-row002"),
+            id="h003-changed-provenance",
+        ),
+        pytest.param(
+            _set_provenance("nsrc-000012", "handoff_id", "NIIGATA-001-H002"),
+            id="h003-member-moved-to-h002",
+        ),
+        # 同名の赤城神社を1件に統合（重複排除）した状態。
+        pytest.param(_h002_remove("nsrc-000013"), id="h003-akagi-deduplicated"),
+        pytest.param(_set("nsrc-000014", "candidate_name", "赤城社"), id="h003-akagi-renamed"),
+    ],
+)
+def test_niigata_h003_contract_rejects_mutations(mutate):
+    master = _load_master()
+    spec = _handoff_spec(H003_HANDOFF_ID)
     assert _handoff_violations(master, spec) == []
     assert _handoff_violations(_mutated(master, mutate), spec) != []
