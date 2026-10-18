@@ -405,8 +405,10 @@ def test_g0_only_handoff_is_not_a_reviewed_identity_handoff():
         load_handoff_shrine_identities(H004)
 
 
-# NIIGATA-001-VPG001 member の G0 登録（docs/audit/niigata-vpg001-g0-candidate-registry.md）。
-# provenance の handoff_id は元の Source handoff。G1 前は reviewed identity manifest に無い。
+# NIIGATA-001-VPG001 member の G1 decision 記録。
+# provenance の handoff_id は元の Source handoff。Candidate Master の identity / duplicate は
+# Mother Ship decision に alignment 済みだが、reviewed identity manifest は次工程で追加する。
+# その間 verifier identity lookup は fail closed を維持する。
 VPG001 = "NIIGATA-001-VPG001"
 VPG001_MEMBER_HANDOFFS = {
     "nsrc-000021": "NIIGATA-001-H015",
@@ -417,8 +419,8 @@ VPG001_MEMBER_HANDOFFS = {
 }
 
 
-def test_vpg001_g0_members_are_not_reviewed_identities():
-    """VPG001 member は G0 Admission だけ。G1 前は manifest に無く、identity lookup は fail closed。"""
+def test_vpg001_g1_decision_is_fail_closed_until_manifest_alignment():
+    """G1 decision 記録後も manifest alignment 前は identity lookup を fail closed に保つ。"""
     master = _master()
     rows = {r["candidate_id"]: r for r in master["candidates"]}
     manifest = _manifest()
@@ -428,8 +430,15 @@ def test_vpg001_g0_members_are_not_reviewed_identities():
     for candidate_id, handoff_id in VPG001_MEMBER_HANDOFFS.items():
         row = rows[candidate_id]
         assert row["admission_provenance"]["handoff_id"] == handoff_id
-        assert row["identity_status"] == "UNREVIEWED"
-        assert row["duplicate_status"] == "UNREVIEWED"
+        assert row["identity_status"] == "CONFIRMED"
+        expected_duplicate = {
+            "nsrc-000021": "SAME_NAME_DIFFERENT_SHRINE",
+            "nsrc-000022": "NEW",
+            "nsrc-000023": "NEW",
+            "nsrc-000024": "SAME_NAME_DIFFERENT_SHRINE",
+            "nsrc-000025": "SAME_NAME_DIFFERENT_SHRINE",
+        }[candidate_id]
+        assert row["duplicate_status"] == expected_duplicate
         assert candidate_id not in manifest_ids
         assert row["admission_provenance"]["source_position"] not in manifest_positions
         assert handoff_id not in manifest_handoffs
