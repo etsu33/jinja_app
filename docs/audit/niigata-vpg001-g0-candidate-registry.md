@@ -105,10 +105,22 @@ Production                                          NOT CONNECTED
 The frozen `raw_address` stays in the Ready Set and is not copied into Candidate Master as
 `official_address`.
 
-天津神社: the screening audit records deity evidence as primary-source verified by Mother Ship, with the
-deity name and source reference `NOT_SUPPLIED_IN_REPO`. None of that screening evidence enters Candidate
-Master at G0. The row has the same G0 state as the other four. The two-honden（天津神社・奴奈川神社）
-structure remains a G1 / G3 MODEL_RISK question.
+天津神社: the screening audit（`docs/audit/niigata-001-expansion-priority-screening.md` §6.1）and the
+VPG001 freeze record（§3.1）already record the primary-source deity evidence:
+
+```text
+primary_source      = 天津神社・奴奈川神社 公式サイト「御由緒・御祭神」
+primary_source_url  = https://amatsujinja.com/story/
+verified_at         = 2026-10-18
+天津神社 御祭神      = 天津彦々火瓊々杵尊 / 天児屋根命 / 天太玉命
+```
+
+This screening evidence exists in the repository, but it is **not** hydrated into Candidate Master at G0.
+nsrc-000025 has the same G0 state as the other four（no deity, source or official_* field;
+`official_source_status = AVAILABLE`, `knowledge_status = UNREVIEWED`）.
+
+- G1 still owns the identity / duplicate review.
+- G3 still owns the two-honden（天津神社・奴奈川神社）/ Fact-owner MODEL_RISK question.
 
 No identity or duplicate conclusion is drawn from names. 秋葉神社 is a common shrine name. Whether
 nsrc-000024 duplicates an existing Shrine is a G1 question, not a G0 fact.
@@ -219,5 +231,5 @@ blocks were formatted, to keep the diff scoped.
 
 ```text
 NEXT_GATE = G1（identity / duplicate review, separate PR）
-天津神社 G1 prerequisite = record deity name / primary source reference（NOT_SUPPLIED_IN_REPO）
+天津神社 G1 prerequisite = use the already-recorded primary-source deity evidence while preserving 天津神社 / 奴奈川神社 Fact ownership separation
 ```
