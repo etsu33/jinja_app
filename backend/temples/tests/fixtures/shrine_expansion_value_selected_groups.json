@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "purpose": "Test-only fixture. Expected G0 state of value-selected processing group members. Not runtime input and not Candidate Master authority (Candidate Master is the lifecycle authority; source handoffs stay the provenance unit).",
+  "frozen_ready_set": "docs/audit/niigata-batch001-ready-set-freeze.md",
+  "groups": [
+    {
+      "processing_group_id": "NIIGATA-001-VPG001",
+      "group_type": "VALUE_SELECTED_PROCESSING_GROUP",
+      "freeze_record": "docs/audit/niigata-001-vpg001-freeze.md",
+      "source_batch_id": "NIIGATA-001",
+      "prefecture": "新潟県",
+      "source_snapshot_sha256": "f54022303700821672ee4ee65e9967a7e8f343715a66ad987cc0b43530850380",
+      "source_url": "https://niigata-jinjacho.jp/shrine_niigata/search.php",
+      "source_verified_at": "2026-10-08",
+      "captured_at": "2026-10-08T14:27:00+09:00",
+      "members": [
+        {
+          "candidate_id": "nsrc-000021",
+          "candidate_name": "荒川神社",
+          "source_position": "page008-row003",
+          "source_handoff": "NIIGATA-001-H015",
+          "identity_status": "UNREVIEWED",
+          "duplicate_status": "UNREVIEWED",
+          "lifecycle": {
+            "candidate_status": "DISCOVERED",
+            "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+            "official_source_status": "AVAILABLE",
+            "knowledge_status": "UNREVIEWED",
+            "build_batch": null
+          }
+        },
+        {
+          "candidate_id": "nsrc-000022",
+          "candidate_name": "五十嵐神社",
+          "source_position": "page010-row004",
+          "source_handoff": "NIIGATA-001-H019",
+          "identity_status": "UNREVIEWED",
+          "duplicate_status": "UNREVIEWED",
+          "lifecycle": {
+            "candidate_status": "DISCOVERED",
+            "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+            "official_source_status": "AVAILABLE",
+            "knowledge_status": "UNREVIEWED",
+            "build_batch": null
+          }
+        },
+        {
+          "candidate_id": "nsrc-000023",
+          "candidate_name": "熱串彦神社",
+          "source_position": "page006-row010",
+          "source_handoff": "NIIGATA-001-H012",
+          "identity_status": "UNREVIEWED",
+          "duplicate_status": "UNREVIEWED",
+          "lifecycle": {
+            "candidate_status": "DISCOVERED",
+            "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+            "official_source_status": "AVAILABLE",
+            "knowledge_status": "UNREVIEWED",
+            "build_batch": null
+          }
+        },
+        {
+          "candidate_id": "nsrc-000024",
+          "candidate_name": "秋葉神社",
+          "source_position": "page003-row007",
+          "source_handoff": "NIIGATA-001-H006",
+          "identity_status": "UNREVIEWED",
+          "duplicate_status": "UNREVIEWED",
+          "lifecycle": {
+            "candidate_status": "DISCOVERED",
+            "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+            "official_source_status": "AVAILABLE",
+            "knowledge_status": "UNREVIEWED",
+            "build_batch": null
+          }
+        },
+        {
+          "candidate_id": "nsrc-000025",
+          "candidate_name": "天津神社",
+          "source_position": "page007-row006",
+          "source_handoff": "NIIGATA-001-H014",
+          "identity_status": "UNREVIEWED",
+          "duplicate_status": "UNREVIEWED",
+          "lifecycle": {
+            "candidate_status": "DISCOVERED",
+            "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+            "official_source_status": "AVAILABLE",
+            "knowledge_status": "UNREVIEWED",
+            "build_batch": null
+          }
+        }
+      ]
+    }
+  ]
+}
