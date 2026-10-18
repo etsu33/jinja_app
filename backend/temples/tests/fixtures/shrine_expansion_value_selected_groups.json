@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "purpose": "Test-only fixture. Expected G0 state of value-selected processing group members. Not runtime input and not Candidate Master authority (Candidate Master is the lifecycle authority; source handoffs stay the provenance unit).",
+  "purpose": "Test-only fixture. Expected current Candidate Master state of value-selected processing group members. Not runtime input and not Candidate Master authority (Candidate Master is the lifecycle authority; source handoffs stay the provenance unit).",
   "frozen_ready_set": "docs/audit/niigata-batch001-ready-set-freeze.md",
   "groups": [
     {
@@ -19,8 +19,8 @@
           "candidate_name": "荒川神社",
           "source_position": "page008-row003",
           "source_handoff": "NIIGATA-001-H015",
-          "identity_status": "UNREVIEWED",
-          "duplicate_status": "UNREVIEWED",
+          "identity_status": "CONFIRMED",
+          "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
           "lifecycle": {
             "candidate_status": "DISCOVERED",
             "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
@@ -34,8 +34,8 @@
           "candidate_name": "五十嵐神社",
           "source_position": "page010-row004",
           "source_handoff": "NIIGATA-001-H019",
-          "identity_status": "UNREVIEWED",
-          "duplicate_status": "UNREVIEWED",
+          "identity_status": "CONFIRMED",
+          "duplicate_status": "NEW",
           "lifecycle": {
             "candidate_status": "DISCOVERED",
             "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
@@ -49,8 +49,8 @@
           "candidate_name": "熱串彦神社",
           "source_position": "page006-row010",
           "source_handoff": "NIIGATA-001-H012",
-          "identity_status": "UNREVIEWED",
-          "duplicate_status": "UNREVIEWED",
+          "identity_status": "CONFIRMED",
+          "duplicate_status": "NEW",
           "lifecycle": {
             "candidate_status": "DISCOVERED",
             "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
@@ -64,8 +64,8 @@
           "candidate_name": "秋葉神社",
           "source_position": "page003-row007",
           "source_handoff": "NIIGATA-001-H006",
-          "identity_status": "UNREVIEWED",
-          "duplicate_status": "UNREVIEWED",
+          "identity_status": "CONFIRMED",
+          "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
           "lifecycle": {
             "candidate_status": "DISCOVERED",
             "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
@@ -79,8 +79,8 @@
           "candidate_name": "天津神社",
           "source_position": "page007-row006",
           "source_handoff": "NIIGATA-001-H014",
-          "identity_status": "UNREVIEWED",
-          "duplicate_status": "UNREVIEWED",
+          "identity_status": "CONFIRMED",
+          "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
           "lifecycle": {
             "candidate_status": "DISCOVERED",
             "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",

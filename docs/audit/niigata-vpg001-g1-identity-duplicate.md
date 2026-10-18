@@ -3,11 +3,11 @@
 ## 1. Status
 
 ```text
-G1                       = PENDING_MOTHER_SHIP_DECISION
-identity_status          = UNREVIEWED ×5（Candidate Master, unchanged）
-duplicate_status         = UNREVIEWED ×5（Candidate Master, unchanged）
+G1                       = DECISION_RECORDED / REVIEWED_IDENTITY_MANIFEST_PENDING
+identity_status          = CONFIRMED ×5（Candidate Master）
+duplicate_status         = DECIDED ×5（Candidate Master）
 PRODUCTION_COLLISION     = MEASURED / 0 COLLISIONS UNDER INSPECTED CONDITIONS
-Mother Ship decision     = NOT MADE
+Mother Ship decision     = MADE（2026-10-18）
 Production write         = NONE
 ```
 
@@ -265,17 +265,24 @@ PRODUCTION_WRITE             = NONE
 This supports every §8 hypothesis. It does not prove the non-existence of an unknown alias stored
 under unrelated identity text.
 
-## 8. Preliminary classifications（audit hypotheses only）
+## 8. Mother Ship duplicate decision
 
-These are **not** Candidate Master values. `duplicate_status` stays `UNREVIEWED` for all five.
+Production §7.1 supports all five preliminary hypotheses. Mother Ship formally adopted the following
+G1 duplicate classifications on 2026-10-18:
 
 ```text
-nsrc-000021 = SAME_NAME_DIFFERENT_SHRINE_CANDIDATE
-nsrc-000022 = NEW_CANDIDATE
-nsrc-000023 = NEW_CANDIDATE
-nsrc-000024 = SAME_NAME_DIFFERENT_SHRINE_CANDIDATE
-nsrc-000025 = SAME_NAME_DIFFERENT_SHRINE_CANDIDATE
+nsrc-000021 = SAME_NAME_DIFFERENT_SHRINE
+nsrc-000022 = NEW
+nsrc-000023 = NEW
+nsrc-000024 = SAME_NAME_DIFFERENT_SHRINE
+nsrc-000025 = SAME_NAME_DIFFERENT_SHRINE
 ```
+
+The canonical identities in §3 are also adopted for G1. Candidate Master records
+`identity_status = CONFIRMED` for all five and the duplicate classifications above.
+
+The reviewed identity manifest is intentionally not updated in this step. G6 identity lookup therefore
+remains fail-closed until the separate manifest-alignment step.
 
 | candidate_id | hypothesis | repository basis | Production observation that would contradict it |
 |---|---|---|---|
@@ -285,14 +292,14 @@ nsrc-000025 = SAME_NAME_DIFFERENT_SHRINE_CANDIDATE
 | nsrc-000024 | SAME_NAME_DIFFERENT_SHRINE_CANDIDATE | 10 other frozen 秋葉神社 rows at different addresses（§4.1） | `exact_identity_count > 0`; a 秋葉区 / 新津市秋葉 row under another name |
 | nsrc-000025 | SAME_NAME_DIFFERENT_SHRINE_CANDIDATE | other frozen 天津神社 row at 上越市大字東京田（§4.1） | `exact_identity_count > 0`; a 天津神社 row at 一の宮. A 奴奈川神社 row there is a separate shrine to explain（§5）, not a contradiction by itself |
 
-A listed row is evidence to explain, not a duplicate by itself. The hypotheses become decisions only
-by Mother Ship after the Production result.
+The table above is retained as the evidence trail that led to the Mother Ship decision. A listed row
+would still have required explanation rather than automatic duplicate classification.
 
 ## 9. Not done
 
 ```text
-Candidate Master change（identity / duplicate）   NONE
-reviewed identity manifest entry                  NONE（G1 not passed）
+Candidate Master change（identity / duplicate）   CONFIRMED / DECIDED ×5
+reviewed identity manifest entry                  NONE（alignment pending）
 G2 Position / Google Maps coordinates             NOT EXECUTED / NOT ADOPTED
 Knowledge hydration                               NONE
 VPG001 membership / Source handoffs               UNCHANGED
@@ -305,9 +312,9 @@ H004 / PR #3258                                   UNCHANGED
 ## 10. Next
 
 ```text
-1. Production result is recorded in §7.1 and supports all five §8 hypotheses.
-2. STOP and report the evidence to Mother Ship.
-3. Mother Ship makes the duplicate decision.
-4. Only after that decision: Candidate Master identity / duplicate update and reviewed identity
-   manifest entry（separate change）.
+1. Production result is recorded in §7.1.
+2. Mother Ship duplicate decision is recorded in §8.
+3. Candidate Master identity / duplicate state is aligned to §8.
+4. Next: add the five reviewed identities to the identity manifest, update G1/G6 regression tests,
+   then close G1 in a separate change.
 ```
