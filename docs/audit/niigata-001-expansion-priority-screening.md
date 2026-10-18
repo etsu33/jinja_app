@@ -4,12 +4,12 @@
 
 ```text
 SCREENING                  = DRAFT FOR MOTHER SHIP REVIEW
-PRIORITY_A                 = 4
-PRIORITY_B                 = 6
+PRIORITY_A                 = 5
+PRIORITY_B                 = 5
 PRIORITY_C                 = 70（DEFERRED_FOR_NOW）
 TOTAL                      = 80
 bulk deep-source research  = NOT REQUIRED
-PROPOSED_NEXT_HANDOFF      = 4 candidates（not 5, see §5）. NOT frozen, NOT registered
+PROPOSED_NEXT_HANDOFF      = 5 candidates（see §5）. Membership frozen as NIIGATA-001-VPG001. NOT registered
 
 Candidate Master / handoff fixture / identity manifest / Seed write   NONE
 G1 / G2 / G3 / Knowledge / Product Surface                           NOT EXECUTED
@@ -20,6 +20,8 @@ H004 G1                                                             unchanged（
 - Recorded at: 2026-10-18
 - Base: `develop@84a369b`
 - Policy: `docs/knowledge/shrine-expansion-priority-policy.md`
+- Updated 2026-10-18: 天津神社（page007-row006）PRIORITY_B → PRIORITY_A after Mother Ship primary-source
+  deity verification（§6.1）. No other row changed.
 
 This is **not** G1, G2, G3, a Knowledge review or a Product Surface decision. Every value below is a
 screening estimate. Gates still run in full.
@@ -108,7 +110,7 @@ Columns follow the policy fields. `[Sn]` refers to §7 Sources.
 | H013 | page007-row003 | 熱田神社 | 妙高市大字青田909番地 | STRONG | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | PRIORITY_C | web search（name + municipality + locality）: no shrine-specific deity / history / benefit result | deep sources（神社庁 directory, 市町村誌）not checked |
 | H013 | page007-row004 | 熱田神社 | 佐渡市秋津1135番地 | STRONG | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | PRIORITY_C | web search（name + municipality + locality）: no shrine-specific deity / history / benefit result（combined query with another same-name row） | deep sources（神社庁 directory, 市町村誌）not checked |
 | H013 | page007-row005 | 阿比多神社 | 上越市大字長浜904番地，878番地 | STRONG | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | PRIORITY_C | web search（name + municipality + locality）: no shrine-specific deity / history / benefit result | deep sources（神社庁 directory, 市町村誌）not checked |
-| H014 | page007-row006 | 天津神社 | 糸魚川市一の宮1丁目3番34号 | STRONG | HIGH | UNKNOWN | YES | UNKNOWN | YES | HIGH | POSSIBLE | PRIORITY_B | 文化遺産オンライン + 新潟県観光協会 [S6]: 糸魚川・能生の舞楽 = 重要無形民俗文化財（1980-01-28, 天津神社舞楽会）, 春大祭 けんか祭り; precinct has two honden 天津神社・奴奈川神社 | deity not found（A blocked on deity）; two-honden precinct is an entity-granularity question for G1 / G3 |
+| H014 | page007-row006 | 天津神社 | 糸魚川市一の宮1丁目3番34号 | STRONG | HIGH | YES | YES | UNKNOWN | YES | HIGH | POSSIBLE | PRIORITY_A | 文化遺産オンライン + 新潟県観光協会 [S6]: 糸魚川・能生の舞楽 = 重要無形民俗文化財（1980-01-28, 天津神社舞楽会）, 春大祭 けんか祭り; precinct has two honden 天津神社・奴奈川神社; deity: PRIMARY_PAGE_VERIFIED by Mother Ship（2026-10-18, §6.1） | deity name / source reference NOT_SUPPLIED_IN_REPO（to be recorded before G1）; two-honden（天津神社・奴奈川神社）structure remains a G1 / G3 MODEL_RISK question |
 | H014 | page007-row007 | 天津神社 | 上越市大字東京田34番地1 | STRONG | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | PRIORITY_C | web search（name + municipality + locality）: no shrine-specific deity / history / benefit result | deep sources（神社庁 directory, 市町村誌）not checked |
 | H014 | page007-row008 | 天照大神社 | 柏崎市大字旧広田388番地 | STRONG | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | PRIORITY_C | web search（name + municipality + locality）: no shrine-specific deity / history / benefit result | deep sources（神社庁 directory, 市町村誌）not checked |
 | H014 | page007-row009 | 天照大神社諏訪社合殿 | 新潟市西蒲区真木1587番地 | STRONG | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | POSSIBLE | PRIORITY_C | web search（name + municipality + locality）: no shrine-specific deity / history / benefit result; name states 合殿 | 合殿 implies more than one principal enshrinement（G3 question）; deep sources not checked |
@@ -146,8 +148,9 @@ Columns follow the policy fields. `[Sn]` refers to §7 Sources.
 
 ## 5. PROPOSED_NEXT_HANDOFF（PRIORITY_A only; not frozen, not registered）
 
-Only **4** rows meet PRIORITY_A. A fifth is **not** proposed, because no other row meets the class
-definition. The ordering is by evidence strength.
+**5** rows meet PRIORITY_A. Ranks 1–4 are ordered by evidence strength. Rank 5（天津神社）was moved
+B → A after Mother Ship primary-source deity verification（§6.1）. The membership is frozen as
+`NIIGATA-001-VPG001`（`docs/audit/niigata-001-vpg001-freeze.md`）. Not registered at G0.
 
 | rank | source_position | candidate | why this shrine（source-backed at SEARCH_SUMMARY level） | before freezing |
 |---|---|---|---|---|
@@ -155,20 +158,19 @@ definition. The ordering is by evidence strength.
 | 2 | page010-row004 | 五十嵐神社（三条市大字飯田2283番地） | deity 五十日帯彦命 as the 下田郷 pioneer of 治水・農耕, origin of the 五十嵐川 name, 式内社 伊加良志神社 比定 | primary / official source（both current sources are secondary） |
 | 3 | page006-row010 | 熱串彦神社（佐渡市長江854番地） | 佐渡国 式内社, 加茂氏 ancestral deity with 金山彦命, Edo-era thatched noh stage（市文化財） | second publisher; name the main deity |
 | 4 | page003-row007 | 秋葉神社（新潟市秋葉区秋葉3丁目8番19号） | an 秋葉 shrine enshrining 大己貴神 with 大物主命・菅原道真, not the usual fire deity; former 桂家 guardian | second publisher; distinctiveness only MEDIUM |
+| 5 | page007-row006 | 天津神社（糸魚川市一の宮1丁目3番34号） | 糸魚川・能生の舞楽（重要無形民俗文化財, 天津神社舞楽会）, けんか祭り; deity confirmed by Mother Ship primary-source verification | record deity name / source reference; two-honden（天津神社・奴奈川神社）structure stays a G1 / G3 MODEL_RISK question |
 
-Strongest B rows（high distinctiveness, deity not yet found）are recommended for **targeted deity
-research before** any further A selection. They are not proposed for the handoff:
+Strongest remaining B row（high distinctiveness, deity not yet found）, recommended for **targeted deity
+research before** any further A selection. It is not proposed for the handoff:
 
-- page007-row006 天津神社（糸魚川市一の宮）: 糸魚川・能生の舞楽（重要無形民俗文化財）, けんか祭り. Also MODEL_RISK
-  POSSIBLE: two honden（天津神社・奴奈川神社）in one precinct.
 - page005-row002 淺原神社（小千谷市片貝町）: 片貝まつり fireworks offered to this shrine; former 王子権現.
 
 ## 6. Decisions for Mother Ship
 
 1. **Accept or revise the B / C operational line**（policy §5.1: C = no shrine-specific signal found）. The
    alternative is treating every no-result row as B. That keeps C empty, but then B means nothing.
-2. **How to form the next handoff.** The four A rows come from four different frozen handoffs（H006, H012,
-   H015, H019）. The frozen handoff plan is Source-order, max 5. Picking across it needs an explicit
+2. **How to form the next handoff.** The five A rows come from five different frozen handoffs（H006, H012,
+   H014, H015, H019）. The frozen handoff plan is Source-order, max 5. Picking across it needs an explicit
    Mother Ship decision: a new value-selected handoff, or re-ordering whole frozen handoffs.
 3. **C rows:** `PRIORITY_C = DEFERRED_FOR_NOW`, `bulk deep-source research = NOT REQUIRED`. Re-screen only on a
    policy §5.1 trigger（new shrine-specific source, Recommendation supply expansion, coverage goal,
@@ -180,16 +182,38 @@ research before** any further A selection. They are not proposed for the handoff
 ### 6.1 Next targeted research
 
 ```text
-天津神社（page007-row006, 糸魚川市一の宮1丁目3番34号）
-淺原神社（page005-row002, 小千谷市片貝町6548番地）
+天津神社（page007-row006, 糸魚川市一の宮1丁目3番34号）   RESOLVED → PRIORITY_A
+淺原神社（page005-row002, 小千谷市片貝町6548番地）       OPEN（PRIORITY_B）
 ```
 
 Purpose: try to confirm **deity evidence** for each, and determine whether either can move
 **B → A**. Both already have HIGH distinctiveness, and history YES from independent publishers. Deity is the
-only missing A condition（policy §5: at least 2 of deity / history / benefit = YES）. For 天津神社, also
-record the two-honden（天津神社・奴奈川神社）precinct structure for G1 / G3（MODEL_RISK POSSIBLE）.
+only missing A condition（policy §5: at least 2 of deity / history / benefit = YES）.
 
-Any reclassification is a separate update. This PR keeps A 4 / B 6 / C 70 and freezes no handoff.
+**天津神社 — resolved.** Mother Ship verified the enshrined deity against a primary source and approved
+PRIORITY_A.
+
+```text
+DEITY_EVIDENCE                  = YES
+HISTORY_EVIDENCE                = YES
+RECOMMENDATION_DISTINCTIVENESS  = HIGH
+MODEL_RISK                      = POSSIBLE
+PRIORITY_CLASS                  = PRIORITY_A
+deity evidence level            = PRIMARY_PAGE_VERIFIED（Mother Ship, 2026-10-18）
+deity name / source reference   = NOT_SUPPLIED_IN_REPO（to be recorded before G1）
+```
+
+This satisfies the policy §6 rule 7 primary-page requirement for the deity fact only. The history facts
+stay at SEARCH_SUMMARY level. The precinct has two honden（天津神社・奴奈川神社）. Whether that is one
+candidate entity, and whether current Knowledge models can represent it without meaning loss, **remains
+open as a G1 / G3 MODEL_RISK question**. The reclassification does not decide it.
+
+Google Maps screenshots supplied by Mother Ship are noted **only as future G2 preflight visual evidence**.
+No coordinate is adopted from them, and POSITION_LIKELIHOOD is unchanged（HIGH）.
+
+**淺原神社 — still open.** It stays PRIORITY_B until deity evidence is found.
+
+Counts after this update: A 5 / B 5 / C 70. No other row changed.
 
 ## 7. Sources（SEARCH_SUMMARY level; not opened）
 

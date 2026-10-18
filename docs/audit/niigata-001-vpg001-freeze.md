@@ -21,7 +21,7 @@ G0                    = NOT_EXECUTED
 
 - `docs/audit/niigata-batch001-ready-set-freeze.md`（frozen Ready Set, source rows and handoff membership）
 - `docs/knowledge/shrine-expansion-priority-policy.md`（value-first selection; popularity not required）
-- `docs/audit/niigata-001-expansion-priority-screening.md`（PRIORITY_A / B screening, PROPOSED_NEXT_HANDOFF）
+- `docs/audit/niigata-001-expansion-priority-screening.md`（PRIORITY_A screening, PROPOSED_NEXT_HANDOFF）
 - Mother Ship decision: member list of this freeze
 
 ## 3. Frozen membership
@@ -35,7 +35,7 @@ order is the processing-group order given by Mother Ship.
 | 2 | page010-row004 | 五十嵐神社 | 三条市大字飯田2283番地 | NIIGATA-001-H019 | RUNNER_READY | PRIORITY_A |
 | 3 | page006-row010 | 熱串彦神社 | 佐渡市長江854番地 | NIIGATA-001-H012 | RUNNER_READY | PRIORITY_A |
 | 4 | page003-row007 | 秋葉神社 | 新潟市秋葉区秋葉3丁目8番19号 | NIIGATA-001-H006 | RUNNER_READY | PRIORITY_A |
-| 5 | page007-row006 | 天津神社 | 糸魚川市一の宮1丁目3番34号 | NIIGATA-001-H014 | RUNNER_READY | PRIORITY_B |
+| 5 | page007-row006 | 天津神社 | 糸魚川市一の宮1丁目3番34号 | NIIGATA-001-H014 | RUNNER_READY | PRIORITY_A |
 
 Membership fingerprint（sha256 of the lines `source_position|raw_name|raw_address|source_handoff` in the
 order above, UTF-8, `\n`-terminated）:
@@ -44,16 +44,19 @@ order above, UTF-8, `\n`-terminated）:
 4523e6688f5d5ba7fb4d883607b4ebb15ad90345989efd81e4b63b34aff2bd77
 ```
 
-### 3.1 Screening class of 天津神社
+### 3.1 Screening class at freeze
 
-Four members are PRIORITY_A in the screening audit. **天津神社（page007-row006）is PRIORITY_B**:
-history YES, distinctiveness HIGH, MODEL_RISK POSSIBLE, but `DEITY_EVIDENCE = UNKNOWN`. It is a member
-because Mother Ship selected it. This freeze **does not reclassify it** and does not claim it meets
-PRIORITY_A. The targeted deity research in screening audit §6.1 is still open. Its outcome goes into a
-screening update, not into this freeze.
+All five members are **PRIORITY_A** in the screening audit.
 
-For G1 / G3, also carried forward: the precinct has two honden（天津神社・奴奈川神社）, an
-entity-granularity question.
+天津神社（page007-row006）was moved PRIORITY_B → PRIORITY_A in the screening audit（§6.1）before this
+freeze, after Mother Ship primary-source deity verification. Its deity name and source reference are
+not yet recorded in the repository（`NOT_SUPPLIED_IN_REPO`, to be recorded before G1）.
+
+For G1 / G3, carried forward: the precinct has two honden（天津神社・奴奈川神社）. This stays a
+`MODEL_RISK = POSSIBLE` entity-granularity question. The freeze does not decide it.
+
+Google Maps screenshots supplied by Mother Ship for 天津神社 are only future G2 preflight visual
+evidence. No coordinate is adopted.
 
 ## 4. Source handoff membership（unchanged）
 
