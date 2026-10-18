@@ -3,10 +3,11 @@
 ## 1. Status
 
 ```text
-G1                       = DECISION_RECORDED / REVIEWED_IDENTITY_MANIFEST_PENDING
+G1                       = PASS / CLOSED
 identity_status          = CONFIRMED ×5（Candidate Master）
 duplicate_status         = DECIDED ×5（Candidate Master）
 PRODUCTION_COLLISION     = MEASURED / 0 COLLISIONS UNDER INSPECTED CONDITIONS
+reviewed identity manifest = ALIGNED ×5
 Mother Ship decision     = MADE（2026-10-18）
 Production write         = NONE
 ```
@@ -281,8 +282,12 @@ nsrc-000025 = SAME_NAME_DIFFERENT_SHRINE
 The canonical identities in §3 are also adopted for G1. Candidate Master records
 `identity_status = CONFIRMED` for all five and the duplicate classifications above.
 
-The reviewed identity manifest is intentionally not updated in this step. G6 identity lookup therefore
-remains fail-closed until the separate manifest-alignment step.
+The reviewed identity manifest is aligned with the five canonical identities. Because VPG001 is a
+processing-selection concept rather than a Source handoff, it is **not** written as a manifest
+`handoff_id`. Each selected candidate is registered under its original Source handoff provenance
+(H006 / H012 / H014 / H015 / H019), and each of those manifest entries contains only the currently
+registered + G1-reviewed Candidate Master member. This does not redefine or claim full frozen Source
+handoff membership.
 
 | candidate_id | hypothesis | repository basis | Production observation that would contradict it |
 |---|---|---|---|
@@ -299,7 +304,7 @@ would still have required explanation rather than automatic duplicate classifica
 
 ```text
 Candidate Master change（identity / duplicate）   CONFIRMED / DECIDED ×5
-reviewed identity manifest entry                  NONE（alignment pending）
+reviewed identity manifest entry                  ALIGNED ×5
 G2 Position / Google Maps coordinates             NOT EXECUTED / NOT ADOPTED
 Knowledge hydration                               NONE
 VPG001 membership / Source handoffs               UNCHANGED
@@ -315,6 +320,10 @@ H004 / PR #3258                                   UNCHANGED
 1. Production result is recorded in §7.1.
 2. Mother Ship duplicate decision is recorded in §8.
 3. Candidate Master identity / duplicate state is aligned to §8.
-4. Next: add the five reviewed identities to the identity manifest, update G1/G6 regression tests,
-   then close G1 in a separate change.
+4. Reviewed identity manifest is aligned without changing VPG001 or frozen Source handoff membership.
+5. G1 regression tests cover the five canonical identities, duplicate decisions, provenance boundary
+   and fail-closed manifest validation.
+6. G1 = PASS / CLOSED.
+
+Next gate: G2 Position / Navigation Anchor. No coordinate is adopted by this G1 closure.
 ```
