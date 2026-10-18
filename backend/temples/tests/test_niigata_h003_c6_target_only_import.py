@@ -23,12 +23,17 @@ from pathlib import Path
 import pytest
 from django.core.management import call_command
 from django.db import DataError, connection, transaction
+from django.utils import timezone
 
 from temples.models import (
     GoriyakuTag,
+    HistoryThemeAssignment,
     Shrine,
+    ShrineCanonicalAnchor,
     ShrineDeity,
     ShrineDeityCollective,
+    ShrineFactSourceCitation,
+    ShrineGoriyakuAssignment,
     ShrineHistory,
     ShrineKnowledgeSource,
     ShrineSourceFact,
@@ -60,6 +65,13 @@ PRODUCTION_PRESTATE = {
     "history_total": 236,
     "source_fact_total": 34,
     "collective_total": 6,
+    "citation_total": 2,
+    "shrine_nonempty_goriyaku_total": 116,
+    "goriyaku_tag_master_total": 39,
+    "goriyaku_tag_link_total": 366,
+    "goriyaku_assignment_total": 0,
+    "history_theme_assignment_total": 0,
+    "canonical_anchor_total": 0,
 }
 EXPECTED_SHRINE_DELTA = 4
 
@@ -141,6 +153,15 @@ def _aggregates() -> dict[str, int]:
         "history_total": ShrineHistory.objects.count(),
         "source_fact_total": ShrineSourceFact.objects.count(),
         "collective_total": ShrineDeityCollective.objects.count(),
+        "citation_total": ShrineFactSourceCitation.objects.count(),
+        "shrine_nonempty_goriyaku_total": Shrine.objects.exclude(goriyaku__isnull=True)
+        .exclude(goriyaku="")
+        .count(),
+        "goriyaku_tag_master_total": GoriyakuTag.objects.count(),
+        "goriyaku_tag_link_total": Shrine.goriyaku_tags.through.objects.count(),
+        "goriyaku_assignment_total": ShrineGoriyakuAssignment.objects.count(),
+        "history_theme_assignment_total": HistoryThemeAssignment.objects.count(),
+        "canonical_anchor_total": ShrineCanonicalAnchor.objects.count(),
     }
 
 
@@ -218,7 +239,55 @@ def _simulate_production_prestate() -> None:
         ShrineDeityCollective(shrine=holder, source_attested_label=f"filler collective {i}")
         for i in missing(ShrineDeityCollective, "collective_total")
     )
+    filler_source = ShrineKnowledgeSource.objects.filter(
+        url__startswith="https://example.invalid/h003-c6-filler/"
+    ).first()
+    filler_histories = ShrineHistory.objects.filter(shrine=holder, title__startswith="filler")
+    cited = list(
+        filler_histories.order_by("id")[: len(missing(ShrineFactSourceCitation, "citation_total"))]
+    )
+    for history in cited:
+        history.sources.add(filler_source)
+        ShrineFactSourceCitation.objects.create(
+            source=filler_source, shrine_history=history, locator_text="filler p.1"
+        )
+    _fill_goriyaku_aggregates()
     assert _aggregates() == PRODUCTION_PRESTATE
+
+
+def _fill_goriyaku_aggregates() -> None:
+    """non-empty goriyaku / GoriyakuTag master / tag link を target 以外の行だけで実測値に合わせる。"""
+    nonempty = Shrine.objects.exclude(goriyaku__isnull=True).exclude(goriyaku="")
+    gap = PRODUCTION_PRESTATE["shrine_nonempty_goriyaku_total"] - nonempty.count()
+    if gap > 0:
+        empty = Shrine.objects.exclude(name_jp=SHRINE_NAME).filter(goriyaku="").order_by("id")
+        Shrine.objects.filter(pk__in=list(empty.values_list("pk", flat=True)[:gap])).update(
+            goriyaku="フィラー"
+        )
+    elif gap < 0:
+        Shrine.objects.filter(
+            pk__in=list(nonempty.order_by("-id").values_list("pk", flat=True)[:-gap])
+        ).update(goriyaku="")
+
+    through = Shrine.goriyaku_tags.through
+    through.objects.all().delete()
+    GoriyakuTag.objects.all().delete()
+    tags = GoriyakuTag.objects.bulk_create(
+        GoriyakuTag(name=f"H003C6フィラー{i:02d}")
+        for i in range(PRODUCTION_PRESTATE["goriyaku_tag_master_total"])
+    )
+    # link は non-empty goriyaku の少数 Shrine に集中させ、他の行は link なしのまま残す
+    shrines = list(
+        Shrine.objects.exclude(name_jp=SHRINE_NAME)
+        .exclude(goriyaku="")
+        .exclude(goriyaku__isnull=True)
+        .order_by("id")[:10]
+    )
+    pairs = [(shrine, tag) for shrine in shrines for tag in tags]
+    through.objects.bulk_create(
+        through(shrine_id=shrine.pk, goriyakutag_id=tag.pk)
+        for shrine, tag in pairs[: PRODUCTION_PRESTATE["goriyaku_tag_link_total"]]
+    )
 
 
 def _write_subset(tmp_path: Path) -> Path:
@@ -474,6 +543,79 @@ def _holder_deity() -> None:
     ShrineDeity.objects.create(shrine=_filler_holder(), display_name="drift")
 
 
+def _citation_elsewhere() -> None:
+    history = (
+        ShrineHistory.objects.filter(shrine=_filler_holder(), title__startswith="filler")
+        .exclude(source_citations__isnull=False)
+        .first()
+    )
+    source = ShrineKnowledgeSource.objects.filter(
+        url__startswith="https://example.invalid/h003-c6-filler/"
+    ).first()
+    history.sources.add(source)
+    ShrineFactSourceCitation.objects.create(
+        source=source, shrine_history=history, locator_text="drift"
+    )
+
+
+def _non_target_rows():
+    return Shrine.objects.exclude(name_jp=SHRINE_NAME)
+
+
+def _nonempty_goriyaku_plus_one() -> None:
+    row = _non_target_rows().filter(goriyaku="").order_by("id").first()
+    Shrine.objects.filter(pk=row.pk).update(goriyaku="ドリフト")
+
+
+def _nonempty_goriyaku_minus_one() -> None:
+    row = _non_target_rows().exclude(goriyaku="").exclude(goriyaku__isnull=True).first()
+    Shrine.objects.filter(pk=row.pk).update(goriyaku="")
+
+
+def _unused_link_pair() -> tuple[Shrine, GoriyakuTag]:
+    through = Shrine.goriyaku_tags.through
+    for tag in GoriyakuTag.objects.order_by("-id"):
+        for shrine in _non_target_rows().order_by("-id"):
+            if not through.objects.filter(shrine_id=shrine.pk, goriyakutag_id=tag.pk).exists():
+                return shrine, tag
+    raise AssertionError("no unused (shrine, tag) pair")
+
+
+def _goriyaku_tag_link_elsewhere() -> None:
+    shrine, tag = _unused_link_pair()
+    shrine.goriyaku_tags.add(tag)
+
+
+def _assignment_kwargs() -> dict:
+    return {
+        "shrine": _filler_holder(),
+        "canonical_key": "h003-c6-drift",
+        "taxonomy_version": "v1",
+        "lifecycle": "ACTIVE",
+        "producer": "curator",
+        "mechanism": "manual_review",
+        "assigned_at": timezone.now(),
+    }
+
+
+AGGREGATE_DRIFT_EXTENDED = {
+    "citation+1": _citation_elsewhere,
+    "nonempty-goriyaku+1": _nonempty_goriyaku_plus_one,
+    "nonempty-goriyaku-1": _nonempty_goriyaku_minus_one,
+    "goriyaku-tag-master+1": lambda: GoriyakuTag.objects.create(name="H003C6ドリフト"),
+    "goriyaku-tag-link+1": _goriyaku_tag_link_elsewhere,
+    "goriyaku-assignment+1": lambda: ShrineGoriyakuAssignment.objects.create(
+        **_assignment_kwargs()
+    ),
+    "history-theme-assignment+1": lambda: HistoryThemeAssignment.objects.create(
+        **_assignment_kwargs()
+    ),
+    "canonical-anchor+1": lambda: ShrineCanonicalAnchor.objects.create(
+        shrine=_filler_holder(), status="HOLD_POSITION_REVIEW"
+    ),
+}
+
+
 PRESTATE_DRIFT = {
     "shrine+1": lambda: Shrine.objects.create(
         name_jp="無関係神社", kind="shrine", address="架空県1"
@@ -501,6 +643,7 @@ PRESTATE_DRIFT = {
     "collective+1": lambda: ShrineDeityCollective.objects.create(
         shrine=_filler_holder(), source_attested_label="drift"
     ),
+    **AGGREGATE_DRIFT_EXTENDED,
 }
 
 
@@ -515,9 +658,10 @@ def test_committed_pre_base_guard_fails_on_aggregate_drift(drift):
 
 def _swap_in(**fields) -> None:
     """Shrine 総数を frozen 値のまま保ち、非 target の1行を指定行に置き換える。"""
-    Shrine.objects.exclude(pk=_filler_holder().pk).exclude(name_jp=SHRINE_NAME).order_by(
-        "-id"
-    ).first().delete()
+    # 削除する行は goriyaku 空・tag link なし（aggregate を変えない）
+    Shrine.objects.exclude(pk=_filler_holder().pk).exclude(name_jp=SHRINE_NAME).filter(
+        goriyaku="", goriyaku_tags__isnull=True
+    ).order_by("-id").first().delete()
     Shrine.objects.create(kind="shrine", **fields)
 
 
@@ -595,15 +739,22 @@ def _update_target(**fields) -> None:
 
 
 def _goriyaku_tag_link() -> None:
-    _target(MUTATED).goriyaku_tags.add(GoriyakuTag.objects.create(name="H003C6ドリフト"))
+    """tag link 総数を保ったまま、filler link 1件を target の link に置き換える。"""
+    through = Shrine.goriyaku_tags.through
+    link = through.objects.exclude(shrine__name_jp=SHRINE_NAME).order_by("-id").first()
+    tag_id = link.goriyakutag_id
+    link.delete()
+    through.objects.create(shrine_id=_target(MUTATED).pk, goriyakutag_id=tag_id)
 
 
 def _swap_holder_history_for_target_history() -> None:
-    """History 総数を保ったまま target に usable History Fact を付ける。"""
-    ShrineHistory.objects.filter(shrine=_filler_holder()).order_by("-id").first().delete()
+    """History / Source / Citation 総数を保ったまま target に usable History Fact を付ける。"""
+    ShrineHistory.objects.filter(shrine=_filler_holder(), source_citations__isnull=True).order_by(
+        "-id"
+    ).first().delete()
     attach_usable_history_fact(_target(MUTATED))
     ShrineKnowledgeSource.objects.filter(
-        url__startswith="https://example.invalid/h003-c6-filler/"
+        url__startswith="https://example.invalid/h003-c6-filler/", fact_citations__isnull=True
     ).order_by("-id").first().delete()
 
 
@@ -633,6 +784,7 @@ POST_DRIFT = {
     "hold-identity-added": lambda: _swap_in(name_jp=SHRINE_NAME, address=HOLD_ADDRESS),
     "same-address-other-name": lambda: _swap_in(name_jp="山屋神社", address=TARGETS[MUTATED][0]),
     "deity+1-elsewhere": _holder_deity,
+    **AGGREGATE_DRIFT_EXTENDED,
 }
 
 
@@ -644,6 +796,8 @@ POST_DRIFT_SAME_AGGREGATES = set(POST_DRIFT) - {
     "unrelated-shrine+1",
     "target-missing",
     "deity+1-elsewhere",
+    "goriyaku-set",  # target goriyaku '' -> 開運 also moves shrine_nonempty_goriyaku_total
+    *AGGREGATE_DRIFT_EXTENDED,
 }
 
 

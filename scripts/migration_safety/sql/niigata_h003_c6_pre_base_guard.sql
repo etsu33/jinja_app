@@ -1,7 +1,7 @@
 -- NIIGATA-001-H003 C6 pre-Base Production write guard
 -- SELECT / WITH only. Execute only through scripts/migration_safety/readonly_query.sh.
 -- Raises division-by-zero unless the frozen CLEAN_CREATE pre-state still holds:
---   six aggregates = frozen
+--   all 13 measured aggregates = frozen
 --   every target (exact name_jp + address) = ABSENT, so exact count 0 and no Knowledge / relations
 --   no same-address different-name row at any target address
 --   nsrc-000014 still absent and outside the write cohort
@@ -17,7 +17,7 @@ WITH
 -- Mother Ship decision: PRODUCTION_STATE_CLASS = CLEAN_CREATE
 -- (nsrc-000011 / 000012 / 000013 / 000015 = ABSENT, conflict_count = 0,
 -- nsrc-000014 = ABSENT / NOT_IN_WRITE_COHORT).
--- Only the six aggregates supplied by Mother Ship are frozen. Any drift fails closed.
+-- Every aggregate the preflight measured is frozen. Any drift fails closed.
 frozen AS (
   SELECT
     true AS frozen_values_set,
@@ -27,6 +27,13 @@ frozen AS (
     236::bigint AS history_total,
     34::bigint AS source_fact_total,
     6::bigint AS collective_total,
+    2::bigint AS citation_total,
+    116::bigint AS shrine_nonempty_goriyaku_total,
+    39::bigint AS goriyaku_tag_master_total,
+    366::bigint AS goriyaku_tag_link_total,
+    0::bigint AS goriyaku_assignment_total,
+    0::bigint AS history_theme_assignment_total,
+    0::bigint AS canonical_anchor_total,
     4::bigint AS expected_shrine_delta
 ),
 -- END niigata_h003_c6_frozen_pre_state
@@ -186,6 +193,13 @@ SELECT 1 / CASE WHEN (
   AND (SELECT COUNT(*) FROM temples_shrinehistory) = f.history_total
   AND (SELECT COUNT(*) FROM temples_shrinesourcefact) = f.source_fact_total
   AND (SELECT COUNT(*) FROM temples_shrinedeitycollective) = f.collective_total
+  AND (SELECT COUNT(*) FROM temples_shrinefactsourcecitation) = f.citation_total
+  AND (SELECT COUNT(*) FROM temples_shrine WHERE COALESCE(goriyaku, '') <> '') = f.shrine_nonempty_goriyaku_total
+  AND (SELECT COUNT(*) FROM temples_goriyakutag) = f.goriyaku_tag_master_total
+  AND (SELECT COUNT(*) FROM temples_shrine_goriyaku_tags) = f.goriyaku_tag_link_total
+  AND (SELECT COUNT(*) FROM temples_shrinegoriyakuassignment) = f.goriyaku_assignment_total
+  AND (SELECT COUNT(*) FROM temples_historythemeassignment) = f.history_theme_assignment_total
+  AND (SELECT COUNT(*) FROM temples_shrine_canonical_anchor) = f.canonical_anchor_total
   AND (SELECT COUNT(*) FROM target_state) = 4
   AND (SELECT COUNT(*) FROM target_state WHERE target_state = 'ABSENT') = 4
   AND (SELECT COUNT(*) FROM target_state WHERE same_address_other_name_count > 0) = 0

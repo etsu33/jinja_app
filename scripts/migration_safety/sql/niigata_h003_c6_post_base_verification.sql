@@ -2,7 +2,9 @@
 -- SELECT / WITH only. Execute only through scripts/migration_safety/readonly_query.sh.
 -- Statement 1 lists the four target states (diagnostics). The last statement raises
 -- division-by-zero unless exactly the four target Catalog rows were added:
---   Shrine = frozen + 4 (= 129). Source / Deity / History / SourceFact / Collective = frozen
+--   Shrine = frozen + 4 (= 129). Every other frozen aggregate (Source / Deity / History /
+--   SourceFact / Collective / Citation / non-empty goriyaku / GoriyakuTag master / tag links /
+--   goriyaku assignments / history-theme assignments / canonical anchors) unchanged
 --   every target = EXACT_EXISTING: exists exactly once, adopted coordinate within the importer
 --   tolerance 1e-12, neutral Base payload, Catalog defaults (kind / visit_style_tags /
 --   history_theme / place_ref), no Deity / History / SourceFact / Collective, no goriyaku tag
@@ -19,7 +21,7 @@ WITH
 -- Mother Ship decision: PRODUCTION_STATE_CLASS = CLEAN_CREATE
 -- (nsrc-000011 / 000012 / 000013 / 000015 = ABSENT, conflict_count = 0,
 -- nsrc-000014 = ABSENT / NOT_IN_WRITE_COHORT).
--- Only the six aggregates supplied by Mother Ship are frozen. Any drift fails closed.
+-- Every aggregate the preflight measured is frozen. Any drift fails closed.
 frozen AS (
   SELECT
     true AS frozen_values_set,
@@ -29,6 +31,13 @@ frozen AS (
     236::bigint AS history_total,
     34::bigint AS source_fact_total,
     6::bigint AS collective_total,
+    2::bigint AS citation_total,
+    116::bigint AS shrine_nonempty_goriyaku_total,
+    39::bigint AS goriyaku_tag_master_total,
+    366::bigint AS goriyaku_tag_link_total,
+    0::bigint AS goriyaku_assignment_total,
+    0::bigint AS history_theme_assignment_total,
+    0::bigint AS canonical_anchor_total,
     4::bigint AS expected_shrine_delta
 ),
 -- END niigata_h003_c6_frozen_pre_state
@@ -202,7 +211,7 @@ WITH
 -- Mother Ship decision: PRODUCTION_STATE_CLASS = CLEAN_CREATE
 -- (nsrc-000011 / 000012 / 000013 / 000015 = ABSENT, conflict_count = 0,
 -- nsrc-000014 = ABSENT / NOT_IN_WRITE_COHORT).
--- Only the six aggregates supplied by Mother Ship are frozen. Any drift fails closed.
+-- Every aggregate the preflight measured is frozen. Any drift fails closed.
 frozen AS (
   SELECT
     true AS frozen_values_set,
@@ -212,6 +221,13 @@ frozen AS (
     236::bigint AS history_total,
     34::bigint AS source_fact_total,
     6::bigint AS collective_total,
+    2::bigint AS citation_total,
+    116::bigint AS shrine_nonempty_goriyaku_total,
+    39::bigint AS goriyaku_tag_master_total,
+    366::bigint AS goriyaku_tag_link_total,
+    0::bigint AS goriyaku_assignment_total,
+    0::bigint AS history_theme_assignment_total,
+    0::bigint AS canonical_anchor_total,
     4::bigint AS expected_shrine_delta
 ),
 -- END niigata_h003_c6_frozen_pre_state
@@ -371,6 +387,13 @@ SELECT 1 / CASE WHEN (
   AND (SELECT COUNT(*) FROM temples_shrinehistory) = f.history_total
   AND (SELECT COUNT(*) FROM temples_shrinesourcefact) = f.source_fact_total
   AND (SELECT COUNT(*) FROM temples_shrinedeitycollective) = f.collective_total
+  AND (SELECT COUNT(*) FROM temples_shrinefactsourcecitation) = f.citation_total
+  AND (SELECT COUNT(*) FROM temples_shrine WHERE COALESCE(goriyaku, '') <> '') = f.shrine_nonempty_goriyaku_total
+  AND (SELECT COUNT(*) FROM temples_goriyakutag) = f.goriyaku_tag_master_total
+  AND (SELECT COUNT(*) FROM temples_shrine_goriyaku_tags) = f.goriyaku_tag_link_total
+  AND (SELECT COUNT(*) FROM temples_shrinegoriyakuassignment) = f.goriyaku_assignment_total
+  AND (SELECT COUNT(*) FROM temples_historythemeassignment) = f.history_theme_assignment_total
+  AND (SELECT COUNT(*) FROM temples_shrine_canonical_anchor) = f.canonical_anchor_total
   AND (SELECT COUNT(*) FROM target_state) = 4
   AND (SELECT COUNT(*) FROM target_state WHERE target_state = 'EXACT_EXISTING') = 4
   AND (SELECT COUNT(*) FROM target_state WHERE same_address_other_name_count > 0) = 0
