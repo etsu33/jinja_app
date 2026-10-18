@@ -1,6 +1,31 @@
 # NIIGATA-001-H003 — C6 Catalog target-only Production Import Artifact
 
-## 1. Status
+## Final classification（C6 CLOSED / PASS）
+
+```text
+write cohort                 = nsrc-000011 / nsrc-000012 / nsrc-000013 / nsrc-000015
+excluded                     = nsrc-000014（G2 HOLD_POSITION_REVIEW / NOT_IN_WRITE_COHORT）
+
+FRESH_PRODUCTION_BACKUP      = PASS
+ISOLATED_RESTORE             = PASS（PostgreSQL 17.10）
+RESTORE_FINGERPRINT          = MATCH
+RESTORE_PRE_BASE_GUARD       = PASS
+PRODUCTION_WRITE_AUTHORIZED  = YES（Mother Ship）
+Production write             = COMPLETED（target-only 4-row subset）
+import result                = created=4 updated=0 skipped=0 total_seed=4
+POST_BASE_VERIFICATION       = PASS（h003_c6_post_base_verification_pass = 1）
+IDEMPOTENCY                  = PASS（created=0 updated=0 skipped=4 total_seed=4）
+PROCEDURE_DEVIATION          = PRE_WRITE_DRY_RUN_SKIPPED（§12）
+
+C6                           = CLOSED / PASS
+C7 CATALOG_READY             = CLOSED（docs/audit/niigata-h003-c7-catalog-ready.md）
+```
+
+§11–§16 record Mother Ship's Production execution evidence. This repository change made no
+Production connection, backup, restore or write. §1–§10 below are the PR #3255 preparation record
+and are kept unchanged as history.
+
+## 1. Status at PR #3255（preparation; historical record）
 
 ```text
 write cohort                 = nsrc-000011 / nsrc-000012 / nsrc-000013 / nsrc-000015
@@ -288,7 +313,7 @@ Product Surface fields             NONE（not created, not inferred）
 nsrc-000014                        NONE（excluded, diagnostics only）
 ```
 
-## 10. STOP
+## 10. STOP at PR #3255（historical record）
 
 ```text
 C6 import artifact          = PREPARED
@@ -299,3 +324,123 @@ C6                          = NOT PASS
 C7                          = NOT STARTED
 STOP                        = TRUE
 ```
+
+## 11. Backup / restore readiness（Mother Ship）
+
+Executed by Mother Ship after PR #3255 merged. The values are as supplied; this repository change
+did not run them.
+
+```text
+FRESH_PRODUCTION_BACKUP  = PASS（stored outside the repository）
+ISOLATED_RESTORE         = PASS
+restore server           = PostgreSQL 17.10
+RESTORE_FINGERPRINT      = MATCH
+RESTORE_PRE_BASE_GUARD   = PASS（committed niigata_h003_c6_pre_base_guard.sql on the restored DB）
+
+BACKUP_RESTORE_READINESS = PASS
+```
+
+## 12. Production write authorization and procedure deviation
+
+```text
+PRODUCTION_WRITE_AUTHORIZED = YES（Mother Ship）
+
+authorized target =
+  nsrc-000011  赤城神社  新潟県新潟市江南区二本木1丁目7番16号
+  nsrc-000012  赤城神社  新潟県長岡市四郎丸2丁目5番33号
+  nsrc-000013  赤城神社  新潟県長岡市山屋314番地
+  nsrc-000015  赤城神社  新潟県魚沼市湯之谷芋川311番地
+
+scope           = target-only 4-row Base import + post-Base verification + idempotency dry-run
+full Base Seed  = PROHIBITED（not used）
+nsrc-000014     = NOT_IN_WRITE_COHORT（not imported）
+Knowledge       = NOT AUTHORIZED（not imported）
+```
+
+**Procedure deviation（recorded, not hidden）:**
+
+```text
+PROCEDURE_DEVIATION = PRE_WRITE_DRY_RUN_SKIPPED
+```
+
+§7 step 5 required `import_shrines_seed --dry-run` on the subset before the apply. That pre-write
+dry-run was **not executed**. The apply ran directly.
+
+What still held, as supplied by Mother Ship: the actual apply result, the post-Base verification
+and the idempotency dry-run all passed（§13–§15）. Because the post-Base verification freezes all
+13 aggregates and the exact target state, any unexpected create, update or skip in the apply would
+have made it fail. The skipped dry-run therefore left no undetected effect on the verified Production
+state. It does mean the expected-output check happened **after** the write instead of before it,
+so the apply was not previewed.
+
+Whether the pre-Base guard itself was re-run on Production immediately before the write（§7
+step 4）is not stated in the supplied evidence. This record does not claim it.
+
+## 13. Base Shrine Production import
+
+```text
+input   = niigata_h003_c6_extract_base_subset.py output（4 rows, outside the repository）
+command = import_shrines_seed --source <subset> --skip-goriyaku-tags
+
+done created=4 updated=0 skipped=0 total_seed=4
+```
+
+`created=4 updated=0 skipped=0` equals the frozen expectation（§3, §7 step 5）. No existing
+Production row was updated.
+
+## 14. Post-Base verification
+
+`niigata_h003_c6_post_base_verification.sql`（read-only）:
+
+```text
+nsrc-000011  EXACT_EXISTING  location_present = true
+nsrc-000012  EXACT_EXISTING  location_present = true
+nsrc-000013  EXACT_EXISTING  location_present = true
+nsrc-000015  EXACT_EXISTING  location_present = true
+
+h003_c6_post_base_verification_pass = 1
+
+POST_BASE_VERIFICATION = PASS
+```
+
+PASS proves, on Production（§5.3）:
+
+```text
+Shrine = 129, the other 12 frozen aggregates unchanged
+each target exactly once at its exact (name_jp, address)
+adopted coordinate within 1e-12
+neutral payload and Catalog defaults
+no Deity / History / SourceFact / Collective / goriyaku tag / assignment / anchor / relation
+no same-address different-name row
+nsrc-000014 absent
+```
+
+`location_present = true` for all four closes the §8 `location` limitation for presence. The value
+of `location` is still not compared（type differs between PostGIS and nogis）.
+
+## 15. Idempotency
+
+```text
+import_shrines_seed --source <subset> --skip-goriyaku-tags --dry-run
+
+done created=0 updated=0 skipped=4 total_seed=4
+
+IDEMPOTENCY = PASS
+```
+
+## 16. C6 closure
+
+```text
+BACKUP_RESTORE_READINESS     = PASS
+PRODUCTION_WRITE_AUTHORIZED  = YES
+Production write             = COMPLETED
+import result                = created=4 updated=0 skipped=0 total_seed=4
+POST_BASE_VERIFICATION       = PASS
+IDEMPOTENCY                  = PASS
+PROCEDURE_DEVIATION          = PRE_WRITE_DRY_RUN_SKIPPED
+C6_BLOCKERS_REMAINING        = NONE
+
+C6 = CLOSED / PASS
+```
+
+Next: C7 CATALOG_READY closure — `docs/audit/niigata-h003-c7-catalog-ready.md`.
