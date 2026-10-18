@@ -405,6 +405,46 @@ def test_g0_only_handoff_is_not_a_reviewed_identity_handoff():
         load_handoff_shrine_identities(H004)
 
 
+# NIIGATA-001-VPG001 member の G0 登録（docs/audit/niigata-vpg001-g0-candidate-registry.md）。
+# provenance の handoff_id は元の Source handoff。G1 前は reviewed identity manifest に無い。
+VPG001 = "NIIGATA-001-VPG001"
+VPG001_MEMBER_HANDOFFS = {
+    "nsrc-000021": "NIIGATA-001-H015",
+    "nsrc-000022": "NIIGATA-001-H019",
+    "nsrc-000023": "NIIGATA-001-H012",
+    "nsrc-000024": "NIIGATA-001-H006",
+    "nsrc-000025": "NIIGATA-001-H014",
+}
+
+
+def test_vpg001_g0_members_are_not_reviewed_identities():
+    """VPG001 member は G0 Admission だけ。G1 前は manifest に無く、identity lookup は fail closed。"""
+    master = _master()
+    rows = {r["candidate_id"]: r for r in master["candidates"]}
+    manifest = _manifest()
+    manifest_handoffs = [h["handoff_id"] for h in manifest["handoffs"]]
+    manifest_ids = {m["candidate_id"] for h in manifest["handoffs"] for m in h["members"]}
+    manifest_positions = {m["source_position"] for h in manifest["handoffs"] for m in h["members"]}
+    for candidate_id, handoff_id in VPG001_MEMBER_HANDOFFS.items():
+        row = rows[candidate_id]
+        assert row["admission_provenance"]["handoff_id"] == handoff_id
+        assert row["identity_status"] == "UNREVIEWED"
+        assert row["duplicate_status"] == "UNREVIEWED"
+        assert candidate_id not in manifest_ids
+        assert row["admission_provenance"]["source_position"] not in manifest_positions
+        assert handoff_id not in manifest_handoffs
+        with pytest.raises(HandoffIdentityError, match="unknown handoff"):
+            load_handoff_shrine_identities(handoff_id)
+    # processing group ID は identity handoff ではない。
+    assert VPG001 not in manifest_handoffs
+    with pytest.raises(HandoffIdentityError, match="unknown handoff"):
+        load_handoff_shrine_identities(VPG001)
+    # 既存の reviewed identity handoff は変わらない。
+    assert load_handoff_shrine_identities(H001) == H001_IDENTITIES
+    assert load_handoff_shrine_identities(H002) == H002_IDENTITIES
+    assert load_handoff_shrine_identities(H003) == H003_IDENTITIES
+
+
 def test_loader_rejects_mutated_files(tmp_path):
     manifest = _manifest()
     _swap(_members(manifest, H001), 0, 1)

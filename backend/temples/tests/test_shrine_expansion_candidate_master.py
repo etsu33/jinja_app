@@ -1338,6 +1338,19 @@ def _load_handoff_manifest() -> dict:
 
 HANDOFF_SPECS = tuple(_load_handoff_manifest()["handoffs"])
 
+# Value-selected processing group（VPG）の test 専用 fixture。runtime input でも Candidate Master
+# authority でもない。Source handoff は provenance 単位のまま、handoff manifest には部分登録しない。
+VALUE_SELECTED_GROUPS_PATH = (
+    Path(__file__).resolve().parent / "fixtures" / "shrine_expansion_value_selected_groups.json"
+)
+
+
+def _load_value_selected_groups() -> dict:
+    return json.loads(VALUE_SELECTED_GROUPS_PATH.read_text(encoding="utf-8"))
+
+
+VALUE_SELECTED_GROUP_SPECS = tuple(_load_value_selected_groups()["groups"])
+
 
 def _handoff_spec(handoff_id: str) -> dict:
     matches = [spec for spec in HANDOFF_SPECS if spec["handoff_id"] == handoff_id]
@@ -1509,14 +1522,30 @@ def test_handoff_manifest_is_well_formed():
 
 
 def test_every_registered_handoff_is_in_the_manifest():
-    """Candidate Master に登録された handoff は全て manifest の contract を通る（未登録 handoff を見逃さない）。"""
+    """Candidate Master に登録された handoff は全て manifest の contract を通る（未登録 handoff を見逃さない）。
+
+    Value-selected processing group の member は Source handoff の一部だけを G0 登録する。
+    その Source handoff は handoff manifest に部分登録せず、group fixture が member 単位で cover する。
+    全 Nationwide row は handoff manifest か group fixture のどちらか一方に必ず属する。
+    """
     master = _load_master()
+    group_ids = {
+        m["candidate_id"] for group in VALUE_SELECTED_GROUP_SPECS for m in group["members"]
+    }
     registered = []
     for row in _nationwide_candidates(master):
+        if row["candidate_id"] in group_ids:
+            continue
         handoff_id = row["admission_provenance"]["handoff_id"]
         if handoff_id not in registered:
             registered.append(handoff_id)
     assert registered == [spec["handoff_id"] for spec in HANDOFF_SPECS]
+
+    handoff_ids = {m["candidate_id"] for spec in HANDOFF_SPECS for m in spec["members"]}
+    assert not handoff_ids & group_ids
+    assert {row["candidate_id"] for row in _nationwide_candidates(master)} == (
+        handoff_ids | group_ids
+    )
 
 
 @pytest.mark.parametrize("spec", HANDOFF_SPECS, ids=lambda spec: spec["handoff_id"])
@@ -2660,8 +2689,9 @@ def _h002_remove(candidate_id: str):
 
 def _h002_extra_member(master, rows):
     extra = json.loads(json.dumps(rows["nsrc-000010"]))
-    # 未登録の candidate_id（nsrc-000011〜000015 は H003、nsrc-000016〜000020 は H004 が使用済み）。
-    extra["candidate_id"] = "nsrc-000021"
+    # 未登録の candidate_id（nsrc-000011〜000015 は H003、nsrc-000016〜000020 は H004、
+    # nsrc-000021〜000025 は VPG001 が使用済み）。page003-row001 は未登録の H005 row。
+    extra["candidate_id"] = "nsrc-000026"
     extra["admission_provenance"]["source_position"] = "page003-row001"
     master["candidates"].append(extra)
 
@@ -3244,3 +3274,574 @@ def test_niigata_h004_contract_rejects_mutations(mutate):
     spec = _handoff_spec(H004_HANDOFF_ID)
     assert _handoff_violations(master, spec) == []
     assert _handoff_violations(_mutated(master, mutate), spec) != []
+
+
+# --- NIIGATA-001-VPG001（value-selected processing group, G0 Admission only） ---------------
+#
+# docs/audit/niigata-vpg001-g0-candidate-registry.md / docs/audit/niigata-001-vpg001-freeze.md
+#
+# Source handoff = provenance 単位、VPG001 = processing selection、Candidate Master = lifecycle authority。
+# 各 member の admission_provenance.handoff_id は元の frozen Source handoff のまま（VPG ID を入れない）。
+# Source handoff の残り4件は未登録のまま残り、handoff manifest に部分登録しない。
+# G1（identity / duplicate）、G2 以降は未実施。期待値は fixture から独立した literal を使う。
+
+VPG001_ID = "NIIGATA-001-VPG001"
+VPG001_FREEZE_PATH = (
+    Path(__file__).resolve().parents[3] / "docs" / "audit" / "niigata-001-vpg001-freeze.md"
+)
+# (candidate_id, candidate_name, source_position, original source handoff)
+VPG001_MEMBERS = (
+    ("nsrc-000021", "荒川神社", "page008-row003", "NIIGATA-001-H015"),
+    ("nsrc-000022", "五十嵐神社", "page010-row004", "NIIGATA-001-H019"),
+    ("nsrc-000023", "熱串彦神社", "page006-row010", "NIIGATA-001-H012"),
+    ("nsrc-000024", "秋葉神社", "page003-row007", "NIIGATA-001-H006"),
+    ("nsrc-000025", "天津神社", "page007-row006", "NIIGATA-001-H014"),
+)
+VPG001_RAW_ADDRESSES = {
+    "page008-row003": "胎内市桃崎浜187番地",
+    "page010-row004": "三条市大字飯田2283番地",
+    "page006-row010": "佐渡市長江854番地",
+    "page003-row007": "新潟市秋葉区秋葉3丁目8番19号",
+    "page007-row006": "糸魚川市一の宮1丁目3番34号",
+}
+# 元の frozen Source handoff の membership（5件ずつ、Source 順）。VPG001 はこれを変えない。
+VPG001_SOURCE_HANDOFF_MEMBERSHIP = {
+    "NIIGATA-001-H006": [f"page003-row{n:03d}" for n in range(6, 11)],
+    "NIIGATA-001-H012": [f"page006-row{n:03d}" for n in range(6, 11)],
+    "NIIGATA-001-H014": [f"page007-row{n:03d}" for n in range(6, 11)],
+    "NIIGATA-001-H015": [f"page008-row{n:03d}" for n in range(1, 6)],
+    "NIIGATA-001-H019": [f"page010-row{n:03d}" for n in range(1, 6)],
+}
+VPG001_G0_LIFECYCLE = {
+    "candidate_status": "DISCOVERED",
+    "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+    "build_batch": None,
+    "duplicate_status": "UNREVIEWED",
+    "wave_id": None,
+    "identity_status": "UNREVIEWED",
+    "official_source_status": "AVAILABLE",
+    "knowledge_status": "UNREVIEWED",
+}
+# H001〜H004 の現在 state（candidate_status, status_reason_code, identity_status, duplicate_status）。
+# VPG001 の G0 登録はこれに連動しない。
+H001_H004_STATES = {
+    "nsrc-000001": ("DISCOVERED", "REGISTRY_ADMISSION_COMPLETE", "CONFIRMED", "NEW"),
+    "nsrc-000002": ("CORE_READY", "CORE_READY_CONTRACT_PASS", "CONFIRMED", "NEW"),
+    "nsrc-000003": ("DISCOVERED", "REGISTRY_ADMISSION_COMPLETE", "CONFIRMED", "NEW"),
+    "nsrc-000004": (
+        "CORE_READY",
+        "CORE_READY_CONTRACT_PASS",
+        "CONFIRMED",
+        "SAME_NAME_DIFFERENT_SHRINE",
+    ),
+    "nsrc-000005": ("DISCOVERED", "REGISTRY_ADMISSION_COMPLETE", "CONFIRMED", "NEW"),
+    "nsrc-000006": ("CORE_READY", "CORE_READY_CONTRACT_PASS", "CONFIRMED", "NEW"),
+    "nsrc-000007": (
+        "CORE_READY",
+        "CORE_READY_CONTRACT_PASS",
+        "CONFIRMED",
+        "SAME_NAME_DIFFERENT_SHRINE",
+    ),
+    "nsrc-000008": (
+        "DISCOVERED",
+        "REGISTRY_ADMISSION_COMPLETE",
+        "CONFIRMED",
+        "SAME_NAME_DIFFERENT_SHRINE",
+    ),
+    "nsrc-000009": (
+        "CORE_READY",
+        "CORE_READY_CONTRACT_PASS",
+        "CONFIRMED",
+        "SAME_NAME_DIFFERENT_SHRINE",
+    ),
+    "nsrc-000010": (
+        "DISCOVERED",
+        "REGISTRY_ADMISSION_COMPLETE",
+        "CONFIRMED",
+        "SAME_NAME_DIFFERENT_SHRINE",
+    ),
+    "nsrc-000011": (
+        "IMPORTED",
+        "PRODUCTION_IMPORT_COMPLETE",
+        "CONFIRMED",
+        "SAME_NAME_DIFFERENT_SHRINE",
+    ),
+    "nsrc-000012": (
+        "IMPORTED",
+        "PRODUCTION_IMPORT_COMPLETE",
+        "CONFIRMED",
+        "SAME_NAME_DIFFERENT_SHRINE",
+    ),
+    "nsrc-000013": (
+        "IMPORTED",
+        "PRODUCTION_IMPORT_COMPLETE",
+        "CONFIRMED",
+        "SAME_NAME_DIFFERENT_SHRINE",
+    ),
+    "nsrc-000014": (
+        "DISCOVERED",
+        "REGISTRY_ADMISSION_COMPLETE",
+        "CONFIRMED",
+        "SAME_NAME_DIFFERENT_SHRINE",
+    ),
+    "nsrc-000015": (
+        "IMPORTED",
+        "PRODUCTION_IMPORT_COMPLETE",
+        "CONFIRMED",
+        "SAME_NAME_DIFFERENT_SHRINE",
+    ),
+    "nsrc-000016": ("DISCOVERED", "REGISTRY_ADMISSION_COMPLETE", "UNREVIEWED", "UNREVIEWED"),
+    "nsrc-000017": ("DISCOVERED", "REGISTRY_ADMISSION_COMPLETE", "UNREVIEWED", "UNREVIEWED"),
+    "nsrc-000018": ("DISCOVERED", "REGISTRY_ADMISSION_COMPLETE", "UNREVIEWED", "UNREVIEWED"),
+    "nsrc-000019": ("DISCOVERED", "REGISTRY_ADMISSION_COMPLETE", "UNREVIEWED", "UNREVIEWED"),
+    "nsrc-000020": ("DISCOVERED", "REGISTRY_ADMISSION_COMPLETE", "UNREVIEWED", "UNREVIEWED"),
+}
+VALUE_SELECTED_GROUP_FIELDS = frozenset(
+    {
+        "processing_group_id",
+        "group_type",
+        "freeze_record",
+        "source_batch_id",
+        "prefecture",
+        "source_snapshot_sha256",
+        "source_url",
+        "source_verified_at",
+        "captured_at",
+        "members",
+    }
+)
+VALUE_SELECTED_MEMBER_FIELDS = frozenset(
+    {
+        "candidate_id",
+        "candidate_name",
+        "source_position",
+        "source_handoff",
+        "identity_status",
+        "duplicate_status",
+        "lifecycle",
+    }
+)
+# G0 の screening / processing selection / Knowledge evidence を Candidate Master に持ち込まない。
+VPG001_FORBIDDEN_FIELDS = HANDOFF_FORBIDDEN_HYDRATION_FIELDS | frozenset(
+    {
+        "reading",
+        "official_source",
+        "product_surface",
+        "catalog_status",
+        "catalog_ready",
+        "processing_group_id",
+        "value_selected_group",
+        "priority_class",
+        "screening",
+        "deity",
+        "deity_evidence",
+        "history_evidence",
+        "model_risk",
+    }
+)
+
+
+def _value_selected_group(processing_group_id: str) -> dict:
+    matches = [
+        group
+        for group in VALUE_SELECTED_GROUP_SPECS
+        if group["processing_group_id"] == processing_group_id
+    ]
+    assert len(matches) == 1, processing_group_id
+    return matches[0]
+
+
+def _value_selected_group_violations(master: dict, group: dict) -> list[str]:
+    """VPG member の G0 contract からのずれを列挙する（空なら PASS）。"""
+    candidates = master["candidates"]
+    group_id = group["processing_group_id"]
+    violations: list[str] = []
+
+    ids = [str(row.get("candidate_id", "")) for row in candidates]
+    duplicated = sorted({cid for cid in ids if ids.count(cid) > 1})
+    if duplicated:
+        violations.append(f"reused candidate_id {duplicated}")
+
+    for row in candidates:
+        handoff_id = str((row.get("admission_provenance") or {}).get("handoff_id", ""))
+        if "VPG" in handoff_id:
+            violations.append(f"{row.get('candidate_id')} handoff_id={handoff_id!r}")
+
+    member_handoffs = {m["source_handoff"] for m in group["members"]}
+    # 元の Source handoff の他の member は未登録のまま（部分登録を handoff 全体に広げない）。
+    for handoff_id in sorted(member_handoffs):
+        in_handoff = [
+            row.get("candidate_id")
+            for row in candidates
+            if (row.get("admission_provenance") or {}).get("handoff_id") == handoff_id
+        ]
+        selected = [
+            m["candidate_id"] for m in group["members"] if m["source_handoff"] == handoff_id
+        ]
+        if in_handoff != selected:
+            violations.append(f"{handoff_id} registered {in_handoff} != selected {selected}")
+
+    by_id = {row.get("candidate_id"): row for row in candidates}
+    for member in group["members"]:
+        candidate_id = member["candidate_id"]
+        row = by_id.get(candidate_id)
+        if row is None:
+            violations.append(f"{candidate_id} missing")
+            continue
+        want = {
+            "candidate_id": candidate_id,
+            "candidate_name": member["candidate_name"],
+            "prefecture": group["prefecture"],
+            "duplicate_status": member["duplicate_status"],
+            "wave_id": None,
+            "identity_status": member["identity_status"],
+            "candidate_reason": NATIONWIDE_CANDIDATE_REASON,
+            **member["lifecycle"],
+            "admission_provenance": {
+                "track": NATIONWIDE_TRACK,
+                "prefecture": group["prefecture"],
+                "source_batch_id": group["source_batch_id"],
+                "handoff_id": member["source_handoff"],
+                "source_position": member["source_position"],
+                "source_snapshot_sha256": group["source_snapshot_sha256"],
+                "source_url": group["source_url"],
+                "source_verified_at": group["source_verified_at"],
+                "captured_at": group["captured_at"],
+            },
+        }
+        if row != want:
+            diff = sorted(k for k in set(row) | set(want) if row.get(k) != want.get(k))
+            violations.append(f"{candidate_id} differs: {diff}")
+        effective = _effective(master, row)
+        for field in HANDOFF_LIFECYCLE_FIELDS:
+            if effective.get(field) != want[field]:
+                violations.append(f"{candidate_id} effective {field}={effective.get(field)!r}")
+        if effective.get("wave_id") is not None:
+            violations.append(f"{candidate_id} wave_id={effective.get('wave_id')!r}")
+        if VPG001_FORBIDDEN_FIELDS & row.keys():
+            violations.append(
+                f"{candidate_id} premature fields {sorted(VPG001_FORBIDDEN_FIELDS & row.keys())}"
+            )
+        if row.get("build_batch") in {group_id, group["source_batch_id"], member["source_handoff"]}:
+            violations.append(f"{candidate_id} build_batch={row.get('build_batch')!r}")
+        if group_id in json.dumps(row, ensure_ascii=False):
+            violations.append(f"{candidate_id} carries {group_id}")
+    return violations
+
+
+def _vpg001_freeze_rows() -> list[tuple[str, str, str, str]]:
+    """VPG001 freeze record §3 の member table（source_position, raw_name, raw_address, handoff）。"""
+    text = VPG001_FREEZE_PATH.read_text(encoding="utf-8")
+    section = text[text.index("## 3. Frozen membership") : text.index("### 3.1")]
+    return re.findall(
+        r"^\| [1-5] \| (page\d{3}-row\d{3}) \| ([^|]+?) \| ([^|]+?) \| (NIIGATA-001-H\d{3}) \|",
+        section,
+        flags=re.MULTILINE,
+    )
+
+
+def test_value_selected_group_fixture_is_well_formed():
+    """Test 専用 group fixture 自体の整合性。handoff manifest とは別物で、重ならない。"""
+    fixture = _load_value_selected_groups()
+    assert set(fixture) == {"schema_version", "purpose", "frozen_ready_set", "groups"}
+    assert fixture["frozen_ready_set"] == "docs/audit/niigata-batch001-ready-set-freeze.md"
+    assert "Test-only" in fixture["purpose"]
+    assert "not Candidate Master authority" in fixture["purpose"]
+    assert [g["processing_group_id"] for g in VALUE_SELECTED_GROUP_SPECS] == [VPG001_ID]
+
+    handoff_member_ids = {m["candidate_id"] for spec in HANDOFF_SPECS for m in spec["members"]}
+    handoff_positions = {m["source_position"] for spec in HANDOFF_SPECS for m in spec["members"]}
+    for group in VALUE_SELECTED_GROUP_SPECS:
+        assert set(group) == VALUE_SELECTED_GROUP_FIELDS
+        assert group["group_type"] == "VALUE_SELECTED_PROCESSING_GROUP"
+        assert re.fullmatch(r"[0-9a-f]{64}", group["source_snapshot_sha256"])
+        for member in group["members"]:
+            assert set(member) == VALUE_SELECTED_MEMBER_FIELDS, member
+            assert tuple(member["lifecycle"]) == HANDOFF_LIFECYCLE_FIELDS, member
+            assert member["candidate_id"] not in handoff_member_ids, member
+            assert member["source_position"] not in handoff_positions, member
+            # 元の Source handoff は handoff manifest に部分登録しない。
+            assert member["source_handoff"] not in [s["handoff_id"] for s in HANDOFF_SPECS]
+            assert member["source_handoff"] != group["processing_group_id"]
+
+
+def test_vpg001_fixture_matches_freeze_record_and_frozen_ready_set():
+    """fixture / freeze record / frozen Ready Set が literal と exact に一致する。"""
+    group = _value_selected_group(VPG001_ID)
+    assert [
+        (m["candidate_id"], m["candidate_name"], m["source_position"], m["source_handoff"])
+        for m in group["members"]
+    ] == list(VPG001_MEMBERS)
+    for member in group["members"]:
+        assert member["identity_status"] == "UNREVIEWED"
+        assert member["duplicate_status"] == "UNREVIEWED"
+        assert member["lifecycle"] == NATIONWIDE_DISCOVERED_LIFECYCLE
+
+    assert group["freeze_record"] == "docs/audit/niigata-001-vpg001-freeze.md"
+    freeze_rows = _vpg001_freeze_rows()
+    assert freeze_rows == [
+        (position, name, VPG001_RAW_ADDRESSES[position], handoff)
+        for _, name, position, handoff in VPG001_MEMBERS
+    ]
+
+    text = _frozen_ready_set_text()
+    identity = _parse_frozen_identity(text)
+    assert group["source_batch_id"] == identity["batch_id"]
+    assert group["prefecture"] == identity["prefecture"]
+    assert group["source_snapshot_sha256"] == identity["snapshot_sha256"]
+    assert group["source_verified_at"] == identity["source_verified_at"]
+    assert group["captured_at"] == identity["captured_at"]
+    frozen = _parse_frozen_handoffs(text)
+    for position, name, address, handoff in freeze_rows:
+        matches = [row for row in frozen[handoff] if row["source_position"] == position]
+        assert len(matches) == 1, position
+        assert (matches[0]["raw_name"], matches[0]["raw_address"]) == (name, address)
+        assert matches[0]["ready_basis"] == "RUNNER_READY"
+
+
+def test_vpg001_source_handoff_membership_is_unchanged():
+    """元の H006 / H012 / H014 / H015 / H019 は5件ずつ Source 順のまま。部分登録で再定義しない。"""
+    frozen = _parse_frozen_handoffs(_frozen_ready_set_text())
+    for handoff_id, positions in VPG001_SOURCE_HANDOFF_MEMBERSHIP.items():
+        assert [row["source_position"] for row in frozen[handoff_id]] == positions, handoff_id
+        assert handoff_id not in [spec["handoff_id"] for spec in HANDOFF_SPECS], handoff_id
+
+    master = _load_master()
+    for _, _, position, handoff_id in VPG001_MEMBERS:
+        assert position in VPG001_SOURCE_HANDOFF_MEMBERSHIP[handoff_id]
+        registered = [
+            row["admission_provenance"]["source_position"]
+            for row in _nationwide_candidates(master)
+            if row["admission_provenance"]["handoff_id"] == handoff_id
+        ]
+        # 選ばれた1件だけが登録済み。残り4件は未登録のまま。
+        assert registered == [position], handoff_id
+    registered_positions = {
+        row["admission_provenance"]["source_position"] for row in _nationwide_candidates(master)
+    }
+    unselected = {
+        position
+        for positions in VPG001_SOURCE_HANDOFF_MEMBERSHIP.values()
+        for position in positions
+    } - {position for _, _, position, _ in VPG001_MEMBERS}
+    assert len(unselected) == 20
+    assert not unselected & registered_positions
+
+
+def test_niigata_vpg001_is_registered_at_g0_only():
+    master = _load_master()
+    rows = {row["candidate_id"]: row for row in master["candidates"]}
+    nationwide_ids = [row["candidate_id"] for row in _nationwide_candidates(master)]
+    vpg_ids = [m[0] for m in VPG001_MEMBERS]
+    assert vpg_ids == [f"nsrc-{n:06d}" for n in range(21, 26)]
+    # 全体の serial の末尾に、VPG001 の順で5件だけ追加されている。
+    assert nationwide_ids[-5:] == vpg_ids
+    assert nationwide_ids == [f"nsrc-{n:06d}" for n in range(1, 26)]
+
+    for candidate_id, name, position, handoff_id in VPG001_MEMBERS:
+        row = rows[candidate_id]
+        assert row == {
+            "candidate_id": candidate_id,
+            "candidate_name": name,
+            "prefecture": "新潟県",
+            **VPG001_G0_LIFECYCLE,
+            "candidate_reason": NATIONWIDE_CANDIDATE_REASON,
+            "admission_provenance": {
+                "track": "nationwide_source_candidate",
+                "prefecture": "新潟県",
+                "source_batch_id": "NIIGATA-001",
+                "handoff_id": handoff_id,
+                "source_position": position,
+                "source_snapshot_sha256": (
+                    "f54022303700821672ee4ee65e9967a7e8f343715a66ad987cc0b43530850380"
+                ),
+                "source_url": "https://niigata-jinjacho.jp/shrine_niigata/search.php",
+                "source_verified_at": "2026-10-08",
+                "captured_at": "2026-10-08T14:27:00+09:00",
+            },
+        }, candidate_id
+        # G1 の結論を持たない。
+        assert row["identity_status"] == "UNREVIEWED", candidate_id
+        assert row["duplicate_status"] == "UNREVIEWED", candidate_id
+        # G0 を超える lifecycle / build_batch / Product Surface を持たない。
+        assert row["candidate_status"] == "DISCOVERED", candidate_id
+        assert row["build_batch"] is None, candidate_id
+        assert "product_surface" not in row, candidate_id
+        assert not (VPG001_FORBIDDEN_FIELDS & row.keys()), candidate_id
+        # VPG ID は provenance の handoff_id に入らない（元の Source handoff のまま）。
+        assert row["admission_provenance"]["handoff_id"] == handoff_id, candidate_id
+        assert VPG001_ID not in json.dumps(row, ensure_ascii=False), candidate_id
+
+    # Candidate Master 全体で、VPG ID を handoff_id に持つ row は無い。
+    for row in _nationwide_candidates(master):
+        assert "VPG" not in row["admission_provenance"]["handoff_id"], row["candidate_id"]
+
+    assert _value_selected_group_violations(master, _value_selected_group(VPG001_ID)) == []
+
+    # H001〜H004 は変わらない。
+    for spec in HANDOFF_SPECS:
+        assert _handoff_violations(master, spec) == [], spec["handoff_id"]
+    assert {
+        cid: (
+            rows[cid]["candidate_status"],
+            rows[cid]["status_reason_code"],
+            rows[cid]["identity_status"],
+            rows[cid]["duplicate_status"],
+        )
+        for cid in H001_H004_STATES
+    } == H001_H004_STATES
+    wave0 = _wave0_candidates(master)
+    assert len(wave0) == EXPECTED_WAVE0_TOTAL
+    assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
+
+
+def test_vpg001_amatsu_screening_evidence_does_not_hydrate_candidate_master():
+    """天津神社の primary-source screening evidence は G0 の Candidate Master に入らない。"""
+    master = _load_master()
+    row = next(r for r in master["candidates"] if r["candidate_id"] == "nsrc-000025")
+    assert row["candidate_name"] == "天津神社"
+    assert row["official_source_status"] == "AVAILABLE"
+    assert row["knowledge_status"] == "UNREVIEWED"
+    assert row["identity_status"] == "UNREVIEWED"
+    assert row["duplicate_status"] == "UNREVIEWED"
+    assert set(row) == {
+        "candidate_id",
+        "candidate_name",
+        "prefecture",
+        *VPG001_G0_LIFECYCLE,
+        "candidate_reason",
+        "admission_provenance",
+    }
+    assert set(row["admission_provenance"]) == NATIONWIDE_PROVENANCE_FIELDS
+    text = json.dumps(row, ensure_ascii=False)
+    for marker in ("PRIMARY_PAGE_VERIFIED", "PRIORITY_A", "奴奈川", "舞楽", "一の宮"):
+        assert marker not in text, marker
+
+
+def test_vpg001_has_no_base_seed_or_knowledge_hydration():
+    """G0 では Base Seed / Knowledge Seed を作らない。"""
+    data_dir = MASTER_PATH.parent
+    base_seed = json.loads((data_dir / "shrines_seed_clean.json").read_text(encoding="utf-8"))
+    for row in base_seed:
+        for _, name, position, _ in VPG001_MEMBERS:
+            assert not (
+                row.get("name_jp") == name
+                and VPG001_RAW_ADDRESSES[position] in str(row.get("address", ""))
+            ), (name, row.get("address"))
+    vpg_ids = [m[0] for m in VPG001_MEMBERS]
+    for path in sorted((data_dir / "knowledge_seeds").rglob("*.json")):
+        text = path.read_text(encoding="utf-8")
+        for candidate_id in vpg_ids:
+            assert candidate_id not in text, (path.name, candidate_id)
+        for address in VPG001_RAW_ADDRESSES.values():
+            assert address not in text, (path.name, address)
+
+
+def _vpg_move_to_group(candidate_id: str):
+    return _set_provenance(candidate_id, "handoff_id", VPG001_ID)
+
+
+def _vpg_register_sibling(handoff_id: str, position: str, candidate_id: str):
+    def mutate(master, rows):
+        extra = json.loads(json.dumps(rows["nsrc-000021"]))
+        extra["candidate_id"] = candidate_id
+        extra["admission_provenance"]["handoff_id"] = handoff_id
+        extra["admission_provenance"]["source_position"] = position
+        master["candidates"].append(extra)
+
+    return mutate
+
+
+# VPG001（G0 only）の premature G1+ / hydration / provenance 書き換え / Source handoff 再定義の mutation。
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(_vpg_move_to_group("nsrc-000021"), id="vpg001-handoff-id-is-vpg"),
+        pytest.param(
+            _set_provenance("nsrc-000022", "handoff_id", "NIIGATA-001-H015"),
+            id="vpg001-handoff-id-wrong-source",
+        ),
+        pytest.param(
+            _set_provenance("nsrc-000023", "source_position", "page006-row006"),
+            id="vpg001-changed-source-position",
+        ),
+        pytest.param(
+            _set_provenance("nsrc-000024", "source_snapshot_sha256", "0" * 64),
+            id="vpg001-changed-snapshot",
+        ),
+        pytest.param(
+            _set("nsrc-000025", "identity_status", "CONFIRMED"), id="vpg001-premature-identity"
+        ),
+        pytest.param(
+            _set("nsrc-000021", "duplicate_status", "NEW"), id="vpg001-premature-duplicate-new"
+        ),
+        pytest.param(
+            _set("nsrc-000024", "duplicate_status", "SAME_NAME_DIFFERENT_SHRINE"),
+            id="vpg001-premature-same-name-different-shrine",
+        ),
+        pytest.param(
+            _set("nsrc-000022", "candidate_status", "BUILD_READY"), id="vpg001-build-ready"
+        ),
+        pytest.param(_set("nsrc-000023", "candidate_status", "IMPORTED"), id="vpg001-imported"),
+        pytest.param(_set("nsrc-000024", "candidate_status", "CORE_READY"), id="vpg001-core-ready"),
+        pytest.param(
+            _set("nsrc-000025", "status_reason_code", "BUILD_READINESS_CONFIRMED"),
+            id="vpg001-reason-beyond-g0",
+        ),
+        pytest.param(
+            _set("nsrc-000025", "official_source_status", "CONFIRMED"),
+            id="vpg001-official-source-beyond-g0",
+        ),
+        pytest.param(
+            _set("nsrc-000025", "knowledge_status", "FACT_READY"), id="vpg001-knowledge-beyond-g0"
+        ),
+        pytest.param(_set("nsrc-000021", "build_batch", VPG001_ID), id="vpg001-build-batch-vpg"),
+        pytest.param(
+            _set("nsrc-000022", "build_batch", "NIIGATA-001-H019"),
+            id="vpg001-build-batch-source-handoff",
+        ),
+        pytest.param(_set("nsrc-000023", "wave_id", "W0"), id="vpg001-wave-id-assigned"),
+        pytest.param(
+            _set("nsrc-000024", "product_surface", "RECOMMENDATION"), id="vpg001-product-surface"
+        ),
+        pytest.param(
+            _set("nsrc-000025", "processing_group_id", VPG001_ID), id="vpg001-group-id-field"
+        ),
+        pytest.param(
+            _set("nsrc-000025", "priority_class", "PRIORITY_A"), id="vpg001-priority-field"
+        ),
+        pytest.param(
+            _set("nsrc-000025", "deity_evidence", "PRIMARY_PAGE_VERIFIED"),
+            id="vpg001-amatsu-screening-evidence-hydrated",
+        ),
+        pytest.param(
+            _set("nsrc-000025", "official_name", "天津神社"), id="vpg001-official-name-hydrated"
+        ),
+        pytest.param(
+            _set("nsrc-000021", "official_address", "新潟県胎内市桃崎浜187番地"),
+            id="vpg001-official-address-hydrated",
+        ),
+        pytest.param(
+            _set("nsrc-000022", "reading", "いからしじんじゃ"), id="vpg001-reading-hydrated"
+        ),
+        pytest.param(_set("nsrc-000025", "latitude", 37.0), id="vpg001-coordinate-hydrated"),
+        pytest.param(_set("nsrc-000023", "shrine_id", 123), id="vpg001-shrine-id-hydrated"),
+        pytest.param(_set("nsrc-000024", "goriyaku", "家内安全"), id="vpg001-goriyaku-hydrated"),
+        pytest.param(
+            _set("nsrc-000024", "candidate_name", "秋葉神社（秋葉区）"), id="vpg001-name-changed"
+        ),
+        pytest.param(_h002_remove("nsrc-000023"), id="vpg001-member-removed"),
+        pytest.param(
+            _vpg_register_sibling("NIIGATA-001-H015", "page008-row001", "nsrc-000026"),
+            id="vpg001-source-handoff-sibling-registered",
+        ),
+        pytest.param(
+            _set("nsrc-000025", "candidate_id", "nsrc-000020"), id="vpg001-reused-nsrc-id"
+        ),
+    ],
+)
+def test_niigata_vpg001_contract_rejects_mutations(mutate):
+    master = _load_master()
+    group = _value_selected_group(VPG001_ID)
+    assert _value_selected_group_violations(master, group) == []
+    assert _value_selected_group_violations(_mutated(master, mutate), group) != []
