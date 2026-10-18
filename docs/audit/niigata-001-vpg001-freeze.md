@@ -49,8 +49,16 @@ order above, UTF-8, `\n`-terminated）:
 All five members are **PRIORITY_A** in the screening audit.
 
 天津神社（page007-row006）was moved PRIORITY_B → PRIORITY_A in the screening audit（§6.1）before this
-freeze, after Mother Ship primary-source deity verification. Its deity name and source reference are
-not yet recorded in the repository（`NOT_SUPPLIED_IN_REPO`, to be recorded before G1）.
+freeze, after primary-source deity verification on 2026-10-18.
+
+```text
+primary_source     = 天津神社・奴奈川神社 公式サイト「御由緒・御祭神」
+primary_source_url = https://amatsujinja.com/story/
+天津神社 御祭神     = 天津彦々火瓊々杵尊 / 天児屋根命 / 天太玉命
+```
+
+The same official source separately records 奴奈川神社御祭神 as 奴奈川媛命 / 八千矛命, so G1 / G3
+must preserve deity Fact ownership between the two honden.
 
 For G1 / G3, carried forward: the precinct has two honden（天津神社・奴奈川神社）. This stays a
 `MODEL_RISK = POSSIBLE` entity-granularity question. The freeze does not decide it.
