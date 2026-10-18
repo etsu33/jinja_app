@@ -110,7 +110,7 @@ Columns follow the policy fields. `[Sn]` refers to §7 Sources.
 | H013 | page007-row003 | 熱田神社 | 妙高市大字青田909番地 | STRONG | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | PRIORITY_C | web search（name + municipality + locality）: no shrine-specific deity / history / benefit result | deep sources（神社庁 directory, 市町村誌）not checked |
 | H013 | page007-row004 | 熱田神社 | 佐渡市秋津1135番地 | STRONG | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | PRIORITY_C | web search（name + municipality + locality）: no shrine-specific deity / history / benefit result（combined query with another same-name row） | deep sources（神社庁 directory, 市町村誌）not checked |
 | H013 | page007-row005 | 阿比多神社 | 上越市大字長浜904番地，878番地 | STRONG | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | PRIORITY_C | web search（name + municipality + locality）: no shrine-specific deity / history / benefit result | deep sources（神社庁 directory, 市町村誌）not checked |
-| H014 | page007-row006 | 天津神社 | 糸魚川市一の宮1丁目3番34号 | STRONG | HIGH | YES | YES | UNKNOWN | YES | HIGH | POSSIBLE | PRIORITY_A | 文化遺産オンライン + 新潟県観光協会 [S6]: 糸魚川・能生の舞楽 = 重要無形民俗文化財（1980-01-28, 天津神社舞楽会）, 春大祭 けんか祭り; precinct has two honden 天津神社・奴奈川神社; deity: PRIMARY_PAGE_VERIFIED by Mother Ship（2026-10-18, §6.1） | deity name / source reference NOT_SUPPLIED_IN_REPO（to be recorded before G1）; two-honden（天津神社・奴奈川神社）structure remains a G1 / G3 MODEL_RISK question |
+| H014 | page007-row006 | 天津神社 | 糸魚川市一の宮1丁目3番34号 | STRONG | HIGH | YES | YES | UNKNOWN | YES | HIGH | POSSIBLE | PRIORITY_A | 天津神社・奴奈川神社 公式サイト「御由緒・御祭神」[S11]（PRIMARY_PAGE_VERIFIED 2026-10-18）: 天津神社の御祭神 = 天津彦々火瓊々杵尊・天児屋根命・天太玉命; 文化遺産オンライン + 新潟県観光協会 [S6]: 糸魚川・能生の舞楽 = 重要無形民俗文化財, 春大祭 けんか祭り; precinct has separate 天津神社・奴奈川神社 honden | 天津神社と奴奈川神社のFact ownerを混同しない; two-honden precinct remains a G1 / G3 MODEL_RISK question |
 | H014 | page007-row007 | 天津神社 | 上越市大字東京田34番地1 | STRONG | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | PRIORITY_C | web search（name + municipality + locality）: no shrine-specific deity / history / benefit result | deep sources（神社庁 directory, 市町村誌）not checked |
 | H014 | page007-row008 | 天照大神社 | 柏崎市大字旧広田388番地 | STRONG | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | PRIORITY_C | web search（name + municipality + locality）: no shrine-specific deity / history / benefit result | deep sources（神社庁 directory, 市町村誌）not checked |
 | H014 | page007-row009 | 天照大神社諏訪社合殿 | 新潟市西蒲区真木1587番地 | STRONG | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | POSSIBLE | PRIORITY_C | web search（name + municipality + locality）: no shrine-specific deity / history / benefit result; name states 合殿 | 合殿 implies more than one principal enshrinement（G3 question）; deep sources not checked |
@@ -190,8 +190,7 @@ Purpose: try to confirm **deity evidence** for each, and determine whether eithe
 **B → A**. Both already have HIGH distinctiveness, and history YES from independent publishers. Deity is the
 only missing A condition（policy §5: at least 2 of deity / history / benefit = YES）.
 
-**天津神社 — resolved.** Mother Ship verified the enshrined deity against a primary source and approved
-PRIORITY_A.
+**天津神社 — resolved.** The shrine official primary page was verified on 2026-10-18.
 
 ```text
 DEITY_EVIDENCE                  = YES
@@ -199,14 +198,18 @@ HISTORY_EVIDENCE                = YES
 RECOMMENDATION_DISTINCTIVENESS  = HIGH
 MODEL_RISK                      = POSSIBLE
 PRIORITY_CLASS                  = PRIORITY_A
-deity evidence level            = PRIMARY_PAGE_VERIFIED（Mother Ship, 2026-10-18）
-deity name / source reference   = NOT_SUPPLIED_IN_REPO（to be recorded before G1）
+deity evidence level            = PRIMARY_PAGE_VERIFIED
+verified_at                     = 2026-10-18
+primary_source                  = 天津神社・奴奈川神社 公式サイト「御由緒・御祭神」
+primary_source_url              = https://amatsujinja.com/story/
+天津神社 御祭神                  = 天津彦々火瓊々杵尊 / 天児屋根命 / 天太玉命
 ```
 
-This satisfies the policy §6 rule 7 primary-page requirement for the deity fact only. The history facts
-stay at SEARCH_SUMMARY level. The precinct has two honden（天津神社・奴奈川神社）. Whether that is one
-candidate entity, and whether current Knowledge models can represent it without meaning loss, **remains
-open as a G1 / G3 MODEL_RISK question**. The reclassification does not decide it.
+The same primary source separately records 奴奈川神社御祭神 as 奴奈川媛命 / 八千矛命. Therefore the
+天津神社 deity evidence is source-backed, while deity Fact ownership between the two honden must remain
+separate. This satisfies policy §6 rule 7 for the deity fact. The history facts used in the original
+screening remain at SEARCH_SUMMARY level. The two-honden（天津神社・奴奈川神社）structure remains open
+as a G1 / G3 `MODEL_RISK = POSSIBLE` entity-granularity question; this reclassification does not resolve it.
 
 Google Maps screenshots supplied by Mother Ship are noted **only as future G2 preflight visual evidence**.
 No coordinate is adopted from them, and POSITION_LIKELIHOOD is unchanged（HIGH）.
@@ -227,6 +230,7 @@ Counts after this update: A 5 / B 5 / C 70. No other row changed.
 - [S8] 新潟県: https://www.pref.niigata.lg.jp/site/shibata/kitamaebune02.html ; 新潟県観光協会: https://niigata-kankou.or.jp/spot/7288 ; 胎内市: https://www.city.tainai.niigata.jp/tayori/documents/tainai20250301.pdf
 - [S9] 文化遺産オンライン（胎内市）: https://online.bunka.go.jp/heritages/region/15/15227
 - [S10] ja.wikid.org: https://ja.wikid.org/%E4%BA%94%E5%8D%81%E5%B5%90%E7%A5%9E%E7%A4%BE ; 自衛隊新潟地本: https://www.mod.go.jp/pco/niigata/HP/03-sho/04-kamo/kamo-member4/kamo-member4-6.pdf
+- [S11] 天津神社・奴奈川神社 公式サイト「御由緒・御祭神」: https://amatsujinja.com/story/ （PRIMARY_PAGE_VERIFIED 2026-10-18）
 
 ## 8. Not changed
 
