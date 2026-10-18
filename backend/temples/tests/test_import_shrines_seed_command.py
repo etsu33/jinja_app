@@ -513,18 +513,16 @@ def test_repair_only_visit_style_backfill_is_idempotent_against_canonical_seed()
     assert len(managed) >= MANAGED_COHORT_MIN_COUNT
     assert all(row["visit_style_tags"] for row in managed)
     seed_names = [row["name_jp"] for row in data]
-    managed_names = [row["name_jp"] for row in managed]
+    # 同名・別住所の行（例: 群馬県と新潟県の赤城神社）があるため exact (name_jp, address) で数える。
+    managed_identities = {(row["name_jp"], row["address"]) for row in managed}
 
     first = _summary(_run("--source", str(SEED_PATH), "--skip-goriyaku-tags"))
     assert first["created"] == len(data)
 
     call_command("backfill_goriyaku_tags", "--with-visit-style", "--force", stdout=StringIO())
-    assert (
-        Shrine.objects.filter(name_jp__in=managed_names)
-        .exclude(visit_style_tags=[])
-        .count()
-        == len(managed)
-    )
+    tagged = Shrine.objects.exclude(visit_style_tags=[]).values_list("name_jp", "address")
+    managed_with_tags = {identity for identity in tagged if identity in managed_identities}
+    assert managed_with_tags == managed_identities
 
     output = _run("--source", str(SEED_PATH), "--skip-goriyaku-tags", "--dry-run")
     second = _summary(output)
