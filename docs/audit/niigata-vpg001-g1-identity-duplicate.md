@@ -3,10 +3,10 @@
 ## 1. Status
 
 ```text
-G1                       = PENDING_PRODUCTION_COLLISION_CHECK
+G1                       = PENDING_MOTHER_SHIP_DECISION
 identity_status          = UNREVIEWED ×5（Candidate Master, unchanged）
 duplicate_status         = UNREVIEWED ×5（Candidate Master, unchanged）
-PRODUCTION_COLLISION     = NOT MEASURED（no Production access in this environment）
+PRODUCTION_COLLISION     = MEASURED / 0 COLLISIONS UNDER INSPECTED CONDITIONS
 Mother Ship decision     = NOT MADE
 Production write         = NONE
 ```
@@ -207,9 +207,63 @@ after ROLLBACK: 129 Shrine, 0 ShrineCandidate. Database dropped afterwards.
 
 ### 7.1 Production result
 
+Recorded at: 2026-10-18.
+
+The three SELECT / WITH statements from the merged
+`scripts/migration_safety/sql/niigata_vpg001_g1_collision_inspection.sql` were executed against
+current Production through the connected Supabase database tool. No credential, hostname, database
+identifier or connection string is recorded here.
+
+Procedural note:
+
+- the merged SQL itself is the same SELECT-only inspection reviewed in §7;
+- this execution did **not** run through `readonly_query.sh`;
+- the session reported `transaction_read_only = off`;
+- every executed statement was SELECT / WITH only and no Production write was executed.
+
+Statement 1:
+
 ```text
-PRODUCTION_RESULT = NOT YET SUPPLIED
+transaction_read_only = off
+server_encoding       = UTF8
+temples_shrine        = 129
+temples_shrinecandidate = 2
 ```
+
+Statement 2（per target, both tables）:
+
+```text
+nsrc-000021 temples_shrine          exact=0 same_name_other_address=0 same_address_other_name=0
+nsrc-000021 temples_shrinecandidate exact=0 same_name_other_address=0 same_address_other_name=0
+nsrc-000022 temples_shrine          exact=0 same_name_other_address=0 same_address_other_name=0
+nsrc-000022 temples_shrinecandidate exact=0 same_name_other_address=0 same_address_other_name=0
+nsrc-000023 temples_shrine          exact=0 same_name_other_address=0 same_address_other_name=0
+nsrc-000023 temples_shrinecandidate exact=0 same_name_other_address=0 same_address_other_name=0
+nsrc-000024 temples_shrine          exact=0 same_name_other_address=0 same_address_other_name=0
+nsrc-000024 temples_shrinecandidate exact=0 same_name_other_address=0 same_address_other_name=0
+nsrc-000025 temples_shrine          exact=0 same_name_other_address=0 same_address_other_name=0
+nsrc-000025 temples_shrinecandidate exact=0 same_name_other_address=0 same_address_other_name=0
+```
+
+Statement 3 diagnostics:
+
+```text
+0 rows
+```
+
+Result:
+
+```text
+PRODUCTION_COLLISION_CURRENT = 0 under inspected name / normalized-name / address-fragment conditions
+EXACT_IDENTITY_MATCH         = 0 ×5
+SAME_NAME_OTHER_ADDRESS      = 0 ×5
+SAME_ADDRESS_OTHER_NAME      = 0 ×5
+DIAGNOSTIC_ROWS              = 0
+PRODUCTION_WRITE             = NONE
+```
+
+This supports every §8 hypothesis. It does not prove the non-existence of an unknown alias stored
+under unrelated identity text.
 
 ## 8. Preliminary classifications（audit hypotheses only）
 
@@ -244,15 +298,16 @@ Knowledge hydration                               NONE
 VPG001 membership / Source handoffs               UNCHANGED
 Product Surface                                   NOT DECIDED
 G3 model-risk（天津神社・奴奈川神社）              OPEN
-Production                                        NO ACCESS, NO WRITE
+Production                                        READ-ONLY INSPECTION EXECUTED, NO WRITE
 H004 / PR #3258                                   UNCHANGED
 ```
 
 ## 10. Next
 
 ```text
-1. Mother Ship runs §7 through readonly_query.sh and supplies the output.
-2. The output is recorded in §7.1 and compared with §8. STOP and report the evidence.
-3. Mother Ship makes the duplicate decision. Only then: Candidate Master identity / duplicate update
-   and reviewed identity manifest entry（separate change）.
+1. Production result is recorded in §7.1 and supports all five §8 hypotheses.
+2. STOP and report the evidence to Mother Ship.
+3. Mother Ship makes the duplicate decision.
+4. Only after that decision: Candidate Master identity / duplicate update and reviewed identity
+   manifest entry（separate change）.
 ```
