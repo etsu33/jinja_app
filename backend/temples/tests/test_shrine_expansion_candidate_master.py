@@ -2896,9 +2896,16 @@ def test_niigata_h002_contract_rejects_mutations(mutate):
     assert _handoff_violations(_mutated(master, mutate), spec) != []
 
 
-# --- NIIGATA-001-H003（G1 PASS） -----------------------------------------------------------
+# --- NIIGATA-001-H003（Catalog-only C6 / C7 closed） -------------------------------------
 #
-# H003 は G1 Identity / Duplicate Gate PASS。G2 以降は未実施。
+# H003 は G1 PASS。nsrc-000011 / 000012 / 000013 / 000015 は Catalog-only Track で C6 Production
+# Import CLOSED / PASS、C7 CATALOG_READY（audit-level）。gate contract §11A C7:
+#   Candidate Master lifecycle after Catalog import = IMPORTED
+#   Recommendation eligibility = NOT_APPLICABLE, CORE_READY = NO
+# CATALOG_READY は candidate_status enum に追加しない。Catalog import は Knowledge を書かないため
+# knowledge_status は FACT_READY にしない（UNREVIEWED のまま）。official_source_status も不変。
+# nsrc-000014 は G2 HOLD_POSITION_REVIEW / NOT_IN_WRITE_COHORT のまま DISCOVERED。
+# docs/audit/niigata-h003-c6-production-import-artifact.md / docs/audit/niigata-h003-c7-catalog-ready.md
 # 同名の赤城神社5件は別々の Candidate であり、名前から identity / duplicate を推論しない。
 # 期待値は manifest から独立した literal を使う。
 
@@ -2909,9 +2916,19 @@ H003_MEMBERS = (
     ("nsrc-000014", "赤城神社", "page002-row004"),
     ("nsrc-000015", "赤城神社", "page002-row005"),
 )
+H003_CATALOG_IMPORTED = ("nsrc-000011", "nsrc-000012", "nsrc-000013", "nsrc-000015")
+H003_HOLD = "nsrc-000014"
+# Catalog-only import: lifecycle と reason だけが IMPORTED 側へ進む。Knowledge は書かれていない。
+NATIONWIDE_CATALOG_IMPORTED_LIFECYCLE = {
+    "candidate_status": "IMPORTED",
+    "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+    "official_source_status": "AVAILABLE",
+    "knowledge_status": "UNREVIEWED",
+    "build_batch": None,
+}
 
 
-def test_niigata_h003_is_g1_confirmed_only():
+def test_niigata_h003_catalog_cohort_is_imported_and_hold_stays_discovered():
     master = _load_master()
     rows = {row["candidate_id"]: row for row in master["candidates"]}
     h003 = [
@@ -2923,18 +2940,23 @@ def test_niigata_h003_is_g1_confirmed_only():
 
     for candidate_id, name, position in H003_MEMBERS:
         row = rows[candidate_id]
+        lifecycle = (
+            NATIONWIDE_CATALOG_IMPORTED_LIFECYCLE
+            if candidate_id in H003_CATALOG_IMPORTED
+            else NATIONWIDE_DISCOVERED_LIFECYCLE
+        )
         assert row == {
             "candidate_id": candidate_id,
             "candidate_name": name,
             "prefecture": "新潟県",
-            "candidate_status": "DISCOVERED",
-            "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+            "candidate_status": lifecycle["candidate_status"],
+            "status_reason_code": lifecycle["status_reason_code"],
             "build_batch": None,
             "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
             "wave_id": None,
             "identity_status": "CONFIRMED",
-            "official_source_status": "AVAILABLE",
-            "knowledge_status": "UNREVIEWED",
+            "official_source_status": lifecycle["official_source_status"],
+            "knowledge_status": lifecycle["knowledge_status"],
             "candidate_reason": NATIONWIDE_CANDIDATE_REASON,
             "admission_provenance": {
                 "track": "nationwide_source_candidate",
@@ -2952,8 +2974,25 @@ def test_niigata_h003_is_g1_confirmed_only():
         }, candidate_id
         assert not (HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys()), candidate_id
         assert "reading" not in row, candidate_id
+        # Catalog は Recommendation / CORE_READY を主張しない。Product Surface field も持たない。
+        assert row["candidate_status"] != "CORE_READY", candidate_id
+        assert row["knowledge_status"] != "FACT_READY", candidate_id
+        assert not {"product_surface", "catalog_status", "catalog_ready"} & row.keys(), candidate_id
 
-    # H003 の G1確定は H001 / H002 に連動しない。
+    # nsrc-000014（G2 HOLD_POSITION_REVIEW）は Catalog import に含まれず G0 初期 state のまま。
+    assert rows[H003_HOLD]["candidate_status"] == "DISCOVERED"
+    assert rows[H003_HOLD]["status_reason_code"] == "REGISTRY_ADMISSION_COMPLETE"
+
+    # H003 の IMPORTED は exact 4件、nsrc-000014 を含まない。
+    h003_imported = [r["candidate_id"] for r in h003 if r["candidate_status"] == "IMPORTED"]
+    assert h003_imported == list(H003_CATALOG_IMPORTED)
+    assert H003_HOLD not in h003_imported
+
+    # CATALOG_READY は lifecycle enum ではない（audit-level closure state）。
+    assert "CATALOG_READY" not in {r["candidate_status"] for r in master["candidates"]}
+    assert "CATALOG_READY" not in {r["status_reason_code"] for r in master["candidates"]}
+
+    # H003 の Catalog import は H001 / H002 に連動しない。
     assert _handoff_violations(master, _handoff_spec(H001_HANDOFF_ID)) == []
     assert _handoff_violations(master, _handoff_spec(H002_HANDOFF_ID)) == []
     assert _handoff_violations(master, _handoff_spec(H003_HANDOFF_ID)) == []
@@ -2962,7 +3001,7 @@ def test_niigata_h003_is_g1_confirmed_only():
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
 
 
-# H003（G1 PASS）の regression / premature G2+ / 同名統合の mutation。
+# H003 の Catalog IMPORTED / HOLD 境界・regression・同名統合の mutation。
 @pytest.mark.parametrize(
     "mutate",
     [
@@ -2973,11 +3012,31 @@ def test_niigata_h003_is_g1_confirmed_only():
             id="h003-duplicate-regression",
         ),
         pytest.param(_set("nsrc-000014", "duplicate_status", "SAME_SHRINE"), id="h003-duplicate-same-shrine"),
-        pytest.param(_set("nsrc-000015", "candidate_status", "BUILD_READY"), id="h003-lifecycle-beyond-g1"),
+        # Catalog cohort（IMPORTED）: regression / premature CORE_READY / Knowledge 主張。
+        pytest.param(_set("nsrc-000015", "candidate_status", "BUILD_READY"), id="h003-regressed-to-build-ready"),
+        pytest.param(_set("nsrc-000011", "candidate_status", "DISCOVERED"), id="h003-regressed-to-discovered"),
         pytest.param(
-            _set("nsrc-000011", "official_source_status", "CONFIRMED"), id="h003-official-source-beyond-g1"
+            _set("nsrc-000012", "status_reason_code", "REGISTRY_ADMISSION_COMPLETE"),
+            id="h003-imported-reason-mismatch",
         ),
-        pytest.param(_set("nsrc-000012", "knowledge_status", "FACT_READY"), id="h003-knowledge-beyond-g1"),
+        pytest.param(_set("nsrc-000013", "candidate_status", "CORE_READY"), id="h003-premature-core-ready"),
+        pytest.param(
+            _set("nsrc-000015", "status_reason_code", "CORE_READY_CONTRACT_PASS"),
+            id="h003-premature-core-ready-reason",
+        ),
+        pytest.param(_set("nsrc-000011", "candidate_status", "CATALOG_READY"), id="h003-catalog-ready-enum"),
+        pytest.param(
+            _set("nsrc-000011", "official_source_status", "CONFIRMED"), id="h003-official-source-changed"
+        ),
+        pytest.param(_set("nsrc-000012", "knowledge_status", "FACT_READY"), id="h003-catalog-claims-fact-ready"),
+        pytest.param(_set("nsrc-000013", "product_surface", "CATALOG_ONLY"), id="h003-product-surface-field"),
+        # nsrc-000014（G2 HOLD_POSITION_REVIEW）は write cohort 外: lifecycle を進めない。
+        pytest.param(_set("nsrc-000014", "candidate_status", "IMPORTED"), id="h003-hold-imported"),
+        pytest.param(
+            _set("nsrc-000014", "status_reason_code", "PRODUCTION_IMPORT_COMPLETE"),
+            id="h003-hold-import-reason",
+        ),
+        pytest.param(_set("nsrc-000014", "candidate_status", "BUILD_READY"), id="h003-hold-build-ready"),
         pytest.param(_set("nsrc-000013", "build_batch", "NIIGATA-001-H003"), id="h003-build-batch-handoff"),
         pytest.param(_set("nsrc-000014", "wave_id", "W0"), id="h003-wave-id-assigned"),
         pytest.param(_set("nsrc-000015", "official_name", "赤城神社"), id="h003-official-name-hydrated"),
