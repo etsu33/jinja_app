@@ -1,7 +1,8 @@
 """NIIGATA-001-H003 C5 Catalog Runtime QA（disposable test DB only）。
 
-C4 PASS の4件（nsrc-000011 / 000012 / 000013 / 000015）を frozen identity と adopted coordinate
-だけで test DB に materialize し、実際の runtime path を検証する。
+C4 PASS の4件（nsrc-000011 / 000012 / 000013 / 000015）は Base Seed に frozen identity と
+adopted coordinate だけで materialize 済み。Base Seed を test DB に import し、exact
+(name_jp, address) で解決した行に対して実際の runtime path を検証する。
 
 - Shrine Detail / List API（ShrineViewSet）は Catalog-only Shrine を表示できる。
 - Concierge / Compass は Shared Recommendation Eligibility（usable Deity / History Fact >= 1）の
@@ -62,22 +63,18 @@ def _qa_module():
     return module
 
 
-def _materialize_targets() -> dict[str, Shrine]:
-    """Catalog-only rows: frozen identity + adopted coordinate only（Knowledge / goriyaku なし）。"""
-    return {
-        candidate_id: Shrine.objects.create(
-            name_jp=SHRINE_NAME,
-            kind="shrine",
-            address=address,
-            latitude=lat,
-            longitude=lng,
-        )
-        for candidate_id, (address, lat, lng) in TARGETS.items()
-    }
+def _resolve_targets() -> dict[str, Shrine]:
+    """Base Seed 由来の Catalog-only rows を exact identity で取得する（Knowledge / goriyaku なし）。"""
+    targets = {}
+    for candidate_id, (address, lat, lng) in TARGETS.items():
+        shrine = Shrine.objects.get(name_jp=SHRINE_NAME, address=address)
+        assert (shrine.latitude, shrine.longitude) == (lat, lng), candidate_id
+        targets[candidate_id] = shrine
+    return targets
 
 
 def _base_state() -> dict[str, Shrine]:
-    # 既存 Base Seed（群馬県の別の赤城神社を含む）を背景として入れ、名前だけで解決しないことも確認する。
+    # Base Seed（4 target + 群馬県の別の赤城神社を含む）を入れ、名前だけで解決しないことも確認する。
     call_command(
         "import_shrines_seed",
         "--source",
@@ -86,7 +83,7 @@ def _base_state() -> dict[str, Shrine]:
         stdout=io.StringIO(),
         stderr=io.StringIO(),
     )
-    return _materialize_targets()
+    return _resolve_targets()
 
 
 def _control_near(lat: float, lng: float) -> Shrine:

@@ -2298,5 +2298,57 @@
       "lat": 37.089683,
       "lng": 138.748108
     }
+  },
+  {
+    "name_jp": "赤城神社",
+    "address": "新潟県新潟市江南区二本木1丁目7番16号",
+    "latitude": 37.841794,
+    "longitude": 139.118507,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 37.841794,
+      "lng": 139.118507
+    }
+  },
+  {
+    "name_jp": "赤城神社",
+    "address": "新潟県長岡市四郎丸2丁目5番33号",
+    "latitude": 37.440743,
+    "longitude": 138.855238,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 37.440743,
+      "lng": 138.855238
+    }
+  },
+  {
+    "name_jp": "赤城神社",
+    "address": "新潟県長岡市山屋314番地",
+    "latitude": 37.496407,
+    "longitude": 139.00862,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 37.496407,
+      "lng": 139.00862
+    }
+  },
+  {
+    "name_jp": "赤城神社",
+    "address": "新潟県魚沼市湯之谷芋川311番地",
+    "latitude": 37.214543,
+    "longitude": 139.036468,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 37.214543,
+      "lng": 139.036468
+    }
   }
 ]
