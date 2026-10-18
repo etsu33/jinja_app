@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "purpose": "Reviewed canonical Shrine identity (exact name_jp + address) of Nationwide handoff members for the read-only Recommendation Eligibility verifier (--handoff). Not Candidate Master, not the G-5 test-only handoff manifest, not Base / Knowledge Seed, not Production state. Does not claim G2 PASS, Knowledge readiness, G5 eligibility, Production existence or CORE_READY.",
+  "purpose": "Reviewed canonical Shrine identity (exact name_jp + address) of Nationwide Candidate Master members for the read-only Recommendation Eligibility verifier (--handoff). A handoff entry contains only Candidate Master members from that source handoff whose G1 identity is reviewed; for value-selected partial processing this does not redefine or imply full frozen Source handoff membership. Not Candidate Master, not the G-5 test-only handoff manifest, not the value-selected processing-group fixture, not Base / Knowledge Seed, not Production state. Does not claim G2 PASS, Knowledge readiness, G5 eligibility, Production existence or CORE_READY.",
   "handoffs": [
     {
       "handoff_id": "NIIGATA-001-H001",
@@ -163,6 +163,81 @@
           "identity_evidence": {
             "verifier_identity_authority": "docs/audit/niigata-h003-g1-identity-duplicate.md",
             "g1_identity_audit": "docs/audit/niigata-h003-g1-identity-duplicate.md"
+          }
+        }
+      ]
+    },
+    {
+      "handoff_id": "NIIGATA-001-H006",
+      "members": [
+        {
+          "candidate_id": "nsrc-000024",
+          "source_position": "page003-row007",
+          "name": "秋葉神社",
+          "address": "新潟県新潟市秋葉区秋葉3丁目8番19号",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-vpg001-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-vpg001-g1-identity-duplicate.md"
+          }
+        }
+      ]
+    },
+    {
+      "handoff_id": "NIIGATA-001-H012",
+      "members": [
+        {
+          "candidate_id": "nsrc-000023",
+          "source_position": "page006-row010",
+          "name": "熱串彦神社",
+          "address": "新潟県佐渡市長江854番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-vpg001-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-vpg001-g1-identity-duplicate.md"
+          }
+        }
+      ]
+    },
+    {
+      "handoff_id": "NIIGATA-001-H014",
+      "members": [
+        {
+          "candidate_id": "nsrc-000025",
+          "source_position": "page007-row006",
+          "name": "天津神社",
+          "address": "新潟県糸魚川市一の宮1丁目3番34号",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-vpg001-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-vpg001-g1-identity-duplicate.md"
+          }
+        }
+      ]
+    },
+    {
+      "handoff_id": "NIIGATA-001-H015",
+      "members": [
+        {
+          "candidate_id": "nsrc-000021",
+          "source_position": "page008-row003",
+          "name": "荒川神社",
+          "address": "新潟県胎内市桃崎浜187番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-vpg001-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-vpg001-g1-identity-duplicate.md"
+          }
+        }
+      ]
+    },
+    {
+      "handoff_id": "NIIGATA-001-H019",
+      "members": [
+        {
+          "candidate_id": "nsrc-000022",
+          "source_position": "page010-row004",
+          "name": "五十嵐神社",
+          "address": "新潟県三条市大字飯田2283番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-vpg001-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-vpg001-g1-identity-duplicate.md"
           }
         }
       ]
