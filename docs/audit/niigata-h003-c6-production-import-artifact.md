@@ -11,6 +11,7 @@ ISOLATED_RESTORE             = PASS（PostgreSQL 17.10）
 RESTORE_FINGERPRINT          = MATCH
 RESTORE_PRE_BASE_GUARD       = PASS
 PRODUCTION_WRITE_AUTHORIZED  = YES（Mother Ship）
+PRODUCTION_PRE_BASE_GUARD_RERUN = PASS（h003_c6_pre_base_guard_pass = 1, immediately before the write）
 Production write             = COMPLETED（target-only 4-row subset）
 import result                = created=4 updated=0 skipped=0 total_seed=4
 POST_BASE_VERIFICATION       = PASS（h003_c6_post_base_verification_pass = 1）
@@ -373,8 +374,35 @@ have made it fail. The skipped dry-run therefore left no undetected effect on th
 state. It does mean the expected-output check happened **after** the write instead of before it,
 so the apply was not previewed.
 
-Whether the pre-Base guard itself was re-run on Production immediately before the write（§7
-step 4）is not stated in the supplied evidence. This record does not claim it.
+### 12.1 Production pre-Base guard re-run（§7 step 4）
+
+Mother Ship re-ran the committed pre-Base guard on Production（read-only）immediately before the
+write:
+
+```bash
+scripts/migration_safety/readonly_query.sh \
+  ~/.config/kami-musubi/production-db.env \
+  DATABASE_URL \
+  scripts/migration_safety/sql/niigata_h003_c6_pre_base_guard.sql
+```
+
+```text
+h003_c6_pre_base_guard_pass = 1
+
+PRODUCTION_PRE_BASE_GUARD_RERUN = PASS
+```
+
+Execution order:
+
+```text
+1. target-only subset generated outside the repository, SUBSET_SHA256 confirmed（§7 step 3）
+2. Production pre-Base guard re-run = PASS（§7 step 4, this section）
+3. Production import（§13）. The pre-write dry-run（§7 step 5）was skipped, see above.
+```
+
+So the frozen CLEAN_CREATE pre-state（all 13 aggregates, 4 targets ABSENT, no same-address
+collision, nsrc-000014 absent）was confirmed on Production right before the write. The only
+deviation is the skipped pre-write dry-run.
 
 ## 13. Base Shrine Production import
 
@@ -433,6 +461,7 @@ IDEMPOTENCY = PASS
 ```text
 BACKUP_RESTORE_READINESS     = PASS
 PRODUCTION_WRITE_AUTHORIZED  = YES
+PRODUCTION_PRE_BASE_GUARD_RERUN = PASS（h003_c6_pre_base_guard_pass = 1）
 Production write             = COMPLETED
 import result                = created=4 updated=0 skipped=0 total_seed=4
 POST_BASE_VERIFICATION       = PASS
