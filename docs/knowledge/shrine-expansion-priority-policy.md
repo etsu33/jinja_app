@@ -150,9 +150,9 @@ PRIORITY_C:
   Too weak today to justify near-term Product investigation.
 ```
 
-**PRIORITY_C is DEFERRED, not HOLD.** It is not a Candidate Master lifecycle state, it blocks no gate,
-and it is not a rejection. A C candidate keeps its registry rights and is re-screened when a new
-source appears.
+**PRIORITY_C = `DEFERRED_FOR_NOW`, not HOLD.** It is not a Candidate Master lifecycle state, it blocks
+no gate, and it is not a rejection or a judgement of the shrine's value. A C candidate keeps its registry
+rights. It does **not** require immediate deep-source research. It is re-screened only on a trigger（§5.1）.
 
 ### 5.1 B / C boundary and the screening-reach bias
 
@@ -164,9 +164,19 @@ presence can land in C for reach reasons alone.
 Therefore:
 
 - C reflects **evidence availability at screening**, never a judgement of the shrine's worth.
-- Before any C candidate is treated as long-term deferred, it must be re-screened against at least one
-  deep source（神社庁 directory entry, 市町村誌 / 郡誌, cultural-property register）.
-- Each screening audit records its reach（which source types were and were not accessible）.
+- C means `DEFERRED_FOR_NOW`. **Bulk deep-source research of C candidates is not required.**
+- Each screening audit records its reach（which source types were and were not accessible）, so a later
+  re-screen knows what was not looked at.
+
+A C candidate is re-screened against a deep source（神社庁 directory entry, 市町村誌 / 郡誌,
+cultural-property register）**only when one of these triggers applies**:
+
+1. a new shrine-specific source becomes available;
+2. Recommendation candidate supply needs expansion;
+3. a geographic or product coverage goal requires it;
+4. a scheduled re-screen cycle selects the candidate.
+
+Without a trigger, a C candidate stays deferred, with no time limit and no penalty.
 
 ## 6. Evidence rules
 

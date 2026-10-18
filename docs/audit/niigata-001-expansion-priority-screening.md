@@ -6,8 +6,9 @@
 SCREENING                  = DRAFT FOR MOTHER SHIP REVIEW
 PRIORITY_A                 = 4
 PRIORITY_B                 = 6
-PRIORITY_C（DEFERRED）     = 70
+PRIORITY_C                 = 70（DEFERRED_FOR_NOW）
 TOTAL                      = 80
+bulk deep-source research  = NOT REQUIRED
 PROPOSED_NEXT_HANDOFF      = 4 candidates（not 5, see §5）. NOT frozen, NOT registered
 
 Candidate Master / handoff fixture / identity manifest / Seed write   NONE
@@ -49,8 +50,8 @@ Consequences:
   胎内 荒川神社 for the 新発田 row）, it was **not** attributed. This is noted in `screening_basis`.
 - **C = 70 mostly reflects reach, not value**（policy §5.1）. The 70 rows had no shrine-specific result in
   web search. Many are ujigami-scale shrines whose records are more likely to be in 市町村誌 or the 神社庁
-  directory than on the web. They must be re-screened against a deep source before C is treated as
-  long-term.
+  directory than on the web. They are `DEFERRED_FOR_NOW`. **Bulk deep-source research is not required.**
+  A row is re-screened only when a policy §5.1 trigger applies.
 
 `IDENTITY_SOURCE = STRONG` for all 80: each is a frozen official-Source row with exact name and address.
 The 13 `HUMAN_REVIEW_RELEASED` rows（愛宕神社 ×10, 雷神社 ×3）were released by Mother Ship M5 as distinct
@@ -169,11 +170,26 @@ research before** any further A selection. They are not proposed for the handoff
 2. **How to form the next handoff.** The four A rows come from four different frozen handoffs（H006, H012,
    H015, H019）. The frozen handoff plan is Source-order, max 5. Picking across it needs an explicit
    Mother Ship decision: a new value-selected handoff, or re-ordering whole frozen handoffs.
-3. **Deep-source re-screen** for the 70 C rows（新潟県神社庁 directory / 市町村誌）before they are treated as
-   long-term deferred.
+3. **C rows:** `PRIORITY_C = DEFERRED_FOR_NOW`, `bulk deep-source research = NOT REQUIRED`. Re-screen only on a
+   policy §5.1 trigger（new shrine-specific source, Recommendation supply expansion, coverage goal,
+   scheduled cycle）.
 4. **Network access** for primary-page verification（`pref.niigata.lg.jp`, `city.*.niigata.jp` /
    `city.*.lg.jp`, `online.bunka.go.jp`, `niigata-kankou.or.jp`, `niigata-jinjacho.jp`）, if verification
    should happen in this environment.
+
+### 6.1 Next targeted research
+
+```text
+天津神社（page007-row006, 糸魚川市一の宮1丁目3番34号）
+淺原神社（page005-row002, 小千谷市片貝町6548番地）
+```
+
+Purpose: try to confirm **deity evidence** for each, and determine whether either can move
+**B → A**. Both already have HIGH distinctiveness, and history YES from independent publishers. Deity is the
+only missing A condition（policy §5: at least 2 of deity / history / benefit = YES）. For 天津神社, also
+record the two-honden（天津神社・奴奈川神社）precinct structure for G1 / G3（MODEL_RISK POSSIBLE）.
+
+Any reclassification is a separate update. This PR keeps A 4 / B 6 / C 70 and freezes no handoff.
 
 ## 7. Sources（SEARCH_SUMMARY level; not opened）
 
