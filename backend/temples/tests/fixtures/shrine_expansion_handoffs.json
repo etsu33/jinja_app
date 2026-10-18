@@ -245,6 +245,87 @@
           }
         }
       ]
+    },
+    {
+      "handoff_id": "NIIGATA-001-H004",
+      "source_batch_id": "NIIGATA-001",
+      "prefecture": "新潟県",
+      "source_snapshot_sha256": "f54022303700821672ee4ee65e9967a7e8f343715a66ad987cc0b43530850380",
+      "source_url": "https://niigata-jinjacho.jp/shrine_niigata/search.php",
+      "source_verified_at": "2026-10-08",
+      "captured_at": "2026-10-08T14:27:00+09:00",
+      "members": [
+        {
+          "candidate_id": "nsrc-000016",
+          "candidate_name": "赤坂神社",
+          "source_position": "page002-row006",
+          "identity_status": "UNREVIEWED",
+          "duplicate_status": "UNREVIEWED",
+          "lifecycle": {
+            "candidate_status": "DISCOVERED",
+            "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+            "official_source_status": "AVAILABLE",
+            "knowledge_status": "UNREVIEWED",
+            "build_batch": null
+          }
+        },
+        {
+          "candidate_id": "nsrc-000017",
+          "candidate_name": "赤坂諏訪神社",
+          "source_position": "page002-row007",
+          "identity_status": "UNREVIEWED",
+          "duplicate_status": "UNREVIEWED",
+          "lifecycle": {
+            "candidate_status": "DISCOVERED",
+            "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+            "official_source_status": "AVAILABLE",
+            "knowledge_status": "UNREVIEWED",
+            "build_batch": null
+          }
+        },
+        {
+          "candidate_id": "nsrc-000018",
+          "candidate_name": "赤崎神社",
+          "source_position": "page002-row008",
+          "identity_status": "UNREVIEWED",
+          "duplicate_status": "UNREVIEWED",
+          "lifecycle": {
+            "candidate_status": "DISCOVERED",
+            "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+            "official_source_status": "AVAILABLE",
+            "knowledge_status": "UNREVIEWED",
+            "build_batch": null
+          }
+        },
+        {
+          "candidate_id": "nsrc-000019",
+          "candidate_name": "赤鏥神社",
+          "source_position": "page002-row009",
+          "identity_status": "UNREVIEWED",
+          "duplicate_status": "UNREVIEWED",
+          "lifecycle": {
+            "candidate_status": "DISCOVERED",
+            "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+            "official_source_status": "AVAILABLE",
+            "knowledge_status": "UNREVIEWED",
+            "build_batch": null
+          }
+        },
+        {
+          "candidate_id": "nsrc-000020",
+          "candidate_name": "赤澤神社",
+          "source_position": "page002-row010",
+          "identity_status": "UNREVIEWED",
+          "duplicate_status": "UNREVIEWED",
+          "lifecycle": {
+            "candidate_status": "DISCOVERED",
+            "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+            "official_source_status": "AVAILABLE",
+            "knowledge_status": "UNREVIEWED",
+            "build_batch": null
+          }
+        }
+      ]
     }
   ]
 }

@@ -1253,6 +1253,7 @@ FROZEN_READY_SET_PATH = (
 H001_HANDOFF_ID = "NIIGATA-001-H001"
 H002_HANDOFF_ID = "NIIGATA-001-H002"
 H003_HANDOFF_ID = "NIIGATA-001-H003"
+H004_HANDOFF_ID = "NIIGATA-001-H004"
 
 HANDOFF_LIFECYCLE_FIELDS = (
     "candidate_status",
@@ -2659,9 +2660,9 @@ def _h002_remove(candidate_id: str):
 
 def _h002_extra_member(master, rows):
     extra = json.loads(json.dumps(rows["nsrc-000010"]))
-    # 未登録の candidate_id（nsrc-000011〜000015 は H003 が使用済み）。
-    extra["candidate_id"] = "nsrc-000016"
-    extra["admission_provenance"]["source_position"] = "page002-row006"
+    # 未登録の candidate_id（nsrc-000011〜000015 は H003、nsrc-000016〜000020 は H004 が使用済み）。
+    extra["candidate_id"] = "nsrc-000021"
+    extra["admission_provenance"]["source_position"] = "page003-row001"
     master["candidates"].append(extra)
 
 
@@ -3064,5 +3065,182 @@ def test_niigata_h003_catalog_cohort_is_imported_and_hold_stays_discovered():
 def test_niigata_h003_contract_rejects_mutations(mutate):
     master = _load_master()
     spec = _handoff_spec(H003_HANDOFF_ID)
+    assert _handoff_violations(master, spec) == []
+    assert _handoff_violations(_mutated(master, mutate), spec) != []
+
+
+# --- NIIGATA-001-H004（G0 Admission only） -------------------------------------------------
+#
+# docs/audit/niigata-h004-g0-candidate-registry.md
+# H004 は G0 Registry Admission だけ。G1（identity / duplicate）、G2 以降は未実施。
+# 「赤坂」「赤崎」「赤澤」等の名前の類似から identity / duplicate を推論しない。
+# 期待値は manifest から独立した literal を使う。
+
+H004_MEMBERS = (
+    ("nsrc-000016", "赤坂神社", "page002-row006"),
+    ("nsrc-000017", "赤坂諏訪神社", "page002-row007"),
+    ("nsrc-000018", "赤崎神社", "page002-row008"),
+    ("nsrc-000019", "赤鏥神社", "page002-row009"),
+    ("nsrc-000020", "赤澤神社", "page002-row010"),
+)
+H004_G0_LIFECYCLE = {
+    "candidate_status": "DISCOVERED",
+    "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+    "build_batch": None,
+    "duplicate_status": "UNREVIEWED",
+    "wave_id": None,
+    "identity_status": "UNREVIEWED",
+    "official_source_status": "AVAILABLE",
+    "knowledge_status": "UNREVIEWED",
+}
+
+
+def test_niigata_h004_is_registered_at_g0_only():
+    master = _load_master()
+    rows = {row["candidate_id"]: row for row in master["candidates"]}
+    h004 = [
+        row
+        for row in master["candidates"]
+        if (row.get("admission_provenance") or {}).get("handoff_id") == H004_HANDOFF_ID
+    ]
+    assert [row["candidate_id"] for row in h004] == [m[0] for m in H004_MEMBERS]
+
+    for candidate_id, name, position in H004_MEMBERS:
+        row = rows[candidate_id]
+        assert row == {
+            "candidate_id": candidate_id,
+            "candidate_name": name,
+            "prefecture": "新潟県",
+            **H004_G0_LIFECYCLE,
+            "candidate_reason": NATIONWIDE_CANDIDATE_REASON,
+            "admission_provenance": {
+                "track": "nationwide_source_candidate",
+                "prefecture": "新潟県",
+                "source_batch_id": "NIIGATA-001",
+                "handoff_id": "NIIGATA-001-H004",
+                "source_position": position,
+                "source_snapshot_sha256": (
+                    "f54022303700821672ee4ee65e9967a7e8f343715a66ad987cc0b43530850380"
+                ),
+                "source_url": "https://niigata-jinjacho.jp/shrine_niigata/search.php",
+                "source_verified_at": "2026-10-08",
+                "captured_at": "2026-10-08T14:27:00+09:00",
+            },
+        }, candidate_id
+        # G1 の結論を持たない（名前類似から identity / duplicate を推論しない）。
+        assert row["identity_status"] != "CONFIRMED", candidate_id
+        assert row["duplicate_status"] == "UNREVIEWED", candidate_id
+        # G0 を超える lifecycle / build_batch / Product Surface を持たない。
+        assert row["candidate_status"] not in {"BUILD_READY", "IMPORTED", "CORE_READY"}, (
+            candidate_id
+        )
+        assert row["build_batch"] is None, candidate_id
+        assert not {"product_surface", "catalog_status", "catalog_ready"} & row.keys(), candidate_id
+        assert not (HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys()), candidate_id
+        assert "reading" not in row, candidate_id
+
+    # H004 は frozen Ready Set の §NIIGATA-001-H004 と exact に一致（name / position）。
+    text = FROZEN_READY_SET_PATH.read_text(encoding="utf-8")
+    section = text[text.index("### NIIGATA-001-H004") : text.index("### NIIGATA-001-H005")]
+    frozen = re.findall(
+        r"\| (page\d{3}-row\d{3}) \| ([^|]+?) \| [^|]+? \| RUNNER_READY \|", section
+    )
+    assert frozen == [(position, name) for _, name, position in H004_MEMBERS]
+
+    # H004 の G0 登録は H001 / H002 / H003 に連動しない。
+    for handoff_id in (H001_HANDOFF_ID, H002_HANDOFF_ID, H003_HANDOFF_ID, H004_HANDOFF_ID):
+        assert _handoff_violations(master, _handoff_spec(handoff_id)) == [], handoff_id
+    h003_states = {
+        r["candidate_id"]: (r["candidate_status"], r["status_reason_code"])
+        for r in master["candidates"]
+        if (r.get("admission_provenance") or {}).get("handoff_id") == H003_HANDOFF_ID
+    }
+    assert h003_states == {
+        "nsrc-000011": ("IMPORTED", "PRODUCTION_IMPORT_COMPLETE"),
+        "nsrc-000012": ("IMPORTED", "PRODUCTION_IMPORT_COMPLETE"),
+        "nsrc-000013": ("IMPORTED", "PRODUCTION_IMPORT_COMPLETE"),
+        "nsrc-000014": ("DISCOVERED", "REGISTRY_ADMISSION_COMPLETE"),
+        "nsrc-000015": ("IMPORTED", "PRODUCTION_IMPORT_COMPLETE"),
+    }
+    wave0 = _wave0_candidates(master)
+    assert len(wave0) == EXPECTED_WAVE0_TOTAL
+    assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
+
+
+# H004（G0 only）の premature G1+ / hydration / 名前類似による統合の mutation。
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(
+            _set("nsrc-000016", "identity_status", "CONFIRMED"), id="h004-premature-identity"
+        ),
+        pytest.param(
+            _set("nsrc-000017", "duplicate_status", "NEW"), id="h004-premature-duplicate-new"
+        ),
+        pytest.param(
+            _set("nsrc-000018", "duplicate_status", "SAME_NAME_DIFFERENT_SHRINE"),
+            id="h004-premature-same-name-different-shrine",
+        ),
+        pytest.param(_set("nsrc-000019", "duplicate_status", "ALIAS"), id="h004-premature-alias"),
+        pytest.param(
+            _set("nsrc-000020", "duplicate_status", "DUPLICATE"), id="h004-premature-duplicate"
+        ),
+        pytest.param(_set("nsrc-000016", "candidate_status", "BUILD_READY"), id="h004-build-ready"),
+        pytest.param(_set("nsrc-000017", "candidate_status", "IMPORTED"), id="h004-imported"),
+        pytest.param(_set("nsrc-000018", "candidate_status", "CORE_READY"), id="h004-core-ready"),
+        pytest.param(
+            _set("nsrc-000019", "status_reason_code", "BUILD_READINESS_CONFIRMED"),
+            id="h004-reason-beyond-g0",
+        ),
+        pytest.param(
+            _set("nsrc-000020", "official_source_status", "CONFIRMED"),
+            id="h004-official-source-beyond-g0",
+        ),
+        pytest.param(
+            _set("nsrc-000016", "knowledge_status", "FACT_READY"), id="h004-knowledge-beyond-g0"
+        ),
+        pytest.param(
+            _set("nsrc-000017", "build_batch", "NIIGATA-001-H004"), id="h004-build-batch-handoff"
+        ),
+        pytest.param(
+            _set("nsrc-000018", "build_batch", "NIIGATA-001"), id="h004-build-batch-source-batch"
+        ),
+        pytest.param(_set("nsrc-000019", "wave_id", "W0"), id="h004-wave-id-assigned"),
+        pytest.param(
+            _set("nsrc-000020", "product_surface", "CATALOG_ONLY"), id="h004-product-surface"
+        ),
+        pytest.param(
+            _set("nsrc-000016", "official_name", "赤坂神社"), id="h004-official-name-hydrated"
+        ),
+        pytest.param(
+            _set("nsrc-000017", "official_address", "新潟県燕市下粟生津515番地"),
+            id="h004-official-address-hydrated",
+        ),
+        pytest.param(
+            _set("nsrc-000018", "reading", "あかさきじんじゃ"), id="h004-reading-hydrated"
+        ),
+        pytest.param(_set("nsrc-000019", "latitude", 37.7), id="h004-coordinate-hydrated"),
+        pytest.param(_set("nsrc-000020", "shrine_id", 123), id="h004-shrine-id-hydrated"),
+        pytest.param(_set("nsrc-000016", "goriyaku", "家内安全"), id="h004-goriyaku-hydrated"),
+        pytest.param(
+            _set_provenance("nsrc-000017", "source_position", "page002-row006"),
+            id="h004-changed-provenance",
+        ),
+        pytest.param(
+            _set_provenance("nsrc-000018", "source_snapshot_sha256", "0" * 64),
+            id="h004-changed-snapshot",
+        ),
+        pytest.param(
+            _set_provenance("nsrc-000019", "handoff_id", "NIIGATA-001-H003"),
+            id="h004-member-moved-to-h003",
+        ),
+        # 名前の類似（赤坂神社 / 赤坂諏訪神社）から1件に統合した状態。
+        pytest.param(_h002_remove("nsrc-000017"), id="h004-akasaka-merged"),
+        pytest.param(_set("nsrc-000020", "candidate_name", "赤沢神社"), id="h004-name-normalized"),
+    ],
+)
+def test_niigata_h004_contract_rejects_mutations(mutate):
+    master = _load_master()
+    spec = _handoff_spec(H004_HANDOFF_ID)
     assert _handoff_violations(master, spec) == []
     assert _handoff_violations(_mutated(master, mutate), spec) != []

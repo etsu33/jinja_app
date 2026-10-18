@@ -45,6 +45,8 @@ H001 = "NIIGATA-001-H001"
 H002 = "NIIGATA-001-H002"
 # G1 reviewed canonical identity 登録済みの handoff。
 H003 = "NIIGATA-001-H003"
+# G0 登録済み（Candidate Master）だが G1 未実施のため identity manifest には無い handoff。
+H004 = "NIIGATA-001-H004"
 H003_AUDIT = "docs/audit/niigata-h003-g1-identity-duplicate.md"
 # どこにも登録されていない handoff（frozen Ready Set の範囲外）。
 UNREGISTERED_HANDOFF = "NIIGATA-001-H999"
@@ -384,6 +386,23 @@ def test_h003_is_a_reviewed_identity_handoff_after_g1():
     assert all(r["duplicate_status"] == "SAME_NAME_DIFFERENT_SHRINE" for r in rows)
     assert H003 in [h["handoff_id"] for h in _manifest()["handoffs"]]
     assert load_handoff_shrine_identities(H003) == H003_IDENTITIES
+
+
+def test_g0_only_handoff_is_not_a_reviewed_identity_handoff():
+    """H004 は G0 Admission だけ（identity / duplicate UNREVIEWED）。G1 前は manifest に無く fail closed。"""
+    rows = _cm_rows(_master(), H004)
+    assert [r["candidate_id"] for r in rows] == [
+        "nsrc-000016",
+        "nsrc-000017",
+        "nsrc-000018",
+        "nsrc-000019",
+        "nsrc-000020",
+    ]
+    assert all(r["identity_status"] == "UNREVIEWED" for r in rows)
+    assert all(r["duplicate_status"] == "UNREVIEWED" for r in rows)
+    assert H004 not in [h["handoff_id"] for h in _manifest()["handoffs"]]
+    with pytest.raises(HandoffIdentityError, match="unknown handoff"):
+        load_handoff_shrine_identities(H004)
 
 
 def test_loader_rejects_mutated_files(tmp_path):
