@@ -3276,14 +3276,15 @@ def test_niigata_h004_contract_rejects_mutations(mutate):
     assert _handoff_violations(_mutated(master, mutate), spec) != []
 
 
-# --- NIIGATA-001-VPG001（value-selected processing group, G0 Admission only） ---------------
+# --- NIIGATA-001-VPG001（value-selected processing group, G1 decision recorded） -------------
 #
-# docs/audit/niigata-vpg001-g0-candidate-registry.md / docs/audit/niigata-001-vpg001-freeze.md
+# docs/audit/niigata-vpg001-g1-identity-duplicate.md / docs/audit/niigata-001-vpg001-freeze.md
 #
 # Source handoff = provenance 単位、VPG001 = processing selection、Candidate Master = lifecycle authority。
 # 各 member の admission_provenance.handoff_id は元の frozen Source handoff のまま（VPG ID を入れない）。
 # Source handoff の残り4件は未登録のまま残り、handoff manifest に部分登録しない。
-# G1（identity / duplicate）、G2 以降は未実施。期待値は fixture から独立した literal を使う。
+# G1 identity / duplicate decision は記録済み。reviewed identity manifest は次工程で alignment する。
+# G2 以降は未実施。期待値は fixture から独立した literal を使う。
 
 VPG001_ID = "NIIGATA-001-VPG001"
 VPG001_FREEZE_PATH = (
@@ -3312,15 +3313,57 @@ VPG001_SOURCE_HANDOFF_MEMBERSHIP = {
     "NIIGATA-001-H015": [f"page008-row{n:03d}" for n in range(1, 6)],
     "NIIGATA-001-H019": [f"page010-row{n:03d}" for n in range(1, 6)],
 }
-VPG001_G0_LIFECYCLE = {
-    "candidate_status": "DISCOVERED",
-    "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
-    "build_batch": None,
-    "duplicate_status": "UNREVIEWED",
-    "wave_id": None,
-    "identity_status": "UNREVIEWED",
-    "official_source_status": "AVAILABLE",
-    "knowledge_status": "UNREVIEWED",
+VPG001_CURRENT_STATE = {
+    "nsrc-000021": {
+        "candidate_status": "DISCOVERED",
+        "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+        "build_batch": None,
+        "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
+        "wave_id": None,
+        "identity_status": "CONFIRMED",
+        "official_source_status": "AVAILABLE",
+        "knowledge_status": "UNREVIEWED",
+    },
+    "nsrc-000022": {
+        "candidate_status": "DISCOVERED",
+        "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+        "build_batch": None,
+        "duplicate_status": "NEW",
+        "wave_id": None,
+        "identity_status": "CONFIRMED",
+        "official_source_status": "AVAILABLE",
+        "knowledge_status": "UNREVIEWED",
+    },
+    "nsrc-000023": {
+        "candidate_status": "DISCOVERED",
+        "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+        "build_batch": None,
+        "duplicate_status": "NEW",
+        "wave_id": None,
+        "identity_status": "CONFIRMED",
+        "official_source_status": "AVAILABLE",
+        "knowledge_status": "UNREVIEWED",
+    },
+    "nsrc-000024": {
+        "candidate_status": "DISCOVERED",
+        "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+        "build_batch": None,
+        "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
+        "wave_id": None,
+        "identity_status": "CONFIRMED",
+        "official_source_status": "AVAILABLE",
+        "knowledge_status": "UNREVIEWED",
+    },
+    "nsrc-000025": {
+        "candidate_status": "DISCOVERED",
+        "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+        "build_batch": None,
+        "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
+        "wave_id": None,
+        "identity_status": "CONFIRMED",
+        "official_source_status": "AVAILABLE",
+        "knowledge_status": "UNREVIEWED",
+    },
 }
 # H001〜H004 の現在 state（candidate_status, status_reason_code, identity_status, duplicate_status）。
 # VPG001 の G0 登録はこれに連動しない。
@@ -3573,9 +3616,12 @@ def test_vpg001_fixture_matches_freeze_record_and_frozen_ready_set():
         for m in group["members"]
     ] == list(VPG001_MEMBERS)
     for member in group["members"]:
-        assert member["identity_status"] == "UNREVIEWED"
-        assert member["duplicate_status"] == "UNREVIEWED"
-        assert member["lifecycle"] == NATIONWIDE_DISCOVERED_LIFECYCLE
+        expected = VPG001_CURRENT_STATE[member["candidate_id"]]
+        assert member["identity_status"] == expected["identity_status"]
+        assert member["duplicate_status"] == expected["duplicate_status"]
+        assert member["lifecycle"] == {
+            field: expected[field] for field in HANDOFF_LIFECYCLE_FIELDS
+        }
 
     assert group["freeze_record"] == "docs/audit/niigata-001-vpg001-freeze.md"
     freeze_rows = _vpg001_freeze_rows()
@@ -3628,7 +3674,7 @@ def test_vpg001_source_handoff_membership_is_unchanged():
     assert not unselected & registered_positions
 
 
-def test_niigata_vpg001_is_registered_at_g0_only():
+def test_niigata_vpg001_current_candidate_master_state():
     master = _load_master()
     rows = {row["candidate_id"]: row for row in master["candidates"]}
     nationwide_ids = [row["candidate_id"] for row in _nationwide_candidates(master)]
@@ -3644,7 +3690,7 @@ def test_niigata_vpg001_is_registered_at_g0_only():
             "candidate_id": candidate_id,
             "candidate_name": name,
             "prefecture": "新潟県",
-            **VPG001_G0_LIFECYCLE,
+            **VPG001_CURRENT_STATE[candidate_id],
             "candidate_reason": NATIONWIDE_CANDIDATE_REASON,
             "admission_provenance": {
                 "track": "nationwide_source_candidate",
@@ -3660,10 +3706,10 @@ def test_niigata_vpg001_is_registered_at_g0_only():
                 "captured_at": "2026-10-08T14:27:00+09:00",
             },
         }, candidate_id
-        # G1 の結論を持たない。
-        assert row["identity_status"] == "UNREVIEWED", candidate_id
-        assert row["duplicate_status"] == "UNREVIEWED", candidate_id
-        # G0 を超える lifecycle / build_batch / Product Surface を持たない。
+        # Mother Ship の G1 decision を保持する。
+        assert row["identity_status"] == "CONFIRMED", candidate_id
+        assert row["duplicate_status"] == VPG001_CURRENT_STATE[candidate_id]["duplicate_status"], candidate_id
+        # lifecycle / build_batch / Product Surface は G0 state のまま。
         assert row["candidate_status"] == "DISCOVERED", candidate_id
         assert row["build_batch"] is None, candidate_id
         assert "product_surface" not in row, candidate_id
@@ -3696,19 +3742,19 @@ def test_niigata_vpg001_is_registered_at_g0_only():
 
 
 def test_vpg001_amatsu_screening_evidence_does_not_hydrate_candidate_master():
-    """天津神社の primary-source screening evidence は G0 の Candidate Master に入らない。"""
+    """天津神社の primary-source screening evidence は G1 identity decision 後も Candidate Master に hydrate しない。"""
     master = _load_master()
     row = next(r for r in master["candidates"] if r["candidate_id"] == "nsrc-000025")
     assert row["candidate_name"] == "天津神社"
     assert row["official_source_status"] == "AVAILABLE"
     assert row["knowledge_status"] == "UNREVIEWED"
-    assert row["identity_status"] == "UNREVIEWED"
-    assert row["duplicate_status"] == "UNREVIEWED"
+    assert row["identity_status"] == "CONFIRMED"
+    assert row["duplicate_status"] == "SAME_NAME_DIFFERENT_SHRINE"
     assert set(row) == {
         "candidate_id",
         "candidate_name",
         "prefecture",
-        *VPG001_G0_LIFECYCLE,
+        *VPG001_CURRENT_STATE["nsrc-000025"],
         "candidate_reason",
         "admission_provenance",
     }
@@ -3752,7 +3798,7 @@ def _vpg_register_sibling(handoff_id: str, position: str, candidate_id: str):
     return mutate
 
 
-# VPG001（G0 only）の premature G1+ / hydration / provenance 書き換え / Source handoff 再定義の mutation。
+# VPG001 の G1 decision regression / premature G2+ / hydration / provenance 書き換え / Source handoff 再定義の mutation。
 @pytest.mark.parametrize(
     "mutate",
     [
@@ -3770,14 +3816,14 @@ def _vpg_register_sibling(handoff_id: str, position: str, candidate_id: str):
             id="vpg001-changed-snapshot",
         ),
         pytest.param(
-            _set("nsrc-000025", "identity_status", "CONFIRMED"), id="vpg001-premature-identity"
+            _set("nsrc-000025", "identity_status", "UNREVIEWED"), id="vpg001-identity-regression"
         ),
         pytest.param(
-            _set("nsrc-000021", "duplicate_status", "NEW"), id="vpg001-premature-duplicate-new"
+            _set("nsrc-000021", "duplicate_status", "NEW"), id="vpg001-duplicate-regression-021"
         ),
         pytest.param(
-            _set("nsrc-000024", "duplicate_status", "SAME_NAME_DIFFERENT_SHRINE"),
-            id="vpg001-premature-same-name-different-shrine",
+            _set("nsrc-000022", "duplicate_status", "SAME_NAME_DIFFERENT_SHRINE"),
+            id="vpg001-duplicate-regression-022",
         ),
         pytest.param(
             _set("nsrc-000022", "candidate_status", "BUILD_READY"), id="vpg001-build-ready"
