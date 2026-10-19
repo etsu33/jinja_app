@@ -12,7 +12,7 @@ MODEL_REVIEW_REMAINS             = 0
 MODEL_CHANGE_REQUIRED            = 0
 PRODUCT_DECISION_REQUIRED        = 0
 Mother Ship Product Surface      = RECOMMENDATION ×4（000021 / 000022 / 000024 / 000025）; NOT_YET_APPLICABLE ×1（000023）
-G4                               = NOT AUTHORIZED（all five）
+G4                               = AUTHORIZED_TO_START ×4（000021 / 000022 / 000024 / 000025）; NOT_AUTHORIZED ×1（000023）
 Production / Seed / Candidate Master write = NONE
 ```
 
@@ -21,13 +21,14 @@ Production / Seed / Candidate Master write = NONE
 - Branch: `audit/niigata-vpg001-g3-source-knowledge-fit`
 
 This audit records the **technical** G3 classification supplied by Mother Ship on 2026-10-19, with the
-repository evidence each one rests on. It does not choose a Product Surface and does not perform G4.
+repository evidence each one rests on. Mother Ship subsequently selected `RECOMMENDATION` for nsrc-000021 /
+000022 / 000024 / 000025. This audit records that decision but does not perform G4.
 
 Three things are kept separate throughout:
 
 ```text
 technical G3 classification     = this audit（model fit of the Source-backed Knowledge）
-Mother Ship Product Surface     = RECOMMENDATION / CATALOG_ONLY, decided by Mother Ship per candidate（PENDING）
+Mother Ship Product Surface     = RECOMMENDATION ×4; NOT_YET_APPLICABLE ×1（000023 G3 HOLD）
 G4 authorization                = a later gate; requires PRODUCT_SURFACE = RECOMMENDATION（gate contract §7）
 ```
 
@@ -269,7 +270,7 @@ This classification is the technical G3 answer to the 天津神社・奴奈川�
 from G1 / G2: the existing schema is sufficient **on condition that** the cross-shrine exclusion boundary
 is preserved. Release still depends on the Product Surface decision and G4.
 
-## 9. Product Surface（Mother Ship decision; not made here）
+## 9. Product Surface（Mother Ship decision recorded here）
 
 | candidate_id | technical G3 classification | TECHNICAL_PRODUCT_SURFACE_PROPOSAL | MOTHER_SHIP_PRODUCT_SURFACE_DECISION |
 |---|---|---|---|
