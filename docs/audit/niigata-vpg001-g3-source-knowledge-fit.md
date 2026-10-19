@@ -173,6 +173,35 @@ Release condition（either）:
 1. an accepted Source confirms the proper-name identity of the current principal deity; or
 2. a focused review establishes another contract-compliant representation without meaning loss.
 
+### 6.1 Focused deity Source research（2026-10-19）
+
+Focused read-only research was performed after the initial G3 draft.
+
+Identity corroboration:
+- 新潟県神社庁 lists 熱串彦神社 / あつくしひこじんじゃ / 佐渡市長江854番地, matching the G1 target.
+- 佐渡観光交流機構 / さど観光ナビ directly states only that the main deity is 「加茂氏の祖神」 and that
+  金山彦命 is 配祀. It does not give the principal deity a proper name.
+
+Named-deity research found conflicting reference forms:
+- 精選版 日本国語大辞典（via コトバンク）: 祭神 = 阿都久志比古命.
+- 日本歴史地名大系（via コトバンク）: 祭神 = 阿田都久志比尼命, while also recording that the祭神 is
+  regarded as the ancestor of the 加茂氏.
+
+These are useful research leads but do not establish one unambiguous current principal-deity identity for G3.
+The authoritative current shrine-directory page confirms identity / address only and does not resolve the deity
+name. Therefore:
+
+```text
+FOCUSED_DEITY_RESEARCH                = COMPLETED
+CURRENT_PRINCIPAL_DEITY_PROPER_NAME   = CONFLICTING / NOT_FROZEN
+RELEASE_CONDITION                     = NOT MET
+classification                        = RESEARCH_REQUIRED_BEFORE_RELEASE (UNCHANGED)
+MODEL_CHANGE_REQUIRED                 = NO
+```
+
+Do not normalize 阿都久志比古命 / 阿田都久志比尼命 into one name by inference. A future accepted Source or
+explicit contract-compliant identity resolution is still required before a current principal-deity row is frozen.
+
 ## 7. nsrc-000024 秋葉神社 — NORMAL_MODEL_FIT
 
 ```text
