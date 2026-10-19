@@ -55,19 +55,24 @@ G4 authorization                = a later gate; requires PRODUCT_SURFACE = RECOM
 
 G3 does not modify identity, duplicate classification or coordinates.
 
-### 3.1 Repository evidence base and its level
+### 3.1 Accepted G3 Source evidence and verification level
 
-| candidate_id | repository Source（screening audit） | evidence level in repository |
+The earlier priority-screening record contained SEARCH_SUMMARY evidence for nsrc-000021 / 000022 /
+000023 / 000024. G3 re-verification on 2026-10-19 directly opened the authoritative pages below for
+nsrc-000021 / 000022 / 000024. Those direct checks supersede SEARCH_SUMMARY as the G3 acceptance basis
+for the stated Fact candidates. The screening record itself is not rewritten.
+
+| candidate_id | accepted G3 Source | verification level |
 |---|---|---|
-| nsrc-000021 | [S8] 新潟県（新発田地域振興局）北前船 page; 新潟県観光協会 spot/7288; 胎内市 PDF | SEARCH_SUMMARY |
-| nsrc-000022 | [S10] ja.wikid.org（Wikipedia mirror）; 陸上自衛隊新潟地本 PDF | SEARCH_SUMMARY（both secondary） |
-| nsrc-000023 | [S5] 新潟県観光協会 spot/42601 | SEARCH_SUMMARY（single publisher） |
-| nsrc-000024 | [S2] 新潟市 文化資源（秋葉区）PDF | SEARCH_SUMMARY（single municipal source） |
-| nsrc-000025 | [S11] 天津神社・奴奈川神社 公式サイト「御由緒・御祭神」 https://amatsujinja.com/story/ | PRIMARY_PAGE_VERIFIED（2026-10-18） |
+| nsrc-000021 | 新潟県「北前船の魅力を訪ねて」 https://www.pref.niigata.lg.jp/site/shibata/kitamaebune02.html ; 新潟県 cultural-property material https://www.pref.niigata.lg.jp/uploaded/attachment/180012.pdf | PRIMARY_PAGE_VERIFIED（2026-10-19） |
+| nsrc-000022 | 三条市「五十嵐神社」 https://www.city.sanjo.niigata.jp/sanjonavi/see_do/history_culture/jinja_jisha_joshi/2289.html | PRIMARY_PAGE_VERIFIED（2026-10-19） |
+| nsrc-000023 | [S5] 新潟県観光協会 spot/42601 | SEARCH_SUMMARY（principal-deity identity remains unresolved; G3 HOLD） |
+| nsrc-000024 | 新潟市「文化資源ガイド（秋葉区）」 https://www.city.niigata.lg.jp/kanko/bunka/shinko/bunkashigen/bunkaisannintei2.files/akihaku.pdf | PRIMARY_PAGE_VERIFIED（2026-10-19） |
+| nsrc-000025 | 天津神社・奴奈川神社 公式サイト「御由緒・御祭神」 https://amatsujinja.com/story/ | PRIMARY_PAGE_VERIFIED（2026-10-18） |
 
-The classifications below are Mother Ship's technical judgment of model fit. For nsrc-000021 / 000022 /
-000024, the "accepted Source" that a G4 Fact would cite is **not yet persisted at primary-page level** in
-the repository. That is recorded as a G4 entry precondition（§10）, not as a change to the G3 class.
+G3 accepted-Source condition is therefore satisfied for nsrc-000021 / 000022 / 000024 / 000025.
+nsrc-000023 remains RESEARCH_REQUIRED_BEFORE_RELEASE and does not use SEARCH_SUMMARY to bypass the HOLD.
+Exact G4 Source rows / Fact-Source relations are still a later Source Packet responsibility.
 
 ## 4. nsrc-000021 荒川神社 — NORMAL_MODEL_FIT
 
@@ -81,17 +86,17 @@ unresolved deity identity       = none
 classification                  = NORMAL_MODEL_FIT
 ```
 
-History candidates in the repository evidence（[S8]）: 北前船 port shrine of 荒川三湊 桃崎浜; 船絵馬 votives
-offered by shipowners praying for safe voyages; 模型和船2隻 = 国 重要有形民俗文化財（1970）; 社殿 =
-登録有形文化財（令和元年）.
+Directly verified 新潟県 material supports: 御祭神 = 天鈿女命; shipowners' 船絵馬 offered for safe
+voyages; 86 船絵馬; the 荒川神社大祭 / 模型和船 context; and the registered cultural-property status.
 
 Localized chronology conflict:
 
 ```text
-observed  = 天保12年（1814年）in the Source summary
-problem   = 天保12年 = 1841, not 1814
-G3 ruling = the conflicted normalized building year is NOT authorized as a Fact
-scope     = localized; it does not invalidate the unrelated accepted Facts above
+official article  = 天保12年（1814年）
+official cultural-property material = 天保12年（1841年）
+G3 ruling         = chronology is conflicting inside the accepted official Source set
+                    and no normalized building year is authorized here
+scope             = localized; it does not invalidate the unrelated accepted Facts above
 ```
 
 G4 proposed boundary（not authorized; §10）:
@@ -104,7 +109,7 @@ G4 proposed boundary（not authorized; §10）:
 
 ```text
 Fact owner                      = 五十嵐神社（三条市大字飯田2283番地）; clear
-current deity                   = 五十日帯日子命（Mother Ship spelling; see note）
+current deity                   = 五十日帯日子命（direct 三条市 Source spelling）
 History                         = traditional founding / development narratives
 sub-shrine / associated target  = none
 anonymous collective            = none
@@ -112,18 +117,17 @@ unresolved deity identity       = none
 classification                  = NORMAL_MODEL_FIT
 ```
 
-History candidates in the repository evidence（[S10]）: the deity brought 治水・農耕 to 下田郷; origin of
-the 五十嵐川 name; 式内社 伊加良志神社 比定（majority scholarly view; 八木神社 is a 論社）.
+The directly verified 三条市 page states the祭神 as **五十日帯日子命** and records the 越国 / 頸城 /
+上田郷 / 下田郷 development narrative, the 飯田宮沢 / 舞鶴の丘 burial tradition, the 江戸期「若一王子」
+name, 安産信仰, and the 明治期「御陵墓伝説地」record.
 
 Tradition semantics:
 
-- the founding / development narratives are represented as `ShrineHistory` tradition（伝承）;
-- tradition wording is **not** upgraded into verified historical fact;
-- the 式内社 identification is a scholarly view, not settled fact.
-
-Deity-name spelling note: Mother Ship's classification writes **五十日帯日子命**. The repository screening
-evidence（[S10]）records **五十日帯彦命**. This audit does not choose between them. The G4 Source Packet must
-use the exact spelling of the accepted Source it cites.
+- the development / burial narrative preserves the Source's 「といわれています」 framing and is represented
+  as `ShrineHistory.tradition`, not upgraded into independently verified historical fact;
+- this direct G3 Source supersedes the screening-only spelling ambiguity for the current Deity candidate;
+- the screening-only 式内社 / scholarly-view material is not required for this G3 PASS and is not promoted
+  by this audit.
 
 G4 proposed boundary（not authorized; §10）:
 
@@ -180,16 +184,17 @@ unresolved deity identity       = none
 classification                  = NORMAL_MODEL_FIT
 ```
 
-History candidates in the repository evidence（[S2]）: former 桂家 guardian; transferred to 秋葉町内 in 1964;
-250th year in 2013; halls rebuilt 明治3.
+The directly verified 新潟市 PDF supports: 御祭神 = 大己貴神, with 大物主命 and 菅原道真公 also
+enshrined; former 桂家 guardian context; transfer to 秋葉町内 in 1964; the 2013 250th-year statement;
+and the listed annual festivals.
 
 Localized chronology conflict:
 
 ```text
-observed  = 明治3年 given as 1872 in the Source summary
-problem   = 明治3年 = 1870
-G3 ruling = the year is NOT normalized or silently corrected in G3
-scope     = localized; the rebuild-year normalization is excluded until separately resolved
+official Source wording = 明治3年（1872）
+problem                 = the era-year / Gregorian-year pair is internally inconsistent
+G3 ruling               = the year is NOT normalized or silently corrected in G3
+scope                   = localized; the rebuild-year normalization is excluded until separately resolved
 ```
 
 The other frozen 秋葉神社 rows are different shrines. No Fact from them is attributed here.
@@ -256,9 +261,9 @@ G4 = NOT AUTHORIZED for all five
 G4 applies only to a candidate with `PRODUCT_SURFACE = RECOMMENDATION`（gate contract §7）. Before any G4
 Fact is created:
 
-- nsrc-000021 / 000022 / 000024: the accepted Sources must be primary-page verified and persisted in the
-  Source Packet. The current repository evidence is SEARCH_SUMMARY level（§3.1）.
-- nsrc-000022: the deity name must follow the exact spelling of the cited accepted Source（§5 note）.
+- nsrc-000021 / 000022 / 000024 / 000025: the directly verified G3 Sources in §3.1 must be persisted as
+  exact Source Packet rows / provenance before Fact materialization.
+- nsrc-000022: the accepted 三条市 Source spelling is 五十日帯日子命; G4 must preserve the cited Source wording.
 - nsrc-000021 / 000024: the conflicted chronology normalizations stay excluded.
 - nsrc-000025: the 天津神社 / 奴奈川神社 exclusion boundary is recorded in the Source Packet / Seed preflight.
 - nsrc-000023: not eligible until the §6 release condition is met.
