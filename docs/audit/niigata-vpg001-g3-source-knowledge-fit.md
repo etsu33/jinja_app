@@ -3,7 +3,7 @@
 ## 1. Status
 
 ```text
-VPG001 G3（global）              = OPEN（not closed: Mother Ship Product Surface decisions pending）
+VPG001 G3（global）              = PARTIAL CLOSED（4 candidates routed; 000023 remains G3 HOLD）
 technical G3 classification     = recorded for all five（§4–§8）
 NORMAL_MODEL_FIT                 = 3（nsrc-000021 / 000022 / 000024）
 CURATION_RELEASE_CANDIDATE       = 1（nsrc-000025）
@@ -11,7 +11,7 @@ RESEARCH_REQUIRED_BEFORE_RELEASE = 1（nsrc-000023）
 MODEL_REVIEW_REMAINS             = 0
 MODEL_CHANGE_REQUIRED            = 0
 PRODUCT_DECISION_REQUIRED        = 0
-Mother Ship Product Surface      = PENDING ×4（000021 / 000022 / 000024 / 000025）; NOT_YET_APPLICABLE ×1（000023）
+Mother Ship Product Surface      = RECOMMENDATION ×4（000021 / 000022 / 000024 / 000025）; NOT_YET_APPLICABLE ×1（000023）
 G4                               = NOT AUTHORIZED（all five）
 Production / Seed / Candidate Master write = NONE
 ```
@@ -273,18 +273,22 @@ is preserved. Release still depends on the Product Surface decision and G4.
 
 | candidate_id | technical G3 classification | TECHNICAL_PRODUCT_SURFACE_PROPOSAL | MOTHER_SHIP_PRODUCT_SURFACE_DECISION |
 |---|---|---|---|
-| nsrc-000021 | NORMAL_MODEL_FIT | RECOMMENDATION | PENDING |
-| nsrc-000022 | NORMAL_MODEL_FIT | RECOMMENDATION | PENDING |
+| nsrc-000021 | NORMAL_MODEL_FIT | RECOMMENDATION | RECOMMENDATION |
+| nsrc-000022 | NORMAL_MODEL_FIT | RECOMMENDATION | RECOMMENDATION |
 | nsrc-000023 | RESEARCH_REQUIRED_BEFORE_RELEASE | — | PRODUCT_SURFACE = NOT_YET_APPLICABLE（G3 HOLD） |
-| nsrc-000024 | NORMAL_MODEL_FIT | RECOMMENDATION | PENDING |
-| nsrc-000025 | CURATION_RELEASE_CANDIDATE | RECOMMENDATION | PENDING |
+| nsrc-000024 | NORMAL_MODEL_FIT | RECOMMENDATION | RECOMMENDATION |
+| nsrc-000025 | CURATION_RELEASE_CANDIDATE | RECOMMENDATION | RECOMMENDATION |
 
-The technical proposal is not a decision. This audit chooses neither `RECOMMENDATION` nor `CATALOG_ONLY`.
+Mother Ship explicitly selected `RECOMMENDATION` for nsrc-000021 / 000022 / 000024 / 000025 on 2026-10-19. nsrc-000023 remains `NOT_YET_APPLICABLE` because G3 is still held at `RESEARCH_REQUIRED_BEFORE_RELEASE`.
 
 ## 10. G4 authorization（future gate; not performed）
 
 ```text
-G4 = NOT AUTHORIZED for all five
+nsrc-000021 G4 = AUTHORIZED_TO_START
+nsrc-000022 G4 = AUTHORIZED_TO_START
+nsrc-000023 G4 = NOT_AUTHORIZED
+nsrc-000024 G4 = AUTHORIZED_TO_START
+nsrc-000025 G4 = AUTHORIZED_TO_START
 ```
 
 G4 applies only to a candidate with `PRODUCT_SURFACE = RECOMMENDATION`（gate contract §7）. Before any G4
@@ -312,9 +316,9 @@ aggregate                                      NORMAL 3 / CURATION 1 / RESEARCH 
 ## 12. Not done
 
 ```text
-Product Surface decision                 NOT MADE（Mother Ship, PENDING ×4）
+Product Surface decision                 MADE（RECOMMENDATION ×4; 000023 NOT_YET_APPLICABLE）
 G4 / Source Packet / Fact creation       NOT PERFORMED
-VPG001 G3 global closure                 NOT DONE（Product Surface pending）
+VPG001 G3 global closure                 PARTIAL（000023 remains G3 HOLD）
 Candidate Master / Base Seed / Knowledge Seed / Production   UNCHANGED, NO WRITE
 Position records / G1 / G2 values        UNCHANGED
 Recommendation / Ranking / Concierge / Compass / API / frontend / analytics   UNCHANGED
@@ -324,14 +328,14 @@ Model / Migration / Serializer           UNCHANGED
 ## 13. Current state
 
 ```text
-nsrc-000021  G3 = NORMAL_MODEL_FIT                   PRODUCT_SURFACE = PENDING              G4 = NOT AUTHORIZED
-nsrc-000022  G3 = NORMAL_MODEL_FIT                   PRODUCT_SURFACE = PENDING              G4 = NOT AUTHORIZED
-nsrc-000023  G3 = HOLD / RESEARCH_REQUIRED_BEFORE_RELEASE  PRODUCT_SURFACE = NOT_YET_APPLICABLE  G4 = NOT AUTHORIZED
-nsrc-000024  G3 = NORMAL_MODEL_FIT                   PRODUCT_SURFACE = PENDING              G4 = NOT AUTHORIZED
-nsrc-000025  G3 = CURATION_RELEASE_CANDIDATE         PRODUCT_SURFACE = PENDING              G4 = NOT AUTHORIZED
+nsrc-000021  G3 = NORMAL_MODEL_FIT                   PRODUCT_SURFACE = RECOMMENDATION       G4 = AUTHORIZED_TO_START
+nsrc-000022  G3 = NORMAL_MODEL_FIT                   PRODUCT_SURFACE = RECOMMENDATION       G4 = AUTHORIZED_TO_START
+nsrc-000023  G3 = HOLD / RESEARCH_REQUIRED_BEFORE_RELEASE  PRODUCT_SURFACE = NOT_YET_APPLICABLE  G4 = NOT_AUTHORIZED
+nsrc-000024  G3 = NORMAL_MODEL_FIT                   PRODUCT_SURFACE = RECOMMENDATION       G4 = AUTHORIZED_TO_START
+nsrc-000025  G3 = CURATION_RELEASE_CANDIDATE         PRODUCT_SURFACE = RECOMMENDATION       G4 = AUTHORIZED_TO_START
 
-VPG001 G3（global） = OPEN
-NEXT              = Mother Ship Product Surface decisions for 000021 / 000022 / 000024 / 000025;
-                    focused Source research for 000023
+VPG001 G3（global） = PARTIAL CLOSED
+NEXT              = G4 for 000021 / 000022 / 000024 / 000025;
+                    keep 000023 on focused Source / identity research HOLD
 STOP              = TRUE
 ```
