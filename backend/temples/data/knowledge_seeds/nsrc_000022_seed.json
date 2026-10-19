@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "SANJO_CITY_IGARASHI_JINJA",
+      "source_type": "government",
+      "title": "五十嵐神社",
+      "publisher": "三条市",
+      "url": "https://www.city.sanjo.niigata.jp/sanjonavi/see_do/history_culture/jinja_jisha_joshi/2289.html",
+      "language": "ja",
+      "accessed_at": "2026-10-19",
+      "verified_at": "2026-10-19T14:35:38+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "五十嵐神社",
+        "address": "新潟県三条市大字飯田2283番地"
+      },
+      "deities": [
+        {
+          "display_name": "五十日帯日子命",
+          "role": "unknown",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "SANJO_CITY_IGARASHI_JINJA"
+          ]
+        }
+      ],
+      "histories": []
+    }
+  ]
+}
