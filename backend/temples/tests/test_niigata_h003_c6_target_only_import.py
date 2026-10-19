@@ -347,11 +347,12 @@ def test_full_base_seed_is_never_the_production_payload():
     module = _extractor()
     full = _seed_rows()
     subset = json.loads(module.render(module.extract_subset(full)))
-    assert len(full) == 129
+    # Base Seed は後続の materialization で append される（129 = H003 materialization 時点）。
+    assert len(full) >= 129
     assert len(subset) == 4
     target_identities = {(SHRINE_NAME, address) for address, _, _ in TARGETS.values()}
     others = [r for r in full if (r["name_jp"], r["address"]) not in target_identities]
-    assert len(others) == 125
+    assert len(others) == len(full) - 4
     assert all(row not in subset for row in others)
     # 群馬県の別の赤城神社（同名・別住所）は抽出されない
     assert not [r for r in subset if r["address"].startswith("群馬県")]

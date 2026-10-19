@@ -3764,16 +3764,43 @@ def test_vpg001_amatsu_screening_evidence_does_not_hydrate_candidate_master():
         assert marker not in text, marker
 
 
-def test_vpg001_has_no_base_seed_or_knowledge_hydration():
-    """G0 では Base Seed / Knowledge Seed を作らない。"""
+# Base Seed は G2 freeze 後の Base Shrine materialization
+# （docs/audit/niigata-vpg001-base-shrine-materialization.md）で 4件だけ作る。nsrc-000023 は作らない。
+VPG001_BASE_SEED_ROWS = {
+    "nsrc-000021": ("荒川神社", "新潟県胎内市桃崎浜187番地", 38.1409456, 139.4073314),
+    "nsrc-000022": ("五十嵐神社", "新潟県三条市大字飯田2283番地", 37.573979, 139.048758),
+    "nsrc-000024": ("秋葉神社", "新潟県新潟市秋葉区秋葉3丁目8番19号", 37.7863255, 139.1351949),
+    "nsrc-000025": ("天津神社", "新潟県糸魚川市一の宮1丁目3番34号", 37.0397729, 137.8644153),
+}
+
+
+def test_vpg001_has_only_authorized_base_seed_rows_and_no_knowledge_hydration():
+    """Base Seed は materialize 済み 4件の neutral row だけ。Knowledge Seed はまだ作らない。"""
     data_dir = MASTER_PATH.parent
     base_seed = json.loads((data_dir / "shrines_seed_clean.json").read_text(encoding="utf-8"))
-    for row in base_seed:
-        for _, name, position, _ in VPG001_MEMBERS:
-            assert not (
-                row.get("name_jp") == name
-                and VPG001_RAW_ADDRESSES[position] in str(row.get("address", ""))
-            ), (name, row.get("address"))
+    for candidate_id, name, position, _ in VPG001_MEMBERS:
+        matches = [
+            row
+            for row in base_seed
+            if row.get("name_jp") == name
+            and VPG001_RAW_ADDRESSES[position] in str(row.get("address", ""))
+        ]
+        if candidate_id not in VPG001_BASE_SEED_ROWS:
+            assert matches == [], (candidate_id, name)
+            continue
+        _, address, lat, lng = VPG001_BASE_SEED_ROWS[candidate_id]
+        assert matches == [
+            {
+                "name_jp": name,
+                "address": address,
+                "latitude": lat,
+                "longitude": lng,
+                "goriyaku": "",
+                "kyusei": None,
+                "astro_elements": [],
+                "location": {"lat": lat, "lng": lng},
+            }
+        ], candidate_id
     vpg_ids = [m[0] for m in VPG001_MEMBERS]
     for path in sorted((data_dir / "knowledge_seeds").rglob("*.json")):
         text = path.read_text(encoding="utf-8")
