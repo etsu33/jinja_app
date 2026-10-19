@@ -3774,8 +3774,18 @@ VPG001_BASE_SEED_ROWS = {
 }
 
 
-def test_vpg001_has_only_authorized_base_seed_rows_and_no_knowledge_hydration():
-    """Base Seed は materialize 済み 4件の neutral row だけ。Knowledge Seed はまだ作らない。"""
+# G4 Knowledge materialization（docs/audit/niigata-vpg001-g4-knowledge-materialization.md）で
+# 許可された Knowledge Seed。nsrc-000023 は G4 NOT_AUTHORIZED のため含めない。
+VPG001_KNOWLEDGE_SEEDS = {
+    "nsrc-000021": "nsrc_000021_seed.json",
+    "nsrc-000022": "nsrc_000022_seed.json",
+    "nsrc-000024": "nsrc_000024_seed.json",
+    "nsrc-000025": "nsrc_000025_seed.json",
+}
+
+
+def test_vpg001_has_only_authorized_base_seed_rows_and_knowledge_seeds():
+    """Base Seed は materialize 済み 4件の neutral row だけ。Knowledge Seed は G4 で許可された 4件だけ。"""
     data_dir = MASTER_PATH.parent
     base_seed = json.loads((data_dir / "shrines_seed_clean.json").read_text(encoding="utf-8"))
     for candidate_id, name, position, _ in VPG001_MEMBERS:
@@ -3806,8 +3816,13 @@ def test_vpg001_has_only_authorized_base_seed_rows_and_no_knowledge_hydration():
         text = path.read_text(encoding="utf-8")
         for candidate_id in vpg_ids:
             assert candidate_id not in text, (path.name, candidate_id)
-        for address in VPG001_RAW_ADDRESSES.values():
-            assert address not in text, (path.name, address)
+        for candidate_id, _name, position, _ in VPG001_MEMBERS:
+            if VPG001_KNOWLEDGE_SEEDS.get(candidate_id) == path.name:
+                continue
+            assert VPG001_RAW_ADDRESSES[position] not in text, (path.name, candidate_id)
+    for candidate_id, file_name in VPG001_KNOWLEDGE_SEEDS.items():
+        assert (data_dir / "knowledge_seeds" / file_name).is_file(), candidate_id
+    assert "nsrc-000023" not in VPG001_KNOWLEDGE_SEEDS
 
 
 def _vpg_move_to_group(candidate_id: str):
