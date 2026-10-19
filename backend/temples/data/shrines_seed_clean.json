@@ -2350,5 +2350,57 @@
       "lat": 37.214543,
       "lng": 139.036468
     }
+  },
+  {
+    "name_jp": "荒川神社",
+    "address": "新潟県胎内市桃崎浜187番地",
+    "latitude": 38.1409456,
+    "longitude": 139.4073314,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 38.1409456,
+      "lng": 139.4073314
+    }
+  },
+  {
+    "name_jp": "五十嵐神社",
+    "address": "新潟県三条市大字飯田2283番地",
+    "latitude": 37.573979,
+    "longitude": 139.048758,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 37.573979,
+      "lng": 139.048758
+    }
+  },
+  {
+    "name_jp": "秋葉神社",
+    "address": "新潟県新潟市秋葉区秋葉3丁目8番19号",
+    "latitude": 37.7863255,
+    "longitude": 139.1351949,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 37.7863255,
+      "lng": 139.1351949
+    }
+  },
+  {
+    "name_jp": "天津神社",
+    "address": "新潟県糸魚川市一の宮1丁目3番34号",
+    "latitude": 37.0397729,
+    "longitude": 137.8644153,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 37.0397729,
+      "lng": 137.8644153
+    }
   }
 ]
