@@ -3,8 +3,10 @@
 ## 1. Status
 
 ```text
-G2                          = IN PROGRESS（NOT FROZEN, NOT CLOSED）
-G2 final freeze             = NOT PERFORMED
+G2                          = CLOSED / PASS（FROZEN）
+MOTHER_SHIP_G2_FINAL_FREEZE = APPROVED
+freeze_date                 = 2026-10-19
+G2 final freeze             = PERFORMED（§10）
 Position Resolution Records = 5 of 5 persisted（docs/audit/shrine-position/niigata-vpg001-*）
 position_status             = PASS ×5（nsrc-000021 / 000022 / 000023 / 000024 / 000025）
                               HOLD_POSITION_REVIEW ×0
@@ -13,8 +15,9 @@ Mother Ship decisions 2026-10-19 = §6.1（CODH primary for 000022 / 000023; 000
                               on the shared-precinct Google Maps entity;
                               000021 PASS on Google Maps POI; 000024 PASS on official-linked
                               Google Maps navigation target）
-open items                  = no status open; corroboration URLs only: nsrc-000021 Yahoo!/Zenrin,
-                              nsrc-000023 Wikidata, nsrc-000025 A / B / CODH（§6）
+open items                  = no status open; non-blocking corroboration URLs only:
+                              nsrc-000021 Yahoo!/Zenrin, nsrc-000023 Wikidata, nsrc-000025 A / B / CODH（§6）
+G3 model-risk（天津神社・奴奈川神社） = OPEN（outside G2 scope）
 coordinates generated or inferred = NONE
 Production write            = NONE
 ```
@@ -22,10 +25,12 @@ Production write            = NONE
 - Bootstrap recorded at: 2026-10-18（PR #3266, base `develop@df7cb791`）
 - Evidence persisted at: 2026-10-18（base `develop@225352c5`, branch `audit/niigata-vpg001-g2-position-evidence`）
 - Mother Ship decisions recorded at: 2026-10-19（§6.1）
+- G2 final freeze recorded at: 2026-10-19（base `develop@e9916b02`, branch `audit/niigata-vpg001-g2-final-freeze`, §10）
 
 The bootstrap（PR #3266）recorded the G2 scope and Mother Ship decision state. This update persists the
 position evidence Mother Ship supplied on 2026-10-18 as one Position Resolution Record per candidate.
-It evaluates each against the Position Contract. It does not freeze G2.
+It evaluates each against the Position Contract. The later per-candidate resolutions（PR #3268 /
+#3269 / #3270）brought every candidate to PASS, and the final freeze（§10）closes G2.
 
 Evidence level for all five: `MOTHER_SHIP_SUPPLIED`. The sources were not re-fetched in this
 environment. Its network policy denies the source hosts. Values are recorded exactly as supplied.
@@ -192,15 +197,14 @@ unexplained conflicts                    NONE（nsrc-000025 A / B / CODH explain
 ## 8. Not done
 
 ```text
-G2 final freeze                          NOT PERFORMED
-G2 CLOSED / FROZEN                       NO
 re-fetch / independent verification      NOT DONE（network policy）
 coordinate generated or inferred         NONE（no geocoding, no address conversion, no snippets）
 Candidate Master / identity manifest     UNCHANGED
 G1 records                               UNCHANGED
 Base Seed / Knowledge / Production       UNCHANGED, NO WRITE
 Recommendation / Ranking / Meaning       UNCHANGED
-G3 model-risk（天津神社・奴奈川神社）     OPEN（not a G2 question）
+G3 model-risk（天津神社・奴奈川神社）     OPEN（outside G2 scope）
+G3 state                                 UNCHANGED（not started by G2）
 ```
 
 ## 9. Next
@@ -212,6 +216,79 @@ G3 model-risk（天津神社・奴奈川神社）     OPEN（not a G2 question�
 3. nsrc-000025: PASS（final, 2026-10-19）. A / B / CODH source URLs to be recorded（provenance only;
    does not block the PASS）.
 4. nsrc-000023: Wikidata item URL / QID to complete corroboration provenance（does not block the PASS）.
-5. Every candidate now has one final status（PASS ×5 / HOLD ×0）. G2 final freeze is a separate
-   change and a Mother Ship decision. The open items above are corroboration provenance only.
+5. G2 final freeze: DONE（2026-10-19, §10）. Items 1, 3 and 4 remain non-blocking corroboration
+   provenance notes. Recording them later does not reopen G2.
+```
+
+## 10. G2 final freeze（2026-10-19）
+
+```text
+MOTHER_SHIP_G2_FINAL_FREEZE = APPROVED
+freeze_date                 = 2026-10-19
+G2                          = CLOSED / PASS（FROZEN）
+position_status             = PASS ×5
+HOLD_POSITION_REVIEW        = ×0
+```
+
+Frozen adopted Visitor / Navigation Anchors（unchanged from the Position Resolution Records）:
+
+| candidate_id | name | latitude | longitude | position_source_type | record |
+|---|---|---|---|---|---|
+| nsrc-000021 | 荒川神社 | 38.1409456 | 139.4073314 | map_provider_poi | `docs/audit/shrine-position/niigata-vpg001-nsrc-000021-position-review.md` |
+| nsrc-000022 | 五十嵐神社 | 37.573979 | 139.048758 | public_reference_dataset_facility_point | `docs/audit/shrine-position/niigata-vpg001-nsrc-000022-position-review.md` |
+| nsrc-000023 | 熱串彦神社 | 38.072529 | 138.407913 | public_reference_dataset_facility_point | `docs/audit/shrine-position/niigata-vpg001-nsrc-000023-position-review.md` |
+| nsrc-000024 | 秋葉神社 | 37.7863255 | 139.1351949 | official_linked_map_provider_navigation_target | `docs/audit/shrine-position/niigata-vpg001-nsrc-000024-position-review.md` |
+| nsrc-000025 | 天津神社 | 37.0397729 | 137.8644153 | official_linked_shared_precinct_map_provider_poi | `docs/audit/shrine-position/niigata-vpg001-nsrc-000025-position-review.md` |
+
+Freeze preconditions（G2 PASS conditions, gate contract §5; Position Contract）:
+
+```text
+G1 identity confirmed for all five                 YES（docs/audit/niigata-vpg001-g1-identity-duplicate.md）
+primary position source traceable                  YES, every adopted coordinate
+adopted coordinate matches source provenance       YES
+visitor-facing anchor semantics explained          YES（incl. nsrc-000025 shared-precinct anchor）
+unexplained position conflicts                     NONE
+duplicate adopted coordinates                      NONE
+Position Resolution Records                        5 / 5
+status-open candidates                             NONE
+```
+
+What the freeze means（existing conventions; no new lifecycle field or schema）:
+
+- G2 adjudication for nsrc-000021 … 000025 is closed. The adopted coordinates, sources, semantics and
+  decision history above and in the five records are the frozen G2 state.
+- The freeze adds no Candidate Master field or state. Candidate Master, Base Seed, Knowledge Seed and
+  Production are unchanged. Writing a coordinate to Seed / Production is a later gate.
+- Changing a frozen anchor requires a new Mother Ship decision and a new audit change. It does not
+  happen by editing a record.
+- The five records' `Boundary` sections say "G2 is not frozen". That was true on each record's date.
+  This section supersedes it. The records are left unchanged so their coordinates and provenance stay
+  byte-identical.
+
+Non-blocking provenance notes carried forward（not HOLDs; recording them later does not reopen G2）:
+
+```text
+nsrc-000021  Yahoo!/Zenrin corroboration URL not supplied
+nsrc-000023  Wikidata corroboration URL / QID not recorded
+nsrc-000025  Candidate A / Candidate B / CODH source URLs not supplied
+```
+
+Outside G2 scope:
+
+```text
+G3 model-risk（天津神社・奴奈川神社） = OPEN
+```
+
+The nsrc-000025 shared-precinct anchor resolves only the G2 anchor-semantics question. 天津神社 and
+奴奈川神社 remain separate Fact owners. G3 decides whether current Knowledge models represent them
+without meaning loss. G2 closure does not decide G3.
+
+## 11. Closure
+
+```text
+NIIGATA_001_VPG001_G2 = CLOSED / PASS（FROZEN 2026-10-19）
+PASS                  = 5（nsrc-000021 / 000022 / 000023 / 000024 / 000025）
+HOLD_POSITION_REVIEW  = 0
+NEXT_GATE             = G3（separate change; not started here）
+STOP                  = TRUE
 ```
