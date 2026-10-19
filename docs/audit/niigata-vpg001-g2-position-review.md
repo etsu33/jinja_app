@@ -11,7 +11,7 @@ position_status             = PASS ×3（nsrc-000021 / 000022 / 000023）
 Mother Ship decision        = PENDING for nsrc-000024
 Mother Ship decisions 2026-10-19 = §6.1（CODH primary for 000022 / 000023; 000025 current status HOLD;
                               000021 PASS on Google Maps POI）
-open items                  = nsrc-000024, nsrc-000025; provenance URLs for nsrc-000021 primary /
+open items                  = nsrc-000024, nsrc-000025; corroboration URLs for nsrc-000021
                               Yahoo!/Zenrin and nsrc-000023 Wikidata（§6）
 coordinates generated or inferred = NONE
 Production write            = NONE
@@ -58,7 +58,7 @@ state records only what the repository contains.
 
 | candidate_id | Mother Ship decision | position_status（record） | repository evidence state |
 |---|---|---|---|
-| nsrc-000021 | PASS（2026-10-19） | PASS | Google Maps POI adopted; Yahoo!/Zenrin + 國學院 corroboration; Google / Yahoo URLs not supplied |
+| nsrc-000021 | PASS（2026-10-19） | PASS | Google Maps POI entity adopted（URL, feature id, entity token persisted）; Yahoo!/Zenrin + 國學院 corroboration; Yahoo URL not supplied |
 | nsrc-000022 | PASS adopted; CODH accepted as primary（2026-10-19, candidate-specific） | PASS | CODH coordinate + URL persisted; no corroboration |
 | nsrc-000023 | PASS adopted; CODH accepted as primary（2026-10-19, candidate-specific） | PASS | CODH coordinate + URL persisted; Wikidata corroboration provenance pending |
 | nsrc-000024 | PENDING | HOLD_POSITION_REVIEW（technical proposal） | identity sources only; no numeric coordinate |
@@ -71,7 +71,7 @@ contract status to HOLD_POSITION_REVIEW on 2026-10-19（§6.1）. The historical
 
 | candidate_id | latitude | longitude | primary source / type | corroboration | verified_at | position_status |
 |---|---|---|---|---|---|---|
-| nsrc-000021 | 38.140945 | 139.407348 | Google Maps 荒川神社 POI（`map_provider_poi`）, URL / place_id not supplied | Yahoo!/Zenrin `38.1409423, 139.4072801`（5.95 m）; 國學院 `38.140916, 139.407516` https://jmapps.ne.jp/kokugakuin/det.html?data_id=182468（15.04 m）; identity: 観光協会, 文化庁 | 2026-10-19 | PASS |
+| nsrc-000021 | 38.1409456 | 139.4073314 | Google Maps 荒川神社 POI（`map_provider_poi`）, feature id `0x5f8b6bd0cbf5ba91:0xa762ad68fe889819`, `/g/11v4bqq35k`; URL in the record | Yahoo!/Zenrin `38.1409423, 139.4072801`（4.50 m）; 國學院 `38.140916, 139.407516` https://jmapps.ne.jp/kokugakuin/det.html?data_id=182468（16.48 m）; identity: 観光協会, 文化庁 | 2026-10-19 | PASS |
 | nsrc-000022 | 37.573979 | 139.048758 | CODH 日本歴史地名大系 facility point（`public_reference_dataset_facility_point`）, https://geoshape.ex.nii.ac.jp/nrct-poi/resource/15/150000311900.html | none supplied | 2026-10-18 | PASS |
 | nsrc-000023 | 38.072529 | 138.407913 | CODH 日本歴史地名大系 facility point（`public_reference_dataset_facility_point`）, https://geoshape.ex.nii.ac.jp/nrct-poi/resource/15/150000593300.html | Wikidata `38.072471, 138.407785`, delta 12.93 m（provenance pending: URL / QID not recorded） | 2026-10-18 | PASS |
 | nsrc-000024 | — | — | none. Identity only: official page https://www.niitsu.or.jp/~akiha-jinja/ ; 新潟県神社庁 https://niigata-jinjacho.jp/shrine_niigata/search.php?area=15105 | — | 2026-10-18 | HOLD_POSITION_REVIEW |
@@ -93,8 +93,10 @@ These records are the G2 current-state evidence. The Position Contract remains t
 nsrc-000021  PASS（2026-10-19）
   - previous HOLD reasons（no independent numeric corroboration; no primary POI; reference DB only）
     RESOLVED by the Google Maps POI primary with Yahoo!/Zenrin + 國學院 corroboration
-  - OPEN: Google Maps URL / place_id and Yahoo!/Zenrin URL not supplied; points not reproducible from
-    the record alone. This does not change the PASS.
+  - primary provenance finalized: Google Maps POI URL recorded verbatim; adopted coordinate is the
+    POI entity coordinate 38.1409456, 139.4073314（replaces the earlier rounded 38.140945, 139.407348;
+    precision correction, not a new decision）
+  - OPEN: Yahoo!/Zenrin URL not supplied（corroboration provenance only; does not change the PASS）
 
 nsrc-000024  HOLD_POSITION_REVIEW
   - no official visitor-facing numeric coordinate was supplied; address identity alone is not PASS
@@ -134,11 +136,13 @@ nsrc-000025  MOTHER_SHIP_G2_DECISION = PASS（adopted）preserved as the histori
 global rule  NONE. CODH does not automatically qualify as a primary position source for other
              candidates. Each candidate needs its own Mother Ship decision.
 
-nsrc-000021  PASS. Adopted Visitor / Navigation Anchor = 38.140945, 139.407348
-             primary = Google Maps 荒川神社 POI（map_provider_poi）
+nsrc-000021  PASS. Adopted Visitor / Navigation Anchor = 38.1409456, 139.4073314
+             primary = Google Maps 荒川神社 POI entity（map_provider_poi）
+                       feature id 0x5f8b6bd0cbf5ba91:0xa762ad68fe889819, /g/11v4bqq35k
              corroboration = Yahoo!/Zenrin 38.1409423, 139.4072801;
                              國學院 式内社DB 38.140916, 139.407516
-             deltas are audit observations only（5.95 m / 15.04 m）; no distance threshold
+             deltas are audit observations only（4.50 m / 16.48 m）; no distance threshold
+             not adopted: right-click point 38.141030, 139.407468; URL viewport / dropped-pin points
 ```
 
 ## 7. Cross-candidate validation
@@ -152,7 +156,7 @@ similarly named different shrines         not used as sources（荒川神社 ×3
                                          other frozen rows; 奴奈川神社 is a separate Fact owner）
 duplicate coordinates across candidates  NONE（all supplied points distinct）
 nearest pair between candidates          nsrc-000021 ↔ nsrc-000022 = 70.5 km
-within-candidate deltas                  nsrc-000021 Google↔Yahoo 5.95 m, Google↔國學院 15.04 m;
+within-candidate deltas                  nsrc-000021 Google↔Yahoo 4.50 m, Google↔國學院 16.48 m;
                                          nsrc-000023 CODH↔Wikidata 12.93 m; nsrc-000025 A↔B 29.76 m
 prefecture bounding-box check            all supplied points inside Niigata（approx. 36.7–38.6 N,
                                          137.6–139.95 E）
@@ -177,8 +181,8 @@ G3 model-risk（天津神社・奴奈川神社）     OPEN（not a G2 question�
 ## 9. Next
 
 ```text
-1. nsrc-000021: PASS. Record the Google Maps URL / place_id and the Yahoo!/Zenrin URL（provenance
-   only; does not block the PASS）.
+1. nsrc-000021: PASS. Yahoo!/Zenrin URL still to be recorded（corroboration provenance only; does
+   not block the PASS）.
 2. nsrc-000024: an official visitor-facing numeric coordinate; then Mother Ship decides.
 3. nsrc-000025: the adopted point（A, B or other）, its traceable source, and what it represents in
    the two-honden precinct; then Mother Ship decides whether HOLD can be lifted.
