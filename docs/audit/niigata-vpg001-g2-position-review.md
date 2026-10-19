@@ -6,14 +6,15 @@
 G2                          = IN PROGRESS（NOT FROZEN, NOT CLOSED）
 G2 final freeze             = NOT PERFORMED
 Position Resolution Records = 5 of 5 persisted（docs/audit/shrine-position/niigata-vpg001-*）
-position_status             = PASS ×4（nsrc-000021 / 000022 / 000023 / 000024）
-                              HOLD_POSITION_REVIEW ×1（nsrc-000025 Mother Ship）
-Mother Ship decision        = made for all five（nsrc-000025 current status HOLD）
-Mother Ship decisions 2026-10-19 = §6.1（CODH primary for 000022 / 000023; 000025 current status HOLD;
+position_status             = PASS ×5（nsrc-000021 / 000022 / 000023 / 000024 / 000025）
+                              HOLD_POSITION_REVIEW ×0
+Mother Ship decision        = final for all five
+Mother Ship decisions 2026-10-19 = §6.1（CODH primary for 000022 / 000023; 000025 HOLD then final PASS
+                              on the shared-precinct Google Maps entity;
                               000021 PASS on Google Maps POI; 000024 PASS on official-linked
                               Google Maps navigation target）
-open items                  = nsrc-000025; corroboration URLs for nsrc-000021
-                              Yahoo!/Zenrin and nsrc-000023 Wikidata（§6）
+open items                  = no status open; corroboration URLs only: nsrc-000021 Yahoo!/Zenrin,
+                              nsrc-000023 Wikidata, nsrc-000025 A / B / CODH（§6）
 coordinates generated or inferred = NONE
 Production write            = NONE
 ```
@@ -63,10 +64,11 @@ state records only what the repository contains.
 | nsrc-000022 | PASS adopted; CODH accepted as primary（2026-10-19, candidate-specific） | PASS | CODH coordinate + URL persisted; no corroboration |
 | nsrc-000023 | PASS adopted; CODH accepted as primary（2026-10-19, candidate-specific） | PASS | CODH coordinate + URL persisted; Wikidata corroboration provenance pending |
 | nsrc-000024 | PASS（2026-10-19） | PASS | official website links to the Google Maps navigation target; URL, feature id, entity token persisted |
-| nsrc-000025 | PASS adopted（historical, preserved）; current status HOLD（2026-10-19） | HOLD_POSITION_REVIEW | two unattributed numeric candidates; adopted coordinate not determined |
+| nsrc-000025 | PASS adopted（historical, preserved）→ HOLD（2026-10-19）→ final PASS（2026-10-19） | PASS | shared-precinct Google Maps entity adopted（URL, feature id, entity token persisted）; A / B / CODH kept as not-adopted records |
 
 Historical Mother Ship decisions are preserved as made. For nsrc-000025, Mother Ship set the current
-contract status to HOLD_POSITION_REVIEW on 2026-10-19（§6.1）. The historical PASS is not rewritten.
+contract status to HOLD_POSITION_REVIEW on 2026-10-19 and then made the final PASS decision on the
+shared-precinct anchor（§6.1）. The historical PASS is not rewritten.
 
 ## 5. Evidence table
 
@@ -76,7 +78,7 @@ contract status to HOLD_POSITION_REVIEW on 2026-10-19（§6.1）. The historical
 | nsrc-000022 | 37.573979 | 139.048758 | CODH 日本歴史地名大系 facility point（`public_reference_dataset_facility_point`）, https://geoshape.ex.nii.ac.jp/nrct-poi/resource/15/150000311900.html | none supplied | 2026-10-18 | PASS |
 | nsrc-000023 | 38.072529 | 138.407913 | CODH 日本歴史地名大系 facility point（`public_reference_dataset_facility_point`）, https://geoshape.ex.nii.ac.jp/nrct-poi/resource/15/150000593300.html | Wikidata `38.072471, 138.407785`, delta 12.93 m（provenance pending: URL / QID not recorded） | 2026-10-18 | PASS |
 | nsrc-000024 | 37.7863255 | 139.1351949 | Google Maps navigation target linked from the official website https://www.niitsu.or.jp/~akiha-jinja/（`official_linked_map_provider_navigation_target`）, feature id `0x5ff4da6185158fed:0x772d4e3a0bb54ea1`, `/g/12hnpqljd`; URL in the record | identity: 新潟県神社庁 https://niigata-jinjacho.jp/shrine_niigata/search.php?area=15105 | 2026-10-19 | PASS |
-| nsrc-000025 | NOT_DETERMINED | NOT_DETERMINED | not supplied. Candidates A `37.0401500, 137.8642250` / B `37.0399114, 137.864377`, 29.76 m apart | identity only: 糸魚川観光ガイド https://www.itoigawa-kanko.net/trad/amatsu_shrine/ ; official site https://amatsujinja.com/contact/ | 2026-10-18 | HOLD_POSITION_REVIEW（Mother Ship, 2026-10-19） |
+| nsrc-000025 | 37.0397729 | 137.8644153 | Google Maps shared-precinct entity 天津神社・奴奈川神社（`official_linked_shared_precinct_map_provider_poi`）, feature id `0x5ff65db3f4e2982f:0xbf5aa67a0cc9ddc2`, `/m/0nb82lf`; URL in the record; official context https://amatsujinja.com/（交通案内） | not adopted: A Wikipedia `37.0401500, 137.8642250`（45.21 m）; B Open Data Japan / 糸魚川市 `37.0399114, 137.864377`（15.77 m, corroboration）; CODH 天津神社祭祀遺跡 `37.039941, 137.864358`（19.37 m, corroboration）; identity: 糸魚川観光ガイド | 2026-10-19 | PASS |
 
 Records:
 
@@ -114,11 +116,12 @@ nsrc-000023  PASS
   - OPEN: Wikidata corroboration provenance pending until a reproducible URL / QID is recorded;
     its independence from the CODH dataset is not verified. This does not invalidate the CODH primary.
 
-nsrc-000025  HOLD_POSITION_REVIEW（Mother Ship, 2026-10-19; historical PASS preserved）
-  - adopted coordinate not determined
-  - primary coordinate source not traceable（A / B have no source）
-  - A and B are 29.76 m apart in a two-honden precinct（天津神社・奴奈川神社）; their semantics are
-    unresolved. Neither is chosen.
+nsrc-000025  PASS（final, 2026-10-19; historical PASS and 2026-10-19 HOLD preserved in the record）
+  - HOLD reasons RESOLVED: adopted coordinate determined（37.0397729, 137.8644153）; primary source
+    traceable（Google Maps entity URL）; semantics = shared-precinct Visitor / Navigation Anchor,
+    not the 天津神社御本殿 coordinate
+  - 天津神社 / 奴奈川神社 remain separate Fact owners; G3 model-risk stays open
+  - OPEN: source URLs for A / B / CODH not supplied（historical / corroboration records only）
 ```
 
 ### 6.1 Mother Ship decisions（2026-10-19）
@@ -155,6 +158,16 @@ nsrc-000024  PASS. Adopted Visitor / Navigation Anchor = 37.7863255, 139.1351949
                        feature id 0x5ff4da6185158fed:0x772d4e3a0bb54ea1, /g/12hnpqljd
              not adopted: viewport centre 37.7863226, 139.1351315（5.58 m）;
                           right-click point 37.786353, 139.135193（3.06 m）
+
+nsrc-000025  final PASS. Adopted Visitor / Navigation Anchor = 37.0397729, 137.8644153
+             semantics = shared 天津神社・奴奈川神社 precinct anchor; NOT the 天津神社御本殿 coordinate
+             primary = Google Maps entity 天津神社・奴奈川神社
+                       （official_linked_shared_precinct_map_provider_poi）
+                       feature id 0x5ff65db3f4e2982f:0xbf5aa67a0cc9ddc2, /m/0nb82lf
+             official context = https://amatsujinja.com/（交通案内）
+             not adopted: A（Wikipedia, provenance unresolved）; B（Open Data Japan / 糸魚川市,
+                          corroboration）; CODH 天津神社祭祀遺跡（corroboration only）
+             historical PASS（2026-10-18）and HOLD（2026-10-19）preserved
 ```
 
 ## 7. Cross-candidate validation
@@ -169,10 +182,11 @@ similarly named different shrines         not used as sources（荒川神社 ×3
 duplicate coordinates across candidates  NONE（all supplied points distinct）
 nearest pair between candidates          nsrc-000022 ↔ nsrc-000024 = 24.8 km
 within-candidate deltas                  nsrc-000021 Google↔Yahoo 4.50 m, Google↔國學院 16.48 m;
-                                         nsrc-000023 CODH↔Wikidata 12.93 m; nsrc-000025 A↔B 29.76 m
+                                         nsrc-000023 CODH↔Wikidata 12.93 m; nsrc-000025 entity↔B 15.77 m,
+                                         entity↔CODH 19.37 m, entity↔A 45.21 m
 prefecture bounding-box check            all supplied points inside Niigata（approx. 36.7–38.6 N,
                                          137.6–139.95 E）
-unexplained conflicts                    nsrc-000025 A↔B（§6; status HOLD）
+unexplained conflicts                    NONE（nsrc-000025 A / B / CODH explained as not adopted）
 ```
 
 ## 8. Not done
@@ -195,9 +209,9 @@ G3 model-risk（天津神社・奴奈川神社）     OPEN（not a G2 question�
 1. nsrc-000021: PASS. Yahoo!/Zenrin URL still to be recorded（corroboration provenance only; does
    not block the PASS）.
 2. nsrc-000024: PASS（2026-10-19）. No open item.
-3. nsrc-000025: the adopted point（A, B or other）, its traceable source, and what it represents in
-   the two-honden precinct; then Mother Ship decides whether HOLD can be lifted.
+3. nsrc-000025: PASS（final, 2026-10-19）. A / B / CODH source URLs to be recorded（provenance only;
+   does not block the PASS）.
 4. nsrc-000023: Wikidata item URL / QID to complete corroboration provenance（does not block the PASS）.
-5. Only when every candidate has one final status with complete provenance: G2 final freeze
-   （separate change）.
+5. Every candidate now has one final status（PASS ×5 / HOLD ×0）. G2 final freeze is a separate
+   change and a Mother Ship decision. The open items above are corroboration provenance only.
 ```
