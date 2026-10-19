@@ -5,14 +5,15 @@
 ```text
 record_kind              = position_resolution_record
 candidate_id             = nsrc-000025
-position_status          = PASS
+position_status          = HOLD_POSITION_REVIEW
 new_latitude             = NOT_DETERMINED
 new_longitude            = NOT_DETERMINED
 new_position_source_type = NOT_SUPPLIED
 new_position_source_url  = NOT_SUPPLIED
 verified_at              = 2026-10-18
-MOTHER_SHIP_G2_DECISION  = PASS（adopted）
-CONTRACT_EVIDENCE_NOTE   = ADOPTED_COORDINATE_NOT_DETERMINED; COORDINATE_SOURCE_NOT_SUPPLIED; TWO_HONDEN_POINT_SEMANTICS_UNRESOLVED
+MOTHER_SHIP_G2_DECISION  = PASS（adopted）（historical, preserved）
+CURRENT_STATUS_DECISION  = HOLD_POSITION_REVIEW（Mother Ship, 2026-10-19）
+hold_reason_codes        = ADOPTED_COORDINATE_NOT_DETERMINED; PRIMARY_COORDINATE_SOURCE_NOT_TRACEABLE; TWO_HONDEN_CANDIDATE_SEMANTICS_UNRESOLVED
 production_write         = NONE
 seed_write               = NONE
 candidate_master_write   = NONE
@@ -23,9 +24,10 @@ candidate_master_write   = NONE
 - Contract: `docs/knowledge/shrine-position-contract.md`
 - G2 audit: `docs/audit/niigata-vpg001-g2-position-review.md`
 
-`position_status = PASS` records the existing Mother Ship decision. It is not reinterpreted. The
-coordinate that decision adopted is **not determined** from the evidence supplied（see below）, so
-`new_latitude` / `new_longitude` are not filled in. No coordinate is chosen by this record.
+The historical Mother Ship decision `PASS（adopted）` is preserved as recorded. On 2026-10-19 Mother
+Ship set the current contract `position_status` to `HOLD_POSITION_REVIEW`（§Mother Ship status
+decision）. The adopted coordinate is **not determined**, so `new_latitude` / `new_longitude` are not
+filled in. This record chooses no coordinate.
 
 Evidence level: `MOTHER_SHIP_SUPPLIED`. Supplied by Mother Ship on 2026-10-18. Not re-fetched in this
 environment（network policy denies the hosts）. Values are recorded exactly as supplied.
@@ -84,8 +86,20 @@ Official identity sources（no coordinate）:
 | 4. primary point consistent with visitor-facing identity | NOT DETERMINED（two points, no attribution） |
 | 5. conflict explained | A / B difference not explained |
 
-The Mother Ship PASS stands as recorded. Persisting an adopted coordinate requires Mother Ship to name
-the adopted point and its source.
+## Mother Ship status decision（2026-10-19）
+
+```text
+historical decision  = MOTHER_SHIP_G2_DECISION = PASS（adopted）（preserved, not rewritten）
+current status       = HOLD_POSITION_REVIEW
+reason               = adopted coordinate is not determined;
+                       primary coordinate source is not traceable;
+                       candidate A / B semantics within the two-honden precinct are unresolved
+candidate A / B      = neither chosen
+provenance           = not inferred or manufactured
+```
+
+To leave HOLD, the record needs the adopted point（A, B or another）, its traceable source, and an
+explanation of what that point represents in the two-honden precinct.
 
 ## Boundary
 

@@ -15,8 +15,9 @@ corroboration_source     = Wikidata（WikiProject Japan shrine dataset）
 corroboration_source_url = NOT_SUPPLIED
 corroboration_coordinate = 38.072471, 138.407785
 coordinate_delta_m       = 12.93
+corroboration_status     = PROVENANCE_PENDING（URL / QID not yet recorded）
 MOTHER_SHIP_G2_DECISION  = PASS（adopted）
-CONTRACT_EVIDENCE_NOTE   = PRIMARY_SOURCE_TYPE_PRECEDENT_GAP; CORROBORATION_URL_NOT_SUPPLIED
+MOTHER_SHIP_PRIMARY_SOURCE_DECISION = CODH_FACILITY_POINT_ACCEPTED_AS_PRIMARY（candidate-specific, 2026-10-19）
 production_write         = NONE
 seed_write               = NONE
 candidate_master_write   = NONE
@@ -82,15 +83,26 @@ name the same shrine at the same address as the canonical identity.
 | 4. primary point consistent with visitor-facing identity | address matches exactly |
 | 5. independent corroboration | Wikidata point 12.93 m away; item URL not supplied |
 
-Contract / evidence notes（reported, not resolved here）:
+Contract / evidence notes（first recorded 2026-10-18）:
 
-- **Primary source type:** repository precedent uses CODH `nrct-poi` points only as corroboration
-  （`docs/audit/niigata-h001-g2-position-gate.md`）. No earlier record adopts one as the primary anchor.
+- **Primary source type:** repository precedent had used CODH `nrct-poi` points only as corroboration
+  （`docs/audit/niigata-h001-g2-position-gate.md`）.
 - **Corroboration traceability:** the Wikidata corroboration has no item URL or QID, so it is not
   reproducible from this record.
 - **Independence:** whether the Wikidata coordinate was derived from the CODH dataset is not verified.
 
-The Mother Ship PASS stands as recorded.
+## Mother Ship primary-source decision（2026-10-19）
+
+```text
+decision        = CODH 日本歴史地名大系 facility point accepted as the primary position source
+scope           = nsrc-000023 only（candidate-specific）
+global rule     = NONE. CODH does not automatically qualify as primary for any other candidate.
+status_after    = PASS（kept）
+wikidata        = corroboration provenance PENDING until a reproducible URL / QID is recorded
+```
+
+The primary-source-type note is resolved for this candidate by that decision. The missing Wikidata URL
+does **not** invalidate the accepted CODH primary. It stays open only as corroboration provenance.
 
 ## Boundary
 

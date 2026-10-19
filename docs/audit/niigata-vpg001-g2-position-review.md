@@ -6,16 +6,18 @@
 G2                          = IN PROGRESS（NOT FROZEN, NOT CLOSED）
 G2 final freeze             = NOT PERFORMED
 Position Resolution Records = 5 of 5 persisted（docs/audit/shrine-position/niigata-vpg001-*）
-position_status             = PASS ×3（Mother Ship: nsrc-000022 / 000023 / 000025）
-                              HOLD_POSITION_REVIEW ×2（technical: nsrc-000021 / 000024）
+position_status             = PASS ×2（nsrc-000022 / 000023）
+                              HOLD_POSITION_REVIEW ×3（nsrc-000021 / 000024 technical; nsrc-000025 Mother Ship）
 Mother Ship decision        = PENDING for nsrc-000021 / nsrc-000024
-open contract / evidence notes = nsrc-000022, nsrc-000023, nsrc-000025（§6）
+Mother Ship decisions 2026-10-19 = §6.1（CODH primary for 000022 / 000023; 000025 current status HOLD）
+open items                  = nsrc-000021, nsrc-000024, nsrc-000025; nsrc-000023 Wikidata provenance（§6）
 coordinates generated or inferred = NONE
 Production write            = NONE
 ```
 
 - Bootstrap recorded at: 2026-10-18（PR #3266, base `develop@df7cb791`）
 - Evidence persisted at: 2026-10-18（base `develop@225352c5`, branch `audit/niigata-vpg001-g2-position-evidence`）
+- Mother Ship decisions recorded at: 2026-10-19（§6.1）
 
 The bootstrap（PR #3266）recorded the G2 scope and Mother Ship decision state. This update persists the
 position evidence Mother Ship supplied on 2026-10-18 as one Position Resolution Record per candidate.
@@ -55,13 +57,13 @@ state records only what the repository contains.
 | candidate_id | Mother Ship decision | position_status（record） | repository evidence state |
 |---|---|---|---|
 | nsrc-000021 | PENDING | HOLD_POSITION_REVIEW（technical proposal） | one numeric source（國學院）; no independent numeric corroboration |
-| nsrc-000022 | PASS adopted | PASS | CODH coordinate + URL persisted; no corroboration; source-type note |
-| nsrc-000023 | PASS adopted | PASS | CODH coordinate + URL persisted; Wikidata corroboration without URL; source-type note |
+| nsrc-000022 | PASS adopted; CODH accepted as primary（2026-10-19, candidate-specific） | PASS | CODH coordinate + URL persisted; no corroboration |
+| nsrc-000023 | PASS adopted; CODH accepted as primary（2026-10-19, candidate-specific） | PASS | CODH coordinate + URL persisted; Wikidata corroboration provenance pending |
 | nsrc-000024 | PENDING | HOLD_POSITION_REVIEW（technical proposal） | identity sources only; no numeric coordinate |
-| nsrc-000025 | PASS adopted | PASS | two unattributed numeric candidates; adopted coordinate not determined |
+| nsrc-000025 | PASS adopted（historical, preserved）; current status HOLD（2026-10-19） | HOLD_POSITION_REVIEW | two unattributed numeric candidates; adopted coordinate not determined |
 
-The three PASS decisions are not reinterpreted. Where the supplied evidence does not fully satisfy
-the contract's Audit Record, the gap is reported in §6, and the decision is left as made.
+Historical Mother Ship decisions are preserved as made. For nsrc-000025, Mother Ship set the current
+contract status to HOLD_POSITION_REVIEW on 2026-10-19（§6.1）. The historical PASS is not rewritten.
 
 ## 5. Evidence table
 
@@ -69,9 +71,9 @@ the contract's Audit Record, the gap is reported in §6, and the decision is lef
 |---|---|---|---|---|---|---|
 | nsrc-000021 | — | — | none adopted. Candidate only: 國學院 式内社DB `38.140916, 139.407516`（`independent_shrine_reference_database`）, https://jmapps.ne.jp/kokugakuin/det.html?data_id=182468 | identity only: 新潟県観光協会 https://niigata-kankou.or.jp/spot/7288 ; 文化庁 https://kunishitei.bunka.go.jp/bsys/maindetails/101/00013085 | 2026-10-18 | HOLD_POSITION_REVIEW |
 | nsrc-000022 | 37.573979 | 139.048758 | CODH 日本歴史地名大系 facility point（`public_reference_dataset_facility_point`）, https://geoshape.ex.nii.ac.jp/nrct-poi/resource/15/150000311900.html | none supplied | 2026-10-18 | PASS |
-| nsrc-000023 | 38.072529 | 138.407913 | CODH 日本歴史地名大系 facility point（`public_reference_dataset_facility_point`）, https://geoshape.ex.nii.ac.jp/nrct-poi/resource/15/150000593300.html | Wikidata `38.072471, 138.407785`（URL not supplied）, delta 12.93 m | 2026-10-18 | PASS |
+| nsrc-000023 | 38.072529 | 138.407913 | CODH 日本歴史地名大系 facility point（`public_reference_dataset_facility_point`）, https://geoshape.ex.nii.ac.jp/nrct-poi/resource/15/150000593300.html | Wikidata `38.072471, 138.407785`, delta 12.93 m（provenance pending: URL / QID not recorded） | 2026-10-18 | PASS |
 | nsrc-000024 | — | — | none. Identity only: official page https://www.niitsu.or.jp/~akiha-jinja/ ; 新潟県神社庁 https://niigata-jinjacho.jp/shrine_niigata/search.php?area=15105 | — | 2026-10-18 | HOLD_POSITION_REVIEW |
-| nsrc-000025 | NOT_DETERMINED | NOT_DETERMINED | not supplied. Candidates A `37.0401500, 137.8642250` / B `37.0399114, 137.864377`, 29.76 m apart | identity only: 糸魚川観光ガイド https://www.itoigawa-kanko.net/trad/amatsu_shrine/ ; official site https://amatsujinja.com/contact/ | 2026-10-18 | PASS（Mother Ship） |
+| nsrc-000025 | NOT_DETERMINED | NOT_DETERMINED | not supplied. Candidates A `37.0401500, 137.8642250` / B `37.0399114, 137.864377`, 29.76 m apart | identity only: 糸魚川観光ガイド https://www.itoigawa-kanko.net/trad/amatsu_shrine/ ; official site https://amatsujinja.com/contact/ | 2026-10-18 | HOLD_POSITION_REVIEW（Mother Ship, 2026-10-19） |
 
 Records:
 
@@ -95,21 +97,40 @@ nsrc-000021  HOLD_POSITION_REVIEW
 nsrc-000024  HOLD_POSITION_REVIEW
   - no official visitor-facing numeric coordinate was supplied; address identity alone is not PASS
 
-nsrc-000022  PASS（Mother Ship）
-  - primary is a CODH 日本歴史地名大系 facility point; repository precedent used CODH only as
-    corroboration（docs/audit/niigata-h001-g2-position-gate.md, nsrc-000003）
-  - no corroboration and no current map-provider POI / official navigation target persisted
+nsrc-000022  PASS
+  - CODH primary-source-type note: RESOLVED by Mother Ship（§6.1）
+  - no corroboration supplied; no conflict observed
 
-nsrc-000023  PASS（Mother Ship）
-  - same primary-source-type note as nsrc-000022
-  - Wikidata corroboration has no item URL / QID → not reproducible from the record
-  - independence of the Wikidata point from the CODH dataset is not verified
+nsrc-000023  PASS
+  - CODH primary-source-type note: RESOLVED by Mother Ship（§6.1）
+  - OPEN: Wikidata corroboration provenance pending until a reproducible URL / QID is recorded;
+    its independence from the CODH dataset is not verified. This does not invalidate the CODH primary.
 
-nsrc-000025  PASS（Mother Ship）
-  - two numeric candidates, neither with a source; the adopted coordinate is not determined
-  - Audit Record fields position_source_type / position_source_url cannot be filled
-  - A and B are 29.76 m apart in a two-honden precinct（天津神社・奴奈川神社）; which point, if
-    either, is the 天津神社 visitor anchor is not shown by the evidence
+nsrc-000025  HOLD_POSITION_REVIEW（Mother Ship, 2026-10-19; historical PASS preserved）
+  - adopted coordinate not determined
+  - primary coordinate source not traceable（A / B have no source）
+  - A and B are 29.76 m apart in a two-honden precinct（天津神社・奴奈川神社）; their semantics are
+    unresolved. Neither is chosen.
+```
+
+### 6.1 Mother Ship decisions（2026-10-19）
+
+```text
+nsrc-000022  CODH 日本歴史地名大系 facility point accepted as the primary position source
+             scope = this candidate only; position_status = PASS（kept）
+
+nsrc-000023  CODH 日本歴史地名大系 facility point accepted as the primary position source
+             scope = this candidate only; position_status = PASS（kept）
+             Wikidata = corroboration provenance pending until its URL / QID is recorded
+
+nsrc-000025  MOTHER_SHIP_G2_DECISION = PASS（adopted）preserved as the historical decision
+             current contract position_status = HOLD_POSITION_REVIEW
+             reason = adopted coordinate not determined; primary coordinate source not traceable;
+                      candidate A / B semantics within the two-honden precinct unresolved
+             A / B not chosen; no provenance inferred or manufactured
+
+global rule  NONE. CODH does not automatically qualify as a primary position source for other
+             candidates. Each candidate needs its own Mother Ship decision.
 ```
 
 ## 7. Cross-candidate validation
@@ -126,7 +147,7 @@ nearest pair between candidates          nsrc-000021 ↔ nsrc-000022 = 70.5 km
 within-candidate deltas                  nsrc-000023 CODH↔Wikidata 12.93 m; nsrc-000025 A↔B 29.76 m
 prefecture bounding-box check            all supplied points inside Niigata（approx. 36.7–38.6 N,
                                          137.6–139.95 E）
-unexplained conflicts                    nsrc-000025 A↔B（§6）
+unexplained conflicts                    nsrc-000025 A↔B（§6; status HOLD）
 ```
 
 ## 8. Not done
@@ -150,9 +171,9 @@ G3 model-risk（天津神社・奴奈川神社）     OPEN（not a G2 question�
 1. nsrc-000021: a map-provider POI / official navigation target, or a second independent numeric
    source; then Mother Ship decides.
 2. nsrc-000024: an official visitor-facing numeric coordinate; then Mother Ship decides.
-3. nsrc-000025: Mother Ship names the adopted point（A, B or other）and its source.
-4. nsrc-000022 / 000023: Mother Ship confirms the CODH primary-source type under the contract;
-   nsrc-000023 Wikidata item URL to be supplied.
+3. nsrc-000025: the adopted point（A, B or other）, its traceable source, and what it represents in
+   the two-honden precinct; then Mother Ship decides whether HOLD can be lifted.
+4. nsrc-000023: Wikidata item URL / QID to complete corroboration provenance（does not block the PASS）.
 5. Only when every candidate has one final status with complete provenance: G2 final freeze
    （separate change）.
 ```
