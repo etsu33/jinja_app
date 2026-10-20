@@ -1,3 +1,4 @@
+import hashlib
 import json
 import re
 from collections import Counter
@@ -3276,15 +3277,18 @@ def test_niigata_h004_contract_rejects_mutations(mutate):
     assert _handoff_violations(_mutated(master, mutate), spec) != []
 
 
-# --- NIIGATA-001-VPG001（value-selected processing group, G1 decision recorded） -------------
+# --- NIIGATA-001-VPG001（value-selected processing group, G7 imported cohort synced） --------
 #
 # docs/audit/niigata-vpg001-g1-identity-duplicate.md / docs/audit/niigata-001-vpg001-freeze.md
 #
 # Source handoff = provenance 単位、VPG001 = processing selection、Candidate Master = lifecycle authority。
 # 各 member の admission_provenance.handoff_id は元の frozen Source handoff のまま（VPG ID を入れない）。
 # Source handoff の残り4件は未登録のまま残り、handoff manifest に部分登録しない。
-# G1 identity / duplicate decision は記録済み。reviewed identity manifest は次工程で alignment する。
-# G2 以降は未実施。期待値は fixture から独立した literal を使う。
+# G1 identity / duplicate decision は記録済み。
+# nsrc-000021 / 000022 / 000024 / 000025 は Formal G7 CLOSED / PASS
+# （docs/audit/niigata-vpg001-g7-production-closure.md）で IMPORTED に同期済み。G8 CORE_READY は未実施。
+# nsrc-000023 は G4 以降 NOT_AUTHORIZED のため G0 / G1 state のまま。
+# 期待値は fixture から独立した literal を使う。
 
 VPG001_ID = "NIIGATA-001-VPG001"
 VPG001_FREEZE_PATH = (
@@ -3315,24 +3319,24 @@ VPG001_SOURCE_HANDOFF_MEMBERSHIP = {
 }
 VPG001_CURRENT_STATE = {
     "nsrc-000021": {
-        "candidate_status": "DISCOVERED",
-        "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+        "candidate_status": "IMPORTED",
+        "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
         "build_batch": None,
         "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
         "wave_id": None,
         "identity_status": "CONFIRMED",
-        "official_source_status": "AVAILABLE",
-        "knowledge_status": "UNREVIEWED",
+        "official_source_status": "CONFIRMED",
+        "knowledge_status": "FACT_READY",
     },
     "nsrc-000022": {
-        "candidate_status": "DISCOVERED",
-        "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+        "candidate_status": "IMPORTED",
+        "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
         "build_batch": None,
         "duplicate_status": "NEW",
         "wave_id": None,
         "identity_status": "CONFIRMED",
-        "official_source_status": "AVAILABLE",
-        "knowledge_status": "UNREVIEWED",
+        "official_source_status": "CONFIRMED",
+        "knowledge_status": "FACT_READY",
     },
     "nsrc-000023": {
         "candidate_status": "DISCOVERED",
@@ -3345,26 +3349,51 @@ VPG001_CURRENT_STATE = {
         "knowledge_status": "UNREVIEWED",
     },
     "nsrc-000024": {
-        "candidate_status": "DISCOVERED",
-        "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+        "candidate_status": "IMPORTED",
+        "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
         "build_batch": None,
         "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
         "wave_id": None,
         "identity_status": "CONFIRMED",
-        "official_source_status": "AVAILABLE",
-        "knowledge_status": "UNREVIEWED",
+        "official_source_status": "CONFIRMED",
+        "knowledge_status": "FACT_READY",
     },
     "nsrc-000025": {
-        "candidate_status": "DISCOVERED",
-        "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+        "candidate_status": "IMPORTED",
+        "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
         "build_batch": None,
         "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
         "wave_id": None,
         "identity_status": "CONFIRMED",
-        "official_source_status": "AVAILABLE",
-        "knowledge_status": "UNREVIEWED",
+        "official_source_status": "CONFIRMED",
+        "knowledge_status": "FACT_READY",
     },
 }
+# Formal G7 CLOSED / PASS の cohort（Production import 完了）。nsrc-000023 は含まない。
+VPG001_G7_IMPORTED = ("nsrc-000021", "nsrc-000022", "nsrc-000024", "nsrc-000025")
+# G7 同期前（develop@e1f6bc9）の lifecycle。同期で変わるのはこの4 field だけ。
+VPG001_G7_PRE_SYNC_LIFECYCLE = {
+    "candidate_status": "DISCOVERED",
+    "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+    "official_source_status": "AVAILABLE",
+    "knowledge_status": "UNREVIEWED",
+}
+VPG001_G7_IMPORTED_LIFECYCLE = {
+    "candidate_status": "IMPORTED",
+    "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+    "official_source_status": "CONFIRMED",
+    "knowledge_status": "FACT_READY",
+}
+# 同期対象外の行（canonical JSON, sort_keys）の sha256。develop@e1f6bc9 の値を literal で固定する。
+VPG001_G7_SYNC_UNCHANGED_NATIONWIDE_SHA256 = (
+    "a7f1531e6c24580b9f622238c4ebf45451eba18f49cb5e9bc20b200a90a5477b"
+)
+VPG001_G7_SYNC_UNCHANGED_WAVE0_SHA256 = (
+    "f7c2c1e3bccbcc6ccfe32575343561a3e71e784d8b78460c6137d4a0d668e506"
+)
+VPG001_G7_SYNC_UNCHANGED_TOP_LEVEL_SHA256 = (
+    "2a1be3b82f9d2a53bfdcc1cf86f4e0da75ed84382761efa42b8cf245638a6b7e"
+)
 # H001〜H004 の現在 state（candidate_status, status_reason_code, identity_status, duplicate_status）。
 # VPG001 の G0 登録はこれに連動しない。
 H001_H004_STATES = {
@@ -3709,8 +3738,12 @@ def test_niigata_vpg001_current_candidate_master_state():
         # Mother Ship の G1 decision を保持する。
         assert row["identity_status"] == "CONFIRMED", candidate_id
         assert row["duplicate_status"] == VPG001_CURRENT_STATE[candidate_id]["duplicate_status"], candidate_id
-        # lifecycle / build_batch / Product Surface は G0 state のまま。
-        assert row["candidate_status"] == "DISCOVERED", candidate_id
+        # G7 cohort は IMPORTED で止まる（CORE_READY ではない）。nsrc-000023 は G0 state のまま。
+        # Nationwide Source Track の build_batch は null のまま（VPG / handoff から推論しない）。
+        if candidate_id in VPG001_G7_IMPORTED:
+            assert row["candidate_status"] == "IMPORTED", candidate_id
+        else:
+            assert row["candidate_status"] == "DISCOVERED", candidate_id
         assert row["build_batch"] is None, candidate_id
         assert "product_surface" not in row, candidate_id
         assert not (VPG001_FORBIDDEN_FIELDS & row.keys()), candidate_id
@@ -3742,12 +3775,15 @@ def test_niigata_vpg001_current_candidate_master_state():
 
 
 def test_vpg001_amatsu_screening_evidence_does_not_hydrate_candidate_master():
-    """天津神社の primary-source screening evidence は G1 identity decision 後も Candidate Master に hydrate しない。"""
+    """天津神社の primary-source screening evidence は G7 IMPORTED 同期後も Candidate Master に hydrate しない。
+
+    official_source_status / knowledge_status は G7 lifecycle の値であり、screening evidence ではない。
+    """
     master = _load_master()
     row = next(r for r in master["candidates"] if r["candidate_id"] == "nsrc-000025")
     assert row["candidate_name"] == "天津神社"
-    assert row["official_source_status"] == "AVAILABLE"
-    assert row["knowledge_status"] == "UNREVIEWED"
+    assert row["official_source_status"] == "CONFIRMED"
+    assert row["knowledge_status"] == "FACT_READY"
     assert row["identity_status"] == "CONFIRMED"
     assert row["duplicate_status"] == "SAME_NAME_DIFFERENT_SHRINE"
     assert set(row) == {
@@ -3762,6 +3798,69 @@ def test_vpg001_amatsu_screening_evidence_does_not_hydrate_candidate_master():
     text = json.dumps(row, ensure_ascii=False)
     for marker in ("PRIMARY_PAGE_VERIFIED", "PRIORITY_A", "奴奈川", "舞楽", "一の宮"):
         assert marker not in text, marker
+
+
+def _canonical_sha256(value) -> str:
+    text = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def test_vpg001_g7_cohort_is_synced_to_imported_and_stops_before_core_ready():
+    """Formal G7 CLOSED / PASS の4件だけが IMPORTED に同期され、他の field と他の行は変わらない。"""
+    master = _load_master()
+    rows = {row["candidate_id"]: row for row in master["candidates"]}
+    members = {m[0]: m for m in VPG001_MEMBERS}
+    assert set(VPG001_G7_IMPORTED) == set(members) - {"nsrc-000023"}
+    for candidate_id in VPG001_G7_IMPORTED:
+        row = rows[candidate_id]
+        _, name, position, handoff_id = members[candidate_id]
+        for field, value in VPG001_G7_IMPORTED_LIFECYCLE.items():
+            assert row[field] == value, (candidate_id, field)
+            assert VPG001_G7_PRE_SYNC_LIFECYCLE[field] != value
+        # IMPORTED は CORE_READY ではない（G8 未実施）。
+        assert row["candidate_status"] != "CORE_READY", candidate_id
+        assert row["status_reason_code"] != "CORE_READY_CONTRACT_PASS", candidate_id
+        # 同期で変えない field。
+        assert row["candidate_name"] == name, candidate_id
+        assert row["prefecture"] == "新潟県", candidate_id
+        assert row["identity_status"] == "CONFIRMED", candidate_id
+        assert row["duplicate_status"] == VPG001_CURRENT_STATE[candidate_id]["duplicate_status"]
+        assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON, candidate_id
+        assert row["wave_id"] is None, candidate_id
+        assert row["build_batch"] is None, candidate_id
+        assert row["admission_provenance"]["handoff_id"] == handoff_id, candidate_id
+        assert row["admission_provenance"]["source_position"] == position, candidate_id
+        assert row["admission_provenance"]["source_batch_id"] == "NIIGATA-001", candidate_id
+        assert set(row) == {
+            "candidate_id",
+            "candidate_name",
+            "prefecture",
+            *VPG001_CURRENT_STATE[candidate_id],
+            "candidate_reason",
+            "admission_provenance",
+        }, candidate_id
+
+    # nsrc-000023 は G0 / G1 state のまま。
+    excluded = rows["nsrc-000023"]
+    for field, value in VPG001_G7_PRE_SYNC_LIFECYCLE.items():
+        assert excluded[field] == value, field
+    assert excluded["build_batch"] is None and excluded["wave_id"] is None
+
+    # 同期対象外の Nationwide 行 / Historical Wave0 行 / top-level は byte 単位で不変。
+    unchanged = [
+        row
+        for row in _nationwide_candidates(master)
+        if row["candidate_id"] not in VPG001_G7_IMPORTED
+    ]
+    assert len(unchanged) == 21
+    assert _canonical_sha256(unchanged) == VPG001_G7_SYNC_UNCHANGED_NATIONWIDE_SHA256
+    wave0 = _wave0_candidates(master)
+    assert len(wave0) == EXPECTED_WAVE0_TOTAL
+    assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
+    assert _canonical_sha256(wave0) == VPG001_G7_SYNC_UNCHANGED_WAVE0_SHA256
+    top_level = {key: value for key, value in master.items() if key != "candidates"}
+    assert _canonical_sha256(top_level) == VPG001_G7_SYNC_UNCHANGED_TOP_LEVEL_SHA256
+    assert len(master["candidates"]) == len(unchanged) + len(wave0) + len(VPG001_G7_IMPORTED)
 
 
 # Base Seed は G2 freeze 後の Base Shrine materialization
@@ -3876,12 +3975,41 @@ def _vpg_register_sibling(handoff_id: str, position: str, candidate_id: str):
             _set("nsrc-000025", "status_reason_code", "BUILD_READINESS_CONFIRMED"),
             id="vpg001-reason-beyond-g0",
         ),
+        # nsrc-000025 は G7 で CONFIRMED / FACT_READY に同期済みのため、G0 のままの nsrc-000023 で検証する。
         pytest.param(
-            _set("nsrc-000025", "official_source_status", "CONFIRMED"),
+            _set("nsrc-000023", "official_source_status", "CONFIRMED"),
             id="vpg001-official-source-beyond-g0",
         ),
         pytest.param(
-            _set("nsrc-000025", "knowledge_status", "FACT_READY"), id="vpg001-knowledge-beyond-g0"
+            _set("nsrc-000023", "knowledge_status", "FACT_READY"), id="vpg001-knowledge-beyond-g0"
+        ),
+        # G7 IMPORTED 同期の regression / premature G8 / build_batch 推論
+        pytest.param(
+            _set("nsrc-000021", "candidate_status", "DISCOVERED"), id="vpg001-g7-status-regression"
+        ),
+        pytest.param(
+            _set("nsrc-000022", "status_reason_code", "REGISTRY_ADMISSION_COMPLETE"),
+            id="vpg001-g7-reason-regression",
+        ),
+        pytest.param(
+            _set("nsrc-000024", "official_source_status", "AVAILABLE"),
+            id="vpg001-g7-official-source-regression",
+        ),
+        pytest.param(
+            _set("nsrc-000025", "knowledge_status", "UNREVIEWED"),
+            id="vpg001-g7-knowledge-regression",
+        ),
+        pytest.param(
+            _set("nsrc-000021", "status_reason_code", "CORE_READY_CONTRACT_PASS"),
+            id="vpg001-g7-premature-core-ready-reason",
+        ),
+        pytest.param(
+            _set("nsrc-000025", "build_batch", "NIIGATA-001-H014"),
+            id="vpg001-g7-build-batch-from-handoff",
+        ),
+        pytest.param(
+            _set("nsrc-000024", "build_batch", "NIIGATA-001"),
+            id="vpg001-g7-build-batch-from-source-batch",
         ),
         pytest.param(_set("nsrc-000021", "build_batch", VPG001_ID), id="vpg001-build-batch-vpg"),
         pytest.param(
