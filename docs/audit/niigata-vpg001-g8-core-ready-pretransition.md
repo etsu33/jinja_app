@@ -1,25 +1,29 @@
 # NIIGATA-001-VPG001 G8 CORE READY PRE_TRANSITION
 
-## Status（PRE_TRANSITION; Condition #8 unresolved）
+## Status（PRE_TRANSITION; Condition #8 measured, Mother Ship decision not recorded）
 
 - Cohort: `nsrc-000021` / `nsrc-000022` / `nsrc-000024` / `nsrc-000025`
 - Excluded: `nsrc-000023` 熱串彦神社（G4以降 NOT_AUTHORIZED、本書のscope外）
 - Recorded at: `2026-10-20`
 - Gate: `G8 CORE READY`（PRE_TRANSITION record only）
 - Audit base: `develop@c32a61799c6eb6b1db5c76522e262f9c357c4708`（PR #3283 merge）
+- Condition #8 completion update: `develop@6ea4a4d5d31b046d9adaa4d1a0a91fae655f158a`（PR #3285 merge）基点
 - G7 Production Import: `CLOSED / PASS`（PR #3282, `docs/audit/niigata-vpg001-g7-production-closure.md`）
 - Candidate Master G7 sync: `MERGED`（PR #3283）
 - Production write in this G8 audit: `0`
-- Production query executed for this record: `0`（Condition #8 は Mother Ship の実行待ち）
+- Production query: Condition #8 だけ。Mother Ship が `readonly_query.sh` で read-only 実行した（Production write = 0）。
+  本書の作成・更新側からの Production 接続は `0`。
 
 ```text
 G8_CONDITIONS_01_TO_07                     = PASS
-G8_CONDITION_08                            = PENDING_MOTHER_SHIP_MEASUREMENT
+G8_CONDITION_08                            = PASS_WITH_LIMITATION
+                                             (measured 39 / 1 / 39 / 39)
 G8_CONDITIONS_09_TO_11                     = PASS
 G8_CONDITION_12_PRE_TRANSITION             = PASS
 G8_CONDITION_12_POST_TRANSITION            = NOT_EXECUTED
 
-COMPLETION_CONTRACT_PRE_TRANSITION         = 11/12 SATISFIED, #8 UNRESOLVED
+COMPLETION_CONTRACT_PRE_TRANSITION         = 12/12 SATISFIED
+G8_BLOCKER                                 = NONE
 MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = NOT_RECORDED
 CORE_READY_TRANSITION                      = NOT_EXECUTED
 G8_STATUS                                  = OPEN
@@ -28,8 +32,9 @@ G8_STATUS                                  = OPEN
 本書はG8 Completion Contract #1〜#12 のPRE_TRANSITION evidenceだけを記録する。
 CORE_READY transitionは実行しない。Mother Ship判断は未記録であり、Candidate Master / Production DB /
 Seed / lifecycle data / GoriyakuTagを変更しない。
-Condition #8 は fresh Production read-only 出力が供給されるまで未解決のままとし、
-`COMPLETION_CONTRACT_PRE_TRANSITION = 12/12 SATISFIED` は記録しない。
+Condition #8 は Mother Ship が供給した fresh Production read-only 実測（39 / 1 / 39 / 39）により
+`PASS_WITH_LIMITATION` と分類された（§5 #8）。これにより `COMPLETION_CONTRACT_PRE_TRANSITION = 12/12 SATISFIED`。
+CORE_READY transition decision は未記録のままであり、G8 は OPEN である。
 
 ---
 
@@ -100,11 +105,11 @@ G7 closure で non-blocking と分類済みであり、本書でも履歴とし�
 | 区分 | 内容 |
 | --- | --- |
 | G7 Production実測 | P1〜P5 cohort guard（5 statement 全 PASS）/ Base・Knowledge idempotency / Production Runtime QA（READ ONLY） |
-| G8 fresh Production read-only | Condition #8 GoriyakuTag master current-state — **未実行**（Mother Ship が `readonly_query.sh` で実行予定） |
+| G8 fresh Production read-only | Condition #8 GoriyakuTag master current-state（Mother Ship、`readonly_query.sh`、readonly guard `SAFE: ok`、Production write 0） |
 | repository current state | PR #3283 merge後の Candidate Master |
 | G2 / G4 / G5 / G6 | 各 current audit record |
 
-本書作成時に Production query は実行していない。
+本書の作成・更新側からは Production query を実行していない。Condition #8 の値は Mother Ship の実行結果である。
 
 ---
 
@@ -222,41 +227,40 @@ Base import は `--skip-goriyaku-tags`（`goriyaku_tags rows=0 updated=0 added_l
 G8_CONDITION_07_GORIYAKU_TAG_SAFE_SUBSET = PASS（4件）
 ```
 
-### #8 No automatic GoriyakuTag creation（UNRESOLVED）
+### #8 No automatic GoriyakuTag creation
 
-Query（本 PR で追加、SELECT-only）:
-`scripts/migration_safety/sql/niigata_vpg001_g8_goriyaku_tag_master.sql`
+Fresh Production read-only（Mother Ship）:
 
-```text
-reports:
-goriyaku_tag_total
-goriyaku_tag_min_id
-goriyaku_tag_max_id
-goriyaku_tag_distinct_ids
-
-expected canonical state = 39 / 1 / 39 / 39
-```
-
-実行方法（Mother Ship、local、read-only）:
+Query: `scripts/migration_safety/sql/niigata_vpg001_g8_goriyaku_tag_master.sql`（PR #3285、SELECT-only）
+Execution: `scripts/migration_safety/readonly_query.sh`
+Readonly guard: `SAFE: ok`
 
 ```text
-scripts/migration_safety/readonly_query.sh <credential file outside repo> DATABASE_URL \
-  scripts/migration_safety/sql/niigata_vpg001_g8_goriyaku_tag_master.sql
+goriyaku_tag_total        = 39
+goriyaku_tag_min_id       = 1
+goriyaku_tag_max_id       = 39
+goriyaku_tag_distinct_ids = 39
 ```
 
-現時点の evidence:
+expected canonical state `39 / 1 / 39 / 39` と完全一致。Production write = 0。
+
+補強 evidence（G7）:
 
 - G7 closure は goriyaku 系 delta 0 を記録している。
 - Knowledge importer は GoriyakuTag / ShrineGoriyakuAssignment を作成対象に持たず、Base import は
-  `--skip-goriyaku-tags` で実行された。
-- ただし G7 cohort guard（P0〜P5）は `temples_goriyakutag` master count を含まないため、
-  G7 apply の直前・直後に GoriyakuTag master を独立計測した記録はない。
+  `--skip-goriyaku-tags` で実行された（`goriyaku_tags rows=0 updated=0 added_links=0 removed_links=0`）。
+- P1〜P5 guard で各 target の goriyaku tag link / assignment = 0。
 
-fresh Production 出力が供給されるまで、本 Condition は判定しない。分類（PASS / PASS_WITH_LIMITATION / FAIL）は
-供給された出力と上記 limitation を見て Mother Ship が決める。
+Limitation:
+G7 P0〜P5 cohort guard は GoriyakuTag master count を G7 write の直前・直後に独立計測していない。
+したがって現在の canonical state 39 / 1 / 39 / 39 は証明されるが、G7 実行中の一時的な CREATE / DELETE が
+無かったことを時系列実測だけで否定することはできない。
+このlimitationは既存 G8 precedent（nsrc-000006 / nsrc-000007 / nsrc-000009）と同様に保持する。
+
+Mother Ship classification:
 
 ```text
-G8_CONDITION_08_NO_NEW_GORIYAKU_TAG = PENDING_MOTHER_SHIP_MEASUREMENT
+G8_CONDITION_08_NO_NEW_GORIYAKU_TAG = PASS_WITH_LIMITATION（000021 / 000022 / 000024 / 000025）
 ```
 
 ### #9 Concierge shared eligibility / candidate path
@@ -381,28 +385,29 @@ G8_CONDITION_12_POST_TRANSITION_ALIGNMENT = NOT_EXECUTED
 | 5 | Fact-ready Source relation / Evidence Gate | PASS | PASS | PASS | PASS |
 | 6 | Shrine.goriyaku approved-only | PASS | PASS | PASS | PASS |
 | 7 | goriyaku_tags canonical safe subset | PASS | PASS | PASS | PASS |
-| 8 | no automatic GoriyakuTag creation | PENDING | PENDING | PENDING | PENDING |
+| 8 | no automatic GoriyakuTag creation | PASS_WITH_LIMITATION | PASS_WITH_LIMITATION | PASS_WITH_LIMITATION | PASS_WITH_LIMITATION |
 | 9 | Concierge shared eligibility / candidate path | PASS | PASS | PASS | PASS |
 | 10 | Compass distance / direction | PASS | PASS | PASS | PASS |
 | 11 | re-import idempotency | PASS | PASS | PASS | PASS |
 | 12 | Candidate Master / Production alignment | PRE PASS / POST NOT_EXECUTED | 同左 | 同左 | 同左 |
 
 ```text
-COMPLETION_CONTRACT_PRE_TRANSITION = 11/12 SATISFIED, #8 UNRESOLVED
-G8_BLOCKER                         = CONDITION_08_FRESH_PRODUCTION_MEASUREMENT_NOT_SUPPLIED
+G8_CONDITION_08_MEASURED           = 39 / 1 / 39 / 39（total / min_id / max_id / distinct_ids）
+COMPLETION_CONTRACT_PRE_TRANSITION = 12/12 SATISFIED
+G8_BLOCKER                         = NONE
 G8_CONDITION_12_POST_TRANSITION    = NOT_EXECUTED
 ```
 
 ---
 
-## 7. Mother Ship Decision Gate（unresolved）
+## 7. Mother Ship Decision Gate（decision not recorded）
 
 ```text
 MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = NOT_RECORDED
 ```
 
-本書は transition を承認しない。Condition #8 が測定・分類されるまで、transition decision の前提
-（Completion Contract PRE_TRANSITION 12/12）は満たされていない。
+本書は transition を承認しない。Completion Contract PRE_TRANSITION は 12/12 SATISFIED（#8 は
+PASS_WITH_LIMITATION）となったが、CORE_READY transition decision は Mother Ship がまだ記録していない。
 
 将来検討され得る delta は各 target の次の2 field だけ（本書では適用しない）。
 
@@ -443,11 +448,10 @@ admission_provenance   = unchanged
 
 ## 8. Next steps
 
-1. Mother Ship が `niigata_vpg001_g8_goriyaku_tag_master.sql` を `readonly_query.sh` で Production に read-only 実行し、
-   4値（total / min_id / max_id / distinct_ids）を供給する。
-2. 出力と §5 #8 の limitation を元に Condition #8 を分類し、本書へ追記する。
-   12/12 SATISFIED を記録できるのはこの時点以降だけである。
-3. その後、Mother Ship が CORE_READY transition decision を行う。
+1. 完了: Mother Ship が `niigata_vpg001_g8_goriyaku_tag_master.sql` を `readonly_query.sh` で read-only 実行し、
+   39 / 1 / 39 / 39 を供給した。
+2. 完了: Condition #8 = PASS_WITH_LIMITATION（§5 #8）。Completion Contract PRE_TRANSITION = 12/12 SATISFIED。
+3. 次: Mother Ship が CORE_READY transition decision を行う（未記録）。
 
 transition PR が merge された後にだけ、次の POST_TRANSITION verification を行う。
 
@@ -478,13 +482,14 @@ G6                                    = CLOSED / PASS
 G7                                    = CLOSED / PASS
 
 G8_CONDITIONS_01_TO_07                = PASS
-G8_CONDITION_08                       = PENDING_MOTHER_SHIP_MEASUREMENT
+G8_CONDITION_08                       = PASS_WITH_LIMITATION
+G8_CONDITION_08_MEASURED              = 39 / 1 / 39 / 39
 G8_CONDITIONS_09_TO_11                = PASS
 G8_CONDITION_12_PRE_TRANSITION        = PASS
 G8_CONDITION_12_POST_TRANSITION       = NOT_EXECUTED
 
-COMPLETION_CONTRACT_PRE_TRANSITION    = 11/12 SATISFIED, #8 UNRESOLVED
-G8_BLOCKER                            = CONDITION_08_FRESH_PRODUCTION_MEASUREMENT_NOT_SUPPLIED
+COMPLETION_CONTRACT_PRE_TRANSITION    = 12/12 SATISFIED
+G8_BLOCKER                            = NONE
 
 MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = NOT_RECORDED
 CORE_READY_TRANSITION                      = NOT_EXECUTED
