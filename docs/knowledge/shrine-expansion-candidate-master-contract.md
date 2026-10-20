@@ -160,6 +160,28 @@ build_batch = NIIGATA-001-H001
 
 Source batch / handoffからdownstream build_batchを推論しない。
 
+#### Nationwide Source Track build_batch rule（schema 1.4 clarification）
+
+Nationwide `nsrc-*` 行の `build_batch` は、実在するdownstream Data Build batch assignmentが
+ある場合にだけ非nullになる。assignmentが無い限り `null` のままである。
+
+- `IMPORTED` / `CORE_READY` は、downstream batch assignmentが無ければ `build_batch = null` のまま成立する。
+- 次の値・provenanceを `build_batch` へコピー・推論してはいけない。
+
+~~~text
+source_batch_id（例: NIIGATA-001）
+handoff_id（例: NIIGATA-001-H015）
+processing group id（例: NIIGATA-001-VPG001）
+source_position
+その他の admission_provenance の値
+~~~
+
+- 現行の `build_batch` canonical namespace（`## build_batch`）にはNationwide用の値が無い。
+  Nationwide行に非null `build_batch` を割り当てるには、先にnamespaceを明示的に拡張する
+  Contract変更が必要である。本clarificationは新しいnamespaceを導入しない。
+- Historical Wave0の非null lifecycle invariant（`## build_batch` の恒久的な不変条件）は
+  Nationwide行に適用しない。
+
 ### Nationwide G0 initial state
 
 Nationwide Candidate Extractionの `READY_CANDIDATE` はUnified Gate G1 PASSではない。
@@ -467,7 +489,8 @@ Post-import CORE READY QAはまだ完了していない。
 
 `IMPORTED` が主張するのはProductionへのwrite完了だけである。
 
-- `build_batch` は `BUILD_READY` 時点の値をそのまま保持する。
+- `build_batch` はIMPORTED遷移前の値をそのまま保持する。Historical Wave0では `BUILD_READY` 時点の
+  `W0-DBxx`、downstream batch assignmentの無いNationwide行では `null` である。
 - `IMPORTED` だけでは `CORE_READY` ではない。
 - `IMPORTED` はRecommendation eligibilityを意味しない。
 
@@ -555,6 +578,8 @@ W0-DB07
 - Batch割り当て前にHOLD / REVIEWとなったCandidateは `null`。
 - Batch順はProduct priorityではない。
 - PR #2780のdeterministic groupingをそのまま使用する（member setは不変）。
+- 上記7値はHistorical Wave0のnamespaceである。Nationwide Source Trackの行は、
+  §Nationwide Source Track build_batch rule により `null` を使う。
 
 ### build_batchはData Build provenanceである
 
@@ -570,14 +595,20 @@ IMPORTED    -> CORE_READY build_batchは不変
 スナップショット**であって恒久ルールではない。Import後も `build_batch` を
 保持しないと、Production上のどのShrineがどのBatchで入ったのかを追跡できなくなる。
 
-恒久的な不変条件（schema 1.3）:
+恒久的な不変条件（schema 1.3。対象はHistorical Wave0 cohort。schema 1.4でscopeを明示）:
 
 - `build_batch` は一度割り当てたら不変である。lifecycle遷移（HOLD / REVIEWへの遷移を含む）で消さない。
-- `build_batch = null` の行は、一度もBatchへ割り当てられていない。`BUILD_READY` / `IMPORTED` /
-  `CORE_READY` は必ずBatch割り当て済み（非null）である。
+  （この不変性はtrackを問わず適用する。）
+- `build_batch = null` の行は、一度もBatchへ割り当てられていない。
+- Historical Wave0の `BUILD_READY` / `IMPORTED` / `CORE_READY` は必ずBatch割り当て済みであり、
+  canonical `W0-DB01`〜`W0-DB07` のいずれか（非null）を持つ。
 - `HOLD` / `REVIEW` は `build_batch` がnull（割り当て前に停止）または非null（割り当て後に停止）の
   どちらでもよい。
 - Batchのmember数（original membership）は、HOLD / REVIEWへの遷移で変わらない。
+
+Nationwide Source Trackの `BUILD_READY` / `IMPORTED` / `CORE_READY` には上記の非null要件を適用しない。
+Nationwide行は §Nationwide Source Track build_batch rule に従い、downstream Data Build batch
+assignmentが無い限り `build_batch = null` のままである（`IMPORTED` / `CORE_READY` を含む）。
 
 schema 1.2 までの「`HOLD` / `REVIEW` は `build_batch = null`」は、HOLD / REVIEWが
 Batch割り当て前にしか発生しなかった初期Registryの前提であり、schema 1.3 で上記へ置き換えた。
@@ -793,8 +824,9 @@ HOLD / REVIEW解除:
 
 - 自動解除しない。問題を所有するGateを先に再判定する
   （`docs/knowledge/shrine-expansion-gate-contract.md` §14 Re-entry Contract）。
-- Batch割り当て前のHOLD / REVIEW（`build_batch = null`）を `BUILD_READY` へ戻す場合は、
-  その時点でBatch割り当てを別途決める。
+- Historical Wave0で、Batch割り当て前のHOLD / REVIEW（`build_batch = null`）を `BUILD_READY` へ
+  戻す場合は、その時点でBatch割り当てを別途決める。Nationwide行は
+  §Nationwide Source Track build_batch rule に従い、downstream assignmentが無ければ `null` のままである。
 - Batch割り当て後のHOLD / REVIEWを解除する場合、`build_batch` は元の値のままである。
   戻り先は、所有Gateの再判定後に下流Gateを順に通した結果が示すlifecycle stepとする。
 
