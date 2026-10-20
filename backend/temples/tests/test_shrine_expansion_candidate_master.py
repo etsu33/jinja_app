@@ -3277,7 +3277,7 @@ def test_niigata_h004_contract_rejects_mutations(mutate):
     assert _handoff_violations(_mutated(master, mutate), spec) != []
 
 
-# --- NIIGATA-001-VPG001（value-selected processing group, G7 imported cohort synced） --------
+# --- NIIGATA-001-VPG001（value-selected processing group, G8 CORE_READY cohort） -------------
 #
 # docs/audit/niigata-vpg001-g1-identity-duplicate.md / docs/audit/niigata-001-vpg001-freeze.md
 #
@@ -3286,7 +3286,9 @@ def test_niigata_h004_contract_rejects_mutations(mutate):
 # Source handoff の残り4件は未登録のまま残り、handoff manifest に部分登録しない。
 # G1 identity / duplicate decision は記録済み。
 # nsrc-000021 / 000022 / 000024 / 000025 は Formal G7 CLOSED / PASS
-# （docs/audit/niigata-vpg001-g7-production-closure.md）で IMPORTED に同期済み。G8 CORE_READY は未実施。
+# （docs/audit/niigata-vpg001-g7-production-closure.md）で IMPORTED に同期済み（PR #3283）。
+# G8 Mother Ship decision APPROVED_TO_TRANSITION_TARGET_ONLY により4件だけ CORE_READY へ遷移した
+# （docs/audit/niigata-vpg001-g8-core-ready-pretransition.md、PRE_TRANSITION 12/12 SATISFIED）。
 # nsrc-000023 は G4 以降 NOT_AUTHORIZED のため G0 / G1 state のまま。
 # 期待値は fixture から独立した literal を使う。
 
@@ -3319,8 +3321,8 @@ VPG001_SOURCE_HANDOFF_MEMBERSHIP = {
 }
 VPG001_CURRENT_STATE = {
     "nsrc-000021": {
-        "candidate_status": "IMPORTED",
-        "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+        "candidate_status": "CORE_READY",
+        "status_reason_code": "CORE_READY_CONTRACT_PASS",
         "build_batch": None,
         "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
         "wave_id": None,
@@ -3329,8 +3331,8 @@ VPG001_CURRENT_STATE = {
         "knowledge_status": "FACT_READY",
     },
     "nsrc-000022": {
-        "candidate_status": "IMPORTED",
-        "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+        "candidate_status": "CORE_READY",
+        "status_reason_code": "CORE_READY_CONTRACT_PASS",
         "build_batch": None,
         "duplicate_status": "NEW",
         "wave_id": None,
@@ -3349,8 +3351,8 @@ VPG001_CURRENT_STATE = {
         "knowledge_status": "UNREVIEWED",
     },
     "nsrc-000024": {
-        "candidate_status": "IMPORTED",
-        "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+        "candidate_status": "CORE_READY",
+        "status_reason_code": "CORE_READY_CONTRACT_PASS",
         "build_batch": None,
         "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
         "wave_id": None,
@@ -3359,8 +3361,8 @@ VPG001_CURRENT_STATE = {
         "knowledge_status": "FACT_READY",
     },
     "nsrc-000025": {
-        "candidate_status": "IMPORTED",
-        "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+        "candidate_status": "CORE_READY",
+        "status_reason_code": "CORE_READY_CONTRACT_PASS",
         "build_batch": None,
         "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
         "wave_id": None,
@@ -3369,7 +3371,8 @@ VPG001_CURRENT_STATE = {
         "knowledge_status": "FACT_READY",
     },
 }
-# Formal G7 CLOSED / PASS の cohort（Production import 完了）。nsrc-000023 は含まない。
+# Formal G7 CLOSED / PASS の cohort（Production import 完了）。G8 で CORE_READY へ遷移済み。
+# nsrc-000023 は含まない。
 VPG001_G7_IMPORTED = ("nsrc-000021", "nsrc-000022", "nsrc-000024", "nsrc-000025")
 # G7 同期前（develop@e1f6bc9）の lifecycle。同期で変わるのはこの4 field だけ。
 VPG001_G7_PRE_SYNC_LIFECYCLE = {
@@ -3383,6 +3386,12 @@ VPG001_G7_IMPORTED_LIFECYCLE = {
     "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
     "official_source_status": "CONFIRMED",
     "knowledge_status": "FACT_READY",
+}
+# G8 CORE_READY transition（develop@c59fe9d 基点）。変わるのは candidate_status / status_reason_code だけ。
+VPG001_G8_CORE_READY_LIFECYCLE = {
+    **VPG001_G7_IMPORTED_LIFECYCLE,
+    "candidate_status": "CORE_READY",
+    "status_reason_code": "CORE_READY_CONTRACT_PASS",
 }
 # 同期対象外の行（canonical JSON, sort_keys）の sha256。develop@e1f6bc9 の値を literal で固定する。
 VPG001_G7_SYNC_UNCHANGED_NATIONWIDE_SHA256 = (
@@ -3738,10 +3747,10 @@ def test_niigata_vpg001_current_candidate_master_state():
         # Mother Ship の G1 decision を保持する。
         assert row["identity_status"] == "CONFIRMED", candidate_id
         assert row["duplicate_status"] == VPG001_CURRENT_STATE[candidate_id]["duplicate_status"], candidate_id
-        # G7 cohort は IMPORTED で止まる（CORE_READY ではない）。nsrc-000023 は G0 state のまま。
+        # G7 cohort は G8 で CORE_READY へ遷移済み。nsrc-000023 は G0 state のまま。
         # Nationwide Source Track の build_batch は null のまま（VPG / handoff から推論しない）。
         if candidate_id in VPG001_G7_IMPORTED:
-            assert row["candidate_status"] == "IMPORTED", candidate_id
+            assert row["candidate_status"] == "CORE_READY", candidate_id
         else:
             assert row["candidate_status"] == "DISCOVERED", candidate_id
         assert row["build_batch"] is None, candidate_id
@@ -3775,7 +3784,7 @@ def test_niigata_vpg001_current_candidate_master_state():
 
 
 def test_vpg001_amatsu_screening_evidence_does_not_hydrate_candidate_master():
-    """天津神社の primary-source screening evidence は G7 IMPORTED 同期後も Candidate Master に hydrate しない。
+    """天津神社の primary-source screening evidence は G8 CORE_READY 後も Candidate Master に hydrate しない。
 
     official_source_status / knowledge_status は G7 lifecycle の値であり、screening evidence ではない。
     """
@@ -3805,21 +3814,38 @@ def _canonical_sha256(value) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def test_vpg001_g7_cohort_is_synced_to_imported_and_stops_before_core_ready():
-    """Formal G7 CLOSED / PASS の4件だけが IMPORTED に同期され、他の field と他の行は変わらない。"""
+def test_vpg001_g8_cohort_is_core_ready_with_unchanged_evidence():
+    """G8 Mother Ship decision（APPROVED_TO_TRANSITION_TARGET_ONLY）で4件だけ CORE_READY。
+
+    変わるのは candidate_status / status_reason_code だけで、他の field と他の行は変わらない
+    （docs/audit/niigata-vpg001-g8-core-ready-pretransition.md、PRE_TRANSITION 12/12 SATISFIED）。
+    """
     master = _load_master()
     rows = {row["candidate_id"]: row for row in master["candidates"]}
     members = {m[0]: m for m in VPG001_MEMBERS}
     assert set(VPG001_G7_IMPORTED) == set(members) - {"nsrc-000023"}
+    # 遷移 delta は2 field だけ。
+    changed = {
+        key
+        for key, value in VPG001_G8_CORE_READY_LIFECYCLE.items()
+        if VPG001_G7_IMPORTED_LIFECYCLE[key] != value
+    }
+    assert changed == {"candidate_status", "status_reason_code"}
+    core_ready = [
+        row["candidate_id"]
+        for row in _nationwide_candidates(master)
+        if row["candidate_id"] in members and row["candidate_status"] == "CORE_READY"
+    ]
+    assert core_ready == list(VPG001_G7_IMPORTED)
     for candidate_id in VPG001_G7_IMPORTED:
         row = rows[candidate_id]
         _, name, position, handoff_id = members[candidate_id]
-        for field, value in VPG001_G7_IMPORTED_LIFECYCLE.items():
+        for field, value in VPG001_G8_CORE_READY_LIFECYCLE.items():
             assert row[field] == value, (candidate_id, field)
-            assert VPG001_G7_PRE_SYNC_LIFECYCLE[field] != value
-        # IMPORTED は CORE_READY ではない（G8 未実施）。
-        assert row["candidate_status"] != "CORE_READY", candidate_id
-        assert row["status_reason_code"] != "CORE_READY_CONTRACT_PASS", candidate_id
+        assert row["candidate_status"] == "CORE_READY", candidate_id
+        assert row["status_reason_code"] == "CORE_READY_CONTRACT_PASS", candidate_id
+        assert row["official_source_status"] == "CONFIRMED", candidate_id
+        assert row["knowledge_status"] == "FACT_READY", candidate_id
         # 同期で変えない field。
         assert row["candidate_name"] == name, candidate_id
         assert row["prefecture"] == "新潟県", candidate_id
@@ -3970,7 +3996,8 @@ def _vpg_register_sibling(handoff_id: str, position: str, candidate_id: str):
             _set("nsrc-000022", "candidate_status", "BUILD_READY"), id="vpg001-build-ready"
         ),
         pytest.param(_set("nsrc-000023", "candidate_status", "IMPORTED"), id="vpg001-imported"),
-        pytest.param(_set("nsrc-000024", "candidate_status", "CORE_READY"), id="vpg001-core-ready"),
+        # nsrc-000024 は G8 で CORE_READY 済みのため、G0 のままの nsrc-000023 で検証する。
+        pytest.param(_set("nsrc-000023", "candidate_status", "CORE_READY"), id="vpg001-core-ready"),
         pytest.param(
             _set("nsrc-000025", "status_reason_code", "BUILD_READINESS_CONFIRMED"),
             id="vpg001-reason-beyond-g0",
@@ -3999,9 +4026,23 @@ def _vpg_register_sibling(handoff_id: str, position: str, candidate_id: str):
             _set("nsrc-000025", "knowledge_status", "UNREVIEWED"),
             id="vpg001-g7-knowledge-regression",
         ),
+        # nsrc-000021 は G8 で CORE_READY_CONTRACT_PASS 済みのため、G0 のままの nsrc-000023 で検証する。
         pytest.param(
-            _set("nsrc-000021", "status_reason_code", "CORE_READY_CONTRACT_PASS"),
+            _set("nsrc-000023", "status_reason_code", "CORE_READY_CONTRACT_PASS"),
             id="vpg001-g7-premature-core-ready-reason",
+        ),
+        # G8 CORE_READY transition の regression
+        pytest.param(
+            _set("nsrc-000022", "candidate_status", "IMPORTED"),
+            id="vpg001-g8-status-regressed-to-imported",
+        ),
+        pytest.param(
+            _set("nsrc-000025", "status_reason_code", "PRODUCTION_IMPORT_COMPLETE"),
+            id="vpg001-g8-reason-regressed-to-import",
+        ),
+        pytest.param(
+            _set("nsrc-000024", "status_reason_code", "WAVE0_CORE_READY_CANDIDATE"),
+            id="vpg001-g8-wave0-reason-code",
         ),
         pytest.param(
             _set("nsrc-000025", "build_batch", "NIIGATA-001-H014"),
