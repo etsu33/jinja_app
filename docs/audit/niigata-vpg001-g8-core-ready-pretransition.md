@@ -1,6 +1,31 @@
-# NIIGATA-001-VPG001 G8 CORE READY PRE_TRANSITION
+# NIIGATA-001-VPG001 G8 CORE READY PRE_TRANSITION / Transition
 
-## Status（PRE_TRANSITION; Condition #8 measured, Mother Ship decision not recorded）
+## Current classification（CORE_READY transition APPLIED; G8 OPEN）
+
+- Cohort: `nsrc-000021` / `nsrc-000022` / `nsrc-000024` / `nsrc-000025`
+- Excluded: `nsrc-000023`（unchanged, DISCOVERED）
+- PRE_TRANSITION record: `MERGED`（PR #3285 / PR #3286）
+- Mother Ship decision: `APPROVED_TO_TRANSITION_TARGET_ONLY`
+- CORE_READY transition: `APPLIED`（transition PR, base `develop@c59fe9dcef43dd73e3843d3a711a045bbc2a39c2`）
+- Production write in this G8 audit / transition: `0`
+
+```text
+COMPLETION_CONTRACT_PRE_TRANSITION         = 12/12 SATISFIED
+G8_CONDITION_08                            = PASS_WITH_LIMITATION
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TO_TRANSITION_TARGET_ONLY
+CORE_READY_TRANSITION                      = APPLIED
+G8_CONDITION_12_POST_TRANSITION            = PASS（repository state of the transition PR）
+G8_STATUS                                  = OPEN
+FORMAL_G8                                  = NOT_CLOSED
+```
+
+The Status and §1–§9 below are the PRE_TRANSITION record（PR #3285 / PR #3286）and are kept as written, including
+`MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = NOT_RECORDED` / `CORE_READY_TRANSITION = NOT_EXECUTED` at that time.
+The decision, transition and POST_TRANSITION verification are recorded in §10. G8 Closure is a separate step（§10.6）.
+
+---
+
+## Status（PRE_TRANSITION; historical record）
 
 - Cohort: `nsrc-000021` / `nsrc-000022` / `nsrc-000024` / `nsrc-000025`
 - Excluded: `nsrc-000023` 熱串彦神社（G4以降 NOT_AUTHORIZED、本書のscope外）
@@ -500,3 +525,148 @@ G8_STATUS                                  = OPEN
 IMPORTED   != CORE_READY
 FACT_READY != CORE_READY
 ```
+
+---
+
+## 10. CORE_READY transition / POST_TRANSITION verification
+
+### 10.1 Mother Ship Decision Record
+
+```text
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TO_TRANSITION_TARGET_ONLY
+TARGET                                     = nsrc-000021 / nsrc-000022 / nsrc-000024 / nsrc-000025
+EXCLUDED                                   = nsrc-000023
+```
+
+Mother Ship は Completion Contract PRE_TRANSITION 12/12 SATISFIED（§9、#8 = PASS_WITH_LIMITATION）を前提に、
+上記4件だけの CORE_READY transition を承認した。許可された delta は §7 の2 field だけ。
+
+```text
+candidate_status:
+IMPORTED -> CORE_READY
+
+status_reason_code:
+PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS
+```
+
+### 10.2 Transition（applied in this PR）
+
+Candidate Master の変更は transition PR に含まれる（Production write = 0）。
+
+| candidate_id | candidate_status | status_reason_code | duplicate_status（不変） |
+| --- | --- | --- | --- |
+| nsrc-000021 | IMPORTED -> CORE_READY | PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS | SAME_NAME_DIFFERENT_SHRINE |
+| nsrc-000022 | IMPORTED -> CORE_READY | PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS | NEW |
+| nsrc-000024 | IMPORTED -> CORE_READY | PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS | SAME_NAME_DIFFERENT_SHRINE |
+| nsrc-000025 | IMPORTED -> CORE_READY | PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS | SAME_NAME_DIFFERENT_SHRINE |
+
+4件とも不変:
+
+```text
+official_source_status = CONFIRMED
+knowledge_status       = FACT_READY
+identity_status        = CONFIRMED
+build_batch            = null
+wave_id                = null
+candidate_reason       = official_source_full_enumeration_candidate
+admission_provenance   = byte-for-byte unchanged（§5 #12 の handoff_id / source_position を含む）
+```
+
+Transition PR が変更するファイル:
+
+- `backend/temples/data/shrine_expansion_candidate_master.json`（4行 × 2 field）
+- `backend/temples/tests/fixtures/shrine_expansion_value_selected_groups.json`（test-only、VPG001 member lifecycle の同じ 4 × 2 field）
+- `backend/temples/tests/test_shrine_expansion_candidate_master.py`（CORE_READY expectation / regression）
+- 本書
+
+Production DB / Base Seed / Knowledge Seed / Ranking / Recommendation / Concierge / Compass / GoriyakuTag /
+Position への変更はない。
+
+### 10.3 POST_TRANSITION verification（repository state）
+
+`develop@c59fe9d` の Candidate Master と transition PR の Candidate Master を repository 上で比較した
+（Production query なし）。
+
+| # | Verification | Result | Evidence |
+| ---: | --- | --- | --- |
+| 1 | 4件の `candidate_status == CORE_READY` | PASS | transition PR の Candidate Master |
+| 2 | 4件の `status_reason_code == CORE_READY_CONTRACT_PASS` | PASS | 同上 |
+| 3 | `knowledge_status == FACT_READY` / `official_source_status == CONFIRMED` 不変 | PASS | diff = 0 |
+| 4 | `build_batch == null` / `wave_id == null` | PASS | Nationwide Source Track build_batch rule どおり |
+| 5 | admission provenance 完全一致 | PASS | 4件とも before == after |
+| 6 | identity / duplicate evidence 完全一致 | PASS | identity CONFIRMED、duplicate は候補ごとの値を保持 |
+| 7 | nsrc-000023 に差分なし | PASS | row before == after（DISCOVERED / REGISTRY_ADMISSION_COMPLETE / AVAILABLE / UNREVIEWED） |
+| 8 | 既存 CORE_READY Candidate に差分なし | PASS | nsrc-000002 / 000004 / 000006 / 000007 / 000009 diff = 0 |
+| 9 | Historical Wave0 accounting 不変 | PASS | 44 -> 44、changed IDs = 0、status counts 不変 |
+| 10 | Candidate Master tests / relevant consumers PASS | PASS | §10.5 |
+| 11 | Completion Contract #1〜#11 evidence に後退なし | PASS | transition PR は lifecycle 2 field + test fixture / test + 本書だけ。Production / Runtime / Knowledge evidence 変更なし |
+
+Minimal diff:
+
+```text
+changed Candidate IDs = [nsrc-000021, nsrc-000022, nsrc-000024, nsrc-000025]
+changed fields per ID = candidate_status, status_reason_code
+other fields changed  = none
+top-level metadata    = unchanged
+Candidate Master rows = 69 -> 69
+
+Historical Wave0 count       = 44 -> 44
+Historical Wave0 changed IDs = []
+Historical Wave0 status:
+  CORE_READY  12
+  HOLD         9
+  IMPORTED     5
+  REVIEW       1
+  BUILD_READY 17
+
+Nationwide CORE_READY = nsrc-000002 / 000004 / 000006 / 000007 / 000009
+                        + nsrc-000021 / 000022 / 000024 / 000025
+Nationwide status     = DISCOVERED 12 / CORE_READY 9 / IMPORTED 4
+```
+
+非対象 Nationwide 21行・Historical Wave0 44行・top-level の canonical sha256 は、PR #3283 で固定した
+literal と一致する（`test_vpg001_g8_cohort_is_core_ready_with_unchanged_evidence`）。
+
+```text
+G8_CONDITION_12_POST_TRANSITION_ALIGNMENT = PASS（repository state of the transition PR）
+```
+
+### 10.4 Completion Contract #1〜#11 non-regression
+
+#1〜#11 の evidence（G7 Production 実測 / Runtime QA / Condition #8 Production read-only）は transition で
+変更されていない。transition は Candidate Master の lifecycle 2 field だけであり、Production data・Seed・
+runtime code に触れない。判定は §6 / §9 のまま。
+
+```text
+G8_CONDITIONS_01_TO_07 = PASS
+G8_CONDITION_08        = PASS_WITH_LIMITATION
+G8_CONDITIONS_09_TO_11 = PASS
+```
+
+Condition #8 の limitation（G7 write の直前・直後に GoriyakuTag master count を独立計測していない）は恒久的に保持する。
+
+### 10.5 Transition PR validation（local disposable DB; Python 3.11）
+
+```text
+test_shrine_expansion_candidate_master.py                 663 passed
+VPG001 G5 ×4 / G6 ×4 / G7 source identity ×4 / G7 cohort guard /
+  G6 nationwide handoff identity                          673 passed
+backend full suite（-n 4）                                 6961 passed, 8 skipped, 0 failed
+makemigrations --check --dry-run                          No changes detected
+ruff check（changed test file）                             All checks passed
+git diff --check                                          clean
+```
+
+### 10.6 Current classification（G8 not closed）
+
+```text
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TO_TRANSITION_TARGET_ONLY
+CORE_READY_TRANSITION                      = APPLIED
+G8_CONDITION_12_POST_TRANSITION            = PASS（repository state of the transition PR）
+G8_STATUS                                  = OPEN
+FORMAL_G8                                  = NOT_CLOSED
+```
+
+Precedent（nsrc-000009: transition PR #3243 → closure PR #3244）に従い、Formal G8 Closure は transition PR の merge 後、
+merge commit と CI 結果で POST_TRANSITION を再確認する別 PR で行う。本書の §Status〜§9 の PRE_TRANSITION 記録
+（NOT_RECORDED / NOT_EXECUTED）は遡及的に書き換えない。

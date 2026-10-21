@@ -22,8 +22,8 @@
           "identity_status": "CONFIRMED",
           "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
           "lifecycle": {
-            "candidate_status": "IMPORTED",
-            "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+            "candidate_status": "CORE_READY",
+            "status_reason_code": "CORE_READY_CONTRACT_PASS",
             "official_source_status": "CONFIRMED",
             "knowledge_status": "FACT_READY",
             "build_batch": null
@@ -37,8 +37,8 @@
           "identity_status": "CONFIRMED",
           "duplicate_status": "NEW",
           "lifecycle": {
-            "candidate_status": "IMPORTED",
-            "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+            "candidate_status": "CORE_READY",
+            "status_reason_code": "CORE_READY_CONTRACT_PASS",
             "official_source_status": "CONFIRMED",
             "knowledge_status": "FACT_READY",
             "build_batch": null
@@ -67,8 +67,8 @@
           "identity_status": "CONFIRMED",
           "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
           "lifecycle": {
-            "candidate_status": "IMPORTED",
-            "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+            "candidate_status": "CORE_READY",
+            "status_reason_code": "CORE_READY_CONTRACT_PASS",
             "official_source_status": "CONFIRMED",
             "knowledge_status": "FACT_READY",
             "build_batch": null
@@ -82,8 +82,8 @@
           "identity_status": "CONFIRMED",
           "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
           "lifecycle": {
-            "candidate_status": "IMPORTED",
-            "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+            "candidate_status": "CORE_READY",
+            "status_reason_code": "CORE_READY_CONTRACT_PASS",
             "official_source_status": "CONFIRMED",
             "knowledge_status": "FACT_READY",
             "build_batch": null
