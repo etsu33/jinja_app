@@ -1,27 +1,32 @@
-# NIIGATA-001-VPG001 G8 CORE READY PRE_TRANSITION / Transition
+# NIIGATA-001-VPG001 G8 CORE READY PRE_TRANSITION / Transition / Closure
 
-## Current classification（CORE_READY transition APPLIED; G8 OPEN）
+## Final classification（G8 CLOSED / PASS）
 
 - Cohort: `nsrc-000021` / `nsrc-000022` / `nsrc-000024` / `nsrc-000025`
 - Excluded: `nsrc-000023`（unchanged, DISCOVERED）
+- Closure recorded at: `2026-10-21`
 - PRE_TRANSITION record: `MERGED`（PR #3285 / PR #3286）
 - Mother Ship decision: `APPROVED_TO_TRANSITION_TARGET_ONLY`
-- CORE_READY transition: `APPLIED`（transition PR, base `develop@c59fe9dcef43dd73e3843d3a711a045bbc2a39c2`）
-- Production write in this G8 audit / transition: `0`
+- CORE_READY transition: `APPLIED`（PR #3287, merge commit `develop@b25ea0682265e81b59b10ec6387236a88f79bc6c`）
+- Merged-state POST_TRANSITION verification: `PASS`（§11）
+- Production write during G8 transition / closure: `0`
 
 ```text
 COMPLETION_CONTRACT_PRE_TRANSITION         = 12/12 SATISFIED
 G8_CONDITION_08                            = PASS_WITH_LIMITATION
 MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TO_TRANSITION_TARGET_ONLY
 CORE_READY_TRANSITION                      = APPLIED
-G8_CONDITION_12_POST_TRANSITION            = PASS（repository state of the transition PR）
-G8_STATUS                                  = OPEN
-FORMAL_G8                                  = NOT_CLOSED
+G8_CONDITION_12_POST_TRANSITION            = PASS
+G8_BLOCKERS_REMAINING                      = NONE
+G8_RESULT                                  = PASS
+FORMAL_G8                                  = PASS
+G8_STATUS                                  = CLOSED
 ```
 
 The Status and §1–§9 below are the PRE_TRANSITION record（PR #3285 / PR #3286）and are kept as written, including
-`MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = NOT_RECORDED` / `CORE_READY_TRANSITION = NOT_EXECUTED` at that time.
-The decision, transition and POST_TRANSITION verification are recorded in §10. G8 Closure is a separate step（§10.6）.
+`MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = NOT_RECORDED` / `CORE_READY_TRANSITION = NOT_EXECUTED` / `G8_STATUS = OPEN`
+at that time. §10 is the transition record（PR #3287）, also kept as written. The merged-state POST_TRANSITION
+verification and Formal Closure are recorded in §11.
 
 ---
 
@@ -657,7 +662,7 @@ ruff check（changed test file）                             All checks passed
 git diff --check                                          clean
 ```
 
-### 10.6 Current classification（G8 not closed）
+### 10.6 Classification at transition PR time（historical record, PR #3287）
 
 ```text
 MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TO_TRANSITION_TARGET_ONLY
@@ -670,3 +675,128 @@ FORMAL_G8                                  = NOT_CLOSED
 Precedent（nsrc-000009: transition PR #3243 → closure PR #3244）に従い、Formal G8 Closure は transition PR の merge 後、
 merge commit と CI 結果で POST_TRANSITION を再確認する別 PR で行う。本書の §Status〜§9 の PRE_TRANSITION 記録
 （NOT_RECORDED / NOT_EXECUTED）は遡及的に書き換えない。
+
+---
+
+## 11. Merged-state POST_TRANSITION verification / Formal G8 Closure
+
+### 11.1 Transition merge
+
+```text
+PR                     = #3287
+merge_commit           = b25ea0682265e81b59b10ec6387236a88f79bc6c
+merge parent           = c59fe9dcef43dd73e3843d3a711a045bbc2a39c2（PR #3286 merge）
+PR head                = 853c600a341380f4475180071c8cd9f87ff6c8d4
+merged tree vs PR head = identical（git diff 853c600 b25ea06 = empty）
+files changed by #3287 = shrine_expansion_candidate_master.json / shrine_expansion_value_selected_groups.json（test-only）/
+                         test_shrine_expansion_candidate_master.py / 本書
+```
+
+PR #3287 CI（head `853c600`; backend-pr は `refs/pull/3287/merge` で実行）:
+
+| workflow | run | result |
+| --- | --- | --- |
+| backend-pr（`call / unit`、`call / recommendation-quality-audit`、`call / setup-db-credentials`） | 39387757017 | SUCCESS（`call / integration` は skipped） |
+| dependency-review（`review`） | 39387757180 | SUCCESS |
+| codeql（`analyze (python)` / `analyze (javascript)` / `CodeQL`） | 39387756989 | SUCCESS |
+
+### 11.2 Merged-state verification（`develop@b25ea06` vs pre-transition `develop@c59fe9d`; Production query なし）
+
+| # | Verification | Result |
+| ---: | --- | --- |
+| 1 | 4件の `candidate_status == CORE_READY` | PASS |
+| 2 | 4件の `status_reason_code == CORE_READY_CONTRACT_PASS` | PASS |
+| 3 | `official_source_status == CONFIRMED` 不変 | PASS |
+| 4 | `knowledge_status == FACT_READY` 不変 | PASS |
+| 5 | `identity_status == CONFIRMED` 不変 | PASS |
+| 6 | duplicate_status 不変（000021 / 000024 / 000025 = SAME_NAME_DIFFERENT_SHRINE、000022 = NEW） | PASS |
+| 7 | `build_batch == null` | PASS |
+| 8 | `wave_id == null` | PASS |
+| 9 | `candidate_reason` 不変（official_source_full_enumeration_candidate） | PASS |
+| 10 | `admission_provenance` 完全一致 | PASS |
+| 11 | nsrc-000023 row 完全一致（DISCOVERED / REGISTRY_ADMISSION_COMPLETE / AVAILABLE / UNREVIEWED） | PASS |
+| 12 | 既存 Nationwide CORE_READY（nsrc-000002 / 000004 / 000006 / 000007 / 000009）row 完全一致 | PASS |
+| 13 | Historical Wave0 44行 完全一致（CORE_READY 12 / HOLD 9 / IMPORTED 5 / REVIEW 1 / BUILD_READY 17） | PASS |
+| 14 | Completion Contract #1〜#11 evidence 非後退（#3287 は上記4ファイルだけ。Production / Runtime / Knowledge / Seed / code 変更なし） | PASS |
+| 15 | Condition #8 = PASS_WITH_LIMITATION（limitation 保持） | PASS |
+| 16 | PR #3287 CI（backend-pr / dependency-review / codeql）SUCCESS | PASS |
+
+Minimal diff（merged）:
+
+```text
+changed Candidate IDs = [nsrc-000021, nsrc-000022, nsrc-000024, nsrc-000025]
+changed fields per ID = candidate_status, status_reason_code
+top-level metadata    = unchanged
+Candidate Master rows = 69 -> 69
+non-target Nationwide 21 rows sha256 = a7f1531e6c24580b9f622238c4ebf45451eba18f49cb5e9bc20b200a90a5477b（#3283 literal と一致）
+Historical Wave0 44 rows sha256      = f7c2c1e3bccbcc6ccfe32575343561a3e71e784d8b78460c6137d4a0d668e506（同上）
+Nationwide status = DISCOVERED 12 / CORE_READY 9 / IMPORTED 4
+```
+
+```text
+NSRC_000021_POST_TRANSITION_ALIGNMENT = PASS
+NSRC_000022_POST_TRANSITION_ALIGNMENT = PASS
+NSRC_000024_POST_TRANSITION_ALIGNMENT = PASS
+NSRC_000025_POST_TRANSITION_ALIGNMENT = PASS
+G8_CONDITION_12_POST_TRANSITION       = PASS（merged develop）
+```
+
+### 11.3 Validation on merged develop（`b25ea06`; local disposable DB; Python 3.11）
+
+```text
+test_shrine_expansion_candidate_master.py                    663 passed
+VPG001 G5 ×4 / G6 ×4 / G7 source identity ×4 / G7 cohort
+  guard / G6 nationwide handoff identity                     673 passed
+backend full suite（-n 4）                                    6961 passed, 8 skipped, 0 failed
+makemigrations --check --dry-run                             No changes detected
+```
+
+8 skipped は既存の環境 skip（GDAL / PostGIS / concierge ambiguous axis）。
+
+### 11.4 Final G8 classification
+
+Completion Contract #1〜#11 は PRE_TRANSITION evidence から判定変更なし。#12 は merged develop で
+POST_TRANSITION PASS。
+
+```text
+G1                                    = PASS（000022 NEW / 他3件 SAME_NAME_DIFFERENT_SHRINE）
+G2                                    = CLOSED / PASS
+G3                                    = NORMAL_MODEL_FIT（000021 / 000022 / 000024）
+                                        CURATION_RELEASE_CANDIDATE（000025）
+G4                                    = CLOSED / PASS
+G5                                    = PASS / ELIGIBLE
+G6                                    = CLOSED / PASS
+G7                                    = CLOSED / PASS
+
+G8_CONDITIONS_01_TO_07                = PASS
+G8_CONDITION_08                       = PASS_WITH_LIMITATION
+G8_CONDITIONS_09_TO_11                = PASS
+G8_CONDITION_12_PRE_TRANSITION        = PASS
+G8_CONDITION_12_POST_TRANSITION       = PASS
+
+COMPLETION_CONTRACT_PRE_TRANSITION    = 12/12 SATISFIED
+
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TO_TRANSITION_TARGET_ONLY
+CORE_READY_TRANSITION                      = APPLIED
+
+G8_BLOCKERS_REMAINING = NONE
+G8_RESULT             = PASS
+FORMAL_G8             = PASS
+G8_STATUS             = CLOSED
+```
+
+Condition #8 の limitation（G7 write の直前・直後に GoriyakuTag master count を独立計測していない）は Closure 後も
+恒久的に保持する。G8 Closure は G1〜G7 の historical evidence、本書 §Status〜§9 の PRE_TRANSITION 記録、
+§10 の transition 記録を遡及的に書き換えない。
+
+### 11.5 Closure
+
+```text
+NIIGATA_001_VPG001_G8_CLOSURE = PASS（nsrc-000021 / nsrc-000022 / nsrc-000024 / nsrc-000025）
+NSRC_000023                   = EXCLUDED / UNCHANGED（DISCOVERED）
+FURTHER_G8_TRANSITION_WRITE   = NOT_AUTHORIZED
+NEXT_GATE                     = NONE
+STOP                          = TRUE
+```
+
+Closure 後、4件に対する追加の G8 transition write（Candidate Master / fixture / Production）は承認されていない。
