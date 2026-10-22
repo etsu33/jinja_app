@@ -4,6 +4,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { AuthState, AuthUser } from "@/lib/auth/types";
 import { markLoggedIn, markLoggedOut, maybeLoggedIn } from "@/lib/auth/loggedInMarker";
+import { clearConciergeAnonymousSnapshot, clearConciergeThreadCache } from "@/lib/concierge/conciergeLocalState";
 
 type AuthCtx = {
   user: AuthUser | null;
@@ -186,6 +187,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!r.ok) throw new Error("login failed");
 
+    // 前の identity が残した相談 state の local cache を新しい identity に引き継がない。
+    // 匿名相談 snapshot（sessionStorage, 同じタブの匿名相談）はログイン後も残す。
+    clearConciergeThreadCache();
     markLoggedIn();
     await refreshMe();
   };
@@ -197,6 +201,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     markLoggedOut();
+    // ログアウト後の Guest（同じブラウザの別の人を含む）に、相談 state の local cache を残さない。
+    clearConciergeThreadCache();
+    clearConciergeAnonymousSnapshot();
 
     setAuthState({
       status: "guest",
