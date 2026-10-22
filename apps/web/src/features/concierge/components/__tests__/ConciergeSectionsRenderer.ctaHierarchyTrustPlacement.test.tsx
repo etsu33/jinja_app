@@ -98,8 +98,8 @@ function strongCtaElements() {
   return screen.getAllByRole("link").filter((el) => el.className.includes(PRIMARY_CTA_CLASS_FRAGMENT));
 }
 
-// Hero直下のShrineSaveButton(variant="subtle")は下部のsave_promptボタンと
-// ラベルが同じため、aria-pressedを持つ方(ShrineSaveButton固有)で一意に特定する。
+// Hero直下のShrineSaveButton(variant="subtle", 神社のお気に入り)は、aria-pressedを持つ方
+// (ShrineSaveButton固有)で一意に特定する。下部のsave_prompt(相談の保存)とは別コントロール。
 function heroSaveButton() {
   return screen.getAllByRole("button").find((el) => el.hasAttribute("aria-pressed"))!;
 }
@@ -135,7 +135,7 @@ describe("Recommendation Result CTA Hierarchy & Trust Placement", () => {
     const payload = buildTestPayload([heroRec()]);
     render(<ConciergeSectionsRenderer payload={payload} threadId={500} isPremiumActive={false} />);
 
-    expect(heroSaveButton()).toHaveTextContent("あとで見返すために保存");
+    expect(heroSaveButton()).toHaveTextContent("この神社をお気に入り登録");
   });
 
   it("2b. Save不可(anonymous)ではログイン誘導ラベルへ切り替わるが、要素自体は残る", () => {

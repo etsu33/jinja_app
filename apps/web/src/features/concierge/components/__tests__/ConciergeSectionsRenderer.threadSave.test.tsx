@@ -16,8 +16,9 @@ const authMock = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/auth/AuthProvider", () => ({ useAuth: authMock.useAuth }));
 
+const favoriteMock = vi.hoisted(() => ({ toggle: vi.fn() }));
 vi.mock("@/hooks/useFavorite", () => ({
-  useFavorite: () => ({ fav: false, busy: false, toggle: vi.fn().mockResolvedValue(undefined) }),
+  useFavorite: () => ({ fav: false, busy: false, toggle: favoriteMock.toggle }),
 }));
 
 import ConciergeSectionsRenderer from "../ConciergeSectionsRenderer";
@@ -46,7 +47,7 @@ function buildPayload() {
   return payload;
 }
 
-// Hero の ShrineSaveButton と同ラベルのため、feedback 領域の直前要素で save_prompt ボタンを特定する。
+// feedback 領域の直前要素で save_prompt ボタン(相談の保存)を特定する。
 function savePromptButton() {
   return screen.getByTestId("concierge-thread-save-feedback").previousElementSibling as HTMLButtonElement;
 }
@@ -66,7 +67,25 @@ function renderWith(threadSaveState?: ConciergeThreadSaveState, onAction = vi.fn
 describe("ConciergeSectionsRenderer - save_prompt 保存フィードバック", () => {
   beforeEach(() => {
     authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+    favoriteMock.toggle.mockReset().mockResolvedValue(undefined);
     window.localStorage.clear();
+  });
+
+  it("神社お気に入り(Hero)と相談保存(下部)は別ラベル・別アクションとして独立に動く", () => {
+    const onAction = renderWith({ status: "idle", error: null, historyHref: null });
+
+    const favoriteButton = screen.getByRole("button", { name: "この神社をお気に入り登録" });
+    expect(favoriteButton).toHaveAttribute("aria-pressed", "false");
+    expect(savePromptButton()).toHaveTextContent("あとで見返すために保存");
+    expect(screen.getAllByRole("button", { name: "あとで見返すために保存" })).toHaveLength(1);
+
+    fireEvent.click(favoriteButton);
+    expect(favoriteMock.toggle).toHaveBeenCalledTimes(1);
+    expect(onAction).not.toHaveBeenCalledWith({ type: "save_concierge_thread" });
+
+    fireEvent.click(savePromptButton());
+    expect(onAction).toHaveBeenCalledWith({ type: "save_concierge_thread" });
+    expect(favoriteMock.toggle).toHaveBeenCalledTimes(1);
   });
 
   it("idle: 既存ラベルでクリックすると save_concierge_thread を発火する", () => {

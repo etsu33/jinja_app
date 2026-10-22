@@ -19,6 +19,8 @@ type Props = {
   nextPath?: string;
   guestMode?: boolean;
   variant?: "default" | "subtle";
+  // ログイン済み・未保存時のラベル。呼び出し側で文脈に合わせて上書きする（既定は Shrine Detail と同じ）。
+  idleLabel?: string;
   initial?: {
     fav: boolean;
     favorite_id: number | null;
@@ -35,6 +37,7 @@ export default function ShrineSaveButton({
   nextPath,
   guestMode,
   variant = "default",
+  idleLabel = "あとで見返すために保存",
   initial,
   onToggleSuccess,
   analyticsProvenance,
@@ -132,7 +135,7 @@ export default function ShrineSaveButton({
             ? "保存しました"
             : effectiveGuestMode
               ? "ログインしてあとで見返す"
-              : "あとで見返すために保存"}
+              : idleLabel}
       </button>
 
       {err ? <p className="text-xs text-[var(--kt-color-status-error)]">{err}</p> : null}
