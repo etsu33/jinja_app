@@ -1118,6 +1118,7 @@ export default function ConciergeSectionsRenderer({
                               tid={tid}
                               nextPath={heroItem.detailHref}
                               variant="subtle"
+                              idleLabel="この神社をお気に入り登録"
                               recommendationInstanceId={heroItem.recommendationInstanceId ?? null}
                               analyticsProvenance={heroItem.analyticsProvenance}
                             />

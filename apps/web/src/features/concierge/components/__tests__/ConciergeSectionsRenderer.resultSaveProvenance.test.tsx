@@ -62,7 +62,8 @@ function buildTestPayload(recommendations: any[]) {
 }
 
 function saveClick() {
-  const button = screen.getAllByRole("button").find((el) => /保存/.test(el.textContent ?? ""));
+  // Hero の ShrineSaveButton(神社のお気に入り)は aria-pressed を持つ。下部の相談保存ボタンと区別する。
+  const button = screen.getAllByRole("button").find((el) => el.hasAttribute("aria-pressed"));
   if (!button) throw new Error("save button not found");
   fireEvent.click(button);
 }
