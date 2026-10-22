@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import DetailSection from "@/components/shrine/DetailSection";
 import PlaceShrineCard from "@/components/shrine/PlaceShrineCard";
@@ -13,6 +14,10 @@ import { buildHeroReasonV4Sections } from "@/features/concierge/buildHeroReasonV
 import { buildHeroConclusionLines } from "@/features/concierge/buildHeroConclusion";
 import { buildRuntimeMatchLines } from "@/features/concierge/buildRuntimeMatchLine";
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
+import type {
+  ConciergeThreadSaveError,
+  ConciergeThreadSaveState,
+} from "@/features/concierge/useConciergeThreadSave";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 
 import { buildLoginHref } from "@/lib/nav/login";
@@ -217,6 +222,14 @@ type Props = {
   isEntryRoute?: boolean;
   isPremiumActive?: boolean;
   analyticsContext?: AnalyticsContext;
+  threadSaveState?: ConciergeThreadSaveState;
+};
+
+const THREAD_SAVE_ERROR_MESSAGES: Record<ConciergeThreadSaveError, string> = {
+  no_thread: "この相談はまだ保存できる状態ではありません。もう一度相談してからお試しください。",
+  not_owned: "この相談をあなたの履歴で確認できませんでした。ログイン後にもう一度相談すると保存されます。",
+  unauthenticated: "ログインの有効期限が切れています。もう一度ログインしてからお試しください。",
+  network: "保存を確認できませんでした。時間をおいてもう一度お試しください。",
 };
 
 // extraCondition (Legacy/Transitional free-text) を表示用トークンへ分解する。
@@ -309,6 +322,7 @@ export default function ConciergeSectionsRenderer({
   isEntryRoute = false,
   isPremiumActive: isPremiumActiveProp,
   analyticsContext,
+  threadSaveState,
 }: Props) {
   const trackedImpressionKeysRef = useRef<Set<string>>(new Set());
   const trackedCardEventKeysRef = useRef<Set<string>>(new Set());
@@ -1312,10 +1326,32 @@ export default function ConciergeSectionsRenderer({
 
                           onAction?.({ type: "save_concierge_thread" });
                         }}
-                        disabled={sending}
+                        disabled={sending || threadSaveState?.status === "saving"}
+                        aria-busy={threadSaveState?.status === "saving" || undefined}
                       >
-                        {isGuestUser ? "ログインしてあとで見返す" : "あとで見返すために保存"}
+                        {isGuestUser
+                          ? "ログインしてあとで見返す"
+                          : threadSaveState?.status === "saving"
+                            ? "保存を確認しています…"
+                            : threadSaveState?.status === "saved"
+                              ? "保存済み"
+                              : "あとで見返すために保存"}
                       </button>
+                      <div role="status" aria-live="polite" data-testid="concierge-thread-save-feedback">
+                        {!isGuestUser && threadSaveState?.status === "saved" && threadSaveState.historyHref ? (
+                          <p className="pt-2 text-sm text-[var(--kt-color-text-secondary)]">
+                            相談履歴に保存されています。{" "}
+                            <Link href={threadSaveState.historyHref} className="whitespace-nowrap underline">
+                              履歴で見返す
+                            </Link>
+                          </p>
+                        ) : null}
+                        {!isGuestUser && threadSaveState?.status === "error" && threadSaveState.error ? (
+                          <p className="pt-2 text-sm text-[var(--kt-color-text-secondary)]">
+                            {THREAD_SAVE_ERROR_MESSAGES[threadSaveState.error]}
+                          </p>
+                        ) : null}
+                      </div>
                     </div>
                   ) : null}
                 </div>
