@@ -419,6 +419,7 @@ ConciergeHandoffGrant.objects.filter(
     the referenced tables for a short time（inference; measure in the implementation PR）.
   - `CASCADE` is ORM-level. The database FK has no `ON DELETE`, so a raw SQL thread delete with live
     grants fails instead of orphaning them（fail closed）.
+
 ### 10.1 Guest retention with an unexpired grant（rev 2; proposal, not approved — M7）
 
 - **Problem:** the current `expired_anonymous_threads` selects `user IS NULL` threads whose
