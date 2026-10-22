@@ -31,6 +31,12 @@ import type { RendererAction, ConciergeSectionsPayload } from "@/features/concie
 import { getGoriyakuTags } from "@/lib/api/tags";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import {
+  CONCIERGE_ANON_SNAPSHOT_STORAGE_KEY,
+  CONCIERGE_EVENTS_STORAGE_KEY,
+  clearConciergeAnonymousSnapshot,
+  clearConciergeThreadCache,
+} from "@/lib/concierge/conciergeLocalState";
 import { useBilling } from "@/features/billing/hooks/useBilling";
 import { isAuthRequiredForAction } from "@/lib/auth/actionGuards";
 import { initialConciergeSessionState, type ConciergeSessionState } from "@/features/concierge/types";
@@ -65,7 +71,7 @@ type LocalEvent = ChatEvent | AssistantStateEvent;
 
 type EventsByThread = Record<number, LocalEvent[]>;
 
-const STORAGE_KEY = "concierge:eventsByThread";
+const STORAGE_KEY = CONCIERGE_EVENTS_STORAGE_KEY;
 
 type AnonymousConciergeSnapshot = {
   version: 1;
@@ -80,7 +86,7 @@ type AnonymousConciergeSnapshot = {
   };
 };
 
-const SS_ANON_SNAPSHOT_KEY = "concierge:anonymousSnapshot:v1";
+const SS_ANON_SNAPSHOT_KEY = CONCIERGE_ANON_SNAPSHOT_STORAGE_KEY;
 
 const ELEMENT_TO_GORIYAKU: Record<Element4, string[]> = {
   火: ["仕事運・出世", "勝運・必勝祈願", "開運招福", "厄除け・方除け"],
@@ -253,11 +259,7 @@ function loadAnonymousSnapshot(): AnonymousConciergeSnapshot | null {
 }
 
 function clearAnonymousSnapshot() {
-  try {
-    sessionStorage.removeItem(SS_ANON_SNAPSHOT_KEY);
-  } catch {
-    // ignore
-  }
+  clearConciergeAnonymousSnapshot();
 }
 
 function isRecommendationsPayload(
@@ -467,7 +469,7 @@ export default function ConciergeClientFull() {
     [navPush],
   );
 
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, loading: authLoading } = useAuth();
   const billing = useBilling();
   const isPremiumActive = billing.status?.plan === "premium" && billing.status?.is_active === true;
 
@@ -555,8 +557,17 @@ export default function ConciergeClientFull() {
 
   const [liveUnified, setLiveUnified] = useState<UnifiedConciergeResponse | null>(null);
   const [liveRecs, setLiveRecs] = useState<ConciergeRecommendation[]>([]);
+  // liveUnified / liveRecs がどの thread の相談結果か（0 = thread 未保存 / 入口）。
+  // ?tid= route では、この tid と一致する live state だけを表示する。
+  const [liveTid, setLiveTid] = useState(0);
 
   const [threadDetail, setThreadDetail] = useState<ConciergeThreadDetail | null>(null);
+  // ?tid= の thread detail に対する backend の認可結果。
+  // granted になるまで、同じ tid の local cache（eventsByThread）も表示しない。
+  const [threadAccess, setThreadAccess] = useState<{
+    tid: number | null;
+    status: "pending" | "granted" | "denied" | "unavailable";
+  }>({ tid: null, status: "pending" });
   const [previousThreadDetail, setPreviousThreadDetail] = useState<ConciergeThreadDetail | null>(null);
 
   const currentConsultationSummary = useMemo(() => buildPreviousConsultationSummary(threadDetail), [threadDetail]);
@@ -740,6 +751,33 @@ export default function ConciergeClientFull() {
   }, [eventsByThread, hydrated]);
 
   /* ----------------------------------------
+   * identity 切替（同じ画面のまま A → B / A → Guest）
+   * 前の認証 identity の相談 state を、次の identity に表示しない。
+   * Guest → ログインは同じ人の匿名相談からの移行がありうるため、ここでは消さない
+   * （?tid= の表示は backend の認可結果で別途ガードする）。
+   * -------------------------------------- */
+  const identityKey = isLoggedIn && user ? `user:${user.id}` : "guest";
+  const resolvedIdentityRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (authLoading) return;
+    const previous = resolvedIdentityRef.current;
+    resolvedIdentityRef.current = identityKey;
+    if (previous === null || previous === identityKey) return;
+    if (!previous.startsWith("user:")) return;
+
+    setLiveUnified(null);
+    setLiveRecs([]);
+    setLiveTid(0);
+    setThreadDetail(null);
+    setPreviousThreadDetail(null);
+    setThreadAccess({ tid: null, status: "pending" });
+    setEventsByThread({});
+    clearConciergeThreadCache();
+    clearAnonymousSnapshot();
+  }, [authLoading, identityKey]);
+
+  /* ----------------------------------------
    * スレッド切り替え（URLパラメータ反応）
    * -------------------------------------- */
   useEffect(() => {
@@ -781,6 +819,7 @@ export default function ConciergeClientFull() {
       sessionNickname: snapshot.session?.sessionNickname ?? null,
     }));
     setLiveUnified(snapshot.unified);
+    setLiveTid(0);
     setLiveRecs(
       Array.isArray(snapshot.unified?.data?.recommendations)
         ? (snapshot.unified.data.recommendations as ConciergeRecommendation[])
@@ -793,21 +832,41 @@ export default function ConciergeClientFull() {
 
     if (!tidNum) {
       setThreadDetail(null);
+      setThreadAccess({ tid: null, status: "pending" });
       setThreadLoading(false);
       return;
     }
 
     let cancelled = false;
+    // 前の tid の detail を、新しい tid の取得待ちの間に表示しない。
+    setThreadDetail(null);
+    setThreadAccess({ tid: tidNum, status: "pending" });
 
     (async () => {
       try {
         setThreadLoading(true);
         const data = await getConciergeThread(String(tidNum));
         if (cancelled) return;
-        setThreadDetail(data);
+        if (data && Number((data as any).id) === tidNum) {
+          setThreadDetail(data);
+          setThreadAccess({ tid: tidNum, status: "granted" });
+        } else {
+          // 401 / 403 / 404（getConciergeThread は null を返す）または別 thread の応答。
+          // 今の identity はこの thread を読めない。同じ tid の local cache も捨てる。
+          setThreadDetail(null);
+          setThreadAccess({ tid: tidNum, status: "denied" });
+          setEventsByThread((prev) => {
+            if (!(tidNum in prev)) return prev;
+            const next = { ...prev };
+            delete next[tidNum];
+            return next;
+          });
+        }
       } catch {
         if (cancelled) return;
+        // network / 5xx: 認可を確認できない。local cache は残すが表示しない（fail closed）。
         setThreadDetail(null);
+        setThreadAccess({ tid: tidNum, status: "unavailable" });
       } finally {
         if (!cancelled) setThreadLoading(false);
       }
@@ -816,7 +875,8 @@ export default function ConciergeClientFull() {
     return () => {
       cancelled = true;
     };
-  }, [hydrated, tidNum]);
+    // identity が変わったら、同じ tid でも今の identity で認可を確認し直す。
+  }, [hydrated, tidNum, identityKey]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -884,7 +944,14 @@ export default function ConciergeClientFull() {
   /* ----------------------------------------
    * 派生データ
    * -------------------------------------- */
-  const events = useMemo(() => getThreadEvents(eventsByThread, activeThreadId), [eventsByThread, activeThreadId]);
+  // ?tid= route では backend が今の identity にこの thread を認可したときだけ、local cache を使う。
+  const isThreadAccessGranted = threadAccess.status === "granted" && threadAccess.tid === tidNum;
+  const canUseThreadLocalState = isEntryRoute || isThreadAccessGranted;
+
+  const events = useMemo(
+    () => (canUseThreadLocalState ? getThreadEvents(eventsByThread, activeThreadId) : []),
+    [canUseThreadLocalState, eventsByThread, activeThreadId],
+  );
 
   const lastUnified = useMemo((): UnifiedConciergeResponse | null => {
     for (let i = events.length - 1; i >= 0; i--) {
@@ -894,10 +961,21 @@ export default function ConciergeClientFull() {
     return null;
   }, [events]);
 
-  const backendUnified = useMemo(() => threadDetailToUnified(threadDetail), [threadDetail]);
+  const backendUnified = useMemo(
+    () => (isThreadAccessGranted ? threadDetailToUnified(threadDetail) : null),
+    [isThreadAccessGranted, threadDetail],
+  );
+
+  // 別 thread（tid 切替前）の live state を、今の tid の結果として表示しない。
+  const isLiveStateForCurrentRoute = isEntryRoute || (tidNum !== null && liveTid === tidNum);
+  const currentLiveUnified = isLiveStateForCurrentRoute ? liveUnified : null;
+  const currentLiveRecs = useMemo(
+    () => (isLiveStateForCurrentRoute ? liveRecs : []),
+    [isLiveStateForCurrentRoute, liveRecs],
+  );
 
   const displayUnified = useMemo(() => {
-    const primary = liveUnified ?? backendUnified ?? lastUnified;
+    const primary = currentLiveUnified ?? backendUnified ?? lastUnified;
     if (!primary) return null;
 
     const fallbackData = lastUnified?.data ?? null;
@@ -935,15 +1013,15 @@ export default function ConciergeClientFull() {
         recommendations_v2: primaryRecommendationsV2.length > 0 ? primaryRecommendationsV2 : fallbackRecommendationsV2,
       },
     } as UnifiedConciergeResponse;
-  }, [liveUnified, backendUnified, lastUnified]);
+  }, [currentLiveUnified, backendUnified, lastUnified]);
 
   const displayRecommendations = useMemo(() => {
-    if (liveRecs.length > 0) return liveRecs;
+    if (currentLiveRecs.length > 0) return currentLiveRecs;
     const recsV2 = displayUnified?.data?.recommendations_v2;
     const recs = displayUnified?.data?.recommendations;
     if (Array.isArray(recsV2) && recsV2.length > 0) return recsV2 as ConciergeRecommendation[];
     return Array.isArray(recs) ? (recs as ConciergeRecommendation[]) : [];
-  }, [liveRecs, displayUnified]);
+  }, [currentLiveRecs, displayUnified]);
 
   const hasCandidates = displayRecommendations.length > 0;
 
@@ -1263,6 +1341,7 @@ export default function ConciergeClientFull() {
       }
 
       setLiveUnified(u);
+      setLiveTid(nextTid || currentTid);
       const unifiedRecommendationsV2 = Array.isArray(u.data?.recommendations_v2) ? u.data.recommendations_v2 : [];
       const unifiedRecommendations = Array.isArray(u.data?.recommendations) ? u.data.recommendations : [];
       setLiveRecs((unifiedRecommendationsV2.length > 0 ? unifiedRecommendationsV2 : unifiedRecommendations) as any);
