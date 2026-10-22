@@ -3,43 +3,46 @@
 ## 1. Status
 
 ```text
-APPROACH                        = A（database-backed handoff grant; approved in principle）
-EXACT SCHEMA                    = PROPOSED（this record）→ Mother Ship approval required（§13）
+APPROACH                        = A（database-backed handoff grant; approved, G0）
+EXACT SCHEMA                    = CONDITIONALLY APPROVED（M1–M6, G1）→ final schema diff（§3, §3.1）needs Mother Ship review
 models.py / migrations          = UNCHANGED（no migration created or applied）
 endpoints / UI / cookies / auth = UNCHANGED
 consultation data               = UNCHANGED
 PRODUCTION_SECURITY_E2E         = OPEN
 REVIEW CORRECTIONS（rev 2）      = APPLIED（§1.1, §5.5, §7, §10.1, §11.1, §12, §13, §13.1）
-FINAL STATUS                    = STOP — awaiting Mother Ship review
+REVOKED_REASON（rev 3）          = ADDED to the proposal（§3, §3.1, §5.4, §5.6, §5.7, §7, §9, §10, §11.0, §13.2）
+FINAL STATUS                    = STOP — awaiting Mother Ship final G1 schema approval
 ```
 
-### 1.1 Approval gates（rev 2）
+### 1.1 Approval gates（rev 3）
 
 Approval of one gate does **not** imply approval of a later one.
 
 | gate | scope | status |
 | --- | --- | --- |
-| G0 — requirements | approach A; 30-min expiry; single use; reissue revokes earlier open grants; no consultation deletion; no automatic transfer; a new table in principle | **APPROVED**（task brief） |
-| G1 — schema | the exact fields, constraints, index names and on-delete behaviour in §3, including the M1–M7 choices | **NOT APPROVED** |
-| G2 — migration | creating `0122_conciergehandoffgrant` in the repository | **NOT APPROVED**; requires G1 |
-| G3 — implementation | services, endpoints, BFF routes, UI, the retention-purge change（§10.1）and the shared prerequisites（M9） | **NOT APPROVED**; requires G1 and G2 |
+| G0 — requirements | approach A; 30-min expiry; single use; reissue revokes earlier open grants; no consultation deletion; no automatic transfer; a new table in principle | **APPROVED** |
+| G1 — schema | the exact fields, constraints, index names and on-delete behaviour in §3, including the M1–M6 choices | **CONDITIONALLY APPROVED**: M1–M6 proposals approved on condition that `revoked_reason` is added under M3（done in rev 3）. The **final schema diff**（§3.1）**needs Mother Ship review**. Not final |
+| G2 — migration | creating `0122_conciergehandoffgrant` in the repository | policy（M8）approved in principle. **Creating or applying the migration is NOT APPROVED**; requires final G1 |
+| G3 — implementation | services, endpoints, BFF routes, UI, the retention-purge change（§10.1）and the shared prerequisites（M9） | policies M7, M9, M11 approved in principle（M10 is a separate PR）. **Runtime implementation is NOT APPROVED**; requires final G1 and G2 |
 | G4 — product policy | logout rotation（P1）and lost-code recovery（P2）, §13.1 | **UNRESOLVED**; blocks G3 for the UI flow |
 | G5 — deployment | applying the migration to Production and enabling the flow | **NOT APPROVED**; requires G1–G4 and the Production QA plan |
 
-An approved schema（G1）only makes §3 the target of a later migration PR. It does not authorize creating that
-migration, writing endpoints or changing retention.
+Even a final G1 approval only makes §3 the target of a later migration PR. It does not authorize creating
+that migration, writing endpoints or changing retention.
 
-- Source of truth: `origin/develop@1465c5d`（includes #3313）. Django **5.2.16**（`backend/requirements.txt`）.
-  `DEFAULT_AUTO_FIELD = BigAutoField`（`backend/shrine_project/settings.py:456`）. Latest migration:
-  `0121_shrine_fact_source_citation`.
+- Source of truth: `origin/develop@8640287`（rev 3）. `git diff 1465c5d 8640287 -- backend` is empty, so every
+  fact in §2 still holds; the one new commit（#3314）is a docs-only mobile QA record. Django **5.2.16**
+  （`backend/requirements.txt`）. `DEFAULT_AUTO_FIELD = BigAutoField`（`backend/shrine_project/settings.py:456`）.
+  Latest migration: still `0121_shrine_fact_source_citation`.
 - Builds on `docs/audit/anonymous-handoff-code-db-lifecycle-audit-2026-10-22.md`（approach A, §4.2）. This
   record replaces its sketch with exact declarations.
 - **Verification:** the model below was compiled and exercised in a **throwaway scratch Django project**
   outside the repository. It ran against the local PostgreSQL 16 test server, with a mirror of
   `ConciergeThread`'s ownership fields and constraint. 16 tests passed in rev 1; 25 tests passed in each of
-  three variants in rev 2（§11.1）. The scratch databases
-  were dropped afterwards. Nothing ran against Production, and nothing in the repository changed except
-  this file.
+  three variants in rev 2（§11.1）, against the rev 2 model. In rev 3, 22 tests passed against the rev 3
+  model（§11.0）, three consecutive runs. The 25 rev 2 tests were **not** re-run against the rev 3 model. The
+  scratch databases were dropped afterwards. Nothing ran against Production, and nothing in the repository
+  changed except this file.
 - Labels: **Fact** = verified in source or by that scratch run. **Inference** = reasoned, not executed.
   **Proposal** = for approval.
 
@@ -82,6 +85,14 @@ HANDOFF_GRANT_TTL = timedelta(minutes=30)
 HANDOFF_GRANT_MAX_FAILED_ATTEMPTS = 5  # Mother Ship decision M2
 
 
+class HandoffGrantRevokedReason(models.TextChoices):
+    """ConciergeHandoffGrant.revoked_reason の値。期限切れは revoke ではない（§5.6）。"""
+
+    REISSUED = "reissued", "reissued"
+    CANCELLED = "cancelled", "cancelled"
+    LOCKED_OUT = "locked_out", "locked out"
+
+
 class ConciergeHandoffGrant(models.Model):
     """匿名相談 thread を認証済み account へ引き継ぐための、使い捨ての権限。
 
@@ -110,6 +121,12 @@ class ConciergeHandoffGrant(models.Model):
         related_name="+",
     )
     revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_reason = models.CharField(
+        max_length=16,
+        choices=HandoffGrantRevokedReason.choices,
+        null=True,
+        blank=True,
+    )
     failed_attempts = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
@@ -142,13 +159,40 @@ class ConciergeHandoffGrant(models.Model):
                 name="concierge_handoff_revoked_after_created",
             ),
             models.CheckConstraint(
+                condition=(Q(revoked_at__isnull=True) & Q(revoked_reason__isnull=True))
+                | (Q(revoked_at__isnull=False) & Q(revoked_reason__isnull=False)),
+                name="concierge_handoff_revoked_reason_pairing",
+            ),
+            models.CheckConstraint(
+                condition=Q(revoked_reason__isnull=True)
+                | Q(revoked_reason__in=HandoffGrantRevokedReason.values),
+                name="concierge_handoff_revoked_reason_values",
+            ),
+            models.CheckConstraint(
                 condition=Q(failed_attempts__lte=HANDOFF_GRANT_MAX_FAILED_ATTEMPTS),
                 name="concierge_handoff_failed_attempts_cap",
             ),
             models.CheckConstraint(
                 condition=Q(failed_attempts__lt=HANDOFF_GRANT_MAX_FAILED_ATTEMPTS)
-                | Q(revoked_at__isnull=False),
-                name="concierge_handoff_lockout_requires_revoked",
+                | (
+                    Q(revoked_reason__isnull=False)
+                    & Q(revoked_reason=HandoffGrantRevokedReason.LOCKED_OUT)
+                ),
+                name="concierge_handoff_lockout_requires_locked_out_reason",
+            ),
+            models.CheckConstraint(
+                condition=Q(revoked_reason__isnull=True)
+                | Q(
+                    revoked_reason__in=[
+                        HandoffGrantRevokedReason.REISSUED,
+                        HandoffGrantRevokedReason.CANCELLED,
+                    ]
+                )
+                | (
+                    Q(failed_attempts=HANDOFF_GRANT_MAX_FAILED_ATTEMPTS)
+                    & Q(revoked_at__lt=F("expires_at"))
+                ),
+                name="concierge_handoff_locked_out_requires_cap_within_ttl",
             ),
             models.CheckConstraint(
                 condition=Q(selector__regex=r"^[0-9A-HJKMNP-TV-Z]{16}$"),
@@ -169,7 +213,56 @@ class ConciergeHandoffGrant(models.Model):
 ```
 
 - No `ordering`（none needed; avoids implicit sorts on lock queries）.
-- `db_table` is the default `temples_conciergehandoffgrant`. All names are ≤ 63 characters.
+- `db_table` is the default `temples_conciergehandoffgrant`. All names are ≤ 63 characters（the longest,
+  `concierge_handoff_lockout_requires_locked_out_reason` and
+  `concierge_handoff_locked_out_requires_cap_within_ttl`, are 52）.
+- `HandoffGrantRevokedReason` is at module level, not nested in the model: a class nested in the model body
+  is not in scope inside `class Meta`（verified: `NameError` in the scratch run）.
+
+### 3.1 Field and constraint diff, rev 2 → rev 3（for the final G1 review）
+
+```diff
++class HandoffGrantRevokedReason(models.TextChoices):
++    REISSUED = "reissued", "reissued"
++    CANCELLED = "cancelled", "cancelled"
++    LOCKED_OUT = "locked_out", "locked out"
+
+     revoked_at = models.DateTimeField(null=True, blank=True)
++    revoked_reason = models.CharField(
++        max_length=16, choices=HandoffGrantRevokedReason.choices, null=True, blank=True,
++    )
+     failed_attempts = models.PositiveSmallIntegerField(default=0)
+
++    CheckConstraint  concierge_handoff_revoked_reason_pairing
++    CheckConstraint  concierge_handoff_revoked_reason_values
+-    CheckConstraint  concierge_handoff_lockout_requires_revoked
++    CheckConstraint  concierge_handoff_lockout_requires_locked_out_reason
++    CheckConstraint  concierge_handoff_locked_out_requires_cap_within_ttl
+```
+
+Generated PostgreSQL（`sqlmigrate`, scratch run）:
+
+```sql
+CONSTRAINT "concierge_handoff_revoked_reason_pairing" CHECK ((("revoked_at" IS NULL AND "revoked_reason" IS NULL)
+  OR ("revoked_at" IS NOT NULL AND "revoked_reason" IS NOT NULL)))
+CONSTRAINT "concierge_handoff_revoked_reason_values" CHECK (("revoked_reason" IS NULL
+  OR "revoked_reason" IN ('reissued', 'cancelled', 'locked_out')))
+CONSTRAINT "concierge_handoff_lockout_requires_locked_out_reason" CHECK (("failed_attempts" < 5
+  OR ("revoked_reason" IS NOT NULL AND "revoked_reason" = 'locked_out')))
+CONSTRAINT "concierge_handoff_locked_out_requires_cap_within_ttl" CHECK (("revoked_reason" IS NULL
+  OR "revoked_reason" IN ('reissued', 'cancelled') OR ("failed_attempts" = 5 AND "revoked_at" < ("expires_at"))))
+```
+
+| change | constraint | why |
+| --- | --- | --- |
+| added | `revoked_reason_pairing` | `revoked_at` and `revoked_reason` are both NULL or both set. Every revoked row says why; no reason without a revocation |
+| added | `revoked_reason_values` | only the three values. Django `choices` are not enforced by the database. Logically implied by the two lockout checks below, but kept so a bad value fails with a direct name |
+| replaced | `lockout_requires_revoked` → `lockout_requires_locked_out_reason` | 5 failures ⇒ reason is `locked_out`（and so, by pairing, `revoked_at` is set）. Stricter than rev 2: a 5-failure row revoked as `reissued` or `cancelled` is rejected. The explicit `IS NOT NULL` guard is required: without it, a NULL reason makes the expression NULL, and a CHECK accepts NULL |
+| added | `locked_out_requires_cap_within_ttl` | `locked_out` ⇒ `failed_attempts = 5` and `revoked_at < expires_at`. Lockout can happen only while the grant is live, because expired grants do not count failures（§9） |
+| unchanged | the other 8 checks, the partial unique constraint and the index | the partial unique index still keys on `revoked_at IS NULL`; with pairing, that is the same as `revoked_reason IS NULL` |
+
+Constraint count: 1 partial unique + 12 checks（rev 2: 1 + 9）, plus the `selector` unique, 1 named index and the
+automatic FK and `_like` indexes.
 
 ---
 
@@ -186,8 +279,9 @@ class ConciergeHandoffGrant(models.Model):
 | `expires_at` | `DateTimeField(db_default=Now() + TTL, editable=False)` | Same statement timestamp, so `expires_at - created_at = 30 min` exactly（verified）. Enforced by `concierge_handoff_ttl_bounds` |
 | `consumed_at` | nullable `DateTimeField` | set once, with `Now()`, in the claim transaction |
 | `consumed_by` | FK → user, `SET_NULL`, nullable, `related_name="+"` | Who claimed. `SET_NULL` keeps account deletion unblocked. In practice the row disappears first through `thread → CASCADE`, because the consumer owns the thread（verified）. The invariant and the alternatives are in §5.5（M6） |
-| `revoked_at` | nullable `DateTimeField` | Set by reissue, explicit cancel or lockout. There is no reason column（decision M3） |
-| `failed_attempts` | `PositiveSmallIntegerField(default=0)` | Verification failures on this grant. Capped by two checks（§9） |
+| `revoked_at` | nullable `DateTimeField` | Set, with `Now()`, by reissue, explicit cancel or lockout, always together with `revoked_reason`. **Never set by expiry**（§5.6） |
+| `revoked_reason` | nullable `CharField(16)`, `choices=HandoffGrantRevokedReason`（rev 3, M3） | Why the grant was revoked: `reissued`, `cancelled` or `locked_out`. NULL exactly when `revoked_at` is NULL（`revoked_reason_pairing`）. NULL rather than `""` so the pairing reads as `IS NULL` on both columns; the repo's optional `CharField`s mostly use `blank=True, default=""`, so this is a review item（Q1, §13.2）. Not PII |
+| `failed_attempts` | `PositiveSmallIntegerField(default=0)` | Verification failures on this grant while it is live. Capped and tied to `locked_out` by three checks（§9） |
 
 **Index on `expires_at`:** used by the grant retention purge（§10）. `thread_id` and `consumed_by_id` get
 Django's automatic FK indexes. The FK index on `thread_id` serves cascade deletes; the partial unique index
@@ -218,7 +312,7 @@ CREATE UNIQUE INDEX concierge_handoff_one_open_grant_per_thread
 ```
 
 - "Open" means **unconsumed and unrevoked**. An expired but unrevoked row still counts as open. Reissue
-  therefore revokes it in the same transaction before inserting（§7）.
+  therefore revokes it, with `revoked_reason = 'reissued'`, in the same transaction before inserting（§7）.
 - **Verified:** inserting a second open grant raises `IntegrityError`; revoke-then-insert in one
   transaction succeeds.
 
@@ -235,22 +329,33 @@ CREATE UNIQUE INDEX concierge_handoff_one_open_grant_per_thread
 
 ### 5.4 State combinations（item 4）
 
-| state | `consumed_at` | `consumed_by` | `revoked_at` | `failed_attempts` | allowed |
-| --- | --- | --- | --- | --- | --- |
-| open（may be expired by time） | NULL | NULL | NULL | 0–4 | ✓ |
-| consumed | set（< `expires_at`） | set, or NULL after consumer deletion | NULL | 0–4 | ✓ |
-| revoked（reissue / cancel） | NULL | NULL | set | 0–4 | ✓ |
-| locked out | NULL | NULL | set | 5 | ✓ |
-| consumed **and** revoked | set | — | set | — | ✗ `not_consumed_and_revoked` |
-| consumer without consumption | NULL | set | — | — | ✗ `consumer_requires_consumed_at` |
-| 5 failures, still open | NULL | NULL | NULL | 5 | ✗ `lockout_requires_revoked` |
-| > 5 failures | — | — | — | ≥ 6 | ✗ `failed_attempts_cap` |
-| TTL ≠ (0, 30 min] | — | — | — | — | ✗ `ttl_bounds` |
-| consumed at or after expiry, or before creation | — | — | — | — | ✗ `consumed_within_ttl` |
-| revoked before creation | — | — | — | — | ✗ `revoked_after_created` |
-| malformed selector or digest | — | — | — | — | ✗ format checks |
+| state | `consumed_at` | `consumed_by` | `revoked_at` | `revoked_reason` | `failed_attempts` | allowed |
+| --- | --- | --- | --- | --- | --- | --- |
+| open, live（`expires_at > now`） | NULL | NULL | NULL | NULL | 0–4 | ✓ |
+| open, expired by time（unusable, §5.6） | NULL | NULL | NULL | NULL | 0–4 | ✓ |
+| consumed | set（< `expires_at`） | set, or NULL after consumer deletion | NULL | NULL | 0–4 | ✓ |
+| revoked by reissue | NULL | NULL | set（may be > `expires_at`） | `reissued` | 0–4 | ✓ |
+| revoked by cancel | NULL | NULL | set（may be > `expires_at`） | `cancelled` | 0–4 | ✓ |
+| locked out | NULL | NULL | set（< `expires_at`） | `locked_out` | 5 | ✓ |
+| consumed **and** revoked | set | — | set | set | — | ✗ `not_consumed_and_revoked` |
+| consumer without consumption | NULL | set | — | — | — | ✗ `consumer_requires_consumed_at` |
+| revoked without a reason | — | — | set | NULL | — | ✗ `revoked_reason_pairing` |
+| reason without a revocation | — | — | NULL | set | — | ✗ `revoked_reason_pairing` |
+| unknown reason（e.g. `expired`, `""`） | — | — | set | other | — | ✗ `revoked_reason_values`（or a lockout check, whichever PostgreSQL evaluates first） |
+| 5 failures, still open | NULL | NULL | NULL | NULL | 5 | ✗ `lockout_requires_locked_out_reason` |
+| 5 failures, reason `reissued` / `cancelled` | NULL | NULL | set | `reissued` / `cancelled` | 5 | ✗ `lockout_requires_locked_out_reason` |
+| `locked_out` with fewer than 5 failures | NULL | NULL | set | `locked_out` | 0–4 | ✗ `locked_out_requires_cap_within_ttl` |
+| `locked_out` at or after expiry | NULL | NULL | ≥ `expires_at` | `locked_out` | 5 | ✗ `locked_out_requires_cap_within_ttl` |
+| > 5 failures | — | — | — | — | ≥ 6 | ✗ `failed_attempts_cap` |
+| TTL ≠ (0, 30 min] | — | — | — | — | — | ✗ `ttl_bounds` |
+| consumed at or after expiry, or before creation | — | — | — | — | — | ✗ `consumed_within_ttl` |
+| revoked before creation | — | — | — | — | — | ✗ `revoked_after_created` |
+| malformed selector or digest | — | — | — | — | — | ✗ format checks |
 
-All rows above were exercised against PostgreSQL（`test_invalid_states`, `test_valid_states`）.
+The rev 2 rows were exercised against PostgreSQL in rev 2（`test_invalid_states`, `test_valid_states`）. The
+rows involving `revoked_reason` were exercised in rev 3（`test_invalid_reason_states`,
+`test_valid_reason_states`, `test_locked_out_at_or_after_expiry_rejected`,
+`test_reissue_or_cancel_after_expiry_allowed`; §11.0）.
 
 ### 5.5 `consumed_at` / `consumed_by` invariant and account deletion（rev 2）
 
@@ -280,7 +385,69 @@ set and `consumed_by` NULL means "consumed by an account that no longer exists".
 | V2 | strict: `(consumed_at IS NULL) = (consumed_by IS NULL)` | `CASCADE` | consumed grants are deleted with the account | ✓ passes; rejects consumed without consumer |
 | V3 | strict | `SET_NULL` | passes **today** only because of fast-delete ordering. If a delete signal or a dependent is ever added to the grant, the `SET_NULL` update would run first and violate the CHECK, **blocking account deletion** | ✓ passes today; **fragile — not proposed** |
 
-The three variants were run with the same 25 tests on PostgreSQL（§11.1）.
+The three variants were run with the same 25 tests on PostgreSQL（§11.1）. `revoked_reason` does not change
+this analysis: a consumed row always has `revoked_reason` NULL, and `SET_NULL` on `consumed_by` does not touch
+it.
+
+### 5.6 Revocation reasons and expiry（rev 3, M3）
+
+**Allowed values**（`HandoffGrantRevokedReason`）:
+
+| value | written by | condition |
+| --- | --- | --- |
+| `reissued` | issuance on a thread that still has an open grant（§7） | the open grant, live **or expired**, is closed so the new one can be inserted |
+| `cancelled` | explicit guest cancellation（§7） | the guest closes their own open grant, live or expired |
+| `locked_out` | the failure recorder, on the 5th counted failure（§9） | only while the grant is live; `failed_attempts` becomes 5 in the same statement |
+
+**Expiry is not a revocation.** An expired grant is **not** marked revoked. It only becomes unusable by time:
+
+- Nothing writes to a grant when it expires. There is no scheduler, and none is proposed.
+- "Expired" is derived: `expires_at <= Now()`, evaluated in the statement that needs it（claim §6 step 5,
+  failure recorder §9, retention §10.1）.
+- An expired, never-closed row stays `revoked_at = NULL, revoked_reason = NULL`. There is deliberately **no**
+  `expired` value; the values check rejects it.
+- It still counts as "open" for the partial unique index（§5.2）. A later issuance on that thread revokes it with
+  `reissued`, so `revoked_at > expires_at` is legitimate for `reissued` and `cancelled`.
+- `locked_out` can never follow expiry, because expired grants do not count failures（§9）. The database
+  enforces this with `revoked_at < expires_at`（`locked_out_requires_cap_within_ttl`）.
+
+Why not mark expiry: it would need a periodic job, add writes for every unused code and make a row's state
+depend on whether that job ran. Time-based unusability is already enforced by the database
+（`consumed_within_ttl`）. Reporting "how many codes expired unused" needs no extra column:
+`consumed_at IS NULL AND revoked_at IS NULL AND expires_at <= now`.
+
+**Write rules（all transitions are one-way）:**
+
+- `revoked_at` and `revoked_reason` are always written together, by one `UPDATE`, with
+  `WHERE consumed_at IS NULL AND revoked_at IS NULL`. A closed row matches 0 rows, so a reason is never
+  overwritten（e.g. a lockout stays `locked_out` after a later reissue）.
+- No code path clears `revoked_at` or `revoked_reason`.
+- **Limitation:** the database does not stop a hand-written `UPDATE` from changing one valid reason to another
+  （e.g. `reissued` → `cancelled`）on an already revoked row. That would need a trigger, which is not proposed
+  （Q3, §13.2）.
+
+### 5.7 State-transition table（rev 3）
+
+States: **OPEN-LIVE**, **OPEN-EXPIRED**（derived from time, no write）, **CONSUMED**, **REVOKED/reissued**,
+**REVOKED/cancelled**, **REVOKED/locked_out**. CONSUMED and every REVOKED state are terminal.
+
+| # | from | event | guard（checked after the thread lock） | write | to |
+| --- | --- | --- | --- | --- | --- |
+| T1 | — | issuance | thread `user IS NULL AND anonymous_id = A`; no open grant | `INSERT`（DB sets `created_at`, `expires_at`） | OPEN-LIVE |
+| T2 | OPEN-LIVE / OPEN-EXPIRED | issuance（reissue） | same as T1 | `UPDATE … SET revoked_at = Now(), revoked_reason = 'reissued'`, then `INSERT` | REVOKED/reissued（+ a new OPEN-LIVE） |
+| T3 | OPEN-LIVE / OPEN-EXPIRED | explicit cancel | thread `user IS NULL AND anonymous_id = A`; grant belongs to the thread | `UPDATE … SET revoked_at = Now(), revoked_reason = 'cancelled'` | REVOKED/cancelled |
+| T4 | OPEN-LIVE（0–3 failures） | counted failure | live; open | `failed_attempts + 1` | OPEN-LIVE |
+| T5 | OPEN-LIVE（4 failures） | counted failure | live; open | `failed_attempts = 5, revoked_at = Now(), revoked_reason = 'locked_out'`（one statement） | REVOKED/locked_out |
+| T6 | OPEN-LIVE | claim | verifier and binding match; live; thread anonymous with A | `consumed_at = Now(), consumed_by = U`; thread → U | CONSUMED |
+| T7 | OPEN-LIVE | time passes `expires_at` | — | **none** | OPEN-EXPIRED |
+| T8 | OPEN-EXPIRED | claim, or a failure | — | **none**; claim → 404; failure not counted | OPEN-EXPIRED |
+| T9 | CONSUMED / any REVOKED | claim, cancel, reissue, failure | — | **none**（0 rows match）; claim → 404, or idempotent 200 for the same consumer（§6） | unchanged |
+| T10 | any | thread deleted（retention, account deletion） | — | grant row deleted（`thread` CASCADE） | — |
+| T11 | CONSUMED | consumer account deleted | — | in practice T10 first（§5.5）; otherwise `consumed_by = NULL` | CONSUMED |
+| T12 | any closed or expired | grant retention（M5） | `expires_at < now − 30 days` | row deleted | — |
+
+T9 for reissue on a CONSUMED grant cannot be reached anyway: the thread is owned, so issuance stops at the
+guard.
 
 ---
 
@@ -319,10 +486,10 @@ NULL. The `user__isnull=True` filter in `append_chat` is still proposed（M9）.
 
 | operation | locks, in order | statements |
 | --- | --- | --- |
-| issuance / reissue | thread `FOR UPDATE`（re-check `user IS NULL AND anonymous_id = A`）→ open grants via `UPDATE … SET revoked_at = Now()` | revoke the open grants, then `INSERT` the new grant |
-| explicit revocation（guest cancel） | thread `FOR UPDATE` → grant | `UPDATE … SET revoked_at = Now() WHERE id = :g AND consumed_at IS NULL AND revoked_at IS NULL` |
+| issuance / reissue | thread `FOR UPDATE`（re-check `user IS NULL AND anonymous_id = A`）→ open grants via `UPDATE … SET revoked_at = Now(), revoked_reason = 'reissued'` | revoke the open grants（live or expired）, then `INSERT` the new grant. Issuance and reissue are one operation; "reissue" is the case where the `UPDATE` matched a row |
+| explicit revocation（guest cancel） | thread `FOR UPDATE`（same re-check）→ grant | `UPDATE … SET revoked_at = Now(), revoked_reason = 'cancelled' WHERE id = :g AND thread_id = :T AND consumed_at IS NULL AND revoked_at IS NULL` |
 | consumption | thread → grant | §6 |
-| failure recording | grant only, one statement, its own transaction | §9. It holds no other lock, so it cannot form a cycle |
+| failure recording | grant only, one statement, its own transaction | §9（may write `revoked_reason = 'locked_out'`）. It holds no other lock, so it cannot form a cycle |
 | `append_chat`（existing, C5） | thread only | unchanged |
 | guest retention purge（**proposed change**, §10.1） | threads `FOR UPDATE SKIP LOCKED` → grants | re-check after the lock, then delete grants, then threads |
 | guest retention purge（**current code**, C7） | none first. The collector deletes grants, then the thread | **reverse order**. Deadlock reproduced（§11.1, `test_legacy_reverse_order_can_deadlock`） |
@@ -356,7 +523,9 @@ All rows below were verified with two concurrent connections on PostgreSQL（§1
 
 | race | outcome |
 | --- | --- |
-| concurrent issuance（two tabs） | serialized on the thread lock. The second revokes the first's grant and inserts. Exactly one open grant remains, with 2 rows in total |
+| concurrent issuance（two tabs） | serialized on the thread lock. The second revokes the first's grant（`reissued`）and inserts. Exactly one open grant remains, with 2 rows in total |
+| 5th failure vs reissue（rev 3） | both `UPDATE`s filter on `revoked_at IS NULL`; under READ COMMITTED the second re-evaluates the filter on the new row version and matches 0 rows. Exactly one writer closes the grant, and the reason matches that writer: `locked_out` with 5 failures, or `reissued` with 4. Verified, 5 races（§11.0） |
+| cancel vs reissue（rev 3） | serialized on the thread lock. Exactly one closes the grant; the reason is `cancelled` or `reissued`. Verified, 5 races（§11.0） |
 | reissue vs claim | serialized on the thread lock. Claim first → the thread is owned → reissue finds `user IS NULL` false → no grant. Reissue first → the old grant is revoked → claim 404, the thread stays anonymous. At most one open grant either way |
 | double claim（same or different users） | the second waits on the thread lock, then sees the grant consumed and the thread owned → 404, or idempotent 200 for the same user. Exactly one `consumed_at` |
 | claim vs guest `append_chat` | both take the thread lock first. Claim first → the append's `(id, anonymous_id = A)` re-check finds no row → the existing path creates a new anonymous thread. Append first → the claim transfers the thread including the new message（inference from C5; listed for the implementation tests） |
@@ -379,20 +548,37 @@ All rows below were verified with two concurrent connections on PostgreSQL（§1
 writing.
 
 ```python
+lockout = When(failed_attempts__gte=MAX - 1, then=Now())
 ConciergeHandoffGrant.objects.filter(
-    pk=grant_id, consumed_at__isnull=True, revoked_at__isnull=True
+    pk=grant_id,
+    consumed_at__isnull=True,
+    revoked_at__isnull=True,
+    expires_at__gt=Now(),  # rev 3: an expired grant is not counted
 ).update(
     failed_attempts=F("failed_attempts") + 1,
-    revoked_at=Case(When(failed_attempts__gte=MAX - 1, then=Now()), default=Value(None)),
+    revoked_at=Case(lockout, default=Value(None)),
+    revoked_reason=Case(
+        When(failed_attempts__gte=MAX - 1, then=Value(HandoffGrantRevokedReason.LOCKED_OUT)),
+        default=Value(None),
+    ),
 )
 ```
 
-- The 5th failure sets `revoked_at` in the same statement. Later failures match 0 rows.
-- **Verified:** 7 sequential failures leave `[1,1,1,1,1,0,0]` rows updated, with `failed_attempts = 5` and
-  the grant revoked. 12 concurrent failures never exceed 5.
-- The cap is also enforced by the database（`failed_attempts_cap`, `lockout_requires_revoked`）.
-- **Open question for Mother Ship:** whether a binding mismatch should count. It does in this proposal
-  （M2）.
+- The 5th failure sets `revoked_at` and `revoked_reason = 'locked_out'` in the same statement. Later failures
+  match 0 rows.
+- **rev 3 correction:** the rev 2 recorder filtered only on `consumed_at` / `revoked_at`. The claim verifies the
+  secret（§6 step 4）before it checks expiry（step 5）, so a wrong code on an expired grant would have been
+  counted, contradicting "expired → not counted" above. The filter now includes `expires_at > Now()`. Because
+  `Now()` is one statement timestamp, a lockout always has `revoked_at < expires_at`, which
+  `locked_out_requires_cap_within_ttl` enforces.
+- **Verified（rev 2 model）:** 7 sequential failures leave `[1,1,1,1,1,0,0]` rows updated, with
+  `failed_attempts = 5` and the grant revoked. 12 concurrent failures never exceed 5.
+- **Verified（rev 3 model, §11.0）:** the same sequence ends with `revoked_reason = 'locked_out'` and
+  `revoked_at < expires_at`. 12 concurrent failures update exactly 5 times. A failure on an expired grant
+  updates 0 rows and leaves it unrevoked. A failure on a `reissued` grant updates 0 rows and keeps the reason.
+- The cap and its link to the reason are also enforced by the database（`failed_attempts_cap`,
+  `lockout_requires_locked_out_reason`, `locked_out_requires_cap_within_ttl`）.
+- A binding mismatch counts, as proposed in M2（conditionally approved under G1, not final）.
 
 ---
 
@@ -402,16 +588,31 @@ ConciergeHandoffGrant.objects.filter(
   - No backfill and no data migration. Grants are created only by an explicit guest issuance.
   - No thread changes at deployment.
   - A claimed thread leaves the guest retention set（C7）and is later subject to account deletion（C8）.
-- **Migration operations proposal**（not created）:
+- **Migration operations proposal**（rev 3; not created, not approved — G2）:
 
   ```text
   backend/temples/migrations/0122_conciergehandoffgrant.py
     dependencies: ("temples", "0121_shrine_fact_source_citation"), swappable AUTH_USER_MODEL
-    operations:
-      CreateModel("ConciergeHandoffGrant", fields=[…§3…], options={constraints, indexes})
+    operations（as `makemigrations` generated them in the scratch run）:
+      CreateModel("ConciergeHandoffGrant",
+                  fields = id, selector, verifier_hash, anon_binding, created_at, expires_at,
+                           consumed_at, revoked_at, revoked_reason, failed_attempts,
+                           consumed_by, thread)
+      AddIndex      concierge_handoff_expires_idx
+      AddConstraint × 13, in §3 order:
+                    one_open_grant_per_thread, not_consumed_and_revoked,
+                    consumer_requires_consumed_at, ttl_bounds, consumed_within_ttl,
+                    revoked_after_created, revoked_reason_pairing, revoked_reason_values,
+                    failed_attempts_cap, lockout_requires_locked_out_reason,
+                    locked_out_requires_cap_within_ttl, selector_format, digest_format
     reverse: DeleteModel  →  drops only grant rows; no consultation data is touched
   ```
 
+  - `revoked_reason` is part of the initial `CreateModel`. Because `0122` does not exist yet, there is no
+    `AddField` and no backfill. `HandoffGrantRevokedReason` is not referenced by the migration: the migration
+    stores the literal `choices` list and the literal SQL values.
+  - Adding or renaming a reason value later is a migration: `choices` changes（state only）and
+    `revoked_reason_values` / `locked_out_requires_cap_within_ttl` are dropped and re-added.
   - On an empty new table, the `CREATE INDEX` and `ADD CONSTRAINT` statements need no backfill and lock
     only the new table.
   - The only lock on an existing table is the FK creation. The FKs to `temples_conciergethread` and
@@ -470,12 +671,56 @@ ConciergeHandoffGrant.objects.filter(
   - Grant rows hold no consultation content. `anon_binding` is a keyed hash. A consumed row is the only
     remaining record of where a claimed thread came from（the thread's `anonymous_id` is set to NULL）, so
     the retention period is also an audit-trail decision.
+  - **rev 3:** `revoked_reason` changes neither the retention rule nor deletion behaviour. It is purged with
+    its row on the same `expires_at` rule, whatever the reason. It is a fixed enum value, not PII. A
+    `locked_out` row is the only stored evidence of a guessing attempt on that grant, so M5 also sets how long
+    that evidence is kept. Retention by reason（e.g. keeping `locked_out` longer）is **not** proposed.
+- **Deletion behaviour（unchanged by rev 3）:** deleting a grant never deletes a thread; deleting a thread
+  deletes its grants（`thread` CASCADE）; deleting the consumer sets `consumed_by` NULL or, in practice,
+  removes the row with the thread first（§5.5）. Revocation of any reason is an `UPDATE`, never a `DELETE`.
+  Verified on the rev 3 model（`test_deletion_unchanged`, `test_consumer_account_deletion`）.
 
 ---
 
 ## 11. PostgreSQL test matrix（item 10）
 
-### 11.1 Already run in the scratch project（PostgreSQL 16, Django 5.2.16）
+### 11.0 rev 3: revocation-reason tests, run in the scratch project（PostgreSQL 16, Django 5.2.16）
+
+- Model: exactly §3（V1）, with a mirror of `ConciergeThread`'s ownership fields and constraint. Scratch
+  services implement §6, §7 and §9 as written.
+- Result: **22/22 passed**, three consecutive runs, with `DeprecationWarning` treated as an error.
+- Not re-run: the 25 rev 2 tests（§11.1）. They target the rev 2 model, and the implementation PR runs them
+  again against the real model（§11.2）.
+
+| test | proves |
+| --- | --- |
+| `test_invalid_reason_states` | 9 invalid combinations → `IntegrityError` naming the expected check: revoked without reason; reason without revocation; `expired`; `""`; 5 failures with `reissued`; 5 failures with `cancelled`; 5 failures still open; `locked_out` with 4 failures; consumed and revoked |
+| `test_locked_out_at_or_after_expiry_rejected` | `locked_out` with `revoked_at ≥ expires_at` → `locked_out_requires_cap_within_ttl` |
+| `test_valid_reason_states` | open; consumed; `reissued` and `cancelled` with 0–4 failures; `locked_out` with 5 |
+| `test_reissue_or_cancel_after_expiry_allowed` | `reissued` / `cancelled` with `revoked_at > expires_at` are accepted（§5.6） |
+| `test_issue_open_has_no_reason` | T1: a new grant has `revoked_at` and `revoked_reason` NULL |
+| `test_reissue_sets_reissued` | T2: the old grant becomes `reissued`; the new one is open |
+| `test_reissue_of_expired_open_grant` | T2 on OPEN-EXPIRED: `reissued`, `revoked_at > expires_at` |
+| `test_cancel_sets_cancelled_once` | T3; a second cancel matches 0 rows and keeps the first `revoked_at` |
+| `test_cancel_wrong_anon_is_noop` | T3 guard: another anonymous id cannot cancel |
+| `test_fifth_failure_locks_out` | T4/T5: `[1,1,1,1,1,0,0]`; `locked_out`; `revoked_at < expires_at` |
+| `test_failure_on_expired_grant_not_counted` | T8: 0 rows; `failed_attempts` stays 0; not revoked |
+| `test_failure_after_reissue_or_cancel_not_counted` | T9: 0 rows; reason stays `reissued` |
+| `test_reissue_after_lockout_keeps_locked_out` | T9: reissue revokes nothing; the old reason stays `locked_out` |
+| `test_partial_failures_then_reissue` | 3 failures then reissue → `reissued` with `failed_attempts = 3` |
+| `test_expired_grant_is_not_revoked_by_time` | T7/T8: claim after expiry → 404; `revoked_at`, `revoked_reason`, `consumed_at` stay NULL; the thread stays anonymous |
+| `test_claim_leaves_reason_null` | T6 then T9: consumed, reason NULL; cancel and failure then match 0 rows |
+| `test_claim_of_revoked_grant_404_for_each_reason` | claims on `reissued`, `cancelled` and `locked_out` grants → 404; the thread stays anonymous |
+| `test_deletion_unchanged` | T10: deleting a grant keeps the thread; deleting the thread removes its grants |
+| `test_consumer_account_deletion` | T11 under V1 |
+| `test_concurrent_failures_lock_out_once` | 12 concurrent failures → exactly 5 updates; `locked_out` |
+| `test_fifth_failure_vs_reissue` | 5 races: exactly one writer closes the grant; reason and `failed_attempts` match the winner; one open grant remains |
+| `test_cancel_vs_reissue` | 5 races: exactly one closes the grant with its own reason |
+
+Scratch-run observation: a value outside the enum violates both `revoked_reason_values` and a lockout check.
+PostgreSQL reports the first failing check it evaluates, so tests for that case must accept either name.
+
+### 11.1 Already run in the scratch project（PostgreSQL 16, Django 5.2.16; rev 1 and rev 2 models）
 
 - rev 1: 16/16 passed.
 - rev 2: 25/25 passed in each of the three §5.5 variants（V1 / V2 / V3）.
@@ -517,7 +762,14 @@ The rev 1 tests:
 
 ### 11.2 Required in the implementation PR（in `backend/temples/tests/`, on PostgreSQL）
 
-- All of §11.1 against the real `temples` models and migration `0122`.
+- All of §11.0 and §11.1 against the real `temples` models and migration `0122`. Rev 2 tests that assert
+  `lockout_requires_revoked` change to the rev 3 constraint names, and every revocation in them also asserts
+  the expected `revoked_reason`.
+- Revocation-reason tests through the real services and endpoints（not only the model）: issuance on a thread
+  with an open grant writes `reissued`; the cancel endpoint writes `cancelled`; the 5th counted failure from
+  the claim endpoint writes `locked_out`; an expired grant answered with a wrong code is neither counted nor
+  revoked.
+- No code path writes `revoked_at` without `revoked_reason`（grep and a test per writer）.
 - `ConciergeThread` ownership constraint test（closes C10）.
 - `makemigrations --check` is clean. The migration applies forward and backward on a copy of the test DB.
 - Claim racing `append_chat`, both orders（§8 row 4）.
@@ -568,6 +820,8 @@ The rev 1 tests:
 | F8（rev 2） | The strict invariant combined with `SET_NULL`（V3）relies on Django's fast-delete ordering and could block account deletion if the model changes | **RESOLVED in documentation**; V3 is not proposed |
 | F9（rev 2） | Schema approval and implementation approval were not separated | **RESOLVED**（§1.1 gates G0–G5） |
 | F10（rev 2） | Logout rotation and lost-code recovery were left as recommendations | **RESOLVED in documentation** as unresolved policy gates（§13.1）; the policy itself is unresolved |
+| F11（rev 3） | The rev 2 failure recorder did not filter on expiry, so a wrong code on an expired grant was counted and could lock it out, contradicting §9 "expired → not counted" | **RESOLVED in design**（§9 filter `expires_at > Now()`, enforced by `locked_out_requires_cap_within_ttl`）. Verified in scratch |
+| F12（rev 3） | Once a row is revoked, the database does not stop a manual `UPDATE` from swapping one valid reason for another | **OPEN**（Q3）. All application writers filter on `revoked_at IS NULL`; a trigger is not proposed |
 
 Security limitations:
 
@@ -584,23 +838,25 @@ Security limitations:
 
 ## 13. Remaining Mother Ship decisions
 
-Already approved（G0）: approach A, a 30-minute expiry, single use, reissue revokes earlier open grants, no
-consultation deletion, no automatic transfer, and a new table in principle. Everything below is
-**unapproved**. The "proposal" column is input for review, not a decision.
+Approved（G0）: approach A, a 30-minute expiry, single use, reissue revokes earlier open grants, no
+consultation deletion, no automatic transfer, and a new table in principle.
+
+Rev 3 status as recorded from the Mother Ship decisions. **Conditional or in-principle approval is not final
+approval.** No row below authorizes a migration or runtime code.
 
 | id | decision | gate | proposal | status |
 | --- | --- | --- | --- | --- |
-| M1 | Exact schema in §3（fields, constraints, names, `db_default` vs `timezone.now`） | G1 | §3 as written | **UNAPPROVED** |
-| M2 | Failure cap value（fixed in the migration）and whether a binding mismatch counts | G1 | 5; counts | **UNAPPROVED** |
-| M3 | Add a `revoked_reason`（reissue / cancel / lockout）field | G1 | not added | **UNAPPROVED** |
-| M4 | Selector 80 bits / verifier 256 bits / user-facing code format | G1 | as proposed | **UNAPPROVED** |
-| M5 | Grant row retention period（also the provenance audit trail） | G1 / G3 | 30 days after expiry | **UNAPPROVED** |
-| M6 | Consumer invariant variant V1 / V2（§5.5）; V3 not offered | G1 | V1 | **UNAPPROVED** |
-| M7 | Retention with open grants: skip with `SKIP LOCKED` + re-check（§10.1）, or refuse issuance past the cutoff | G3 | skip | **UNAPPROVED** |
-| M8 | Migration timing: `0122` with the endpoints in one PR, or alone first | G2 | together | **UNAPPROVED** |
-| M9 | Shared prerequisites in the same PR or separately: `append_chat` filter（C6）, detail-view fallback removal, X1 | G3 | open | **UNAPPROVED** |
-| M10 | Fix F1（`check=` → `condition=`）as a separate PR | separate | separate | **UNAPPROVED** |
-| M11（rev 2） | Claim response on deadlock / lock timeout: uniform 404 or retryable 503（§7.1） | G3 | open | **UNAPPROVED** |
+| M1 | Exact schema in §3（fields, constraints, names, `db_default` vs `timezone.now`） | G1 | §3 as written | **CONDITIONALLY APPROVED**; final schema diff（§3.1）under review |
+| M2 | Failure cap value（fixed in the migration）and whether a binding mismatch counts | G1 | 5; counts | **CONDITIONALLY APPROVED** |
+| M3 | Add a `revoked_reason`（reissue / cancel / lockout）field | G1 | **added in rev 3**: §3, §3.1, §5.6, §5.7 | **CONDITIONALLY APPROVED**, with `revoked_reason` required; exact declaration under review（Q1–Q4） |
+| M4 | Selector 80 bits / verifier 256 bits / user-facing code format | G1 | as proposed | **CONDITIONALLY APPROVED** |
+| M5 | Grant row retention period（also the provenance and lockout audit trail） | G1 / G3 | 30 days after expiry, whatever the reason | **CONDITIONALLY APPROVED** |
+| M6 | Consumer invariant variant V1 / V2（§5.5）; V3 not offered | G1 | V1 | **CONDITIONALLY APPROVED** |
+| M7 | Retention with open grants: skip with `SKIP LOCKED` + re-check（§10.1）, or refuse issuance past the cutoff | G3 | skip | **APPROVED IN PRINCIPLE**（policy）; implementation not approved |
+| M8 | Migration timing: `0122` with the endpoints in one PR, or alone first | G2 | together | **APPROVED IN PRINCIPLE**（policy）; creating / applying the migration not approved |
+| M9 | Shared prerequisites in the same PR or separately: `append_chat` filter（C6）, detail-view fallback removal, X1 | G3 | open | **APPROVED IN PRINCIPLE**; the bundling choice is still open（Q5） |
+| M10 | Fix F1（`check=` → `condition=`）as a separate PR | separate | separate | **APPROVED IN PRINCIPLE**; that PR is not created |
+| M11（rev 2） | Claim response on deadlock / lock timeout: uniform 404 or retryable 503（§7.1） | G3 | open | **APPROVED IN PRINCIPLE**; 404 vs 503 is still open（Q6） |
 
 ### 13.1 Unresolved product-policy gates（G4; rev 2）
 
@@ -608,11 +864,55 @@ These are product policy, not schema. This record does not choose them.
 
 | id | question | options documented earlier | consequence for this schema |
 | --- | --- | --- | --- |
-| P1 — logout rotation | At logout, rotate the anonymous id A（L1）or keep it（L2）? | L1: the next guest on the browser cannot read earlier guest threads, but every grant bound to the old A becomes unusable（`anon_binding` mismatch）. L2: the reverse | none: `anon_binding` works with either. L1 makes every logout an implicit revocation of all open grants for that browser |
-| P2 — lost-code recovery | What can a user who lost the code do? | (a) as a guest with the same A: reissue（revokes the old grant）. (b) after login: nothing through the handoff, because issuing while authenticated would be a cookie-only transfer path. (c) any account-side recovery requires a new proof factor, which does not exist today | none for (a) or (b). (c) would need a new contract and possibly schema |
+| P1 — logout rotation | At logout, rotate the anonymous id A（L1）or keep it（L2）? | L1: the next guest on the browser cannot read earlier guest threads, but every grant bound to the old A becomes unusable（`anon_binding` mismatch）. L2: the reverse | none: `anon_binding` works with either. L1 makes every open grant for that browser unusable at logout. That is not recorded as a revocation: the rows stay open, unusable, until they expire（§5.6, Q2） |
+| P2 — lost-code recovery | What can a user who lost the code do? | (a) as a guest with the same A: reissue（revokes the old grant as `reissued`）. (b) after login: nothing through the handoff, because issuing while authenticated would be a cookie-only transfer path. (c) any account-side recovery requires a new proof factor, which does not exist today | none for (a) or (b). (c) would need a new contract and possibly schema |
 | P1 × P2 | With L1, a user who logs in and then loses the code cannot return as the same guest | — | the consultation stays anonymous and is **not** deleted; it becomes unreachable from that browser |
 
 G3 for the user-facing flow stays blocked until P1 and P2 are decided.
+
+### 13.2 Mother Ship review checklist for final G1（rev 3）
+
+Each item needs an explicit yes / no. Final G1 is granted only when all are answered.
+
+**Schema diff（§3.1）**
+
+- [ ] `revoked_reason` declaration: `CharField(max_length=16, choices=HandoffGrantRevokedReason.choices,
+      null=True, blank=True)`
+- [ ] **Q1** — NULL（proposed）rather than `""` for "not revoked"
+- [ ] **Q2** — exactly three values, spelled `reissued`, `cancelled`, `locked_out`. No `expired` value. No
+      value for logout rotation（P1 L1 makes grants unusable through `anon_binding` mismatch without writing
+      to them; if P1 later requires a write, adding a value is a new migration）
+- [ ] `revoked_reason_pairing`: `revoked_at` and `revoked_reason` are both NULL or both set
+- [ ] `revoked_reason_values`: kept although implied by the two lockout checks
+- [ ] `lockout_requires_revoked` replaced by `lockout_requires_locked_out_reason`（stricter）
+- [ ] `locked_out_requires_cap_within_ttl`: `locked_out` ⇒ 5 failures and `revoked_at < expires_at`
+- [ ] **Q3** — no trigger to freeze `revoked_reason` once set（F12）
+- [ ] **Q4** — `HandoffGrantRevokedReason` at module level, not nested
+- [ ] all other fields, constraints, index names and on-delete behaviour unchanged from rev 2
+
+**Semantics**
+
+- [ ] Expiry is not a revocation: expired grants stay `revoked_at = NULL`, unusable by time only（§5.6）
+- [ ] `reissued` / `cancelled` may have `revoked_at > expires_at`（closing an expired open row）
+- [ ] Failures on an expired grant are not counted（F11 correction, §9）
+- [ ] The state-transition table T1–T12（§5.7）is the contract for the implementation PR
+- [ ] 30-minute TTL and single use unchanged（`ttl_bounds`, `consumed_within_ttl`, partial unique index）
+
+**Retention and deletion**
+
+- [ ] M5 applies to every reason alike; no per-reason retention
+- [ ] Revocation is always an `UPDATE`; deletion behaviour unchanged（§10.2）
+
+**Migration（proposal only）**
+
+- [ ] `0122` would be a single `CreateModel` with `revoked_reason` inline, 1 `AddIndex` and 13
+      `AddConstraint`（§10）. Approving this list does not authorize creating the file（G2）
+
+**Still open after G1**
+
+- [ ] **Q5** — M9 bundling（same PR as the endpoints, or separate）
+- [ ] **Q6** — M11 response on deadlock / lock timeout: 404 or 503
+- [ ] P1 logout rotation and P2 lost-code recovery（G4）
 
 ---
 
