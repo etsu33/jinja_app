@@ -1,8 +1,11 @@
-import { chromium } from "/home/user/jinja_app/node_modules/.pnpm/node_modules/playwright/index.mjs";
+import { BASE_URL, launchChromium } from "./qa-env.mjs";
 import { detail } from "./fixture.mjs";
+import { mkdirSync } from "node:fs";
 const OUT = process.argv[2];
+if (!OUT) { console.error("usage: node audit.mjs <screenshot-out-dir> [widths=375,390,393]"); process.exit(2); }
+mkdirSync(OUT, { recursive: true });
 const widths = (process.argv[3] || "375,390,393").split(",").map(Number);
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
+const browser = await launchChromium();
 const results = [];
 for (const width of widths) {
   const ctx = await browser.newContext({ viewport: { width, height: 852 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true,
@@ -25,7 +28,7 @@ for (const width of widths) {
     if (p.startsWith("/api/goriyaku-tags") || p.includes("tags")) return json(200, [{ id: 1, name: "仕事運" }, { id: 2, name: "縁結び" }]);
     return json(200, {});
   });
-  await page.goto("http://localhost:3100/concierge?tid=500", { waitUntil: "networkidle", timeout: 180000 });
+  await page.goto(`${BASE_URL}/concierge?tid=500`, { waitUntil: "networkidle", timeout: 180000 });
   await page.getByTestId("concierge-thread-save-feedback").waitFor({ state: "attached", timeout: 60000 });
   await page.waitForTimeout(800);
 

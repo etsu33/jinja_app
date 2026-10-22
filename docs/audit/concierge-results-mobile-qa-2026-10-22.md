@@ -15,7 +15,7 @@ Status: Audit record（production code 変更なし）
 | 状態 | 初期表示 / 「ほかの神社」展開 / 補助条件パネル展開 / お気に入り登録後 / 相談保存後 |
 
 再現用スクリプト: [`assets/concierge-results-mobile-qa-2026-10-22/`](assets/concierge-results-mobile-qa-2026-10-22/)
-（`fixture.mjs`, `audit.mjs`, `mainprobe.mjs`。Playwright の import path とポート 3100 は本 QA 環境依存なので、再実行時は環境に合わせて書き換える）
+（`fixture.mjs`, `audit.mjs`, `mainprobe.mjs`, `qa-env.mjs`）。実行手順は §8。
 
 ## 2. 結果サマリ
 
@@ -98,3 +98,59 @@ dev 専用の Next.js 開発インジケータ（左下の「N」）が footer �
 - `vitest run src/features/concierge src/components/shrine src/app/concierge`: 64 files / 535 tests passed
 - `tsc -p tsconfig.json --noEmit`: exit 0
 - `eslint src/features/concierge src/components/shrine src/app/concierge`: exit 0
+
+## 8. 再実行手順
+
+### 前提条件
+
+| 項目 | 内容 |
+| --- | --- |
+| Node / pnpm | リポジトリ既定の版。repo root で `pnpm install` 済みであること |
+| Playwright | **新しい依存は不要**。`apps/web` の既存 devDependency `@playwright/test` を、`qa-env.mjs` がスクリプトからの相対位置（`../../../../apps/web/package.json`）で解決する |
+| Chromium | 既定は Playwright 管理のブラウザ。未導入なら `pnpm --filter ./apps/web exec playwright install chromium` |
+| Chromium（版が合わない環境） | `@playwright/test` の期待するブラウザ版が無く、別版が事前導入されている環境では、`PLAYWRIGHT_CHROMIUM_EXECUTABLE=<chromium 実行ファイル>` を指定する（§8 の注記参照） |
+| 対象サーバ | `apps/web` の Next.js サーバ。`QA_BASE_URL` で指定（既定 `http://localhost:3000`、`apps/web/playwright.config.ts` の既定と同じ） |
+| Backend | 不要。`/api/**` はすべて `page.route` で合成 fixture に置き換える |
+
+### コマンド
+
+```bash
+# 1. 依存（初回のみ）
+pnpm install
+pnpm --filter ./apps/web exec playwright install chromium   # ブラウザ未導入の場合のみ
+
+# 2. 対象サーバ（別ターミナル）
+pnpm --filter ./apps/web exec next dev -p 3000
+
+# 3. 計測（repo root から。カレントディレクトリには依存しない）
+node docs/audit/assets/concierge-results-mobile-qa-2026-10-22/audit.mjs <screenshot-out-dir> > audit-result.json
+node docs/audit/assets/concierge-results-mobile-qa-2026-10-22/mainprobe.mjs > main-scroll-result.json
+
+# 任意: 幅の指定（既定 375,390,393）、別ポートのサーバ、版の合わない Chromium しか無い環境
+node docs/audit/assets/concierge-results-mobile-qa-2026-10-22/audit.mjs <out-dir> 393
+QA_BASE_URL=http://localhost:3100 node docs/audit/assets/concierge-results-mobile-qa-2026-10-22/audit.mjs <out-dir>
+PLAYWRIGHT_CHROMIUM_EXECUTABLE=/path/to/chromium node docs/audit/assets/concierge-results-mobile-qa-2026-10-22/audit.mjs <out-dir>
+```
+
+- `audit.mjs`: 第 1 引数（screenshot 出力先）は必須で、無い場合は usage を出して exit 2。出力先が無ければ作成する。標準出力に幅ごとの計測 JSON（§2〜§4 の根拠）を出す。
+- `mainprobe.mjs`: `<main>` スクロールコンテナの横スクロール計測 JSON（§2 の根拠）を出す。
+- 出力 screenshot は DPR 3 の原寸。§6 の PNG は 1x に縮小したもの。
+
+### 環境依存として残るもの（解消できない理由）
+
+- **Chromium の版**: `@playwright/test` 1.63.0 は特定のブラウザ版を期待する。本 QA を実行した sandbox には別版の Chromium（`chromium-1194`）しか事前導入されておらず、上書き指定なしでは
+  `Executable doesn't exist at .../chromium_headless_shell-1243/...` で起動に失敗する（再実行時に確認済み）。
+  sandbox では `playwright install` によるブラウザ取得ができないため、実行ファイルを環境変数で渡す方式にした。
+  ブラウザを取得できる通常の開発環境では、`playwright install chromium` 後に**環境変数なし**で実行できる。
+- **WebKit / 実機**: §3 のとおり未検証。`qa-env.mjs` は Chromium のみを扱う。
+
+### 再実行による確認（2026-10-22, 手順改善後）
+
+repo root から `QA_BASE_URL` 既定値（`next dev -p 3000`）で、Chromium は `PLAYWRIGHT_CHROMIUM_EXECUTABLE` を指定して `audit.mjs` / `mainprobe.mjs` を再実行した。
+
+- 3 幅で次の値が初回計測と一致した:
+  - `innerWidth` / `scrollWidth` / ページ高 / `overflow-x` / はみ出し要素数
+  - 24px 未満の tap target 一覧
+  - favorite / 相談保存 / ほかの神社 toggle / 履歴遷移の結果（履歴遷移の URL はポート番号のみ異なる）
+- `<main>` は全状態で `scrollWidth == clientWidth`、`scrollLeft` 0、横スクロール要素 0。console error 0。
+- §2〜§5 の判定に変更なし。

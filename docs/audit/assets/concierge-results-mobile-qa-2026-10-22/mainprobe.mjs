@@ -1,6 +1,6 @@
-import { chromium } from "/home/user/jinja_app/node_modules/.pnpm/node_modules/playwright/index.mjs";
+import { BASE_URL, launchChromium } from "./qa-env.mjs";
 import { detail } from "./fixture.mjs";
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
+const browser = await launchChromium();
 const out = [];
 for (const width of [375, 390, 393]) {
   const ctx = await browser.newContext({ viewport: { width, height: 852 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
@@ -16,7 +16,7 @@ for (const width of [375, 390, 393]) {
     if (p.includes("tags")) return json(200, [{ id: 1, name: "仕事運" }]);
     return json(200, {});
   });
-  await page.goto("http://localhost:3100/concierge?tid=500", { waitUntil: "networkidle", timeout: 180000 });
+  await page.goto(`${BASE_URL}/concierge?tid=500`, { waitUntil: "networkidle", timeout: 180000 });
   await page.getByTestId("concierge-thread-save-feedback").waitFor({ state: "attached" });
   const m = () => page.evaluate(() => {
     const scrollers = [...document.querySelectorAll("*")].filter((e) => { const cs = getComputedStyle(e); return (cs.overflowX === "auto" || cs.overflowX === "scroll") && e.scrollWidth > e.clientWidth + 1; })
