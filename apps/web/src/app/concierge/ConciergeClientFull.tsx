@@ -26,6 +26,7 @@ import {
 } from "@/features/concierge/components/ConciergeAutoSubmitPending";
 import { buildPayloadFromUnified } from "@/features/concierge/buildPayloadFromUnified";
 import { buildConciergeRequestPayload } from "@/features/concierge/buildConciergeRequestPayload";
+import { useConciergeThreadSave } from "@/features/concierge/useConciergeThreadSave";
 
 import type { RendererAction, ConciergeSectionsPayload } from "@/features/concierge/sections/types";
 import { getGoriyakuTags } from "@/lib/api/tags";
@@ -952,6 +953,13 @@ export default function ConciergeClientFull() {
     return t && typeof t.id === "number" ? t : null;
   }, [displayUnified]);
 
+  const onSaveAuthRequired = useCallback(() => redirectToAuth("login"), [redirectToAuth]);
+  const { state: threadSaveState, save: saveConciergeThread } = useConciergeThreadSave({
+    threadId: thread?.id ?? activeThreadId,
+    canSave: canSaveConciergeThread,
+    onAuthRequired: onSaveAuthRequired,
+  });
+
   const chatThreadId =
     activeThreadId !== 0 ? String(activeThreadId) : typeof thread?.id === "number" ? String(thread.id) : null;
 
@@ -1608,13 +1616,9 @@ export default function ConciergeClientFull() {
           },
         });
 
-        if (!canSaveConciergeThread) {
-          redirectToAuth("login");
-          return;
-        }
-
-        // 現時点では server 保存API未接続。
-        // 認証済みユーザーは、thread URL がある状態自体を保存済み導線とみなす。
+        // 未ログインはログインへ誘導。ログイン済みは chat で永続化済みの thread が
+        // ユーザーの履歴一覧に含まれることを確認できた場合のみ保存済みとする。
+        void saveConciergeThread();
         return;
 
       case "back_to_entry":
@@ -1934,6 +1938,7 @@ export default function ConciergeClientFull() {
                     threadId={thread?.id ?? activeThreadId}
                     isEntryRoute={isEntryRoute}
                     isPremiumActive={isPremiumActive}
+                    threadSaveState={threadSaveState}
                   />
                 </div>
               ) : null}
@@ -2021,6 +2026,7 @@ export default function ConciergeClientFull() {
             threadId={thread?.id ?? activeThreadId}
             isEntryRoute={isEntryRoute}
             isPremiumActive={isPremiumActive}
+            threadSaveState={threadSaveState}
           />
 
           {isLoggedIn && stateDelta && previousComparisonVisibility !== "hidden" ? (
