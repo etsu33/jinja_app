@@ -3,7 +3,7 @@
 import axios from "axios";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { fetchThreads } from "@/lib/api/concierge";
+import { ConciergeThreadsResponseError, fetchThreadsStrict } from "@/lib/api/concierge";
 
 // 「あとで見返すために保存」(save_prompt) の保存確認フロー。
 //
@@ -18,7 +18,16 @@ import { fetchThreads } from "@/lib/api/concierge";
 
 export type ConciergeThreadSaveStatus = "idle" | "saving" | "saved" | "error";
 
-export type ConciergeThreadSaveError = "no_thread" | "not_owned" | "unauthenticated" | "network";
+// server_unavailable: backend が 5xx を返した（API 失敗）
+// invalid_response : 2xx だが一覧の形式で読めなかった（parse 失敗）
+// network          : 応答自体が得られなかった、またはその他の失敗
+export type ConciergeThreadSaveError =
+  | "no_thread"
+  | "not_owned"
+  | "unauthenticated"
+  | "server_unavailable"
+  | "invalid_response"
+  | "network";
 
 export type ConciergeThreadSaveState = {
   status: ConciergeThreadSaveStatus;
@@ -30,6 +39,16 @@ const IDLE: ConciergeThreadSaveState = { status: "idle", error: null, historyHre
 
 export function buildConciergeHistoryHref(threadId: number): string {
   return `/mypage/history/${threadId}`;
+}
+
+function classifySaveError(err: unknown): ConciergeThreadSaveError {
+  if (err instanceof ConciergeThreadsResponseError) return "invalid_response";
+  if (axios.isAxiosError(err)) {
+    const status = err.response?.status;
+    if (status === 401) return "unauthenticated";
+    if (typeof status === "number" && status >= 500) return "server_unavailable";
+  }
+  return "network";
 }
 
 type Options = {
@@ -76,14 +95,13 @@ export function useConciergeThreadSave({ threadId, canSave, onAuthRequired }: Op
 
     let next: ConciergeThreadSaveState;
     try {
-      const threads = await fetchThreads();
+      const threads = await fetchThreadsStrict();
       const owned = threads.some((t) => Number(t.id) === targetId);
       next = owned
         ? { status: "saved", error: null, historyHref: buildConciergeHistoryHref(targetId) }
         : { status: "error", error: "not_owned", historyHref: null };
     } catch (err) {
-      const unauthenticated = axios.isAxiosError(err) && err.response?.status === 401;
-      next = { status: "error", error: unauthenticated ? "unauthenticated" : "network", historyHref: null };
+      next = { status: "error", error: classifySaveError(err), historyHref: null };
     } finally {
       inFlightRef.current = false;
     }
