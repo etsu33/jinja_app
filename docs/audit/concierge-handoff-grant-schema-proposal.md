@@ -11,6 +11,7 @@ consultation data               = UNCHANGED
 PRODUCTION_SECURITY_E2E         = OPEN
 REVIEW CORRECTIONS（rev 2）      = APPLIED（§1.1, §5.5, §7, §10.1, §11.1, §12, §13, §13.1）
 REVOKED_REASON（rev 3）          = ADDED to the proposal（§3, §3.1, §5.4, §5.6, §5.7, §7, §9, §10, §11.0, §13.2）
+CONSISTENCY FIX（rev 3.1）       = D1–D4 corrected（§1.1, §8, §11.3, §13, §13.1, §13.2）; no schema change
 FINAL STATUS                    = STOP — awaiting Mother Ship final G1 schema approval
 ```
 
@@ -22,9 +23,9 @@ Approval of one gate does **not** imply approval of a later one.
 | --- | --- | --- |
 | G0 — requirements | approach A; 30-min expiry; single use; reissue revokes earlier open grants; no consultation deletion; no automatic transfer; a new table in principle | **APPROVED** |
 | G1 — schema | the exact fields, constraints, index names and on-delete behaviour in §3, including the M1–M6 choices | **CONDITIONALLY APPROVED**: M1–M6 proposals approved on condition that `revoked_reason` is added under M3（done in rev 3）. The **final schema diff**（§3.1）**needs Mother Ship review**. Not final |
-| G2 — migration | creating `0122_conciergehandoffgrant` in the repository | policy（M8）approved in principle. **Creating or applying the migration is NOT APPROVED**; requires final G1 |
+| G2 — migration | creating `0122_conciergehandoffgrant` in the repository | policy（M8）approved in principle. **Creating or applying the migration is NOT APPROVED**; requires final G1. A separate gate from G3 even if one PR carries both（§13, M8 note） |
 | G3 — implementation | services, endpoints, BFF routes, UI, the retention-purge change（§10.1）and the shared prerequisites（M9） | policies M7, M9, M11 approved in principle（M10 is a separate PR）. **Runtime implementation is NOT APPROVED**; requires final G1 and G2 |
-| G4 — product policy | logout rotation（P1）and lost-code recovery（P2）, §13.1 | **UNRESOLVED**; blocks G3 for the UI flow |
+| G4 — product policy | logout rotation（P1）and lost-code recovery（P2）, §13.1 | **UNRESOLVED**; blocks G3 for the UI flow. **May also reopen G1**（rev 3.1, D1）: the final P1 policy may require an additional revocation reason or another schema change, which would need a new G1 review and a migration change. This record proposes no such value and does not choose P1（§13.1） |
 | G5 — deployment | applying the migration to Production and enabling the flow | **NOT APPROVED**; requires G1–G4 and the Production QA plan |
 
 Even a final G1 approval only makes §3 the target of a later migration PR. It does not authorize creating
@@ -34,6 +35,8 @@ that migration, writing endpoints or changing retention.
   fact in §2 still holds; the one new commit（#3314）is a docs-only mobile QA record. Django **5.2.16**
   （`backend/requirements.txt`）. `DEFAULT_AUTO_FIELD = BigAutoField`（`backend/shrine_project/settings.py:456`）.
   Latest migration: still `0121_shrine_fact_source_citation`.
+- rev 3.1 base: `origin/develop@89f7f79`（#3315 merged）. `git diff 1465c5d 89f7f79 -- backend` is empty, and the
+  latest migration is still `0121`. The merge of #3315 is **not** a Mother Ship G1 approval.
 - Builds on `docs/audit/anonymous-handoff-code-db-lifecycle-audit-2026-10-22.md`（approach A, §4.2）. This
   record replaces its sketch with exact declarations.
 - **Verification:** the model below was compiled and exercised in a **throwaway scratch Django project**
@@ -519,17 +522,26 @@ NULL. The `user__isnull=True` filter in `append_chat` is still proposed（M9）.
 
 ## 8. Concurrency（item 7）
 
-All rows below were verified with two concurrent connections on PostgreSQL（§11.1）.
+**Not every scenario below is verified**（rev 3.1, D2）. The "evidence" column uses three labels:
 
-| race | outcome |
-| --- | --- |
-| concurrent issuance（two tabs） | serialized on the thread lock. The second revokes the first's grant（`reissued`）and inserts. Exactly one open grant remains, with 2 rows in total |
-| 5th failure vs reissue（rev 3） | both `UPDATE`s filter on `revoked_at IS NULL`; under READ COMMITTED the second re-evaluates the filter on the new row version and matches 0 rows. Exactly one writer closes the grant, and the reason matches that writer: `locked_out` with 5 failures, or `reissued` with 4. Verified, 5 races（§11.0） |
-| cancel vs reissue（rev 3） | serialized on the thread lock. Exactly one closes the grant; the reason is `cancelled` or `reissued`. Verified, 5 races（§11.0） |
-| reissue vs claim | serialized on the thread lock. Claim first → the thread is owned → reissue finds `user IS NULL` false → no grant. Reissue first → the old grant is revoked → claim 404, the thread stays anonymous. At most one open grant either way |
-| double claim（same or different users） | the second waits on the thread lock, then sees the grant consumed and the thread owned → 404, or idempotent 200 for the same user. Exactly one `consumed_at` |
-| claim vs guest `append_chat` | both take the thread lock first. Claim first → the append's `(id, anonymous_id = A)` re-check finds no row → the existing path creates a new anonymous thread. Append first → the claim transfers the thread including the new message（inference from C5; listed for the implementation tests） |
-| claim near expiry while waiting on a lock | the expiry check runs in a statement after the lock（fresh timestamp）. `consumed_within_ttl` rejects any consumption at or after `expires_at` |
+- **Scratch-verified:** run with concurrent connections on PostgreSQL 16 in the throwaway scratch project
+  （mirror `ConciergeThread`, scratch services; §11.0, §11.1）. The model version is named.
+- **Reasoned:** derived from the lock order and PostgreSQL semantics; no concurrent test was run.
+- **Integration: not tested** applies to **every** row. Nothing here has run against the real `temples`
+  models, services or endpoints（§11.3）.
+
+| race | outcome | evidence |
+| --- | --- | --- |
+| concurrent issuance（two tabs） | serialized on the thread lock. The second revokes the first's grant（`reissued`）and inserts. Exactly one open grant remains, with 2 rows in total | scratch-verified on the **rev 1** model（`test_concurrent_issuance`）. The `reissued` value in this race is **reasoned**; rev 3 tested reissue only sequentially（`test_reissue_sets_reissued`） |
+| 5th failure vs reissue（rev 3） | both `UPDATE`s filter on `revoked_at IS NULL`; under READ COMMITTED the second re-evaluates the filter on the new row version and matches 0 rows. Exactly one writer closes the grant, and the reason matches that writer: `locked_out` with 5 failures, or `reissued` with 4 | scratch-verified on the **rev 3** model, 5 races（`test_fifth_failure_vs_reissue`） |
+| cancel vs reissue（rev 3） | serialized on the thread lock. Exactly one closes the grant; the reason is `cancelled` or `reissued` | scratch-verified on the **rev 3** model, 5 races（`test_cancel_vs_reissue`） |
+| concurrent failures（rev 3） | 12 concurrent failures update exactly 5 times; the grant ends `locked_out` | scratch-verified on the **rev 3** model（`test_concurrent_failures_lock_out_once`） |
+| reissue vs claim | serialized on the thread lock. Claim first → the thread is owned → reissue finds `user IS NULL` false → no grant. Reissue first → the old grant is revoked → claim 404, the thread stays anonymous. At most one open grant either way | scratch-verified on the **rev 1** model（`test_reissue_vs_claim_concurrent`）; `revoked_reason` not asserted |
+| double claim（same or different users） | the second waits on the thread lock, then sees the grant consumed and the thread owned → 404, or idempotent 200 for the same user. Exactly one `consumed_at` | scratch-verified on the **rev 1** model（`test_double_claim_concurrent`） |
+| claim vs purge | §7.1, §10.1 | scratch-verified on the **rev 2** model（§11.1 rev 2 table）; the real purge service is not changed or tested |
+| claim vs guest `append_chat` | both take the thread lock first. Claim first → the append's `(id, anonymous_id = A)` re-check finds no row → the existing path creates a new anonymous thread. Append first → the claim transfers the thread including the new message | **reasoned** from C5 only; never run, not even in scratch |
+| claim near expiry while waiting on a lock | the expiry check runs in a statement after the lock（fresh timestamp）. `consumed_within_ttl` rejects any consumption at or after `expires_at` | **reasoned** for the race. Only the constraint itself is scratch-verified, sequentially（rev 1 `test_invalid_states`, `test_expired_grant_rejected`） |
+| account deletion vs claim by the same user | §7.1 last bullet | **reasoned**; never run |
 
 ---
 
@@ -772,7 +784,7 @@ The rev 1 tests:
 - No code path writes `revoked_at` without `revoked_reason`（grep and a test per writer）.
 - `ConciergeThread` ownership constraint test（closes C10）.
 - `makemigrations --check` is clean. The migration applies forward and backward on a copy of the test DB.
-- Claim racing `append_chat`, both orders（§8 row 4）.
+- Claim racing `append_chat`, both orders（§8, "claim vs guest `append_chat`"）.
 - Verifier and binding mismatch → failure counted. Unknown selector → not counted. Expired → not counted.
 - **Purge racing an active handoff grant**（precise specification, rev 2）:
   - **Setup:** a `ConciergeThread(user=None, anonymous_id=A)` with `created_at` and `last_message_at` 200
@@ -803,6 +815,26 @@ The rev 1 tests:
 - No consultation row is deleted by any handoff operation（row counts before and after）.
 - SQLite is **not** sufficient for the concurrency tests（database-level locking）. They must run on
   PostgreSQL in CI.
+
+### 11.3 Outstanding real-project integration verification（rev 3.1, D4）
+
+Every item below is **NOT VERIFIED** in the real project. Scratch results（§11.0, §11.1）show that the schema
+design and the documented transitions are consistent with each other. They are **not** evidence that the
+real models, migration, services or CI behave this way, and must not be reported as such. Each item is
+closed only by a test or check in the repository, in the PR its gate allows（G2 / G3）.
+
+| # | item | scratch evidence（design only） | real-project verification required | gate |
+| --- | --- | --- | --- | --- |
+| I1 | Real Django models and migration generation: §3 placed in `backend/temples/models.py`; `0122` generated from the real migration state（dependency on `0121`, swappable `AUTH_USER_MODEL`, field order, 13 `AddConstraint`, 1 `AddIndex`）; forward and backward apply | `makemigrations` and `sqlmigrate` on the scratch project | the generated file matches §10; `migrate` forward / backward on a test DB | G2 |
+| I2 | `makemigrations --check` clean after `0122` | none | the CI "Check Django schema drift" step passes | G2 |
+| I3 | PostgreSQL **and** PostGIS CI: the `postgres` no-GIS unit job and the `postgis` integration job in `backend-tests.yml` | plain `django.db.backends.postgresql` only; the PostGIS backend never ran | §11.0–§11.2 pass in both jobs; the constraint SQL is identical under the PostGIS backend | G2 / G3 |
+| I4 | pytest-django integration: tests live in `backend/temples/tests/`, run under the repo's `pytest` configuration; concurrency tests with `transaction=True` / `TransactionTestCase`, threads and connection closing | Django's own test runner, not pytest | the tests pass under `python -m pytest` in CI, repeatably | G3 |
+| I5 | Real authentication and handoff services: issuance, reissue, cancel, claim and the failure recorder as real services and endpoints; every writer sets `revoked_at` and `revoked_reason` together | scratch services written for this record | §11.2 revocation-reason tests through the real endpoints; one test per writer | G3 |
+| I6 | Claim vs anonymous `append_chat`, both orders | **none**（reasoned only, §8） | concurrent test against the real `append_chat`（C5, C6） | G3 |
+| I7 | Guest retention and account deletion: the real `purge_expired_guest_data` with the §10.1 change; the real `account_deletion` path with the real `User` model and all its dependents（§5.5 relies on collector ordering） | rev 2 purge races and rev 1 / rev 3 deletion tests on mirror models | §11.2 purge cases 1–4; account deletion with a consumed grant under the chosen §5.5 variant; consultation row counts unchanged | G3 |
+| I8 | Lock order and transaction behaviour: thread → grant in every real code path; claim rollback on `OperationalError`; the M11 response; account deletion racing a claim（§7.1） | rev 2 deadlock reproduction and no-deadlock repeats on scratch code | lock-order tests on the real services; `40P01` / `55P03` handling; the §7.1 FK race | G3 |
+| I9 | Failed-attempt expiry guard: the real recorder filters on `expires_at > Now()`. The database enforces this only at lockout（`locked_out_requires_cap_within_ttl`）; failures 1–4 on an expired grant are blocked by application code alone | `test_failure_on_expired_grant_not_counted` on the scratch recorder | endpoint-level test: a wrong code on an expired grant leaves `failed_attempts` and `revoked_*` unchanged | G3 |
+| I10 | Security regression tests: no cookie-only transfer path; uniform 404 bodies for unknown, wrong, expired, consumed and revoked codes; no automatic ownership transfer; no consultation deletion by any handoff operation; throttling on unknown selectors; existing concierge history authorization tests still pass | none | security tests in the implementation PR, plus the existing suites green | G3 |
 
 ---
 
@@ -853,10 +885,34 @@ approval.** No row below authorizes a migration or runtime code.
 | M5 | Grant row retention period（also the provenance and lockout audit trail） | G1 / G3 | 30 days after expiry, whatever the reason | **CONDITIONALLY APPROVED** |
 | M6 | Consumer invariant variant V1 / V2（§5.5）; V3 not offered | G1 | V1 | **CONDITIONALLY APPROVED** |
 | M7 | Retention with open grants: skip with `SKIP LOCKED` + re-check（§10.1）, or refuse issuance past the cutoff | G3 | skip | **APPROVED IN PRINCIPLE**（policy）; implementation not approved |
-| M8 | Migration timing: `0122` with the endpoints in one PR, or alone first | G2 | together | **APPROVED IN PRINCIPLE**（policy）; creating / applying the migration not approved |
+| M8 | Migration timing: `0122` with the endpoints in one PR, or alone first | G2 / G3 | together | **APPROVED IN PRINCIPLE**（policy）; creating / applying the migration not approved. PR layout consequences below; the layout is not chosen here（Q8） |
 | M9 | Shared prerequisites in the same PR or separately: `append_chat` filter（C6）, detail-view fallback removal, X1 | G3 | open | **APPROVED IN PRINCIPLE**; the bundling choice is still open（Q5） |
 | M10 | Fix F1（`check=` → `condition=`）as a separate PR | separate | separate | **APPROVED IN PRINCIPLE**; that PR is not created |
 | M11（rev 2） | Claim response on deadlock / lock timeout: uniform 404 or retryable 503（§7.1） | G3 | open | **APPROVED IN PRINCIPLE**; 404 vs 503 is still open（Q6） |
+
+**M8 note — PR layout vs approval gates（rev 3.1, D3）.** This note records consequences only. It does not
+change M8's recorded status and does not choose between one PR and two.
+
+- **G2 and G3 stay separate approval gates whatever the PR layout.** One PR containing `0122` and the
+  endpoints needs **both** approvals before that PR may be created or merged. Approving one gate never implies the
+  other（§1.1）.
+- **Consequences of one PR（migration + endpoints）:**
+  - The migration cannot land before G3 is approved, so G2 cannot be used on its own.
+  - If the PR includes the user-facing flow, it also waits on G4（P1, P2）. If P1 then needs a schema change
+    （§13.1, D1）, that change goes into the same PR before merge, together with a new G1 review.
+  - The table never exists without code that writes to it, and there is no window in which an empty table is
+    deployed with no writer.
+  - Reverting the PR reverts both. The migration's reverse drops only grant rows（§10）, so a revert loses
+    issued grants but no consultation data.
+  - The review covers schema, services, endpoints and tests at once, so it is larger.
+- **Consequences of two PRs（migration first, then endpoints）:**
+  - G2 can be exercised alone. The migration can be reviewed and applied to CI and test databases first.
+  - The table exists, empty and unused, until the G3 PR lands.
+  - A schema change that P1 later requires becomes a second migration（`0123` or later）instead of an edit
+    to an unmerged `0122`.
+  - The implementation PR still needs its own G3 approval and depends on the migration PR being merged.
+- Whether the in-principle approval of M8 covers the "together" layout specifically, and how G2 and G3 are
+  sequenced in practice, is left to Mother Ship（Q8）.
 
 ### 13.1 Unresolved product-policy gates（G4; rev 2）
 
@@ -864,11 +920,13 @@ These are product policy, not schema. This record does not choose them.
 
 | id | question | options documented earlier | consequence for this schema |
 | --- | --- | --- | --- |
-| P1 — logout rotation | At logout, rotate the anonymous id A（L1）or keep it（L2）? | L1: the next guest on the browser cannot read earlier guest threads, but every grant bound to the old A becomes unusable（`anon_binding` mismatch）. L2: the reverse | none: `anon_binding` works with either. L1 makes every open grant for that browser unusable at logout. That is not recorded as a revocation: the rows stay open, unusable, until they expire（§5.6, Q2） |
+| P1 — logout rotation | At logout, rotate the anonymous id A（L1）or keep it（L2）? | L1: the next guest on the browser cannot read earlier guest threads, but every grant bound to the old A becomes unusable（`anon_binding` mismatch）. L2: the reverse | **Under the current schema, neither option needs a change**: `anon_binding` works with either. L1 makes every open grant for that browser unusable at logout; that is not recorded as a revocation, and the rows stay open, unusable, until they expire（§5.6）. **But the final P1 policy may require an additional revocation reason or another schema change**（rev 3.1, D1）, for example if logout invalidation must be recorded on the grant row or must close grants before expiry. That would reopen G1（§1.1）and change `0122`. No value is proposed here（Q2） |
 | P2 — lost-code recovery | What can a user who lost the code do? | (a) as a guest with the same A: reissue（revokes the old grant as `reissued`）. (b) after login: nothing through the handoff, because issuing while authenticated would be a cookie-only transfer path. (c) any account-side recovery requires a new proof factor, which does not exist today | none for (a) or (b). (c) would need a new contract and possibly schema |
 | P1 × P2 | With L1, a user who logs in and then loses the code cannot return as the same guest | — | the consultation stays anonymous and is **not** deleted; it becomes unreachable from that browser |
 
-G3 for the user-facing flow stays blocked until P1 and P2 are decided.
+G3 for the user-facing flow stays blocked until P1 and P2 are decided. Whether final G1 may be granted before
+P1 is decided is a Mother Ship decision（Q7, §13.2）. Either way, a schema change that P1 later requires needs its
+own G1 review（rev 3.1, D1）.
 
 ### 13.2 Mother Ship review checklist for final G1（rev 3）
 
@@ -912,7 +970,13 @@ Each item needs an explicit yes / no. Final G1 is granted only when all are answ
 
 - [ ] **Q5** — M9 bundling（same PR as the endpoints, or separate）
 - [ ] **Q6** — M11 response on deadlock / lock timeout: 404 or 503
-- [ ] P1 logout rotation and P2 lost-code recovery（G4）
+- [ ] P1 logout rotation and P2 lost-code recovery（G4）. The final P1 policy may require an additional
+      revocation reason or another schema change, which would reopen G1（§1.1, §13.1; rev 3.1, D1）
+- [ ] **Q7**（rev 3.1）— whether final G1 may be granted before P1 is decided
+- [ ] **Q8**（rev 3.1）— whether M8's in-principle approval covers the one-PR layout, and how G2 and G3 are
+      sequenced（M8 note, §13）
+- [ ] The §11.3 integration items I1–I10 are open. They are gated by G2 / G3, not by G1, and scratch results
+      do not close them
 
 ---
 
