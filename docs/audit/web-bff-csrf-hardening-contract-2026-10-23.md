@@ -10,6 +10,8 @@ tokens / models / migrations   = UNCHANGED
 P1 / P2                        = NOT IMPLEMENTED, NOT SELECTED
 production                     = NOT CONTACTED（no requests, no tests against it）
 IMPLEMENTATION                 = NOT APPROVED — needs Mother Ship decisions in §11
+REVIEW CORRECTIONS（rev 2）     = §4.2 R3 / R12, §4.3, §4.8, §6, §7, §8, §10, §11, §11.1
+V-1 COVERAGE                   = 5 core routes only — NOT the whole BFF（§4.8）
 FINAL STATUS                   = STOP
 ```
 
@@ -131,7 +133,7 @@ if (rejected) return rejected;
 | --- | --- | --- | --- | --- |
 | R1 | `cross-site` | any | **reject** | browser-asserted cross-site |
 | R2 | `same-site` | any | **reject** | sibling origin; blocks T9 |
-| R3 | `none` | any | **reject** | a user-initiated navigation is never a legitimate source of a state-changing POST |
+| R3 | `none` | any | **decision S-9**: (a) evaluate `Origin` by R7–R11, or (b) reject | §4.2.1（rev 2） |
 | R4 | `same-origin` | equals `expected` | allow | first-party shape（Mock） |
 | R5 | `same-origin` | absent | allow | `Sec-Fetch-Site` is unforgeable by page script（forbidden header） |
 | R6 | `same-origin` | present and ≠ `expected`, `null`, or malformed | **reject** | inconsistent; fail closed |
@@ -140,28 +142,90 @@ if (rejected) return rejected;
 | R9 | absent | malformed（`new URL` throws）or not `http(s)` | **reject** | — |
 | R10 | absent | present and ≠ `expected` | **reject** | cross-origin |
 | R11 | absent | absent | **decision S-1**: allow（as `users/me` today）or reject | see §4.3 |
+| R12 | any other value（unknown token, several values） | any | **reject** | fail closed on values the spec does not define（rev 2） |
+
+Header values are compared as the exact lower-case tokens `same-origin`, `same-site`, `cross-site`, `none`.
+
+#### 4.2.1 `Sec-Fetch-Site: none`（rev 2 re-evaluation）
+
+- **What produces it（Mock, Chromium 141.0.7390.37）:** only browser-initiated navigations without an
+  initiator page. An address-bar-style `page.goto` GET and a later navigation of the same kind both arrived as
+  `none` with no `Origin`.
+- **What did not produce it（Mock）:**
+  - The first submit of a same-origin form POST arrived as `same-origin`, with `Origin`.
+  - **Reloading the POST result page re-sent the POST as `same-origin`, with `Origin`.**
+  - Going back in history to the POST result sent no request.
+- **First-party callers（Code, §2.3）:** every state-changing call is a `fetch` / axios POST. No page is the
+  result of a form POST, so there is nothing to reload or resubmit.
+- **Attacker reach（Inference）:** a page or script cannot make the browser label a request `none`; only the
+  browser UI can. So `none` is **not a CSRF vector**. Rejecting it adds no protection today, and allowing it
+  under R7–R11 removes none.
+- **Risk of (b) reject:** a browser other than Chromium might label a reload or resubmission `none`
+  （**NOT measured**: WebKit, Firefox）. A future native form post would then fail on reload.
+- **Risk of (a) evaluate `Origin`:** none found. A `none` request without `Origin` falls to R11 and so
+  follows S-1.
+- Recommendation（not a decision）: (a). It keeps one rule — "`Origin` decides whenever Fetch Metadata does
+  not say same-origin or cross" — and avoids a browser-specific false reject.
 
 **Comparison rule:** compare the serialized origin exactly: scheme, host and port（`new URL(origin).origin`）.
 There is no suffix, wildcard or case folding beyond what `URL` does. `Referer` is **not** used.
 
-### 4.3 The "both headers absent" case（R11）
+### 4.3 The "both headers absent" case（R11, decision S-1; rev 2: no recommendation）
 
-- Modern browsers send `Origin` on every non-GET / HEAD request, including same-origin `fetch`（Mock: every
-  POST row carried `Origin`）. A victim's browser therefore cannot be made to send a cross-site POST with
-  neither header（Inference）.
-- Clients that send neither are non-browser tools: curl, tests, server-to-server. Those cannot carry a
-  victim's cookies, so they are not CSRF vectors（Inference）.
-- **Allow**（recommended, S-1）keeps the `users/me` behaviour and existing tooling. **Reject** is stricter and
-  breaks any non-browser caller; none was found in the repository（§2.3）.
+**Who sends neither header:**
+
+| sender | sends neither? | evidence |
+| --- | --- | --- |
+| first-party Web（Chromium 141） | no: every POST carried `Origin` and `same-origin` | Mock |
+| a cross-site page in Chromium 141 | no: forms, `no-cors` fetch and sandboxed iframes all carried `Origin`（`null` for the sandbox）and `cross-site` | Mock |
+| WebKit / Firefox / older browsers | not measured | NOT_VERIFIED |
+| a browser with an extension or proxy that strips headers | possible | Inference |
+| non-browser clients（curl, scripts, monitors, server-to-server） | yes | Inference |
+| the repository's route unit tests | **yes**: they build requests without either header（list below） | Code |
+
+**Allow vs reject:**
+
+| aspect | allow | reject |
+| --- | --- | --- |
+| browser CSRF from another site | not opened, provided browsers always send one of the two headers on a cross-site POST（true in Chromium 141; other browsers NOT_VERIFIED） | closed even if some browser omits both |
+| header-stripping extension or proxy | requests still work; the CSRF check is **silently off** for that user | that user's login, logout and chat fail with 403 |
+| non-browser clients | work, but they hold no victim cookie, so there is no CSRF gain in blocking them（Inference） | blocked: curl-based smoke checks or monitors against these routes break（none found in the repository; manual practice NOT_VERIFIED, see below） |
+| existing unit tests | unchanged | **16 cases need explicit headers added**（login 4, register 3, chat 6, compass weekly 3）, and one `users/me` case flips from allow to 403 |
+| consistency | same as `DELETE /api/users/me` today | changes `users/me` behaviour too（R11 moves into the shared helper） |
+| monitoring | the log line records "both absent"; the rate can be measured in report-only mode（S-4） | the same log line, now as rejections |
+
+**Non-browser clients and test utilities（Code）:**
+
+- Unit tests that construct requests without `Origin` or `Sec-Fetch-Site`:
+  - `app/api/auth/login/route.test.ts`（4 cases）;
+  - `app/api/auth/register/__tests__/route.test.ts`（3）;
+  - `app/api/concierge/chat/__tests__/route.test.ts`（6）;
+  - `app/api/compass/weekly/__tests__/route.test.ts`（3）;
+  - `app/api/users/me/__tests__/route.test.ts`, whose case "Originが無い場合はBackend DELETEを呼ぶ" asserts
+    R11 = allow.
+- Playwright e2e: browser pages send the headers; chat is intercepted by `page.route` before the BFF
+  （`e2e/fixtures/directionScenario.ts:109`）. No `APIRequestContext` POST to these routes exists.
+- Scripts and CI: no script, Makefile target or workflow posts to these routes.
+- Runbooks: `docs/ops/production-smoke-checklist.md:242` and `docs/ops/production-bff-hardening.md` list
+  `/api/concierge/chat/` as a check, but do not say whether it is done in a browser or with curl
+  （NOT_VERIFIED）.
+- Mobile does not use the BFF.
+- **Required either way:** the implementation PR adds a shared test helper that sets same-origin headers, so
+  the route tests state their assumption explicitly instead of relying on R11.
+
+This record does **not** choose S-1.
 
 ### 4.4 Determining `expected`
 
 - `req.nextUrl.origin` is what `DELETE /api/users/me` uses today（Code）.
 - **PROD-UNVERIFIED:** on Vercel, `req.nextUrl.origin` must equal the public origin the browser sees,
   including `https`, for every domain that serves the app（production domain, `www` / apex, preview URLs）.
-- If it does not, every legitimate POST would be rejected. Mitigation options（S-3）:
-  - report-only first（§8）;
-  - an explicit allowlist from an env var, compared in addition to `req.nextUrl.origin`.
+- If it does not, every legitimate POST would be rejected. The options for S-3, which this record does
+  **not** choose（rev 2）:
+  - `req.nextUrl.origin` only;
+  - `req.nextUrl.origin` plus an explicit allowlist from an env var.
+
+  Report-only mode（S-4）can show which one is needed before enforcement.
 
 ### 4.5 Rejection response
 
@@ -190,6 +254,34 @@ forms can send `text/plain`）.
 - The claim UI should name the account that will receive the consultation（#3318 C-3）. That is a G3 / UI item
   and not part of this PR.
 
+### 4.8 What V-1 does **not** close（rev 2）
+
+**Completing V-1 does not complete CSRF protection for the BFF.** V-1 covers the five core routes only.
+
+**Class B residual-risk statement:**
+
+> After V-1, the 16 Class B route files（§2.2, `PATCH /api/users/me` included）and the 4 B / C files still accept state-changing requests from any **same-site**
+> origin that carries the victim's `SameSite=Lax` cookies. Measured on a Chromium mock: a same-site
+> cross-origin form POST arrived with `Sec-Fetch-Site: same-site` and with the Lax cookies. Such an origin can
+> add or delete favourites and goshuins, post shrine interactions, submissions, visits and reflections, call
+> `PATCH /api/users/me`, and start billing checkout or portal sessions, all as the victim. Cross-site origins
+> remain blocked by `SameSite=Lax`.
+>
+> Whether any same-site origin exists that an attacker can control depends on the production domain and its
+> subdomains, which are **PROD-UNVERIFIED**（T9）. Until S-7 extends the helper to Class B, this exposure
+> stays open.
+
+Other things V-1 does not address:
+
+| item | why it stays open |
+| --- | --- |
+| Class C routes（`/api/my/shrines`, `/api/deep-dive/ask`, `/api/places/*`） | not in scope; little CSRF value, but no check either |
+| any new state-changing route | there is no global guard; each route must call the helper（S-10） |
+| direct backend endpoints | S-6 |
+| XSS or a compromised first-party origin | same-origin requests pass the check by design |
+| subdomain takeover on the production domain | turns T9 into a reachable attack; depends on DNS hygiene（PROD-UNVERIFIED） |
+| the chat BFF dropping other upstream `Set-Cookie` headers（#3318 RR-15） | not a CSRF issue; out of scope |
+
 ---
 
 ## 5. Direct backend routes（item 8）
@@ -209,7 +301,8 @@ backend-origin jar and future clients.
 
 ## 6. Request / response test matrix（implementation PR）
 
-Shared helper（`lib/server/__tests__/requestOrigin.test.ts`）: one case per row R1–R11, plus:
+Shared helper（`lib/server/__tests__/requestOrigin.test.ts`）: one case per row R1–R12, with R3 and R11 written
+for both outcomes of S-9 and S-1 and only the chosen one kept, plus:
 
 - upper-case scheme or host;
 - default port（`:443`）;
@@ -229,12 +322,25 @@ Per route（vitest, next to the existing tests）:
 | `Origin: null` | 403 | 403 | 403 | 403 | 403 |
 | malformed `Origin` | 403 | 403 | 403 | 403 | 403 |
 | both headers absent | per S-1 | per S-1 | per S-1 | per S-1 | per S-1 |
+| `Sec-Fetch-Site: none` + matching `Origin` | per S-9（a: allowed; b: 403） | same | same | same | same |
+| `Sec-Fetch-Site: none`, no `Origin` | per S-9 then S-1 | same | same | same | same |
+| unknown `Sec-Fetch-Site` value（R12） | 403 | 403 | 403 | 403 | 403 |
 | form-encoded body, same-origin（S-2） | 415, no cookie | 415 | n/a | 415, no upstream | 415 |
 | `text/plain` body shaped like JSON | 415 | 415 | n/a | 415 | 415 |
 | rejection response | `Cache-Control: no-store`; body has no upstream detail | same | same | same | same |
 
 Assertions on every rejection: `res.headers.getSetCookie()` is empty, the mocked `djFetch` /
 `bffFetchWithAuthFromReq` was called 0 times, and the request body was not consumed.
+
+**Regression set（rev 2）:**
+
+- **Existing tests:** all 16 cases in the four route test files listed in §4.3, plus the 5 `users/me` cases,
+  stay green after a shared `sameOriginHeaders()` test helper is added to their requests. Under S-1 = reject,
+  the `users/me` "Origin absent" case is rewritten to expect 403.
+- **Class B guard test:** one test per Class B handler（`PATCH /api/users/me` included）asserts that it does
+  **not** call the helper yet. It is deleted when S-7 lands, so coverage cannot be assumed by accident.
+- **Inventory guard（S-10）:** a test lists every exported POST / PUT / PATCH / DELETE handler under
+  `app/api/**` and fails when a new one is neither in the V-1 list nor in the documented Class B / C lists.
 
 Frontend（vitest）:
 
@@ -256,12 +362,14 @@ E2E（Playwright, **non-production** deployment only）:
 | first-party Web requests | unchanged: they send the own `Origin` and `Sec-Fetch-Site: same-origin` | Mock + Code（§2.3） |
 | `Referrer-Policy` | the repo sets none. In Chromium 141 a same-origin POST kept its real `Origin` even under `Referrer-Policy: no-referrer` | Code + Mock; **other browsers not measured** |
 | login via form-encoded body | stops working if S-2 is adopted; no first-party caller or test uses it | Code |
-| non-browser tools（curl, scripts） | unaffected if S-1 = allow; blocked if S-1 = reject | Inference |
+| non-browser tools（curl, scripts, monitors） | unaffected if S-1 = allow; blocked if S-1 = reject. None found in the repository; manual runbook practice NOT_VERIFIED | Code + Inference |
+| existing route unit tests | 16 cases build requests without either header; they need explicit headers under S-1 = reject, and are cleaner with them either way | Code（§4.3） |
+| reload / resubmission | Chromium 141 re-sends a reloaded form POST as `same-origin`; no first-party page is a POST result | Mock + Code（§4.2.1） |
 | mobile app | unaffected（talks to the backend, not the BFF） | Code |
 | preview deployments | unaffected if `req.nextUrl.origin` equals the preview URL | **PROD-UNVERIFIED**（§4.4） |
 | browser extensions that strip `Origin` | possible false 403 if they also strip Fetch Metadata and S-1 = reject | Inference |
 | e2e fixtures | `page.route` intercepts chat before the BFF; unaffected | Code: `e2e/fixtures/directionScenario.ts:109` |
-| `DELETE /api/users/me` | moves to the shared helper. That **adds** R1–R3（`Sec-Fetch-Site`）to it; same-origin behaviour unchanged | Code |
+| `DELETE /api/users/me` | moves to the shared helper. That **adds** R1, R2, R12 and the S-9 outcome to it; same-origin behaviour unchanged | Code |
 
 ---
 
@@ -276,10 +384,12 @@ E2E（Playwright, **non-production** deployment only）:
 4. S-2 content-type checks, if approved.
 5. S-5 logout failure handling in `AuthProvider.tsx` and `lib/api/auth.ts`, if approved.
 6. Optional rollout switch for report-only mode（S-4）.
+7. The `sameOriginHeaders()` test helper, the existing-test updates, and the Class B and inventory guard tests
+   （§6 regression set）.
 
-**Out of scope**
+**Out of scope — so V-1 does not close BFF-wide CSRF（§4.8）**
 
-- Class B routes（decision S-7）.
+- Class B routes（decision S-7）: the same-site exposure stays open.
 - Any backend change（S-6）.
 - Cookie attributes, the token lifetime, the RR-15 drop of relayed `Set-Cookie`, P1 / P2, the handoff grant,
   mobile（MF-1）, migrations.
@@ -305,7 +415,8 @@ E2E（Playwright, **non-production** deployment only）:
 | kind | items |
 | --- | --- |
 | **Code facts** | §1 correction; §2.2 inventory; §2.3 callers and form support; no `Referrer-Policy` set; `CsrfExemptSessionAuthentication` unused; JWT auth by header |
-| **Chromium mock results**（141.0.7390.37, local） | first-party POSTs carry `Origin` + `Sec-Fetch-Site: same-origin`; cross-site forms（urlencoded / text/plain / multipart）carry the attacker `Origin` + `cross-site` and no Lax cookies; a cross-site JSON `fetch` stops at preflight; same-site cross-origin carries `same-site` **and** the Lax cookies; a sandboxed iframe sends `Origin: null`; `no-referrer` did not null a same-origin `Origin`; #3318: `Set-Cookie` applies on cross-site top-level POSTs |
+| **Chromium mock results**（141.0.7390.37, local） | rev 2: `Sec-Fetch-Site: none` only on address-bar-style GET navigations; a reloaded form POST re-sent as `same-origin` with `Origin`; history back sent no request. Earlier: first-party POSTs carry `Origin` + `Sec-Fetch-Site: same-origin`; cross-site forms（urlencoded / text/plain / multipart）carry the attacker `Origin` + `cross-site` and no Lax cookies; a cross-site JSON `fetch` stops at preflight; same-site cross-origin carries `same-site` **and** the Lax cookies; a sandboxed iframe sends `Origin: null`; `no-referrer` did not null a same-origin `Origin`; #3318: `Set-Cookie` applies on cross-site top-level POSTs |
+| **NOT measured** | WebKit and Firefox for every row above, including `none` on reload / resubmission and the "both headers absent" case |
 | **PROD-UNVERIFIED** | the production domain and any sibling subdomains（T9）; `req.nextUrl.origin` on Vercel for every serving domain（§4.4）; production response headers（`Referrer-Policy`）; WebKit / Firefox behaviour; the real routes' behaviour under attack（E2E on non-production only） |
 
 ---
@@ -314,15 +425,35 @@ E2E（Playwright, **non-production** deployment only）:
 
 | id | decision | options | recommendation（not a decision） |
 | --- | --- | --- | --- |
-| S-1 | both `Origin` and `Sec-Fetch-Site` absent | allow / reject | allow（matches `users/me`; no browser CSRF path） |
+| S-1 | both `Origin` and `Sec-Fetch-Site` absent | allow / reject | **none given**（rev 2）; trade-offs in §4.3 |
 | S-2 | JSON-only bodies on login, register, chat, compass weekly | yes / no | yes（U-2） |
-| S-3 | how `expected` is derived | `req.nextUrl.origin` only / plus an env allowlist | `nextUrl` plus an allowlist only if production verification shows a mismatch |
+| S-3 | how `expected` is derived | `req.nextUrl.origin` only / plus an env allowlist | **none given**（rev 2）; depends on S-8 results（§4.4） |
 | S-4 | rollout | enforce at once / report-only first（length?） | report-only for a short period on preview, then enforce |
 | S-5 | logout failure UX（U-1） | show an error and keep the session / clear the client state anyway | show the error |
 | S-6 | backend defense in depth for direct `AllowAny` anon-cookie endpoints | now / later / never | later, with MF-1 |
-| S-7 | extend the helper to Class B routes | now / follow-up PR | follow-up PR, after the production domain is known（T9） |
+| S-7 | extend the helper to Class B routes | in the V-1 PR / follow-up PR / not at all | follow-up PR after the production domain is known（T9）; until then the §4.8 residual risk is accepted **explicitly** or not at all |
 | S-8 | who verifies §10 PROD-UNVERIFIED items, and on which non-production deployment | — | required before enforce mode |
+| S-9 | `Sec-Fetch-Site: none`（R3） | (a) evaluate `Origin` / (b) reject | (a)（§4.2.1） |
+| S-10 | inventory guard test for new state-changing routes | yes / no | yes |
+| S-11 | accept the Class B same-site residual risk until S-7（§4.8） | accept with a date / block V-1 until S-7 | open |
 | V-1 | approve this contract as the implementation PR scope（§8） | yes / no | — |
+
+### 11.1 Implementation blockers（rev 2）
+
+The implementation PR must not start until all of these are resolved:
+
+1. **S-1** and **S-3** decided by Mother Ship. This record gives no recommendation for either.
+2. **S-9** decided（R3）.
+3. **S-8**: production-dependent checks are done on a non-production deployment:
+   - `req.nextUrl.origin` equals the browser-visible origin on every serving domain;
+   - the production domain and its subdomains are known（T9）.
+4. **S-11**: the Class B residual risk is accepted, or S-7 is pulled into scope.
+5. **V-1** approves §8 as the scope.
+
+These are **not** blockers for starting implementation, but they shape it:
+
+- S-2（JSON only）, S-4（rollout）, S-5（logout UX）: each adds or removes a step in §8.
+- S-6（backend）and S-10（inventory guard）.
 
 ---
 
