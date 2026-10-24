@@ -115,6 +115,14 @@ FINAL STATUS                = STOP
 - the decision row（D0–D13）;
 - the reason code;
 - a non-sensitive **mode marker**（`observe` / `enforce`）, needed to tell observation logs from enforcement logs.
+  - **What the mode marker is.** It is a **fixed classification value for the validated internal state**.
+    After the §3 validation succeeds, the guard maps the result to one of two internal constants. The marker
+    is that constant.
+  - **What it is not.** It is never the raw value of `WEB_CSRF_MODE`, or of any other environment variable,
+    copied or interpolated into the log. That the two allowed values and the two markers are spelled alike
+    does not make the marker a configuration value.
+  - When the mode configuration is invalid（§3, F-1）, there is no validated state, so **no mode marker** is
+    logged. Only `mode_config_invalid` is.
 
 **Never logged:** the raw `Origin`, `Host`, `Cookie`, `Authorization`, access or refresh tokens, any environment or
 configuration value, or request bodies.
