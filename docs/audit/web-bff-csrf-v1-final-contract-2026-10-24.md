@@ -8,6 +8,7 @@ RUNTIME IMPLEMENTATION        = NOT AUTHORIZED（V-1）
 runtime / BFF / cookies / auth = UNCHANGED
 env vars / deployments        = UNCHANGED / NONE
 models / migrations / P1 / P2 = UNCHANGED / NOT IMPLEMENTED
+REVIEW CORRECTIONS（rev 2）    = R1 §1.1 / §9.4 / §10 / §12; R2 §8.5 / §9.3; R3 §3.4 / §3.7 / §8.2
 FINAL STATUS                  = STOP — awaiting the approvals in §12
 ```
 
@@ -31,7 +32,7 @@ FINAL STATUS                  = STOP — awaiting the approvals in §12
 | --- | --- | --- |
 | **S-1 = A** | reject when both `Origin` and `Sec-Fetch-Site` are absent | row D13（§2） |
 | **S-9 = A** | when `Sec-Fetch-Site: none`, evaluate `Origin` | rows D9–D10 |
-| **S-11 = B** | Class B routes go in a separate, time-bound PR | §9; Class B is **out of V-1** |
+| **S-11 = B** | Class B routes go in a separate, time-bound PR | §9; Class B is **out of V-1**. S-11 = B approves **splitting** Class B into its own PR. It is **not** an unconditional or time-bound acceptance of the Class B risk: the deadline and the acceptance conditions await **A-7**（rev 2, R1） |
 | **S-3 = B** | use explicitly configured, environment-specific public origins | §3 |
 | **S-12**（conditional） | treat `Sec-Fetch-Site: same-origin` as evidence, but reject an explicit contradictory `Origin` | rows D4–D8 |
 | **V-1 runtime** | **not authorized** | nothing here may be implemented until §12 approvals |
@@ -133,9 +134,9 @@ only the validation reason code, never the values（§3.6）.
 
 ### 3.4 Selecting the currently served public origin（binding）
 
-- `current` is the **configured entry whose `host` equals the request's `Host` header**, compared
-  case-insensitively, as host:port.
-- If no entry matches, or `Host` is absent, `current = null` and D0 applies.
+- `current` is the **configured entry whose `host` equals the request's validated `Host`**（§3.7）. Both are
+  in the canonical form described there.
+- If `Host` is absent, duplicated or malformed（§3.7）, or no entry matches, `current = null` and D0 applies.
 - **Binding:** an `Origin` is compared **only** with `current`, never with "any configured origin". A page on
   configured origin X posting to configured origin Y arrives with `Host` Y and `Origin` X. It is rejected by D6
   or D12.
@@ -149,6 +150,8 @@ only the validation reason code, never the values（§3.6）.
 - **`req.nextUrl.origin` is not used.** #3322 showed it equals the platform origin on Vercel Preview for GET.
   #3320 showed it is the bind address off Vercel. Making it an input would add nothing on Vercel and break
   self-hosting.
+- **Preview platform values still need A-3.** Without A-3, preview mode uses only a Preview-scoped
+  `WEB_PUBLIC_ORIGINS`, and every preview host not listed there gets D0. This record does not decide A-3.
 
 ### 3.5 Behaviour when configuration is missing or invalid（S-12 included）
 
@@ -167,6 +170,65 @@ only the validation reason code, never the values（§3.6）.
 - **Not logged:** the `Origin` value, `Host`, `Cookie`, `Authorization`, any token, any configuration value,
   the request body.
 - Allowed requests are not logged by this helper.
+
+### 3.7 `Host` and origin parsing — normalization and rejection（rev 2, R3）
+
+**One parser.** The configured entries, the `Host` header and the `Origin` header are all parsed with the
+WHATWG `URL` implementation in the Node.js runtime. Matching is **exact string equality between canonical
+serializations**. An input whose raw form differs from its canonical form is **rejected, never normalized
+into a match**. The only exception is the case of the `Host` header.
+
+**`Host` validation**（any failure → `current = null` → D0）:
+
+| rule | detail |
+| --- | --- |
+| present, single | absent → reject. A value containing `,`（joined duplicates）→ reject |
+| characters | reject empty, whitespace, control characters, `@`（userinfo）, `/`, `\`, `?`, `#`, `%` |
+| shape | `reg-name` or IPv4, optionally `:port`; or `[IPv6]`, optionally `:port` |
+| canonical form | let `h` = the value lower-cased. Parse `new URL("http://" + h)`. It must have no username, password or path beyond `/`, and `url.host === h`. Otherwise reject |
+| port | `1`–`65535`, no leading zeros（`03000` re-serializes as `3000` → reject）. An **explicit default port**（`:80`, `:443`）does not equal the configured entry's `host`, which omits default ports → no match → D0. Browsers omit default ports（inference） |
+| trailing dot | `example.com.` is not stripped → no match → D0 |
+| IDN | browsers send A-labels（punycode）. Configured entries must be written in A-label form, because a Unicode entry fails §3.3 rule 1 when `URL` re-serializes it to punycode |
+| case | `Host` is case-insensitive（RFC 9110）: lower-casing is the only normalization applied |
+
+**Selection:** `current` = the configured entry whose `new URL(entry).host` equals `h`. §3.3 rule 5 already
+rejects two entries with the same `host`, so the selection is never ambiguous.
+
+**`Origin` validation:** as §2.1. It must equal `new URL(origin).origin` exactly, which includes being
+lower-case and having no explicit default port. Then it is compared with `current` by string equality.
+
+**Can parsing inconsistencies cause a wrong match?**
+
+| case | outcome |
+| --- | --- |
+| `Host: EXAMPLE.com` vs entry `https://example.com` | lower-cased → match. This is intended: case-insensitive by RFC |
+| `Host: example.com:443` vs entry `https://example.com` | no match → D0（fail closed, not a false match） |
+| `Origin: https://EXAMPLE.com` | not canonical → malformed → D8 / D10 / D12（reject） |
+| `Origin: https://example.com:443` | not canonical → malformed → reject |
+| `Host: example.com, evil.example`（duplicate） | contains `,` → reject |
+| `Host: evil.example@example.com` | `@` → reject |
+| configured `https://example.com` and `http://example.com` | ambiguous → configuration invalid → D0 for all（§3.3 rule 5） |
+| configured `https://example.com:8443` and `https://example.com` | distinct `host` values → both valid; a request selects exactly one |
+
+Every divergence between the raw and the canonical form ends in a rejection. Because one parser produces both
+sides of each comparison, two inputs cannot be "equal after normalization" while being different origins
+（inference from the rules above; to be proven by the §8.2 parser tests）.
+
+**Not covered:** the hosting platform or a proxy parsing a request differently from Node before the request
+reaches the handler, for example duplicate `Host` lines collapsed upstream or request smuggling. Duplicate
+detection works only on what reaches the handler. On Vercel that front-end behaviour is the platform's
+（NOT_VERIFIED）.
+
+**Reverse-proxy assumptions:**
+
+| deployment | assumption | if it does not hold |
+| --- | --- | --- |
+| Vercel（production, preview） | the platform passes the public host the browser requested as `Host`. Consistent with #3322: the diagnostic selected a platform host from `Host` on both preview URLs（inference） | D0 for every request → the five routes are unavailable; caught at L2 / L3（§11） |
+| self-hosted behind a proxy（nginx, Caddy, a load balancer） | the proxy forwards the **original** `Host`（e.g. nginx `proxy_set_header Host $host`）; rejects or normalizes duplicate `Host`; and terminates TLS. The scheme comes from the configured entry, **not** from `X-Forwarded-Proto` | the proxy rewrites `Host` to an upstream name → no match → D0（fail closed） |
+| Docker / local without a proxy | the browser's `Host`（e.g. `localhost:3000`）reaches Next.js directly | the browser uses a host that is not configured（e.g. `127.0.0.1:3000`）→ D0 |
+
+`X-Forwarded-Host` is never consulted, so a proxy that only sets `X-Forwarded-Host` does not help. It must
+preserve `Host`.
 
 ---
 
@@ -282,6 +344,15 @@ PR includes it only if S-2 is approved.
 - D11–D13.
 - **Binding:** with two configured origins X and Y, `Host` Y with `Origin` X → reject（D6 / D12）.
 - `X-Forwarded-Host` set to a configured host while `Host` is not → D0.
+- **`Host` parsing（§3.7）:** each row of the §3.7 tables gives its stated outcome:
+  - duplicated（`a, b`）, empty, whitespace, `@`, `/`, `%`, control characters;
+  - a port of `0`, `65536` or with leading zeros;
+  - an explicit default port, a trailing dot, upper case, IPv6 with and without a port;
+  - punycode vs a Unicode configuration.
+- **`Origin` parsing:** upper case, an explicit default port, a trailing slash, a path, and duplicated values
+  are all rejected, never normalized into a match.
+- **Property test:** for random pairs of hosts or origins that are not identical in canonical form, the helper
+  never allows. `fast-check` is optional; table-driven tests are acceptable.
 - `req.nextUrl.origin` differing from `current` has no effect.
 - The log line contains the row and reason only; asserted not to contain the `Origin`, `Host` or cookie values.
 
@@ -304,10 +375,37 @@ PR includes it only if S-2 is approved.
 
 ### 8.5 Regression guards
 
-- **Inventory guard:** a test lists every exported POST / PUT / PATCH / DELETE handler under `app/api/**`. It
-  fails when a handler is neither in the V-1 list（§4.1）nor in the documented Class B / C lists（§9）.
-- **Class B guard:** one test per Class B handler asserts it does **not** call the helper yet. It is deleted by
-  the Class B PR.
+**Inventory and coverage guard**（rev 2, R2）. It replaces the earlier "Class B guard". That guard asserted
+that Class B handlers do **not** call the helper, and it would have failed when protection was added.
+
+- **Manifest.** One reviewed table in the test file. Its key is `<route file>#<METHOD>`, and every entry has one
+  status:
+  - `protected`: the handler must run the CSRF helper before anything else;
+  - `deferred`: protection is not required yet. Each entry names its class（B or B / C）and the tracking
+    reference（§9）.
+- **Frozen deferral baseline.** A constant lists the handlers allowed to be `deferred`: the 20 files in §9.1, as
+  of V-1. A `deferred` entry outside that baseline fails the test, so a new route can enter the manifest only as
+  `protected`. Changing the baseline is a visible, reviewable edit.
+- **Discovery.** The test scans `apps/web/src/app/api/**/route.ts` for exported state-changing handlers:
+  - `export async function POST|PUT|PATCH|DELETE`;
+  - `export const POST|PUT|PATCH|DELETE`;
+  - `export { … as POST|PUT|PATCH|DELETE }`.
+
+**The test fails when:**
+
+1. a discovered handler is **not in the manifest**（a new state-changing route）;
+2. a manifest entry **no longer exists**（a stale entry）;
+3. a `protected` handler does not call the helper as its first statement（static check）. Its behaviour is
+   proven by the per-route tests in §8.3;
+4. a `deferred` entry is outside the frozen baseline.
+
+**The test does not fail when** a `deferred` handler already calls the helper. Protection gained early is
+accepted; the test only reports a hint to flip the entry to `protected`.
+
+- **Coverage output:** the test prints the counts of `protected` and `deferred` handlers, so reviewers see the
+  remaining Class B / C surface on every run.
+- **Exit:** the Class B PR flips its entries to `protected` and empties the baseline for those files. The
+  guard itself stays permanently.
 
 ### 8.6 Browser E2E（Preview only; not Production）
 
@@ -377,16 +475,30 @@ Run on Chromium, **WebKit and Firefox**:
 - The same helper and the same decision table（§2）on every Class B and B / C state-changing handler.
 - The same §5 response.
 - The S-2 content-type rule, if approved.
-- Removal of the Class B guard test（§8.5）.
+- Flip every Class B and B / C manifest entry to `protected`, and remove those files from the frozen deferral
+  baseline（§8.5）. The inventory guard stays.
 - Per-handler tests as in §8.3, and the E2E rows in §8.6 for a representative sample: favourites, goshuins,
   billing checkout, PATCH `users/me`.
 
-### 9.4 Deadline（proposal; needs approval A-7）
+### 9.4 Deadline and risk acceptance（proposal; **awaiting approval A-7**）
 
-- The Class B PR is merged **before general release**, and **before any custom domain is attached to the
-  project**, whichever comes first.
-- Proposed target: within **14 days after the V-1 PR merges**.
-- Until then, the §9.2 risk is the accepted residual.
+**Approval status（rev 2, R1）:**
+
+- S-11 = B approves only that Class B goes in a **separate PR**.
+- It does **not** accept the §9.2 risk, unconditionally or for a period, and it sets no deadline.
+- Until Mother Ship decides A-7, the Class B risk is **open and unaccepted**.
+
+**Proposed for A-7（not approved）:**
+
+- **Deadline:** the Class B PR is merged before general release, and before any custom domain is attached to the
+  project, whichever comes first. Proposed target: within 14 days after the V-1 PR merges.
+- **Acceptance conditions**, if Mother Ship chooses to accept the risk until then:
+  - no custom domain or same-site sibling origin is added（§9.2）;
+  - the §8.5 inventory guard is in place, so that no new state-changing route is added unprotected;
+  - the deferred set is frozen at the 20 files in §9.1;
+  - any condition breach re-opens the decision immediately.
+- Mother Ship may choose other conditions, or decline acceptance and require the Class B PR before V-1 is
+  enforced.
 
 ---
 
@@ -396,7 +508,8 @@ Run on Chromium, **WebKit and Firefox**:
 
 - **S-1 = A:** reject when both headers are absent.
 - **S-9 = A:** evaluate `Origin` when `Sec-Fetch-Site: none`.
-- **S-11 = B:** Class B goes in a separate, time-bound PR.
+- **S-11 = B:** Class B goes in a separate, time-bound PR. This approves the **split only**. The deadline and any
+  risk acceptance await A-7（§9.4）.
 - **S-3 = B:** explicitly configured, environment-specific public origins.
 - Earlier: S-13 diagnostic（conditional; its job is done, cleanup per #3322 §5）.
 
@@ -408,14 +521,14 @@ Run on Chromium, **WebKit and Firefox**:
 ### 10.3 Still open
 
 S-2, S-4（rollout: enforce vs report-only）, S-5, S-6（backend defense in depth）, S-8（Production / POST /
-WebKit / Firefox）, S-10（the inventory guard; included in §8.5 as a proposal）, S-14（Docker / self-hosting;
+WebKit / Firefox）, S-10（the inventory and coverage guard; defined in §8.5 as a proposal）, S-14（Docker / self-hosting;
 addressed by §3.2 if approved）, and A-1 to A-8 in §12.
 
 ### 10.4 Residual risks
 
 | id | risk | status |
 | --- | --- | --- |
-| R-B | Class B same-site CSRF（§9.2） | accepted until the Class B deadline |
+| R-B | Class B same-site CSRF（§9.2） | **open, not accepted**. The deadline and acceptance conditions await A-7（§9.4） |
 | R-C | Class C routes have no check | low CSRF value; tracked in §9.1 B / C |
 | R-D | **direct backend exposure**: `AllowAny` chat and compass weekly accept cross-site form posts at the backend origin（#3319 §5）. JWT is header-based; Django session CSRF is enforced; `CsrfExemptSessionAuthentication` is unused | no change in V-1（S-6 open） |
 | R-M | **MF-1**: mobile sends concierge chat unauthenticated（#3318 §8） | separate issue, outside V-1 |
@@ -461,7 +574,7 @@ addressed by §3.2 if approved）, and A-1 to A-8 in §12.
 | A-4 | S-2 JSON-only | §6 |
 | A-5 | S-5 logout failure behaviour, before production enforcement | §7, L4 |
 | A-6 | S-4 rollout mode | L4 |
-| A-7 | the Class B deadline（§9.4） | §9 |
+| A-7 | the Class B deadline **and** whether, and under which conditions, the Class B risk is accepted until then（§9.4）. Not implied by S-11 = B | §9; R-B |
 | A-8 | the G3 dependency on V-1 enforcement（§10.5） | handoff G3 |
 | — | S-6, S-8 remainder, S-14 | stay open |
 
