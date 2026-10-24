@@ -82,6 +82,8 @@ FINAL STATUS             = STOP
   2. **E2E:** a Preview E2E run（contract §8.6, gate L2）confirms that first-party POSTs pass and cross-site
      POSTs fail, on Preview.
 - Until both conditions are met, the approval does not count as satisfied.
+- **Validation use vs. validated reliance:** once A-0 is separately approved, the implementation and Preview-only tests may read these platform-provided values for the purpose of verifying condition 1 and condition 2. This is *test use*, not confirmation that the conditions have passed. Until both checks pass, do not mark A-3 as validated, rely on the behavior as production-ready, or authorize production enforcement.
+- This record does not authorize changing any environment variable, executing tests against a new deployment, or implementing runtime code before A-0. Production continues to use `WEB_PUBLIC_ORIGINS` only; Vercel Preview platform values never become Production authorities.
 - Production does **not** use these values（contract §3.2）. A-3 does not change that.
 
 ### 4.4 A-4 — JSON-only（S-2）
