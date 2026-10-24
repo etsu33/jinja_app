@@ -9,6 +9,7 @@ runtime / BFF / cookies / auth = UNCHANGED
 env vars / deployments        = UNCHANGED / NONE
 models / migrations / P1 / P2 = UNCHANGED / NOT IMPLEMENTED
 REVIEW CORRECTIONS（rev 2）    = R1 §1.1 / §9.4 / §10 / §12; R2 §8.5 / §9.3; R3 §3.4 / §3.7 / §8.2
+REVIEW CORRECTIONS（rev 3）    = R1 only: §9.2, §9.4, §10.1, §10.4, §12 — Class B risk temporarily unresolved, not accepted, A-7 open
 FINAL STATUS                  = STOP — awaiting the approvals in §12
 ```
 
@@ -469,6 +470,9 @@ Run on Chromium, **WebKit and Firefox**:
   （PATCH `users/me`）, or start billing checkout or portal sessions as the victim.
 - Today no same-site sibling origin is known, because `vercel.app` is a public suffix and there is no custom
   domain（#3320 §4; inference）. A custom domain with subdomains makes the risk reachable.
+- This observation describes current reachability. It is **not** a risk acceptance.
+- **Status（rev 3, R1）:** temporarily unresolved; not yet accepted by Mother Ship; subject to A-7（§9.4, §10.4,
+  §12）.
 
 ### 9.3 Required coverage
 
@@ -484,14 +488,16 @@ Run on Chromium, **WebKit and Firefox**:
 
 **Approval status（rev 2, R1）:**
 
-- S-11 = B approves only that Class B goes in a **separate PR**.
-- It does **not** accept the §9.2 risk, unconditionally or for a period, and it sets no deadline.
-- Until Mother Ship decides A-7, the Class B risk is **open and unaccepted**.
+- S-11 = B decides that Class B goes in a **separate, time-bound PR**, outside V-1.
+- S-11 = B requires a time bound but **does not define it**. The time bound is part of A-7.
+- S-11 = B does **not** accept the §9.2 risk, unconditionally or for a period.
+- Until Mother Ship decides A-7, the Class B risk is **temporarily unresolved and not accepted**.
 
 **Proposed for A-7（not approved）:**
 
 - **Deadline:** the Class B PR is merged before general release, and before any custom domain is attached to the
   project, whichever comes first. Proposed target: within 14 days after the V-1 PR merges.
+  **The 14-day figure is a proposal only.** No date is approved, and this record sets no acceptance date.
 - **Acceptance conditions**, if Mother Ship chooses to accept the risk until then:
   - no custom domain or same-site sibling origin is added（§9.2）;
   - the §8.5 inventory guard is in place, so that no new state-changing route is added unprotected;
@@ -508,8 +514,8 @@ Run on Chromium, **WebKit and Firefox**:
 
 - **S-1 = A:** reject when both headers are absent.
 - **S-9 = A:** evaluate `Origin` when `Sec-Fetch-Site: none`.
-- **S-11 = B:** Class B goes in a separate, time-bound PR. This approves the **split only**. The deadline and any
-  risk acceptance await A-7（§9.4）.
+- **S-11 = B:** Class B goes in a separate, time-bound PR. This approves the separate PR. The time bound itself
+  and any risk acceptance await A-7（§9.4）.
 - **S-3 = B:** explicitly configured, environment-specific public origins.
 - Earlier: S-13 diagnostic（conditional; its job is done, cleanup per #3322 §5）.
 
@@ -528,7 +534,7 @@ addressed by §3.2 if approved）, and A-1 to A-8 in §12.
 
 | id | risk | status |
 | --- | --- | --- |
-| R-B | Class B same-site CSRF（§9.2） | **open, not accepted**. The deadline and acceptance conditions await A-7（§9.4） |
+| R-B | Class B same-site CSRF（§9.2） | **temporarily unresolved; not yet accepted by Mother Ship; subject to A-7**. The time bound and any acceptance conditions await A-7（§9.4）. No acceptance date is set |
 | R-C | Class C routes have no check | low CSRF value; tracked in §9.1 B / C |
 | R-D | **direct backend exposure**: `AllowAny` chat and compass weekly accept cross-site form posts at the backend origin（#3319 §5）. JWT is header-based; Django session CSRF is enforced; `CsrfExemptSessionAuthentication` is unused | no change in V-1（S-6 open） |
 | R-M | **MF-1**: mobile sends concierge chat unauthenticated（#3318 §8） | separate issue, outside V-1 |
@@ -574,7 +580,7 @@ addressed by §3.2 if approved）, and A-1 to A-8 in §12.
 | A-4 | S-2 JSON-only | §6 |
 | A-5 | S-5 logout failure behaviour, before production enforcement | §7, L4 |
 | A-6 | S-4 rollout mode | L4 |
-| A-7 | the Class B deadline **and** whether, and under which conditions, the Class B risk is accepted until then（§9.4）. Not implied by S-11 = B | §9; R-B |
+| A-7 | the time bound for the separate Class B PR **and** whether, and under which conditions, the Class B risk is accepted until then（§9.4）. Not implied by S-11 = B. The proposed 14-day target is **not approved** | §9; R-B |
 | A-8 | the G3 dependency on V-1 enforcement（§10.5） | handoff G3 |
 | — | S-6, S-8 remainder, S-14 | stay open |
 
