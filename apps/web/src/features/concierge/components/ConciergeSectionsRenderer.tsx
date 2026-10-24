@@ -229,6 +229,8 @@ const THREAD_SAVE_ERROR_MESSAGES: Record<ConciergeThreadSaveError, string> = {
   no_thread: "この相談はまだ保存できる状態ではありません。もう一度相談してからお試しください。",
   not_owned: "この相談をあなたの履歴で確認できませんでした。ログイン後にもう一度相談すると保存されます。",
   unauthenticated: "ログインの有効期限が切れています。もう一度ログインしてからお試しください。",
+  server_unavailable: "サーバーが一時的に応答していないため、保存を確認できませんでした。少し時間をおいてもう一度お試しください。",
+  invalid_response: "保存の確認結果を読み取れませんでした。時間をおいてもう一度お試しください。",
   network: "保存を確認できませんでした。時間をおいてもう一度お試しください。",
 };
 
