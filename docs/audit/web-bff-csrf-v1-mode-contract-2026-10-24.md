@@ -72,7 +72,7 @@ FINAL STATUS                = STOP
 | --- | --- |
 | `WEB_CSRF_MODE` unset | **fail closed** |
 | empty string | **fail closed** |
-| unknown value（`report`, `off`, `OBSERVE`, ` enforce`, `true`…） | **fail closed** |
+| unknown value（`report`, `off`, `OBSERVE`, `true`, or `enforce` / `observe` with leading or trailing whitespace） | **fail closed** |
 | malformed or ambiguous（`observe,enforce`, several values, control characters） | **fail closed** |
 | `observe` | observation mode（§4） |
 | `enforce` | enforcement mode（§5） |
