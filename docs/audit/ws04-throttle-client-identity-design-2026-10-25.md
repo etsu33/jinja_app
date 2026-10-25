@@ -7,7 +7,7 @@ RECORD TYPE        = audit + design proposal（documentation only）
 SOURCE FINDING     = WS-04, docs/audit/web-production-security-effectiveness-audit-2026-10-25.md（PR #3349）
 BASELINE           = develop@c6880f4b67aae22473a40fcc825c74debee7e967
 MD-2 / MD-3 / MD-4 = APPROVED by Mother Ship（§8）
-MD-1               = NOT VERIFIED — primary Render sources unreachable from this environment（§9）
+MD-1               = NOT VERIFIED — primary sources unreachable（§9）; network separation UNVERIFIED（§10）
 IMPLEMENTATION     = NOT STARTED — blocked on MD-1
 PRODUCTION         = NOT ACCESSED; no rate-limit testing; no diagnostics
 FINAL STATUS       = STOP at the design gate
@@ -246,3 +246,80 @@ backend is blocked by the session egress policy, and no dashboard access is avai
 is needed: (a) the owner reads Render's documentation or obtains Render support confirmation and records it; or (b)
 Mother Ship approves running the isolated diagnostic in §9.4（a new, non-production Render service）. Implementation stays
 stopped until then.
+
+---
+
+## 10. Network identity separation check（2026-10-25）
+
+### 10.1 Result
+
+```text
+NETWORK SEPARATION   = UNVERIFIED
+REASON               = no isolated diagnostic service exists yet, and the two measurements（Mac network, iPhone
+                       cellular）can only be taken by the owner on those devices
+DIAGNOSTIC           = implemented and locally tested, not deployed: scripts/ws04_edge_diagnostic/
+JINJA-BACKEND        = UNCHANGED; no production endpoint; no production diagnostics
+```
+
+Checked before concluding: no diagnostic code or result exists on any branch of `etsu33/jinja_app` or in another
+repository of the account; this environment has no Render access（the Render domains and `*.onrender.com` are
+unreachable, and there is no Render API tool）.
+
+### 10.2 Diagnostic with an ephemeral HMAC comparison token
+
+`scripts/ws04_edge_diagnostic/app.py`（standard library only, no dependencies, no environment variables）:
+
+- **Ephemeral key**: 32 random bytes generated in memory at process start; never persisted, returned or logged. A short
+  random `key_id` is returned so that measurements can confirm they used the **same key**; a restart or free-instance
+  spin-down creates a new key and a new `key_id`, so tokens cannot be linked across generations（no long-lived network
+  identifier）.
+- **Comparison token**: the first 16 hex characters of `HMAC-SHA256(key, candidate)` for `CF-Connecting-IP`,
+  `True-Client-IP` and each `X-Forwarded-For` entry counted from the right.
+- **Never returned or logged**: raw addresses, header values, the key, full HMACs; the access log is disabled.
+- **Spoof detection**: `?probe=<token>` reports booleans for whether each header equals the tester's probe value.
+- Local checks（`python3 -m unittest scripts/ws04_edge_diagnostic/test_app.py`）: 8 passed — stable token for the same
+  input, different tokens for different inputs, no raw value in the response, spoof detection, missing headers, no log
+  output from the HTTP server.
+
+Owner procedure（deploy as a Free instance, measure, delete）: `scripts/ws04_edge_diagnostic/README.md`.
+
+### 10.3 Production versus isolated service configuration
+
+| setting | production `jinja-backend` | isolated diagnostic（as specified） | comparable? |
+| --- | --- | --- | --- |
+| hosting | Render web service | Render web service, Free instance | yes, if Free is not a different edge path（UNVERIFIED） |
+| domain | `jinja-backend.onrender.com`（default domain; custom domain: dashboard only） | default `onrender.com` domain, no custom domain | yes for the default domain; a production custom domain or extra proxy would break comparability |
+| region | dashboard only（UNVERIFIED） | choose the production region | must match |
+| plan / instance type | dashboard only（UNVERIFIED） | Free | UNVERIFIED whether the edge differs by plan |
+| runtime | gunicorn via `backend/start.sh`（dashboard runtime UNVERIFIED） | Python standard-library HTTP server | the edge headers do not depend on the app server; `REMOTE_ADDR` semantics do |
+| Blueprint | none（dashboard configuration） | none | yes |
+
+### 10.4 Remaining trust assumptions
+
+Even a PASS from §10.2 would establish only the following for the isolated service: two specific networks produced
+different edge identities, the identity was stable within one key generation, and the tested spoofed headers did or did
+not pass through. It would **not** establish:
+
+1. that production is behind the same edge configuration（plan, region, domain, any extra proxy — §10.3）;
+2. that the chosen header is present on **every** request and always overwritten（only a handful of requests are
+   sampled）;
+3. that no path reaches the service without passing the edge;
+4. per-user separation: carrier-grade NAT on cellular networks and shared office networks group many users under one
+   address; this is inherent to address-based throttling;
+5. stability across Cloudflare points of presence, IPv4 / IPv6 changes and future Render platform changes.
+
+Matching header structure（same entry count, same presence flags）is **not** treated as evidence of client separation;
+only differing tokens for the same candidate source under one `key_id` are.
+
+### 10.5 MD-1 readiness recommendation
+
+**Not ready.** Recommended next step: the owner deploys the diagnostic as a Free Render web service in the production
+region, runs the README measurements within one `key_id`, records only the equality results, and deletes the service.
+MD-1 can be proposed for approval when all of the following hold:
+
+- Mac token stable, iPhone token stable, Mac ≠ iPhone for the same candidate source;
+- that source never equals a spoofed probe value, and a spoofed `CF-Connecting-IP` is rejected or overwritten;
+- the source is present on every sampled request;
+- the owner confirms the production service uses the default domain with no additional proxy, and the same region.
+
+Until then, WS-04 implementation stays stopped.
