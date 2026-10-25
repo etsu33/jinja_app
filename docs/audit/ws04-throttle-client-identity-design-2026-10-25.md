@@ -10,7 +10,7 @@ MD-2 / MD-3 / MD-4 = APPROVED by Mother Ship（§8）
 MD-1               = APPROVED: CF_CONNECTING_IP_WITH_VERIFIED_EDGE_BOUNDARY（evidence §11, implementation §12）
 IMPLEMENTATION     = Phase C backend + BFF implemented（§12）; production configuration NOT performed
 PRODUCTION         = NOT ACCESSED; no rate-limit testing; no diagnostics
-FINAL STATUS       = PR review; deployment gated on §12.3
+FINAL STATUS       = PR review; deployment gated on §13.4; recursive SSR identity = STOP（§13.2）
 ```
 
 ---
@@ -444,3 +444,119 @@ Server components that fetch the backend（`src/lib/api/shrines.server.ts`）are
 - A captured attestation can be replayed for ≤ 60 s, but only into the same client's bucket.
 - Paths are signed in their encoded form; Django compares the decoded `request.path`, so non-ASCII paths fall back to the
   peer identity.
+
+---
+
+## 13. Pre-merge blockers B-1 / B-2 / R-1（2026-10-25）
+
+Resolves the PR #3354 pre-merge review findings within the same PR. No production setting, deployment or merge was
+performed. §12.3 is superseded by §13.4.
+
+### 13.1 B-1: startup configuration guard
+
+`backend/shrine_project/throttle_config.py` is called from `settings.py` at import time, so it runs on the real
+production path（gunicorn → `shrine_project.wsgi` → settings）and on every `manage.py` command. It needs no database.
+
+| condition | result |
+| --- | --- |
+| `THROTTLE_TRUSTED_EDGE` not empty and not `render-cloudflare`（any environment; case-sensitive） | `ImproperlyConfigured` |
+| `RENDER_EXTERNAL_HOSTNAME` set（Render web service）and `THROTTLE_TRUSTED_EDGE` missing / blank | `ImproperlyConfigured` |
+| `KM_CLIENT_IDENTITY_SECRET` set but shorter than 32 characters or with surrounding whitespace | `ImproperlyConfigured` |
+| `KM_CLIENT_IDENTITY_SECRET` unset | allowed（attestation unused; Web users share the Vercel egress bucket） |
+| local / CI（no `RENDER_EXTERNAL_HOSTNAME`）with nothing set | allowed（`remote:` fallback, as before this PR） |
+
+Messages name the variable but never its value. Local evidence: with `RENDER_EXTERNAL_HOSTNAME` set and the edge
+missing, `gunicorn shrine_project.wsgi:application` logs the `ImproperlyConfigured` line, then
+`Reason: Worker failed to boot.` and exits with status 3; with a valid configuration it keeps serving.
+
+**Operational consequence of a failed startup（Render）.** The new instance never becomes healthy and the deploy fails.
+Whether the previous instance keeps serving depends on Render's zero-downtime deploy, which applies only to services
+without a persistent disk. **The production disk status is unverified**, so a failed startup must be treated as a
+possible outage. The guard therefore does not replace the ordering in §13.4: the variables are set before the code that
+checks them is deployed, and the env-triggered redeploy of the old code（which ignores them）is the safe moment to
+confirm the values were saved. The guard also applies to any other Render web service built from this code（e.g. a
+preview environment）: each needs `THROTTLE_TRUSTED_EDGE`.
+
+`RENDER_EXTERNAL_HOSTNAME` is the platform signal already used by `settings.py`（`ALLOWED_HOSTS`, CSRF origins）and printed
+by `start.sh`; its presence in production is inferred from those code paths, not observed in this session.
+
+### 13.2 B-2: Server Component identity
+
+Audit of Server Component fetches that can reach Django anonymously:
+
+| function | path to Django | rendering |
+| --- | --- | --- |
+| `getShrineDetailServer`（`lib/api/shrines.server.ts`; Shrine page + `generateMetadata`, i.e. **two calls per view**） | **direct** when `DJANGO_API_BASE_URL` / `BACKEND_URL` / `NEXT_PUBLIC_API_BASE_URL` is set; otherwise **recursive** through the app's own `/api/shrines/{id}/data/` BFF route | dynamic（`cache: "no-store"`, request-time `searchParams`; no `generateStaticParams`, no `revalidate`） |
+| `fetchShrineMeaningPayloadV2Server`, `fetchPublicGoshuinsForShrineServer`, `shrines.list.server`, `concierge.server`, `favorites.server`, `billing.server` | **recursive** through the app's own BFF routes（`resolveServerBaseUrl*` / request host） | dynamic（`no-store`, `cookies()` / `headers()`） |
+
+Implemented（direct path only）: `getShrineDetailServer` signs with the existing HMAC contract when all of these hold:
+
+- `VERCEL=1` and the secret is set;
+- the target origin equals a configured backend origin（`DJANGO_ORIGIN`, `BACKEND_ORIGIN`, `DJANGO_API_BASE_URL`,
+  `BACKEND_BASE_URL`, `BACKEND_URL`; `NEXT_PUBLIC_API_BASE_URL` alone is not trusted as a backend origin）;
+- the page request's Vercel-overwritten `x-forwarded-for` is a single valid address.
+
+`headers()` is read only in that case, so the rendering mode and the `no-store` fetch are unchanged; otherwise the
+fetch call is byte-for-byte the previous one. No client IP is invented and no new request is added.
+
+**STOP — recursive Server Component requests.** On the recursive path the BFF route receives a request whose
+`x-forwarded-for` is the Vercel function's own egress address, not the browser's. Propagating the browser identity
+would need either a new trust hop（the BFF accepting an identity asserted by another function）or moving these
+Server Components to call Django directly. Both change the rendering architecture, which is outside the approved
+scope. These requests therefore stay keyed by the Vercel egress address（`bff:` or `edge:`）. This over-grouping existed
+before this PR（§2）; what changes is that the accidental spread from varying Render proxy hops in the old
+XFF-chain key（§11.3）disappears. Its size is unmeasured. Which path production uses for `getShrineDetailServer` is
+**unverified**（the Vercel environment list returned 403 to this session）.
+
+### 13.3 R-1: rejected attestation diagnostics
+
+`verified_bff_client_ip` now separates outcomes:
+
+- `absent`: no `X-KM-*` header（mobile and direct callers）, which is normal and not recorded;
+- `valid`;
+- rejections: `incomplete`, `secret_unconfigured`, `malformed`, `expired`, `bad_signature`.
+
+Each rejection increments a per-process counter（`attestation_rejection_counts()`）. A warning
+`BFF client identity attestation rejected: reason=<reason> count=<n> window_seconds=300` is emitted at most once per
+reason per 300 s per process, with the number of rejections since the previous warning. No IP, timestamp value,
+signature, secret or signed payload is logged.
+
+### 13.4 Configuration and rollout（owner action; not performed）
+
+Pre-checks（owner, read-only）:
+
+1. Render `jinja-backend`: whether a persistent disk is attached（decides whether a failed startup is an outage）.
+2. Render logs: `RENDER_EXTERNAL_HOSTNAME=` is printed with a value by `start.sh`.
+3. Vercel: system environment variables are exposed（`VERCEL=1` at runtime）, and which of `DJANGO_ORIGIN`,
+   `BACKEND_ORIGIN`, `DJANGO_API_BASE_URL`, `BACKEND_URL` are set（B-2 direct versus recursive path）.
+
+Rollout（Backend first）:
+
+1. Generate a secret locally（≥ 32 characters, no whitespace）; never paste it into chat, tickets or logs.
+2. Render `jinja-backend`: set `THROTTLE_TRUSTED_EDGE=render-cloudflare` and `KM_CLIENT_IDENTITY_SECRET`. The automatic
+   redeploy runs the current code, which ignores both; confirm it is healthy.
+3. Merge PR #3354; the backend deploys from `develop`. If startup fails, the deploy log shows the variable name in
+   `ImproperlyConfigured`; fix the variable or roll back（below）.
+4. Verify without load testing:
+   - startup logs contain no `ImproperlyConfigured`;
+   - no `trusted edge identity missing` warning appears while serving traffic;
+   - anonymous Concierge / Compass work from Web and mobile;
+   - no rise in HTTP 429.
+   Before step 5, `reason=secret_unconfigured` must not appear（it would mean the BFF already signs while the backend has
+   no secret）.
+5. Vercel Production: set the same `KM_CLIENT_IDENTITY_SECRET`（server-only, Sensitive）and redeploy. Keep the gap
+   between steps 3 and 5 short.
+6. Verify: Web flows work; no `attestation rejected` warning with `reason=bad_signature`（secret mismatch）,
+   `expired`（clock）, or `secret_unconfigured`.
+7. Delete the temporary diagnostic service（separate authorization）.
+
+Rollback:
+
+- Backend misbehaves（429 surge, failed startup）: Render → previous deploy. The variables can stay; the old code
+  ignores them. Do not remove `THROTTLE_TRUSTED_EDGE` while the new code runs: the guard would stop the next start.
+- Web identity problems only: compare the secret on both sides; removing it on Vercel returns Web users to the shared
+  egress bucket（behaviour before this PR）.
+- BFF errors: Vercel Instant Rollback. Old and new backend both accept requests with or without `X-KM-*`, so the two
+  rollbacks are independent.
+- Secret rotation or leak: replace on both sides together; during the gap attestations are rejected
+  （`bad_signature`）and Web users share the egress bucket.
