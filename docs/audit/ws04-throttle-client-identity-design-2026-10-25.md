@@ -323,3 +323,61 @@ MD-1 can be proposed for approval when all of the following hold:
 - the owner confirms the production service uses the default domain with no additional proxy, and the same region.
 
 Until then, WS-04 implementation stays stopped.
+
+---
+
+## 11. Render isolated-service observations and MD-1 review（2026-10-25）
+
+This section **supersedes §10.1 and §10.5's previous UNVERIFIED / not-deployed status**. It records operator-supplied test results and read-only Render service metadata verified in the same project conversation. It does **not** approve MD-1 or assert production runtime behavior.
+
+### 11.1 Isolated service and production comparison
+
+- Temporary diagnostic service: `ws04-md1-header-probe-20261025` (`srv-dbespffb9u1s73ar5sn0`), Render workspace `tea-d18eq9qdbo4c739j9sdg`.
+- Isolated service: Python / Singapore / Free, public default `onrender.com` domain, `0.0.0.0/0` IP allow list, one instance, auto-deploy off.
+- Production `jinja-backend` (`srv-d4sk1uscjiac739ko5r0`): Python / Singapore / Starter-class (`0.5c-512mb`), public default `onrender.com` URL, `0.0.0.0/0` allow list, one instance, auto-deploy on `develop`.
+- **Difference / residual uncertainty:** Free versus paid plan, distinct application servers, and unverified internal edge routing / any separately configured production routing. No claim is made that the two services' internal edge behavior is necessarily identical.
+- HMAC diagnostic deployed to the isolated service at commit `9ad19ff987f55c261d75d31d81e4a2368d2a12d1` and reported **LIVE** by Render. Production `jinja-backend` and its data were not modified.
+
+### 11.2 Initial header-spoof observations (pre-HMAC diagnostic)
+
+| Probe | Observed result | Interpretation |
+| --- | --- | --- |
+| ordinary request | `XFF` length 3; `CF-Connecting-IP` and `True-Client-IP` present and equal; same as XFF first entry | header presence/shape observed, not alone proof of trust |
+| forged `X-Forwarded-For` | XFF length 4; supplied marker survived in XFF; CF/True markers absent; CF matched XFF second entry | entire XFF is attacker-influenced and must not be used as throttle identity |
+| forged `CF-Connecting-IP` | client observed `error code: 1000` | consistent with edge rejection; HTTP status and edge provenance not independently recorded |
+| forged `True-Client-IP` | marker absent; CF and True present and equal | supports an overwritten-header hypothesis for that request |
+
+These were a handful of non-load requests to the isolated service only; do not extrapolate an unconditional platform guarantee.
+
+### 11.3 Ephemeral-HMAC two-network comparison
+
+The operator supplied one iPhone 4G measurement and two Mac-network measurements. **All three had the same `key_id = 4a1ac7c3`.** Only shortened token prefixes are retained here, to avoid retaining full temporary network identifiers.
+
+| Measurement | `tokens.cf_connecting_ip` prefix | CF = True | XFF entries | Result |
+| --- | --- | --- | --- | --- |
+| iPhone 4G, once | `6442ae0b…` | true | 3 | usable measurement |
+| Mac network, first | `dcad2f63…` | true | 3 | usable measurement |
+| Mac network, second | `dcad2f63…` | true | 3 | stable across both Mac samples |
+
+- **PASS (sampled network separation):** the Mac token was stable across two requests and differed from the iPhone 4G token under one key generation; header presence and equality were consistent.
+- **UNVERIFIED:** repeat stability for the iPhone under the same key, and whether this difference is reproducible across further samples.
+- A notable detail: the intermediate XFF token differed across the two Mac requests while the CF token remained stable. The rightmost XFF-derived token in the diagnostic corresponds to the CF value in the supplied samples. Position-based logic remains unsupported.
+- The tokens prove a difference in *observed candidate-address values for these two network samples*, not unique users. NAT / shared-address limitations remain.
+
+### 11.4 MD-1 status and proposed contract
+
+```text
+MD-1 DECISION                = PENDING MOTHER SHIP APPROVAL
+TECHNICAL REVIEW             = CONDITIONAL APPROVAL RECOMMENDED
+CANDIDATE PEER IDENTITY      = CF-Connecting-IP, only across a verified edge trust boundary
+ENTIRE X-FORWARDED-FOR       = NEVER TRUST
+HARDCODED NUM_PROXIES        = DO NOT SET BASED ON THESE SAMPLES
+INVALID/MISSING EDGE HEADER = FAIL-SAFE NON-SPOOFABLE FALLBACK; verify its availability impact
+BACKEND IMPLEMENTATION      = NOT STARTED
+BFF HMAC IMPLEMENTATION     = NOT STARTED
+PRODUCTION DEPLOYMENT       = NOT PERFORMED
+```
+
+Implementation must never accept caller-supplied `CF-Connecting-IP` from a bypass path as trusted. Tests must cover spoof attempts, missing/malformed edge identity, BFF attestation verification, and stable authenticated identity; rollout remains Backend first per MD-3. Existing MD-2=C (BFF HMAC) and MD-4=WS-13 separate remain approved. Do not assume this evidence proves edge consistency across all requests or that `REMOTE_ADDR` fallback achieves per-client fairness.
+
+**Next gate:** explicit Mother Ship MD-1 approval, or further production-edge/source-authenticity verification if the Mother Ship does not accept the residual assumptions. The temporary Render diagnostic service must be deleted after evidence collection under explicit authorization; no deletion is claimed here.
