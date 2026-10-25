@@ -6,8 +6,10 @@
 RECORD TYPE        = audit + design proposal（documentation only）
 SOURCE FINDING     = WS-04, docs/audit/web-production-security-effectiveness-audit-2026-10-25.md（PR #3349）
 BASELINE           = develop@c6880f4b67aae22473a40fcc825c74debee7e967
-IMPLEMENTATION     = NOT STARTED — blocked on Mother Ship decisions MD-1 and MD-2（§6）
-PRODUCTION         = NOT ACCESSED; no rate-limit testing
+MD-2 / MD-3 / MD-4 = APPROVED by Mother Ship（§8）
+MD-1               = NOT VERIFIED — primary Render sources unreachable from this environment（§9）
+IMPLEMENTATION     = NOT STARTED — blocked on MD-1
+PRODUCTION         = NOT ACCESSED; no rate-limit testing; no diagnostics
 FINAL STATUS       = STOP at the design gate
 ```
 
@@ -134,9 +136,11 @@ Evidence:
 
 ## 6. Mother Ship decisions required before implementation
 
+Status after the Mother Ship review: MD-2, MD-3 and MD-4 are decided（§8）; MD-1 remains open（§9）.
+
 | id | decision | why it blocks |
 | --- | --- | --- |
-| **MD-1** | the trusted proxy depth for the Render backend, and how to verify it | Render's `X-Forwarded-For` behaviour is UNVERIFIED. Guessing the depth could trust a forgeable entry or group all clients. Verification options: Render's documentation or support confirmation; or a short-lived diagnostic that reports only the number of XFF entries and whether `REMOTE_ADDR` is private（production change → needs approval） |
+| **MD-1**（open） | the trusted proxy depth for the Render backend, and how to verify it | Render's `X-Forwarded-For` behaviour is UNVERIFIED. Guessing the depth could trust a forgeable entry or group all clients. Verification options: Render's documentation or support confirmation; or a short-lived diagnostic that reports only the number of XFF entries and whether `REMOTE_ADDR` is private（production change → needs approval） |
 | **MD-2** | a new server-only shared secret on Vercel and Render（option C）, or enabling Vercel OIDC（option C′） | new secrets and production environment variables |
 | MD-3 | rollout order and fallback（§4.1 step 5） | production configuration sequencing |
 | MD-4 | whether WS-13（`REMOTE_ADDR`-keyed nearby throttles）should adopt the same resolver in the same change | scope; WS-13 is a separate finding |
@@ -151,6 +155,94 @@ Option B alone needs only MD-1. It fixes the forgery but keeps Web users grouped
 backend / web code          UNCHANGED
 settings / env variables    UNCHANGED
 secrets                     NONE created
-production                  NOT ACCESSED; no rate-limit tests
+production                  NOT ACCESSED; no rate-limit tests; no diagnostics
 PR                          NONE（created only after the design gate and implementation）
 ```
+
+---
+
+## 8. Mother Ship decisions recorded
+
+| id | decision | meaning for the implementation |
+| --- | --- | --- |
+| **MD-2 = C** | HMAC-signed BFF client identity | §4.1 steps 2–4: the BFF sends `X-KM-Client-IP` / `X-KM-Client-Ts` / `X-KM-Client-Sig`; the backend verifies before using it. A new server-only secret on Vercel and Render is approved in principle; its creation and configuration are deployment steps outside this record |
+| **MD-3** | backend-first rollout | the backend ships first and accepts a valid attestation, otherwise uses the peer identity; the BFF starts signing only afterwards |
+| **MD-4** | WS-13 stays a separate task | the `REMOTE_ADDR`-keyed nearby throttles（§3.1）are not changed by WS-04 |
+| MD-1 | **pending** | §9 |
+
+---
+
+## 9. MD-1 verification（Render trusted proxy boundary）
+
+### 9.1 Render service configuration relevant to forwarding
+
+| item | value | source |
+| --- | --- | --- |
+| Blueprint（`render.yaml`） | **none** in the repository; routing, plan, custom domain and runtime are configured only in the Render dashboard | repository search |
+| start command | `gunicorn shrine_project.wsgi:application --bind 0.0.0.0:${PORT} …`, no `--forwarded-allow-ips` / proxy-protocol options | `backend/start.sh:184` |
+| Django proxy settings | no `NUM_PROXIES`, `SECURE_PROXY_SSL_HEADER` or `USE_X_FORWARDED_HOST` | `backend/shrine_project/settings.py` |
+| public host | `jinja-backend.onrender.com`（Render default domain; whether a custom domain or extra proxy is configured: dashboard only） | `apps/web/next.config.ts`, earlier production record |
+| alternative image | `backend/Dockerfile.web` runs `runserver`; the production record found runtime behaviour consistent with `start.sh`, but the dashboard runtime setting is **UNVERIFIED** | `backend/Dockerfile.web:46-47`; `docs/audit/production-environment-configuration-verification.md` |
+
+`gunicorn` sets `REMOTE_ADDR` to the TCP peer, which on Render is a platform proxy, not the client.
+
+### 9.2 Evidence gathered
+
+The Render domains `render.com`, `docs.render.com` and `community.render.com` do not resolve from this environment, so no
+Render page could be read directly. The table states each item's level.
+
+| claim | source | level |
+| --- | --- | --- |
+| Render's edge **appends** to a client-supplied `X-Forwarded-For` and does not strip it; the leftmost entry is caller-controlled | Render article "Host PocketBase on Render"（`https://render.com/articles/host-pocketbase-on-render`）and a Render community thread, as summarised by a web search engine; third-party test repository `https://github.com/johnbeynon/header-test` | secondary（search summary）+ third-party; **not read verbatim** |
+| an observed chain had **four** entries: the spoofed value, the real client IP, and **two proxy-hop addresses** | `johnbeynon/header-test` README（undated; author's affiliation not stated） | third-party, anecdotal |
+| Cloudflare sits in front of Render web services and writes `CF-Connecting-IP` on every request, overwriting any caller value; a spoofed `CF-Connecting-IP` is rejected at the edge（`403 error code: 1000`） | the same Render article（search summary）; `johnbeynon/header-test` README | secondary + third-party |
+| Render overwrites a spoofed `True-Client-IP` with the real client IP | `johnbeynon/header-test` README | third-party |
+| an app on Render sees a proxy address by default and must read a forwarded header | Render article "How Render handles DDoS attacks"（`https://render.com/articles/how-render-handles-ddos-attacks`）, search summary | secondary |
+
+### 9.3 Trusted proxy boundary assessment
+
+- **The leftmost `X-Forwarded-For` entry must never be trusted**（consistent across all sources）.
+- **`NUM_PROXIES = 1` would likely be wrong.** If the observed chain（client entry followed by two platform hops）is
+  representative, DRF would take the last entry, which is a Render proxy address. Every client would then share one bucket.
+  A fixed depth of 3 would depend on a hop count that no primary source states and that may change.
+- **The more robust candidate source is a header the edge overwrites**（`CF-Connecting-IP`, or `True-Client-IP`）rather
+  than a position in `X-Forwarded-For`. This changes §4.1 step 1: the peer identity would come from an edge-overwritten
+  header, with `REMOTE_ADDR` as the fail-safe fallback, and no `NUM_PROXIES`.
+- None of this is verified for **this** service（plan, custom domain, current edge configuration）, and none of it was
+  read from a primary Render page. The boundary therefore remains **UNVERIFIED**, and no value is set.
+
+### 9.4 Isolated diagnostic（designed, not run）
+
+Purpose: confirm the header behaviour on a Render web service without touching production and without recording any
+address.
+
+1. **Environment**: a separate, throwaway Render web service in the same account and region type as production, on the
+   default `onrender.com` domain, deployed from a scratch branch. Not the production service, database or secrets.
+2. **Endpoint**: one `GET` route that returns only derived, non-sensitive facts:
+   - the number of `X-Forwarded-For` entries;
+   - whether `CF-Connecting-IP` and `True-Client-IP` are present;
+   - booleans: "`CF-Connecting-IP` equals XFF entry *k*" for each *k*, "`True-Client-IP` equals `CF-Connecting-IP`",
+     "`REMOTE_ADDR` is a private address";
+   - whether each header value equals a **probe token** sent by the tester（detects pass-through of a spoofed value）.
+   It never returns or logs a header value or an address; access logs disabled for the route.
+3. **Probes**（run by the owner, a handful of requests, no load）: no extra headers; a spoofed `X-Forwarded-For` token;
+   a spoofed `True-Client-IP` token; a spoofed `CF-Connecting-IP` token; from two different networks to confirm that the
+   chosen source distinguishes clients.
+4. **Acceptance for MD-1**: the chosen source is present on every request, is never equal to a spoofed token, and differs
+   between the two networks. Delete the service afterwards.
+
+### 9.5 Remaining unknowns and blocker
+
+| unknown | needed for |
+| --- | --- |
+| primary Render documentation text on forwarded headers | citing an authoritative source |
+| whether production `jinja-backend` is behind the same Cloudflare edge（plan, region, custom domain, any extra proxy） | choosing the trusted source |
+| whether `CF-Connecting-IP` / `True-Client-IP` are always present and always overwritten for this service | the fail-safe design |
+| the current XFF hop count, and whether it is stable | ruling out `NUM_PROXIES` permanently |
+| whether the service can be reached without passing the edge | trusting any edge header |
+
+**Blocker**: MD-1 cannot be verified from this environment. All Render domains are unresolvable here, the production
+backend is blocked by the session egress policy, and no dashboard access is available. To proceed, one of the following
+is needed: (a) the owner reads Render's documentation or obtains Render support confirmation and records it; or (b)
+Mother Ship approves running the isolated diagnostic in §9.4（a new, non-production Render service）. Implementation stays
+stopped until then.
