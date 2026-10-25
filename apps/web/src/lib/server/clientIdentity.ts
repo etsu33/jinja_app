@@ -25,11 +25,46 @@ export const CLIENT_SIG_HEADER = "X-KM-Client-Sig";
 const MIN_SECRET_LENGTH = 32;
 const IP_CHARS = /^[0-9A-Fa-f:.]{1,45}$/;
 
-type HasHeaders = { headers: Headers };
+type HasHeaders = { headers: Pick<Headers, "get"> };
+
+/**
+ * Backend（Django）の origin として repo で使われている server-only の env 名。
+ * 署名ヘッダはこれらの origin へのリクエストにだけ付ける（自アプリの BFF や他ホストへは送らない）。
+ */
+const BACKEND_ORIGIN_ENV_NAMES = [
+  "DJANGO_ORIGIN",
+  "BACKEND_ORIGIN",
+  "DJANGO_API_BASE_URL",
+  "BACKEND_BASE_URL",
+  "BACKEND_URL",
+] as const;
 
 function identitySecret(): string | null {
   const secret = process.env.KM_CLIENT_IDENTITY_SECRET ?? "";
   return secret.length >= MIN_SECRET_LENGTH ? secret : null;
+}
+
+function originOf(value: string): string | null {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
+/** 署名できる実行環境か（Vercel 上で secret が設定されている）。request context を読む前の判定に使う。 */
+export function clientIdentitySigningEnabled(): boolean {
+  return process.env.VERCEL === "1" && identitySecret() !== null;
+}
+
+/** `url` が設定済みの Backend origin を指すか。 */
+export function isBackendUrl(url: string): boolean {
+  const target = originOf(url);
+  if (!target) return false;
+  return BACKEND_ORIGIN_ENV_NAMES.some((name) => {
+    const value = process.env[name]?.trim();
+    return Boolean(value) && originOf(value!) === target;
+  });
 }
 
 /**
