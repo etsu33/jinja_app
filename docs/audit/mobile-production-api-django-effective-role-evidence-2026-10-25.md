@@ -34,3 +34,13 @@ Mother Ship requested confirmation of Mobile production build **actual** API des
 | Django role | URL precedence and role capabilities mapped | **OPEN**: live `current_user` not attested |
 
 A-0 / L4-O / L4-E = NOT APPROVED. EU-8=A remains read-only. This document-only PR must not be merged without CI/diff review and explicit Mother Ship authorization.
+
+## Mother Ship Expo Dashboard evidence (2026-10-25)
+
+Owner-provided screenshot of Expo project `morietsu/jinja-app` Environment variables and explicit owner text confirm `EXPO_PUBLIC_API_BASE_URL` scoped to `production` currently equals `https://jinja-backend.onrender.com/api`. The value is a public API origin/path, not an API secret. Render read-only service metadata previously identified `jinja-backend` at `https://jinja-backend.onrender.com`.
+
+- **Current production environment configured API endpoint: VERIFIED** (`https://jinja-backend.onrender.com/api`).
+- **Build used EAS production environment:** VERIFIED from Expo Build Details for July 27, 2026 successful internal APK, Build ID `5f1b4311-df8c-402b-89c4-85bfee27a792`, profile `android-map-qa`, commit `dd3b224`.
+- **Historical APK-embedded value at build time:** NOT VERIFIED. Env entry shown as created July 27, but matching date does not establish ordering, mutation history, or build embedded value. Build artifacts/logs show Expired. Do not conflate current variable with historic artifact.
+- No Supabase Data API endpoint appears in the confirmed **current main Mobile API base URL**; does not rule out other third-party or old binary traffic.
+- No environment values changed, APK fetched, build executed or production API probed. A-0/L4-O/L4-E remain NOT APPROVED.
