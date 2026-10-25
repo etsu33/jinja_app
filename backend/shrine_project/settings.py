@@ -304,9 +304,10 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_THROTTLE_CLASSES": (
-        "rest_framework.throttling.ScopedRateThrottle",
-        "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.UserRateThrottle",
+        # 匿名の識別子は shrine_project/throttling.py（WS-04）。scope・rate は DRF 既定クラスと同じ
+        "shrine_project.throttling.ScopedRateThrottle",
+        "shrine_project.throttling.AnonRateThrottle",
+        "shrine_project.throttling.UserRateThrottle",
     ),
     "DEFAULT_THROTTLE_RATES": {
         "anon": "100/min",
@@ -331,6 +332,13 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 10,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
+
+# --- Throttle client identity（WS-04, shrine_project/throttling.py）---
+# CF-Connecting-IP を信頼するのは、Render の edge（Cloudflare）がその値を上書きする境界の内側だと
+# デプロイ設定で明示したときだけ。未設定なら X-Forwarded-For も CF-Connecting-IP も使わず fail-safe に倒す。
+THROTTLE_TRUSTED_EDGE = os.getenv("THROTTLE_TRUSTED_EDGE", "").strip()
+# Web BFF と共有する server-only の HMAC secret（MD-2）。未設定なら BFF attestation は無視される。
+THROTTLE_CLIENT_IDENTITY_SECRET = os.getenv("KM_CLIENT_IDENTITY_SECRET", "")
 
 _rates = REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]
 
