@@ -22,7 +22,6 @@ from rest_framework_simplejwt.exceptions import TokenError
 from temples.api.serializers.concierge import (
     ConciergePlanRequestSerializer,
     ConciergePlanResponseSerializer,
-    ConciergeThreadSerializer,
 )
 from temples.geocoding.client import geocode_google_point
 from temples.models import ConciergeThread
@@ -1113,38 +1112,18 @@ class ConciergePlanViewLegacy(ConciergePlanView):
     schema = None
 
 
-@extend_schema(exclude=True)
-class ConciergeThreadView(APIView):
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        tid = request.query_params.get("tid")
-        if not tid:
-            return Response({"error": "tid required"}, status=400)
-
-        try:
-            thread = ConciergeThread.objects.get(id=tid)
-        except ConciergeThread.DoesNotExist:
-            return Response({"error": "not found"}, status=404)
-
-        return Response(ConciergeThreadSerializer(thread).data)
-
-
 chat = ConciergeChatView.as_view()
 plan = ConciergePlanView.as_view()
-thread = ConciergeThreadView.as_view()
 chat_legacy = ConciergeChatViewLegacy.as_view()
 plan_legacy = ConciergePlanViewLegacy.as_view()
 
 __all__ = [
     "chat",
     "plan",
-    "thread",
     "chat_legacy",
     "plan_legacy",
     "ConciergeChatView",
     "ConciergePlanView",
-    "ConciergeThreadView",
     "ConciergeChatViewLegacy",
     "ConciergePlanViewLegacy",
 ]
