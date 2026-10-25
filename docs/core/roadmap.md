@@ -15,6 +15,16 @@
 
 ---
 
+## 現行フェーズの運用方針（2026-10-25）
+
+現在の開発対象は **Web MVPの継続利用検証** とし、①AIコンシェルジュ、②神社情報・推薦品質、③Web地図・経路案内、④ユーザー獲得・行動分析に集中する。Recommendation品質・Shrine Data Qualityはこの範囲で継続し、Release Readinessでは既存機能のセキュリティと安定性を確認する。
+
+Mobile（Expo / Android / iOS）・実機QA・ストア公開、御朱印画像登録等の画像機能拡張、課金機能拡張は新規開発を保留する。過去の実装済み事実は維持するが、現在の作業順には含めない。**保留はAPI停止を意味しない**ため、公開済みの画像・Mobile関連の入口も安全性確認の対象に残す。再開条件は母艦判断とし、ユーザー数の閾値は未確定とする。
+
+2026-10-25のWebセキュリティ監査（`docs/audit/web-production-security-effectiveness-audit-2026-10-25.md`、PR #3349）で新たなCritical/High所見が報告されている。過去のSecurity Foundation対策完了は**当時の対象範囲**に限る。現行の公開安全性や今回の所見の修正完了を示すものではない。修正・本番検証・マージ判断は独立PRと母艦判断で扱う。
+
+---
+
 ## 現在地
 
 KAMI MUSUBIは、Concierge Firstを起点として、推薦、神社詳細、経路確認、参拝、振り返りまでを接続する主要基盤を実装済みである。
@@ -62,7 +72,7 @@ KAMI MUSUBIは、Concierge Firstを起点として、推薦、神社詳細、経
 - Web / MobileのPremium導線
 - Billing状態取得基盤
 - Web / MobileのAnalytics送信基盤
-- Runtime Security Baseline（Critical/High remediation完了、正本は`docs/core/runtime-security-baseline.md`）
+- Runtime Security Baseline（従来の監査対象での対策実績。2026-10-25の新規所見は未解決。正本は`docs/core/runtime-security-baseline.md`）
 
 ### 基盤実装済み・検証継続
 
@@ -90,7 +100,7 @@ KAMI MUSUBIは、Concierge Firstを起点として、推薦、神社詳細、経
 
 ### 現在の主フェーズ
 
-現在の主フェーズは、Recommendation品質改善とShrine Data Qualityである。
+現在の主フェーズはWeb MVPの安全性・推薦品質・神社データ品質・利用継続の検証である。
 
 特に以下を優先する。
 
@@ -407,8 +417,10 @@ Shrine Data Quality
 ↓
 Release Readiness
 ↓
-Mobile本番配布準備
+Webユーザー獲得・継続利用検証
 ```
+
+Mobile本番配布準備は保留。Phase 8の再開条件は母艦判断とする。
 
 ### 横断的な検証
 
@@ -428,7 +440,7 @@ Phase 1〜4は独立した新規実装フェーズとしては完了している
 
 ### Cross-cutting: Security Foundation
 
-Runtime/CI/Supply Chain Security ReviewによるCritical/High findingのremediationと、現行Security ContractのRuntime Security Baselineへの正本化は完了している（`docs/core/runtime-security-baseline.md`）。残存するMedium/Low/External riskはSecurity Backlog（`docs/audit/security-follow-up-backlog.md`）で追跡し、本書へは詳細を複製しない。
+従来のRuntime/CI/Supply Chain Security ReviewにおけるCritical/High所見への対応とSecurity Contractの正本化は実施済み（`docs/core/runtime-security-baseline.md`）。ただし、新たなWebセキュリティ監査（2026-10-25、PR #3349）でCritical/Highを含む未修正の所見が報告されている。現在の全Critical/Highが解消済みとはみなさず、修正状況は個別監査資料とPRを参照する。
 
 ### Phase順序に関する観察事項
 
