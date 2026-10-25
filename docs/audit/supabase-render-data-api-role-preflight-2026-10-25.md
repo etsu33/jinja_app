@@ -55,3 +55,11 @@
 - Live Django effective DB role: **NOT VERIFIED**.
 - Role-verification **method and no-secrets boundary: SPECIFIED**; execution of runtime attestation **NOT APPROVED**.
 - A-0, L4-O, L4-E = **NOT APPROVED**; no DB, Render, credentials, logs, deployment, RLS or GRANT changed.
+
+## Mother Ship operator report: Render environment variable names
+
+Mother Ship checked Render `jinja-backend` Environment and reported **`DATABASE_URL` present; `DB_USER` absent; `POSTGRES_USER` absent** (2026-10-25). This is an owner-reported configuration-name observation, **not** a retrieved credential or verified live connection.
+
+The current Django settings code prioritizes `DATABASE_URL` when set. Therefore username, host and database identity are derived from parsing the URL (subject to runtime overrides). **Do not infer a username, DB vendor, Supabase target, or successful live connection.** No URL value, secret, user data or password was requested or stored.
+
+Next safest evidence: owner may locally view the connection's **username component only** with all other fields hidden, or arrange an explicitly approved redacted `connection.settings_dict['USER']`/DB `current_user` attestation. Do not submit the complete URL, encoded password, host with credentials, or screenshot exposing secrets. Data API exposed schemas are still NOT VERIFIED. A-0/L4-O/L4-E NOT APPROVED.
