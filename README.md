@@ -57,6 +57,21 @@ Concierge First では、トップ画面とコンシェルジュ画面を統合�
 
 ---
 
+## 現行開発スコープ（2026-10-25）
+
+現在の開発・ユーザー検証対象は **Web MVP** とし、次の4領域に集中する。
+
+1. AIコンシェルジュ（相談から推薦まで）
+2. 神社情報・推薦理由（由緒・出典・データ品質）
+3. Webマップ・経路案内（参拝の検討につなぐ）
+4. ユーザー獲得・行動分析（利用開始、詳細閲覧、経路遷移、再訪の観測）
+
+Mobile（Expo / Android / iOS）、御朱印画像登録等の画像機能拡張、課金機能の拡張は**新規開発を保留**する。既存コードや導線は直ちに削除しない。ただし**UIの保留はAPI停止を意味しない**。公開中のエンドポイントはセキュリティ上の管理対象に含め、停止または保護の実装・検証は別PRで行う。再開条件と優先順位は母艦判断とする。
+
+技術責務の正本は `docs/core/architecture.md`、開発順序の正本は `docs/core/roadmap.md`。セキュリティ監査の所見は `docs/audit/` で管理し、Critical/High修正が完了したとは扱わない。
+
+---
+
 ## 概要
 
 **KAMI MUSUBI**は、ユーザーの悩みや願いごとに応じて神社を提案し、神社詳細の確認から経路案内までつなぐ**神社コンシェルジュアプリ**です。Webを中心に開発し、将来的にMobile（Expo）へ展開予定です。
@@ -327,7 +342,7 @@ export async function GET(req: NextRequest) {
 
 ## Mobile
 
-`apps/mobile/` は継続開発中で、pnpm workspace の正式メンバーです。CI（`.github/workflows/mobile-ci.yml`）・EAS Build ともに対象で、依存関係はルートの `pnpm-lock.yaml` で一元管理しています。
+`apps/mobile/` はpnpm workspaceの正式メンバーで、CI・EAS Buildの構成は維持している。Android APKのビルド実績はあるが、**Expo / Android / iOSの新規開発と実機QAは当面保留**とする。依存関係はルートの `pnpm-lock.yaml` で管理し、再開時には互換性と安全性を改めて確認する。
 
 ---
 
