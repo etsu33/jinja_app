@@ -22,11 +22,26 @@ It never returns or logs a raw address, header value, key or full HMAC. The acce
 
 ## Deploy（owner action）
 
-1. Render dashboard → New → Web Service → this repository, branch `fix/security-throttle-client-identity`.
-2. Root directory `scripts/ws04_edge_diagnostic`, runtime Python, build command `true`（nothing to install）, start command
-   `python app.py`.
-3. Instance type **Free**. No environment variables. No custom domain. Same region as `jinja-backend` if known.
-4. Do not connect it to any database, disk, secret group or production environment group.
+Reuse the existing isolated service `ws04-md1-header-probe-20261025`（`srv-dbespffb9u1s73ar5sn0`, Free, Singapore）. Do
+not create another service. In its Settings, set:
+
+| Setting | Value |
+| --- | --- |
+| Repository | `etsu33/jinja_app` |
+| Branch | `fix/security-throttle-client-identity`（diagnostic committed at `c82ae64`） |
+| Root Directory | `scripts/ws04_edge_diagnostic` |
+| Language / Runtime | Python 3（code needs 3.7+; no dependencies） |
+| Build Command | `true`（nothing to install） |
+| Start Command | `python app.py`（binds `0.0.0.0:$PORT`, which Render supplies） |
+| Health Check Path | `/healthz` |
+| Instance Type | Free（unchanged） |
+| Region | Singapore（unchanged） |
+| Environment variables / secret files | none（remove any that exist） |
+| Disk, database, environment group, custom domain | none |
+| Auto-Deploy | Off（deploy once manually） |
+
+Then Manual Deploy → Deploy latest commit, and check `GET /healthz` returns `{"ok": true}`. If the service runs on a
+Docker runtime instead of Python, the language usually cannot be changed in place; stop and decide before recreating it.
 
 ## Measure（record only equalities, never tokens or addresses）
 
