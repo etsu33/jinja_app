@@ -47,11 +47,13 @@ Everything inspected by #3332 §2, plus: `apps/web/package.json`（Next.js `16.3
 | --- | --- | --- |
 | EXT-1 | `vercel rollback [deployment-id or url]` rolls back **production** deployments to a previous deployment; "On the hobby plan, rollbacks are limited to the immediately preceding production deployment"; a specific older deployment URL is available on Pro and Enterprise | `https://vercel.com/docs/cli/rollback`, `https://vercel.com/docs/deployments/rollback-production-deployment` |
 | EXT-2 | REST `POST /v1/projects/{projectId}/rollback/{deploymentId}`: "Point production traffic to a previous production deployment by ID" | `https://vercel.com/docs/rest-api/projects/point-production-traffic-to-a-previous-production-deployment-by-id` |
-| EXT-3 | promoting an existing deployment to production is possible "without triggering a rebuild"（`requestPromote`, `vercel promote`） | `https://vercel.com/docs/rest-api/sdk/projects/point-production-traffic-to-a-given-deployment` |
+| EXT-3 | **Deployment type matters:** Instant Rollback reassigns Production traffic to an eligible previously served Production deployment **without rebuilding**; promotion of an already-built staged Production deployment also needs no rebuild; promotion of a **Preview** deployment to Production creates a **new Production build** with Production environment variables. The generic claim that `vercel promote` never rebuilds is invalid. These are general platform rules, not verified for this project. | `https://vercel.com/docs/deployments/promoting-a-deployment`, `https://vercel.com/docs/deployments/promote-preview-to-production`, `https://vercel.com/docs/cli/promote` |
 | EXT-4 | after declaring an environment variable: "Redeploy your project after saving to apply changes" | `https://vercel.com/docs/environment-variables/managing-environment-variables` |
 | EXT-5 | runtime log entries carry `level`, `message`, `requestMethod`, `requestPath`, `responseStatusCode`, `timestampInMs` | `https://vercel.com/docs/rest-api/logs/get-logs-for-a-deployment` |
 | EXT-6 | log drain payloads may include proxy metadata such as `clientIp`, `userAgent` and `referer` | `https://vercel.com/docs/drains` |
 | EXT-7 | team members have roles and `teamPermissions`（for example `FullProductionDeployment`）; which role may roll back was **not** found | `https://vercel.com/docs/rest-api/teams/update-a-team-member` |
+
+**Additional published retention constraints（not verified for this project）:** Vercel reported on 2026-09-16 that Hobby projects retain fewer older deployments beyond their normal retention window; eligible exceptions include recent, active and aliased deployments. On 2026-10-09 Vercel announced that new Pro teams default to 30-day retention; older deployments may be deleted under the applicable policy. Sources: `https://vercel.com/changelog/hobby-projects-now-retain-fewer-deployments-to-free-up-storage`, `https://vercel.com/changelog/new-pro-teams-now-default-to-30-day-deployment-retention`. These announcements do **not** establish this project’s plan, retention policy, deployment inventory or restore eligibility. A previously verified deployment is not necessarily still present or eligible when recovery is needed.
 
 **Not found in the index:** per-plan runtime-log retention periods; whether a rolled-back deployment runs with the
 environment variables of its original build or the current ones.
@@ -107,7 +109,7 @@ shown for each item.
 | --- | --- |
 | verified evidence | none for this project. `scripts/deploy.sh:1-12` is a placeholder; `.github/workflows/deploy.yml.disabled:1-5, 58-61` is disabled |
 | source paths | as above |
-| external specification | EXT-1, EXT-2, EXT-3（level L-a only） |
+| external specification | EXT-1, EXT-2, EXT-3（level L-a only; EXT-3 distinguishes existing Production deployments from Preview promotion, which triggers a new Production build） |
 | unverified assumptions | that the general commands apply to this project's plan and team; that the person executing has the role（RV-3） |
 | feasibility | general commands exist for production rollback and promotion. **They are not adopted here as the procedure**: their availability, scope and effects for this project are unknown（RV-2, RV-3, RV-6） |
 | future validation | an owner-written procedure based on L-b facts, exercised at L-c where possible（see RV-10） |
@@ -121,8 +123,8 @@ shown for each item.
 | verified evidence | none for this project（`docs/ops/production-bff-hardening.md:74` covers log reading only） |
 | external specification | EXT-1, EXT-2, EXT-3 |
 | unverified assumptions | the project's plan. **If it is on the Hobby plan, EXT-1 limits rollback to the immediately preceding production deployment**, which may not be the verified target that VD-1 to VD-6（#3331 §2.1）require |
-| feasibility | restoration of a previous production deployment is a general platform capability（TECHNICALLY_PLAUSIBLE）. Whether the needed target is reachable depends on the plan（REQUIRES_ENVIRONMENT_VERIFICATION） |
-| future validation | owner confirmation of the plan and of which earlier deployments can be restored |
+| feasibility | restoration of a previous Production deployment is a general platform capability（TECHNICALLY_PLAUSIBLE）. Whether the needed target is reachable depends on plan restrictions **and deployment retention / deletion / eligibility**（REQUIRES_ENVIRONMENT_VERIFICATION）. The 2026-09-16 Hobby and 2026-10-09 new-Pro retention announcements are general external constraints, not project evidence（§2.2） |
+| future validation | owner confirmation of the plan, effective deployment-retention policy, existence and current eligibility of the **specific verified restoration target**（deployment ID / commit / mode evidence per VD-1 to VD-6）, and whether the target remains reachable at recovery time. Do not infer restorability merely from old audit evidence. |
 | authorization / environment | hosting-project read by the owner |
 | Mother Ship decision | no; but a plan limitation would feed MS-2 and P-13 |
 
@@ -230,12 +232,12 @@ shown for each item.
 
 | aspect | rollback by revert（#3323 §11） | verified-deployment restoration（U-5 = B） |
 | --- | --- | --- |
-| artefact | a new commit and a new build | an existing deployment（EXT-1, EXT-3: no rebuild） |
+| artefact | a new commit and a new build | an **eligible previously served Production deployment**（Instant Rollback: no rebuild）; Preview-to-Production promotion is **not equivalent** and triggers a new Production build（EXT-3） |
 | passes CI again | yes（the revert commit runs `web-tests.yml`） | no new CI run; relies on the target's earlier evidence（VD-5） |
 | repository history | records the rollback | does not change `develop` / `main`; the deployed code and the branch head diverge until reconciled |
 | configuration | the new build uses current configuration | unverified（RV-6） |
 | speed | build and deploy time | likely faster; unverified（RV-9） |
-| reaches older targets | any commit | plan-dependent（EXT-1） |
+| reaches older targets | an available commit, subject to build/deploy feasibility | plan-dependent **and retention/eligibility-dependent**（EXT-1; 2026-09-16 and 2026-10-09 retention announcements, §2.2） |
 
 ---
 
@@ -486,7 +488,7 @@ None was checked against the hosting project in this assessment.
 ## 10. Dependencies before L4-O
 
 - All P-1 to P-15（#3329 §3.1）, including FT-1 to FT-14 passing and Preview E2E with Firefox.
-- P-13 recovery plan: EU-1 to EU-4 and EU-8 answered by the owner（L-b）; MS-1, MS-2 and MS-3 decided; FT-15 and
+- P-13 recovery plan: EU-1 to EU-4 and EU-8 answered by the owner（L-b）; **the specific verified recovery target must still exist, remain retained, be eligible and reachable under the actual project plan and retention policy at the time of recovery**（RV-2, VD-1 to VD-6; public retention changes are not project proof）; MS-1, MS-2 and MS-3 decided; FT-15 and
   FT-16 run where MS-2 allows（L-c）.
 - RV-8 effective-mode procedure written and exercised on Preview.
 - A monitoring and evidence-collection plan（#3330 §9）resolving EU-5, EU-6, MS-9, MS-11 for the sources it relies
