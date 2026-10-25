@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { clampLimit } from "@/lib/bff/pagination";
 import { getDjangoOrigin } from "@/lib/server/backend";
+import { clientIdentityHeaders } from "@/lib/server/clientIdentity";
 import { serverLog, getRequestId } from "@/lib/server/logging";
 
 const DEBUG = process.env.NODE_ENV !== "production";
@@ -51,7 +52,7 @@ export async function GET(req: Request) {
 
     const r = await fetch(upstream, {
       cache: "no-store",
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", ...clientIdentityHeaders(req, "GET", upstream) },
     });
 
     const contentType = r.headers.get("content-type") ?? "";

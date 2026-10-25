@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { clientIdentityHeaders } from "@/lib/server/clientIdentity";
 import { serverLog } from "@/lib/server/logging";
 import "server-only";
 
@@ -11,6 +12,8 @@ const DJ_FETCH_DEBUG = process.env.NODE_ENV !== "production" && process.env.DJ_F
 
 type DjFetchInit = RequestInit & {
   forwardAuth?: boolean;
+  /** `djFetch(path, init)` 形式でも client identity を署名する元リクエスト（認証情報は転送しない）。 */
+  clientIdentityFrom?: Request;
 };
 
 export async function djFetch(
@@ -90,7 +93,7 @@ export async function djFetch(
     }
   }
 
-  const { forwardAuth: _forwardAuth, ...restInit } = init;
+  const { forwardAuth: _forwardAuth, clientIdentityFrom, ...restInit } = init;
 
   const finalInit: RequestInit & { duplex?: "half" } = {
     ...restInit,
@@ -99,6 +102,9 @@ export async function djFetch(
   };
 
   const method = (finalInit.method || (req ? req.method : "GET")).toUpperCase();
+  for (const [name, value] of Object.entries(clientIdentityHeaders(req ?? clientIdentityFrom, method, url))) {
+    headers.set(name, value);
+  }
   if (finalInit.body && method !== "GET" && method !== "HEAD") {
     (finalInit as any).duplex = "half";
   }

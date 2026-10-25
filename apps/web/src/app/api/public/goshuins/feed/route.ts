@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { clampLimit } from "@/lib/bff/pagination";
 import { getDjangoOrigin } from "@/lib/server/backend";
+import { clientIdentityHeaders } from "@/lib/server/clientIdentity";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -15,7 +16,7 @@ export async function GET(req: Request) {
 
     const r = await fetch(upstream, {
       method: "GET",
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", ...clientIdentityHeaders(req, "GET", upstream) },
       cache: "no-store",
     });
 
