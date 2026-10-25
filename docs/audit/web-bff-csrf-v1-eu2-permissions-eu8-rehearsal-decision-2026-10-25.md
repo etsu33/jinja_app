@@ -2,7 +2,7 @@
 
 ## Scope / STOP
 
-Read-only evidence capture and proposed Mother Ship decision only. This document does **not** approve, invoke, or prove rollback, promotion, redeployment, environment changes, logging changes, or a rehearsal. No Production traffic-switching operation was performed. A-0, L4-O, and L4-E remain NOT APPROVED. RV-1〜RV-11 and UD-1〜UD-11 remain unresolved.
+Read-only evidence capture and recorded Mother Ship choice of EU-8 Option A (design scope only). This document does **not** approve, invoke, or prove rollback, promotion, redeployment, environment changes, logging changes, or a rehearsal. No Production traffic-switching operation was performed. A-0, L4-O, and L4-E remain NOT APPROVED. RV-1〜RV-11 and UD-1〜UD-11 remain unresolved.
 
 Reference baseline: [#3333 feasibility audit](web-bff-csrf-v1-rv-ud-technical-feasibility-2026-10-25.md) (§7 MS-1/MS-2/MS-3, §8 EU-2/EU-8), [#3331 recovery extension design](web-bff-csrf-v1-recovery-extension-design-2026-10-25.md). U-5=B is a **design choice**, not proof that the restoration path can be executed.
 
@@ -23,23 +23,25 @@ Reference baseline: [#3333 feasibility audit](web-bff-csrf-v1-rv-ud-technical-fe
 
 EU-2 is **PARTIAL, OPEN**. Do not check off “actual-operation permission verified”.
 
-## EU-8: Mother Ship decision proposal (NOT APPROVED)
+## EU-8: Mother Ship selected Option A (DESIGN ONLY; NO OPERATIONS APPROVED)
+
+**Mother Ship record (2026-10-25): EU-8 rehearsal approach = Option A.** This approves only the *approach* of read-only recovery-readiness auditing. It does **not** authorize Rollback, Promote, deploy/redeploy, environment-variable changes, a rehearsal execution, or elapsed-time measurement. EU-8 remains **BLOCKED / OPEN**, and RV-9/RV-10/P-13 remain unresolved. PR #3334 is separately awaiting review and merge decision; this choice does not authorize merging it.
 
 **Rationale:** Vercel rollback/promotion can switch Production traffic. An ordinary Preview deploy or preview-only routing test cannot be represented as a rehearsal of the same production restoration operation.
 
-**Choice A — recommended for the present STOP state:** Approve *design and read-only readiness audit only*. Verify available candidate, documented roles and ownership, retention, deployment/environment identity, expected recovery operator, evidence capture plan, and rollback exit criteria. Do not execute any rollback/promotion or time an operation. Label EU-8 `BLOCKED: NO APPROVED SAFE REHEARSAL` and keep RV-9/RV-10/P-13 open. Further Mother Ship approval required for a precise rehearsal.
+**Choice A — SELECTED by Mother Ship, design only:** Approve *design and read-only readiness audit only*. Verify available candidate, documented roles and ownership, retention, deployment/environment identity, expected recovery operator, evidence capture plan, and rollback exit criteria. Do not execute any rollback/promotion or time an operation. Label EU-8 `BLOCKED: NO APPROVED SAFE REHEARSAL` and keep RV-9/RV-10/P-13 open. Further Mother Ship approval required for a precise rehearsal.
 
 **Choice B — separately scoped non-Production surrogate:** Mother Ship may authorize creation/use of an isolated disposable project/environment (no production domains, customer traffic, secrets or data) to measure a **surrogate** redeploy/traffic-switch workflow. Its timing is only a proxy and cannot satisfy the production-operation rehearsal requirement without an explicitly reviewed equivalence argument. It requires separate scope, cost, access, teardown, and authorization before action.
 
 **Choice C — Production restore rehearsal:** Not covered by current authorization. Requires a separately approved change window, precise target and recovery path, traffic/user impact acceptance, rollback/recovery plan, and required O-5/O-6 signoffs if security controls could be weakened. Do not initiate from this audit.
 
-**MS-2 decision requested:** Select A / B / C, specifying any separately authorized operation's exact environment, allowable mutations, owner, target, and STOP conditions. Until Mother Ship explicitly selects/approves, the default remains A's **no execution** condition, without recording A as an approved decision.
+**MS-2 relationship:** The EU-8 Option A selection does not automatically settle the broader MS-2 contract decision about what counts as a satisfactory non-Production rehearsal. MS-2 remains open unless separately decided by Mother Ship. Any future operation requires separate, precisely scoped approval.
 
 ## Evidence-to-gate mapping
 
 - EU-2: role and team ownership are observed; execution rights remain unproven. **PARTIAL / OPEN**.
-- EU-8: duration **NOT MEASURED**; approved rehearsal methodology **NONE**. **BLOCKED / OPEN**.
-- MS-1 / MS-2 / MS-3: unresolved. No evidence from this report settles any Mother Ship decision.
+- EU-8: **Option A SELECTED (design/read-only audit only)**; execution authorization **NONE**; duration **NOT MEASURED**. **BLOCKED / OPEN**.
+- MS-1 / MS-2 / MS-3: unresolved. EU-8 Option A selection does not decide the broader MS-2 acceptance contract.
 - RV-2 / RV-3 / RV-9 / RV-10 / RV-11 / P-13: continue unresolved. A candidate shown in an API response is not recovery qualification.
 - A-0 / L4-O / L4-E: **NOT APPROVED**.
 
