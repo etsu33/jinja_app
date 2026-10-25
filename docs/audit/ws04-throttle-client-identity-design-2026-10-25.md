@@ -7,10 +7,10 @@ RECORD TYPE        = audit + design proposal（documentation only）
 SOURCE FINDING     = WS-04, docs/audit/web-production-security-effectiveness-audit-2026-10-25.md（PR #3349）
 BASELINE           = develop@c6880f4b67aae22473a40fcc825c74debee7e967
 MD-2 / MD-3 / MD-4 = APPROVED by Mother Ship（§8）
-MD-1               = NOT VERIFIED — primary sources unreachable（§9）; network separation UNVERIFIED（§10）
-IMPLEMENTATION     = NOT STARTED — blocked on MD-1
+MD-1               = APPROVED: CF_CONNECTING_IP_WITH_VERIFIED_EDGE_BOUNDARY（evidence §11, implementation §12）
+IMPLEMENTATION     = Phase C backend + BFF implemented（§12）; production configuration NOT performed
 PRODUCTION         = NOT ACCESSED; no rate-limit testing; no diagnostics
-FINAL STATUS       = STOP at the design gate
+FINAL STATUS       = PR review; deployment gated on §12.3
 ```
 
 ---
@@ -381,3 +381,66 @@ PRODUCTION DEPLOYMENT       = NOT PERFORMED
 Implementation must never accept caller-supplied `CF-Connecting-IP` from a bypass path as trusted. Tests must cover spoof attempts, missing/malformed edge identity, BFF attestation verification, and stable authenticated identity; rollout remains Backend first per MD-3. Existing MD-2=C (BFF HMAC) and MD-4=WS-13 separate remain approved. Do not assume this evidence proves edge consistency across all requests or that `REMOTE_ADDR` fallback achieves per-client fairness.
 
 **Next gate:** explicit Mother Ship MD-1 approval, or further production-edge/source-authenticity verification if the Mother Ship does not accept the residual assumptions. The temporary Render diagnostic service must be deleted after evidence collection under explicit authorization; no deletion is claimed here.
+
+---
+
+## 12. Phase C implementation（2026-10-25）
+
+Mother Ship decisions applied: **MD-1 = `CF_CONNECTING_IP_WITH_VERIFIED_EDGE_BOUNDARY`**, MD-2 = C, MD-3 = backend-first,
+MD-4 = WS-13 separate. This section supersedes the "NOT STARTED" lines of §1 and §11.4 for the code; production
+configuration and deployment are still **not performed**.
+
+### 12.1 Trust boundary as implemented
+
+| layer | rule | where |
+| --- | --- | --- |
+| edge boundary | `CF-Connecting-IP` is read **only** when the deployment sets `THROTTLE_TRUSTED_EDGE=render-cloudflare`. Unset or any other value → not trusted. The setting is the operator's assertion that the service is reached only through Render's Cloudflare edge, which overwrites the header（§9.2, §11.2）. | `backend/shrine_project/throttling.py`, `settings.py` |
+| header validation | exactly one IPv4 / IPv6 address（no list, whitespace, port, zone id; ≤ 45 chars）; IPv4-mapped IPv6 normalised | `parse_client_ip` |
+| X-Forwarded-For | never read | — |
+| BFF attestation | `X-KM-Client-IP` / `X-KM-Client-Ts` / `X-KM-Client-Sig` = lowercase hex `HMAC-SHA256(secret, ts\nMETHOD\npath\nip)`; `hmac.compare_digest`; clock skew ≤ 60 s; secret ≥ 32 chars; any failure → attestation ignored（never an error response） | `verified_bff_client_ip` |
+| fail-safe | no valid attestation and no trusted edge value → `remote:<REMOTE_ADDR>`（Render platform proxy: groups clients, cannot be split by a caller） | `resolve_client_ident` |
+| authenticated users | unchanged: DRF uses `user.pk` and never calls `get_ident()` | DRF |
+| logging | no per-request logs; one-time warnings for configuration problems only, without values | `_warn_once` |
+
+Precedence for anonymous requests: `bff:<ip>` → `edge:<ip>` → `remote:<addr>`. Scopes and rate values are unchanged; the
+project classes subclass DRF's `AnonRateThrottle` / `UserRateThrottle` / `ScopedRateThrottle` and override only
+`get_ident()`. `LoginThrottle`（WS-06）and the `REMOTE_ADDR`-keyed nearby throttles（WS-13: `PlacesNearbyThrottle`,
+`_nearby_ident`）are untouched.
+
+BFF side（`apps/web/src/lib/server/clientIdentity.ts`）: signs only when `VERCEL=1`, `KM_CLIENT_IDENTITY_SECRET` is at least
+32 characters and Vercel's `x-forwarded-for` is a single valid address; otherwise sends nothing. Applied in `djFetch`,
+`bffFetchWithAuthFromReq`（including the token refresh）, and the routes that call the backend directly or by path
+（`auth/login`, `auth/register`, `places/find`, `places/nearby`, `places/resolve`, `public/goshuins`, `public/goshuins/feed`）.
+Server components that fetch the backend（`src/lib/api/shrines.server.ts`）are not signed and keep the peer identity.
+
+### 12.2 Before / after（anonymous）
+
+| request | before | after（edge configured, secret on both sides） |
+| --- | --- | --- |
+| direct client, forged `X-Forwarded-For` | new bucket per value | `edge:<CF-Connecting-IP>` |
+| direct client, forged `CF-Connecting-IP` | n/a（edge rejects, §11.2） | edge rejects; if it reached the app it is the edge-written value |
+| direct client, forged `X-KM-Client-*` | n/a | signature invalid → `edge:<CF-Connecting-IP>` |
+| Web user via BFF | whole Render XFF chain（Vercel egress + proxy hops） | `bff:<Vercel-provided client ip>` |
+| Web user via BFF, secret missing on either side | — | `edge:<Vercel egress>`（shared） |
+| `THROTTLE_TRUSTED_EDGE` unset | — | `remote:<platform proxy>`（**all anonymous clients share one bucket**） |
+| authenticated | `user.pk` | `user.pk` |
+
+### 12.3 Required configuration and order（owner action; not performed）
+
+1. Render `jinja-backend`: add `THROTTLE_TRUSTED_EDGE=render-cloudflare` and `KM_CLIENT_IDENTITY_SECRET`（random, ≥ 32
+   chars）**before** the backend change is deployed. Without the first, every anonymous client shares one bucket.
+2. Deploy the backend; confirm anonymous Concierge / Compass still work.
+3. Vercel（Production; Preview only if it talks to a non-production backend）: add the same `KM_CLIENT_IDENTITY_SECRET` as a
+   server-only variable and redeploy. Until then the BFF sends nothing and Web users share the Vercel egress bucket.
+4. Rotation: change both sides together; during the gap attestation is ignored（fail-safe, shared bucket）.
+
+### 12.4 Residual risks
+
+- Production edge equality with the isolated Free service is inferred, not proven（§11.1）.
+- Other services in the same Render workspace can reach `jinja-backend` over the private network and set
+  `CF-Connecting-IP` themselves. Only owner-controlled services exist there; the diagnostic service should be deleted.
+- Between steps 2 and 3, all Web users share the Vercel egress buckets（e.g. `concierge` 8/min）; keep the gap short.
+- IPv6 clients are keyed by full address（not /64）; NAT groups users behind one address.
+- A captured attestation can be replayed for ≤ 60 s, but only into the same client's bucket.
+- Paths are signed in their encoded form; Django compares the decoded `request.path`, so non-ASCII paths fall back to the
+  peer identity.
