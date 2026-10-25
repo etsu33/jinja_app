@@ -31,3 +31,27 @@
 ## STOP
 
 文書のみ。接続先ワークスペースは母艦により承認済み、Renderサービスの読取のみ実施。DB、GRANT、RLS、Data API設定、環境変数、Runtime、Production、Rollback/Promoteの変更なし。PRマージも別途母艦承認が必要。
+
+## 2026-10-25: exposed schemas and credential-safe role verification procedure
+
+### Data API: verified versus unknown
+
+- Supabase project metadata has no exposed-schema configuration field. Previously `current_setting('pgrst.db_schemas',true)` returned NULL in the SQL-editor `postgres` session. Subsequent metadata query for an explicit `authenticator`-role `pgrst.db_schemas` override returned **zero rows**. Neither result proves the configured exposed schemas or whether the Data API is enabled. The Dashboard is the source of this setting.
+- **Read-only Dashboard procedure:** visit `https://supabase.com/dashboard/project/uigvlbwnsthqqklzpfml/integrations/data_api/settings`, check `Enable Data API` status, record **only** exact names in `Exposed schemas` and timestamp, do not change settings or disclose keys.
+- If Dashboard and runtime differ because of override or other settings, **STOP** and use separately authorized configuration inspection. No live API probing of sensitive tables without further authorization.
+- Reference: https://supabase.com/docs/guides/api/securing-your-api and https://supabase.com/kb/troubleshooting/postgrest-error-pgrst002-could-not-query-the-database-for-the-schema-cache .
+
+### Django production DB connection role: safe verification procedure
+
+- Authorized target: Render workspace `tea-d18eq9qdbo4c739j9sdg`, `jinja-backend` service `srv-d4sk1uscjiac739ko5r0`. The read-only Render service metadata **does not include the effective DB username**. Source `backend/shrine_project/settings.py` selects `DATABASE_URL` first, then `DB_USER` / `POSTGRES_USER` fallback.
+- **Safest independent observation:** In the Render Dashboard, with authorized operator access, check which **environment variable names** are configured on the service and any linked environment groups; note only whether `DATABASE_URL`, `DB_USER`, or `POSTGRES_USER` are set, without copying values. This alone **cannot establish the effective username** if `DATABASE_URL` is present.
+- For an effective role assertion, obtain an **approved redacted runtime configuration attestation** that emits only connection vendor/type and `django.db.connection.settings_dict['USER']` (or the successful connection's `current_user`) and nothing else. The method must not expose a raw URL/password, must not log to shared production telemetry and **cannot run or deploy without separate explicit Mother Ship permission**, because current approved scope is read-only and Render Shell is unavailable on the plan.
+- Alternative owner-only manual inspection of the existing Render connection configuration may reveal the username, but credential-sensitive material must **not** be pasted, screenshotted unredacted, sent to AI, or committed. Owner-provided verified role name alone is acceptable as evidence with timestamp/source, without verifying database connectivity.
+- **No current safe tool action independently establishes the live Django DB role.** SQL-editor `current_user=postgres` represents the audit session, **not** Django.
+
+### Decisions still open
+
+- Data API enabled status and exposed schema names: **NOT VERIFIED**.
+- Live Django effective DB role: **NOT VERIFIED**.
+- Role-verification **method and no-secrets boundary: SPECIFIED**; execution of runtime attestation **NOT APPROVED**.
+- A-0, L4-O, L4-E = **NOT APPROVED**; no DB, Render, credentials, logs, deployment, RLS or GRANT changed.
