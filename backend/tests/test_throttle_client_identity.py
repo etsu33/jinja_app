@@ -34,9 +34,11 @@ def _isolate(settings):
     settings.THROTTLE_TRUSTED_EDGE = ""
     settings.THROTTLE_CLIENT_IDENTITY_SECRET = ""
     km._warned.clear()
+    km._reset_attestation_diagnostics()
     cache.clear()
     yield
     km._warned.clear()
+    km._reset_attestation_diagnostics()
     cache.clear()
 
 
@@ -391,3 +393,86 @@ def test_logs_never_contain_addresses_signatures_or_secrets(settings, caplog):
     assert caplog.records, "configuration problems should be reported without values"
     for secret_value in (CLIENT_A, CLIENT_B, RENDER_PROXY, SECRET, "short-secret", good["HTTP_X_KM_CLIENT_SIG"], "garbage"):
         assert secret_value not in text
+
+
+# --- R-1: rejected attestation diagnostics --------------------------------------------------------
+
+
+REJECTION_CASES = {
+    "incomplete": lambda: _without("HTTP_X_KM_CLIENT_SIG"),
+    "malformed": lambda: attestation("not-an-ip"),
+    "expired": lambda: attestation(CLIENT_A, ts=int(time.time()) - km.MAX_CLOCK_SKEW_SECONDS - 5),
+    "bad_signature": lambda: attestation(CLIENT_A, secret="x" * 48),
+}
+
+
+def _rejection_logs(caplog):
+    return [r for r in caplog.records if "attestation rejected" in r.getMessage()]
+
+
+@pytest.mark.parametrize("reason", sorted(REJECTION_CASES))
+def test_invalid_attestation_is_counted_by_reason(bff_secret, trusted_edge, caplog, reason):
+    caplog.set_level(logging.WARNING, logger=km.logger.name)
+    ident(make_request(HTTP_CF_CONNECTING_IP=VERCEL_EGRESS, **REJECTION_CASES[reason]()))
+    counts = km.attestation_rejection_counts()
+    assert counts[reason] == 1
+    assert sum(counts.values()) == 1
+    (record,) = _rejection_logs(caplog)
+    assert f"reason={reason}" in record.getMessage()
+    assert "count=1" in record.getMessage()
+
+
+def test_attestation_without_backend_secret_is_reported(trusted_edge, caplog):
+    caplog.set_level(logging.WARNING, logger=km.logger.name)
+    ident(make_request(HTTP_CF_CONNECTING_IP=VERCEL_EGRESS, **attestation(CLIENT_A)))
+    assert km.attestation_rejection_counts()["secret_unconfigured"] == 1
+    assert "reason=secret_unconfigured" in _rejection_logs(caplog)[0].getMessage()
+
+
+def test_missing_attestation_is_not_a_rejection(bff_secret, trusted_edge, caplog):
+    """Mobile などの直接呼び出し（ヘッダなし）は正常系として扱い、記録しない。"""
+    caplog.set_level(logging.WARNING, logger=km.logger.name)
+    for _ in range(3):
+        ident(make_request(HTTP_CF_CONNECTING_IP=CLIENT_A))
+    assert sum(km.attestation_rejection_counts().values()) == 0
+    assert _rejection_logs(caplog) == []
+
+
+def test_valid_attestation_is_not_a_rejection(bff_secret, trusted_edge, caplog):
+    caplog.set_level(logging.WARNING, logger=km.logger.name)
+    ident(make_request(HTTP_CF_CONNECTING_IP=VERCEL_EGRESS, **attestation(CLIENT_A)))
+    assert sum(km.attestation_rejection_counts().values()) == 0
+    assert _rejection_logs(caplog) == []
+
+
+def test_rejection_warnings_are_bounded_per_reason(bff_secret, caplog, monkeypatch):
+    caplog.set_level(logging.WARNING, logger=km.logger.name)
+    clock = [1_800_000_000.0]
+    monkeypatch.setattr(km.time, "time", lambda: clock[0])
+
+    def reject(i):
+        bad = attestation(f"198.51.100.{i}", ts=int(clock[0]), secret="x" * 48)
+        ident(make_request(**bad))
+
+    for i in range(50):
+        reject(i)
+    assert km.attestation_rejection_counts()["bad_signature"] == 50
+    assert len(_rejection_logs(caplog)) == 1
+
+    clock[0] += km.REJECTION_LOG_INTERVAL_SECONDS + 1
+    reject(99)
+    logs = _rejection_logs(caplog)
+    assert len(logs) == 2
+    assert "count=50" in logs[1].getMessage()  # 49 suppressed + this one
+
+
+def test_rejection_diagnostics_never_contain_sensitive_values(bff_secret, trusted_edge, caplog):
+    caplog.set_level(logging.DEBUG)
+    sensitive = set()
+    for build in REJECTION_CASES.values():
+        headers = build()
+        sensitive.update(v for v in headers.values() if len(v) > 4)
+        ident(make_request(HTTP_CF_CONNECTING_IP=VERCEL_EGRESS, **headers))
+    text = "\n".join(r.getMessage() for r in caplog.records)
+    for value in sensitive | {SECRET, CLIENT_A, VERCEL_EGRESS, RENDER_PROXY}:
+        assert value not in text

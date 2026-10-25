@@ -7,6 +7,8 @@ import dj_database_url
 import environ
 from urllib.parse import urlparse
 
+from shrine_project.throttle_config import load_throttle_identity_config
+
 
 # --- Paths ---
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -336,9 +338,12 @@ REST_FRAMEWORK = {
 # --- Throttle client identity（WS-04, shrine_project/throttling.py）---
 # CF-Connecting-IP を信頼するのは、Render の edge（Cloudflare）がその値を上書きする境界の内側だと
 # デプロイ設定で明示したときだけ。未設定なら X-Forwarded-For も CF-Connecting-IP も使わず fail-safe に倒す。
-THROTTLE_TRUSTED_EDGE = os.getenv("THROTTLE_TRUSTED_EDGE", "").strip()
-# Web BFF と共有する server-only の HMAC secret（MD-2）。未設定なら BFF attestation は無視される。
-THROTTLE_CLIENT_IDENTITY_SECRET = os.getenv("KM_CLIENT_IDENTITY_SECRET", "")
+# KM_CLIENT_IDENTITY_SECRET は Web BFF と共有する server-only の HMAC secret（MD-2）。
+# 設定の検証は import 時に行い、Render 上で THROTTLE_TRUSTED_EDGE が無い・不正な値・短い secret なら
+# ImproperlyConfigured で起動を止める（shrine_project/throttle_config.py）。
+_throttle_identity = load_throttle_identity_config(os.environ)
+THROTTLE_TRUSTED_EDGE = _throttle_identity.trusted_edge
+THROTTLE_CLIENT_IDENTITY_SECRET = _throttle_identity.client_identity_secret
 
 _rates = REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]
 
