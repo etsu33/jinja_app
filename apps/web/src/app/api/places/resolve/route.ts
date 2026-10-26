@@ -66,6 +66,7 @@ export async function GET(req: NextRequest) {
     method: "GET",
     cache: "no-store",
     headers: { Accept: "application/json" },
+    clientIdentityFrom: req,
   });
 
   return safeJsonPassthrough(upstream);
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
   const upstream = await djFetch("/api/places/resolve/", {
     method: "POST",
     cache: "no-store",
+    clientIdentityFrom: req,
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",

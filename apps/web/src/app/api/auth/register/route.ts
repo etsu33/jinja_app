@@ -1,6 +1,7 @@
 // apps/web/src/app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { serverLog, getRequestId } from "@/lib/server/logging";
+import { clientIdentityHeaders } from "@/lib/server/clientIdentity";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        ...clientIdentityHeaders(req, "POST", upstreamUrl),
       },
       body,
       cache: "no-store",
