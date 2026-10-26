@@ -560,3 +560,86 @@ Rollback:
   rollbacks are independent.
 - Secret rotation or leak: replace on both sides together; during the gap attestations are rejected
   （`bad_signature`）and Web users share the egress bucket.
+
+---
+
+## 14. Follow-up: health check and identity observability（2026-10-26）
+
+PR #3354 is merged into `develop`（`b97a5e4e`）. This follow-up is a separate branch and PR
+（`fix/ws04-healthcheck-identity-observability`）. No production setting, deployment or traffic generation was performed.
+
+### 14.1 Edge warning: evidence versus hypotheses
+
+| statement | level |
+| --- | --- |
+| `/healthz/` was a DRF `@api_view` without a throttle override, so the default Anon / User throttles ran and called the anonymous identity resolver | **confirmed**（code） |
+| A request without `CF-Connecting-IP`（edge trusted）to `/healthz/` returns 200, logs the edge warning once and consumes `throttle_anon_remote:<addr>` / `throttle_user_remote:<addr>` | **confirmed**（isolated reproduction） |
+| Those buckets are not shared with edge-identified users（`edge:<ip>`）; when full, `/healthz/` returned 429 | **confirmed**（isolated reproduction） |
+| The previous warning was once per process, so a later real missing-edge event was not reported | **confirmed**（isolated reproduction） |
+| `/healthz/` was throttled the same way before PR #3354（DRF default identity = `REMOTE_ADDR` without XFF） | **confirmed**（code） |
+| Render's internal health check reaches the instance without `CF-Connecting-IP`, and caused the production warning | **hypothesis**（production logs not examined in this session） |
+| Render's health-check frequency stays below 100 per minute per source address | **unverified** |
+
+### 14.2 Implementation
+
+- **P-1** `backend/shrine_project/urls.py`: `@throttle_classes([])` on `healthz`. The endpoint stays public
+  （`AllowAny`）with the same response（`{"ok": true, "release": …}`）. It no longer runs throttles or the identity
+  resolver. Other endpoints keep the default throttle classes and rates.
+- **P-2** `throttling.py`: the one-time `edge_missing` warning becomes a counted, bounded warning: the first event is
+  logged immediately, then at most one warning per process per 300 s with the number of events since the previous one:
+  `trusted edge identity missing or malformed; using fail-safe throttle identity: event=edge_missing count=<n> window_seconds=300`.
+  The fail-safe `remote:` fallback is unchanged. An unconfigured edge（local / CI）is not an `edge_missing` event.
+- **P-3** `throttling.py`: each anonymous identity resolution increments exactly one path counter（`bff` / `edge` /
+  `remote`）and one attestation counter（`absent` / `valid` / `rejected`）. The resolved identity is cached per request,
+  so several throttle classes do not double-count. When at least 300 s have passed since the window started, the next
+  resolution emits one INFO line and starts a new window:
+  `throttle identity summary: window_seconds=300 bff=<n> edge=<n> remote=<n> attestation_absent=<n> attestation_valid=<n> attestation_rejected=<n>`.
+  No event means no line. Counters live behind one lock with a fixed key set（bounded memory）. Nothing is added to HTTP
+  responses. Authentication and throttle decisions are unchanged.
+
+### 14.3 Interpretation limits
+
+- Counts are **per process**: each gunicorn worker and each restart has its own counters; they are not summed or
+  deduplicated across workers or instances. Add the lines of all workers for a time range to get a total.
+- A window is closed by the first resolution after 300 s; the last partial window of a quiet period is reported only
+  when traffic resumes（or never, if the process stops）.
+- Authenticated requests are not counted（DRF uses `user.pk` and never calls the resolver）; `/healthz/` is not counted.
+- `bff` counts requests with a valid attestation; it says nothing about how many distinct clients there are.
+- R-1 rejection warnings（§13.3）stay in place and give the reason for `attestation_rejected`.
+
+### 14.4 Tests
+
+`backend/tests/test_ws04_healthcheck_identity_observability.py`（18 tests）covers:
+
+- `/healthz/` returns the contract with no throttle key, resolver call or counter, and stays 200 with full buckets;
+- other endpoints still return 429 at the original limit; rates and classes are unchanged（read in a fresh process,
+  independent of tests that mutate the rate dict）;
+- `edge_missing` counting and the 300 s window; repeated events stay observable; fail-safe fallback;
+- every path and outcome counter; one count per request across throttle classes and through a real API request;
+  authenticated requests not counted; summary content and window; no events, no summary; 8-thread counter consistency;
+- no identity category in responses; logs without IPs, JWT, signatures or secret.
+
+Mutation checks: removing the `healthz` exemption fails 3 tests; restoring warn-once behaviour fails 2.
+Full backend run: 7124 passed; the only failures are the 4 known pre-existing ones（§13）plus the order-dependent rates
+test, which was then fixed as described above and re-run（168 focused WS-04 / throttle tests passed）.
+
+### 14.5 Production verification procedure（owner, read-only, after an approved deploy）
+
+1. Render logs after the deploy: the `event=edge_missing` warning should stop appearing at worker boot. If it still
+   appears, real traffic reaches the backend without `CF-Connecting-IP`; investigate before anything else.
+2. After normal traffic, find `throttle identity summary` lines（one per worker per ≥ 300 s of traffic）:
+   - before the Vercel secret is set: `bff=0`, `attestation_absent` ≈ all anonymous requests;
+   - after it is set: `bff > 0` and `attestation_valid > 0` = **positive evidence** that HMAC attestations are accepted;
+     `attestation_rejected` should stay near 0（R-1 warnings give the reason otherwise）;
+   - `remote` should stay near 0 now that health checks are excluded.
+3. Record only the numbers; do not copy surrounding log lines that may contain access-log addresses.
+4. No load test and no synthetic traffic are needed: the summary counts normal requests.
+
+### 14.6 Rollback
+
+Render → previous deploy. No setting or data migration is involved; the change is code-only and every counter is
+in memory. Rolling back restores throttling on `/healthz/` and the warn-once behaviour.
+
+### 14.7 Mother Ship gate
+
+Deployment of this PR is **not approved by this record**. Merge and deploy require explicit Mother Ship approval.

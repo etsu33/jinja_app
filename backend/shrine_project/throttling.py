@@ -13,6 +13,10 @@ DRF の既定 `get_ident()` は `NUM_PROXIES` 未設定のとき X-Forwarded-For
    アドレスになり、クライアントを分割せずまとめる（偽装で bucket を増やせない代わりに共有される）。
 
 X-Forwarded-For は一切使わない。生の IP・署名・secret はログに出さない。
+
+観測（docs/audit/ws04-throttle-client-identity-design-2026-10-25.md §14）: 匿名識別子の解決ごとに、選ばれた
+path（bff / edge / remote）と attestation の結果（absent / valid / rejected）を件数だけ数え、プロセスごとに
+300 秒に 1 回まで集計ログを出す。edge の値が無いときの warning も同じ窓で件数つきに抑える。
 """
 
 from __future__ import annotations
@@ -52,6 +56,19 @@ _rejections_lock = threading.Lock()
 _rejection_counts: dict[str, int] = dict.fromkeys(REJECTION_REASONS, 0)
 _rejections_since_log: dict[str, int] = dict.fromkeys(REJECTION_REASONS, 0)
 _rejection_last_log: dict[str, float] = {}
+
+# P-2 / P-3: プロセス内の集計（値は持たず件数だけ。キーは固定なのでメモリは有界）。
+# gunicorn の worker ごと・再起動ごとに独立した値で、プロセス間・インスタンス間では合算も重複排除もしない。
+OBSERVABILITY_WINDOW_SECONDS = 300
+IDENTITY_PATHS = ("bff", "edge", "remote")
+ATTESTATION_OUTCOMES = ("absent", "valid", "rejected")
+_observability_lock = threading.Lock()
+_edge_missing_total = 0
+_edge_missing_since_log = 0
+_edge_missing_last_log: float | None = None
+_identity_totals: dict[str, int] = dict.fromkeys(IDENTITY_PATHS + ATTESTATION_OUTCOMES, 0)
+_identity_window: dict[str, int] = dict.fromkeys(IDENTITY_PATHS + ATTESTATION_OUTCOMES, 0)
+_identity_window_start: float | None = None
 
 
 def _warn_once(key: str, message: str) -> None:
@@ -104,6 +121,72 @@ def _reset_attestation_diagnostics() -> None:
             _rejection_counts[reason] = 0
             _rejections_since_log[reason] = 0
         _rejection_last_log.clear()
+
+
+def identity_observability_counts() -> dict[str, int]:
+    """プロセス起動からの件数（edge_missing と identity path / attestation outcome）。値は含まない。"""
+    with _observability_lock:
+        return {"edge_missing": _edge_missing_total, **_identity_totals}
+
+
+def _reset_identity_observability() -> None:
+    global _edge_missing_total, _edge_missing_since_log, _edge_missing_last_log, _identity_window_start
+    with _observability_lock:
+        _edge_missing_total = 0
+        _edge_missing_since_log = 0
+        _edge_missing_last_log = None
+        for key in _identity_totals:
+            _identity_totals[key] = 0
+            _identity_window[key] = 0
+        _identity_window_start = None
+
+
+def _record_edge_missing(now: float) -> None:
+    """P-2: 信頼 edge の値が無い・不正。最初の 1 件と、以後は 300 秒に 1 回だけ件数つきで warning を出す。"""
+    global _edge_missing_total, _edge_missing_since_log, _edge_missing_last_log
+    with _observability_lock:
+        _edge_missing_total += 1
+        _edge_missing_since_log += 1
+        if _edge_missing_last_log is not None and now - _edge_missing_last_log < OBSERVABILITY_WINDOW_SECONDS:
+            return
+        count = _edge_missing_since_log
+        _edge_missing_since_log = 0
+        _edge_missing_last_log = now
+    logger.warning(
+        "trusted edge identity missing or malformed; using fail-safe throttle identity: "
+        "event=edge_missing count=%d window_seconds=%d",
+        count,
+        OBSERVABILITY_WINDOW_SECONDS,
+    )
+
+
+def _record_identity_selection(path: str, attestation: str, now: float) -> None:
+    """P-3: 1 リクエストにつき 1 回呼ぶ。窓が 300 秒を超えたら、その窓の件数を 1 行だけ INFO で出す。"""
+    global _identity_window_start
+    with _observability_lock:
+        for key in (path, attestation):
+            _identity_totals[key] += 1
+            _identity_window[key] += 1
+        if _identity_window_start is None:
+            _identity_window_start = now
+            return
+        if now - _identity_window_start < OBSERVABILITY_WINDOW_SECONDS:
+            return
+        snapshot = dict(_identity_window)
+        for key in _identity_window:
+            _identity_window[key] = 0
+        _identity_window_start = now
+    logger.info(
+        "throttle identity summary: window_seconds=%d bff=%d edge=%d remote=%d "
+        "attestation_absent=%d attestation_valid=%d attestation_rejected=%d",
+        OBSERVABILITY_WINDOW_SECONDS,
+        snapshot["bff"],
+        snapshot["edge"],
+        snapshot["remote"],
+        snapshot["absent"],
+        snapshot["valid"],
+        snapshot["rejected"],
+    )
 
 
 def _record_rejection(reason: str, now: float) -> None:
@@ -166,7 +249,7 @@ def verified_bff_client_ip(request, *, now: float | None = None) -> str | None:
     return ip
 
 
-def trusted_edge_client_ip(request) -> str | None:
+def trusted_edge_client_ip(request, *, now: float | None = None) -> str | None:
     """信頼できる edge 境界の内側でのみ `CF-Connecting-IP` を返す。"""
     edge = getattr(settings, "THROTTLE_TRUSTED_EDGE", "") or ""
     if edge != TRUSTED_EDGE_RENDER_CLOUDFLARE:
@@ -175,8 +258,13 @@ def trusted_edge_client_ip(request) -> str | None:
         return None
     ip = parse_client_ip(request.META.get(EDGE_IP_META))
     if ip is None:
-        _warn_once("edge_missing", "trusted edge identity missing or malformed; using fail-safe throttle identity")
+        _record_edge_missing(time.time() if now is None else now)
     return ip
+
+
+def _attestation_absent(request) -> bool:
+    meta = request.META
+    return all(meta.get(name) is None for name in (CLIENT_IP_META, CLIENT_TS_META, CLIENT_SIG_META))
 
 
 def resolve_client_ident(request) -> str:
@@ -186,17 +274,24 @@ def resolve_client_ident(request) -> str:
     if cached is not None:
         return cached
 
-    ip = verified_bff_client_ip(request)
+    now = time.time()
+    ip = verified_bff_client_ip(request, now=now)
     if ip is not None:
+        path, attestation = "bff", "valid"
         ident = f"bff:{ip}"
     else:
-        ip = trusted_edge_client_ip(request)
+        attestation = "absent" if _attestation_absent(request) else "rejected"
+        ip = trusted_edge_client_ip(request, now=now)
         if ip is not None:
+            path = "edge"
             ident = f"edge:{ip}"
         else:
+            path = "remote"
             ident = f"remote:{parse_client_ip(request.META.get('REMOTE_ADDR')) or 'unknown'}"
 
     setattr(base, _IDENT_ATTR, ident)
+    # 解決済みの識別子はキャッシュされるため、throttle class が複数あっても 1 リクエスト 1 回だけ数える
+    _record_identity_selection(path, attestation, now)
     return ident
 
 

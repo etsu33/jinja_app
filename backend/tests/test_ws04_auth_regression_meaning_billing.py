@@ -36,10 +36,12 @@ def _isolate(settings, monkeypatch):
     monkeypatch.setenv("BILLING_STUB_ACTIVE", "0")
     km._warned.clear()
     km._reset_attestation_diagnostics()
+    km._reset_identity_observability()
     cache.clear()
     yield
     km._warned.clear()
     km._reset_attestation_diagnostics()
+    km._reset_identity_observability()
     cache.clear()
 
 
