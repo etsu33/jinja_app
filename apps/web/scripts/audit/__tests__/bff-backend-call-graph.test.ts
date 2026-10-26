@@ -9,6 +9,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   analyzeProgram,
   createProgramFromFiles,
+  escapeRegExp,
+  mdEscape,
   reconcile,
   renderMarkdown,
   runAudit,
@@ -442,4 +444,48 @@ describe("repository smoke test", () => {
       expect(w.finalSinks.length).toBeGreaterThan(0);
     }
   }, 180_000);
+});
+
+describe("escaping（CodeQL js/incomplete-sanitization）", () => {
+  it("escapeRegExp escapes backslashes and every RegExp metacharacter", () => {
+    const raw = "a\\b$c.d*e+f?g^h{i}j(k)l|m[n]o";
+    const re = new RegExp(`^${escapeRegExp(raw)}$`);
+    expect(re.test(raw)).toBe(true);
+    expect(re.test("a\\bXc.d*e+f?g^h{i}j(k)l|m[n]o")).toBe(false);
+    expect(escapeRegExp("\\")).toBe("\\\\");
+  });
+
+  it("mdEscape escapes backslashes before pipes so a cell cannot be split", () => {
+    expect(mdEscape("a|b")).toBe("a\\|b");
+    // `\|` を素朴に `\\|` にすると GFM では「backslash + 列区切り」になる
+    expect(mdEscape("a\\|b")).toBe("a\\\\\\|b");
+    expect(mdEscape("end\\")).toBe("end\\\\");
+    expect(mdEscape("x\ny")).toBe("x y");
+    expect(mdEscape(null)).toBe("");
+  });
+
+  it("builds text patterns for wrapper names that contain `$`", () => {
+    const files = {
+      "src/env.d.ts": ENV_D_TS,
+      "src/lib/net.ts": `
+export function get$Json(path: string) {
+  return fetch(\`\${process.env.DJANGO_ORIGIN}\${path}\`);
+}
+`,
+      "src/app/api/dollar/route.ts": `
+import { get$Json } from "@/lib/net";
+export async function GET() {
+  return get$Json("/api/dollar/");
+}
+`,
+    };
+    const { program, srcDir } = createProgramFromFiles(files);
+    const r = analyzeProgram(program, { srcDir });
+    expect(r.wrappers.map((w: any) => w.name)).toEqual(["get$Json"]);
+    const rec = reconcile(r);
+    expect(rec.status).toBe("RECONCILED");
+    const p = rec.patterns.find((x: any) => x.pattern === "wrapper:get$Json");
+    expect(p.byClass["AST request site"]).toBe(1);
+    expect(rec.astOnlyRequestSites).toEqual([]);
+  });
 });

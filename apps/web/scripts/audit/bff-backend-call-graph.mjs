@@ -2135,7 +2135,7 @@ export function reconcile(result) {
     .filter((w) => !known.has(w.name) && /^[A-Za-z_$][\w$]*$/.test(w.name))
     .map((w) => ({
       id: `wrapper:${w.name}`,
-      re: new RegExp(`\\b${w.name.replace(/\$/g, "\\$")}\\s*(<[^>(]*>)?\\s*\\(`, "g"),
+      re: new RegExp(`\\b${escapeRegExp(w.name)}\\s*(<[^>(]*>)?\\s*\\(`, "g"),
       anchor: w.name,
     }));
   for (const pattern of [...TEXT_PATTERNS, ...wrapperPatterns]) {
@@ -2188,7 +2188,7 @@ export function reconcile(result) {
   for (const [file, sf] of result.sources) {
     const names = ["fetch", ...known, ...result.wrappers.map((w) => w.name)]
       .filter((n) => /^[A-Za-z_$][\w$]*$/.test(n))
-      .map((n) => n.replace(/\$/g, "\\$"));
+      .map(escapeRegExp);
     const re = new RegExp(
       `\\b(${[...new Set(names)].join("|")})\\s*(<[^>(]*>)?\\s*\\(|\\.\\s*(request|get|delete|head|options|post|put|patch|postForm|putForm|patchForm)\\s*(<[^>(]*>)?\\s*\\(`,
       "g",
@@ -2242,8 +2242,15 @@ export function summarize(result, reconciliation) {
   };
 }
 
-function mdEscape(s) {
+/** RegExp の特殊文字（backslash を含む）をすべて escape する。 */
+export function escapeRegExp(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Markdown table cell 用。backslash を先に escape しないと `\|` が列区切りとして解釈される。 */
+export function mdEscape(s) {
   return String(s ?? "")
+    .replace(/\\/g, "\\\\")
     .replace(/\|/g, "\\|")
     .replace(/\n/g, " ");
 }

@@ -12,6 +12,7 @@ RECONCILIATION     = RECONCILED（0 unexplained text hits, 0 AST-only sites, 0 o
 PRODUCTION         = NOT ACCESSED; no traffic; no env values read; no secrets, IPs, tokens or signatures in output
 CODE CHANGES       = none to routes, signing, throttling or settings（audit script, its tests, a vitest include entry,
                      two package scripts）
+CODEQL             = 3 high alerts（js/incomplete-sanitization）triaged and fixed in the audit script（§11）
 FINAL STATUS       = PR for review; STOP before merge
 ```
 
@@ -221,7 +222,7 @@ node scripts/audit/bff-backend-call-graph.mjs   # summary only
 
 Exit status: `0` reconciled, `1` drift（with `--check`）, `2` not reconciled.
 
-Tests: `apps/web/scripts/audit/__tests__/bff-backend-call-graph.test.ts`（20 tests; in-memory fixtures for aliases,
+Tests: `apps/web/scripts/audit/__tests__/bff-backend-call-graph.test.ts`（23 tests; in-memory fixtures for aliases,
 `globalThis.fetch`, `bind`, re-exports, `djFetch` path / request / option forms, `forwardAuth: false`, wrapper of wrapper,
 unsigned wrapper, direct Route Handler fetch, SSR internal and direct fetches, client fetch, axios instances, dynamic
 callees, escaped `fetch`, reconciliation failure, no env values in output, plus a smoke test over the real `src`）.
@@ -278,3 +279,52 @@ settings / env / secrets        UNCHANGED / NONE READ
 production                      NOT ACCESSED; no traffic generated
 merge / deployment              NOT PERFORMED
 ```
+
+---
+
+## 11. CodeQL alert triage（PR #3356, 2026-10-26）
+
+### 11.1 Alerts
+
+The CodeQL check on head `ce9e556` reported 3 new high-severity alerts. The source is the check run annotations; the
+code-scanning alerts API returned 403 to this session, so alert numbers and data-flow paths were not available. All
+three are rule **`js/incomplete-sanitization`**（"Incomplete string escaping or encoding — this does not escape
+backslash characters in the input"）, and all three are in `apps/web/scripts/audit/bff-backend-call-graph.mjs`, which
+this PR adds. None is in application code.
+
+| # | line（at `ce9e556`） | code | input | classification |
+| --- | --- | --- | --- | --- |
+| A-1 | 2138 | `w.name.replace(/\$/g, "\\$")` when building a RegExp for a detected wrapper name | a function name read from repository source | **false positive in effect; fixed as hygiene.** Names are checked against `/^[A-Za-z_$][\w$]*$/` first, so they cannot contain a backslash or any other RegExp metacharacter except `$`. The escaping was nonetheless ad hoc |
+| A-2 | 2191 | same pattern for the alias / multi-line reconciliation RegExp | same | same as A-1 |
+| A-3 | 2246–2247 | `mdEscape`: escaped `\|` but not `\` for Markdown table cells | URL expressions, callee text and evidence strings taken from repository source | **real defect, integrity only, latent.** A value containing `\|` would become `\\|`, which GFM reads as a literal backslash followed by a column separator: the generated inventory table would gain a column. It is not a security vulnerability: the output is a committed Markdown file, and GitHub sanitises rendered HTML. The committed inventory at `ce9e556` was **not** affected: its only backslash is a correct `\|` escape |
+
+### 11.2 Does the script process untrusted input unsafely?
+
+- **Input**: only the TypeScript sources under `apps/web/src`（plus `tsconfig.json`）, read from the local checkout.
+  These are as trusted as the code CI builds. No network input, no env values, no user data.
+- **Dynamic RegExp**: built only from validated identifiers（now with a complete escape）and fixed literals. The patterns
+  have no nested quantifiers, so there is no practical ReDoS surface.
+- **Output**: files at paths given on the command line, or stdout. Nothing is executed or evaluated.
+- **Conclusion**: no unsafe handling of untrusted input. The trust boundary is "a contributor's own code", the same
+  boundary as the build itself.
+
+### 11.3 Fix（audit tooling only）
+
+- New `escapeRegExp(s)` escapes every RegExp metacharacter, including the backslash. It replaces the two ad hoc `$`
+  escapes（A-1, A-2）.
+- `mdEscape(s)` escapes backslashes **before** pipes（A-3）.
+- Three tests added（23 in total）:
+  - `escapeRegExp` round-trips a string with a backslash and every metacharacter;
+  - `mdEscape` keeps `a\|b`, trailing backslashes and newlines inside one cell; this test fails against the old
+    implementation;
+  - a fixture with a `$`-containing wrapper name still reconciles.
+- The regenerated inventory is byte-identical（`pnpm audit:bff-identity:check` → 0）.
+- No suppression or dismissal is used. Application routes, HMAC signing, throttling and settings are unchanged.
+
+### 11.4 Residual risks
+
+- A-1 / A-2 depended on the identifier filter staying in place; the complete escape removes that coupling.
+- Markdown cells may still contain HTML-like text taken from source code（for example generics such as `Promise<Response>`）.
+  GitHub renders it sanitised, so the effect is cosmetic, not executable.
+- Whether CodeQL clears these alerts is confirmed only by the CI re-run on the new head; it is recorded in the PR.
+
