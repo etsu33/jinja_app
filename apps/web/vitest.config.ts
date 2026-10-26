@@ -15,7 +15,12 @@ export default defineConfig({
     environment: "jsdom",
     environmentOptions: { jsdom: { url: "http://localhost/" } },
     setupFiles: ["./vitest.setup.ts"],
-    include: ["src/**/tests/*.{ts,tsx}", "src/**/__tests__/**/*.{test,spec}.{js,ts,tsx}", "src/app/api/auth/login/route.test.ts"],
+    include: [
+      "src/**/tests/*.{ts,tsx}",
+      "src/**/__tests__/**/*.{test,spec}.{js,ts,tsx}",
+      "src/app/api/auth/login/route.test.ts",
+      "scripts/**/__tests__/**/*.test.ts",
+    ],
     globals: true,
     css: false,
     coverage: {
