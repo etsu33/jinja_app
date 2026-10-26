@@ -35,10 +35,12 @@ def _isolate(settings):
     settings.THROTTLE_CLIENT_IDENTITY_SECRET = ""
     km._warned.clear()
     km._reset_attestation_diagnostics()
+    km._reset_identity_observability()
     cache.clear()
     yield
     km._warned.clear()
     km._reset_attestation_diagnostics()
+    km._reset_identity_observability()
     cache.clear()
 
 
