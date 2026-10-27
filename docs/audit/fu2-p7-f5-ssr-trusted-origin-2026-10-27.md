@@ -189,3 +189,14 @@ Not covered here, because they belong to the eventual implementation:
 - **SSO scope:** whether the production alias is exempt from SSO protection, and how far the SSO cookie reaches on
   Preview, are Inferred.
 - **`billing.server.ts`:** P4 is excluded by the Premium constraint and needs its own decision.
+
+## 11. Follow-up: Preview runtime verification（2026-10-27）
+
+See `fu2-p7-f5-preview-runtime-env-verification-2026-10-27.md`. Results:
+
+- `VERCEL_ENV`, `VERCEL_URL` and `VERCEL_BRANCH_URL` at runtime are **UNVERIFIED**: no existing signal, and no
+  diagnostic code was added;
+- the request host equals the Preview's branch-alias metadata;
+- on the SSO-protected Preview, a cookie-forwarding SSR self-fetch passes, and a cookie-less one receives HTML（public
+  goshuins rendered empty）. This confirms the §4 / §6 assumption that Preview SSR depends on same-host cookie
+  forwarding.
