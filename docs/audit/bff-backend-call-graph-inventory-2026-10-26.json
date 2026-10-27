@@ -1,36 +1,36 @@
 {
   "summary": {
-    "filesAnalyzed": 718,
+    "filesAnalyzed": 719,
     "filesByScope": {
       "production": 480,
-      "test": 232,
+      "test": 233,
       "storybook": 6
     },
-    "productionRows": 142,
+    "productionRows": 145,
     "rowsByKind": {
-      "direct-sink": 84,
-      "wrapper-call": 52,
-      "wrapper-internal": 6
+      "direct-sink": 83,
+      "wrapper-call": 54,
+      "wrapper-internal": 8
     },
     "requestSitesByDestination": {
       "relative": 71,
-      "backend": 51,
+      "backend": 52,
       "internal-bff": 11,
       "unresolved": 1,
       "backend-or-internal": 1,
       "parameter": 1
     },
     "backendSitesByHmac": {
-      "conditionally signed": 52
+      "conditionally signed": 53
     },
     "backendSitesByIdentity": {
-      "direct": 50,
+      "direct": 51,
       "forwarded": 2
     },
     "requestSitesByContext": {
       "client": 55,
       "route-handler": 51,
-      "ssr": 13,
+      "ssr": 14,
       "server-action": 2,
       "unknown": 10,
       "client+unknown": 1,
@@ -38,7 +38,7 @@
       "server": 1
     },
     "testAndStoryRows": 20,
-    "wrappers": 6,
+    "wrappers": 8,
     "unresolvedProduction": 3,
     "unresolvedTest": 82,
     "reconciliation": "RECONCILED"
@@ -106,6 +106,54 @@
       "productionCallSites": 1,
       "allCallSites": 5,
       "evidence": []
+    },
+    {
+      "name": "fetchViaBff",
+      "file": "src/lib/api/shrineMeaning.server.ts",
+      "line": 54,
+      "known": false,
+      "urlParamIndices": [
+        0
+      ],
+      "base": "internal-bff",
+      "signingHelperOnPath": false,
+      "identitySources": [],
+      "authHeaders": [
+        "cookie"
+      ],
+      "authSourceParams": [],
+      "authGates": [],
+      "finalSinks": [
+        "src/lib/api/shrineMeaning.server.ts:60"
+      ],
+      "productionCallSites": 1,
+      "allCallSites": 1,
+      "evidence": []
+    },
+    {
+      "name": "fetchAnonymousDirect",
+      "file": "src/lib/api/shrineMeaning.server.ts",
+      "line": 69,
+      "known": false,
+      "urlParamIndices": [
+        0
+      ],
+      "base": "backend",
+      "signingHelperOnPath": true,
+      "identitySources": [
+        "next-headers"
+      ],
+      "authHeaders": [],
+      "authSourceParams": [],
+      "authGates": [],
+      "finalSinks": [
+        "src/lib/api/shrineMeaning.server.ts:72"
+      ],
+      "productionCallSites": 1,
+      "allCallSites": 1,
+      "evidence": [
+        "clientIdentityHeaders({ headers: await headers() }) at src/lib/api/shrineMeaning.server.ts:47 [init]"
+      ]
     },
     {
       "name": "djFetch",
@@ -585,7 +633,7 @@
         "conditionally signed"
       ],
       "internalServerCallers": [
-        "src/lib/api/shrineMeaning.server.ts:35"
+        "src/lib/api/shrineMeaning.server.ts:92"
       ],
       "dormantServerCallers": [
         "src/lib/api/shrineMeaning.ts:19"
@@ -4405,19 +4453,19 @@
     {
       "id": "R120",
       "file": "src/lib/api/shrineMeaning.server.ts",
-      "line": 35,
-      "column": 23,
+      "line": 60,
+      "column": 10,
       "scope": "production",
-      "function": "fetchShrineMeaningPayloadV2Server",
-      "kind": "direct-sink",
+      "function": "fetchViaBff",
+      "kind": "wrapper-internal",
       "via": "fetch",
       "wrapper": null,
-      "internalTo": null,
+      "internalTo": "fetchViaBff",
       "method": "GET",
       "destination": {
-        "category": "internal-bff",
-        "staticPath": "/api/shrines/{*}/meaning/",
-        "expression": "url",
+        "category": "parameter",
+        "staticPath": "{*}",
+        "expression": "`${base}${path}`",
         "envNames": [
           "PLAYWRIGHT_BASE_URL",
           "PORT",
@@ -4429,18 +4477,114 @@
       "runtimeContext": "ssr",
       "reachableFromEntrypoint": true,
       "functionReferenced": true,
+      "provenance": "see wrapper call sites",
+      "identity": "see wrapper call sites",
+      "hmac": "see wrapper call sites",
+      "authentication": "see wrapper call sites",
+      "downstreamRoute": null,
+      "evidence": [
+        "final network sink of wrapper fetchViaBff; URL path comes from its parameter(s) 0"
+      ]
+    },
+    {
+      "id": "R121",
+      "file": "src/lib/api/shrineMeaning.server.ts",
+      "line": 72,
+      "column": 10,
+      "scope": "production",
+      "function": "fetchAnonymousDirect",
+      "kind": "wrapper-internal",
+      "via": "fetch",
+      "wrapper": null,
+      "internalTo": "fetchAnonymousDirect",
+      "method": "dynamic(SIGNED_METHOD)",
+      "destination": {
+        "category": "parameter",
+        "staticPath": "{*}",
+        "expression": "upstream",
+        "envNames": [
+          "BACKEND_ORIGIN",
+          "DJANGO_ORIGIN"
+        ]
+      },
+      "runtimeContext": "ssr",
+      "reachableFromEntrypoint": true,
+      "functionReferenced": true,
+      "provenance": "see wrapper call sites",
+      "identity": "see wrapper call sites",
+      "hmac": "see wrapper call sites",
+      "authentication": "see wrapper call sites",
+      "downstreamRoute": null,
+      "evidence": [
+        "final network sink of wrapper fetchAnonymousDirect; URL path comes from its parameter(s) 0",
+        "clientIdentityHeaders({ headers: await headers() }) at src/lib/api/shrineMeaning.server.ts:47 [init]"
+      ]
+    },
+    {
+      "id": "R122",
+      "file": "src/lib/api/shrineMeaning.server.ts",
+      "line": 92,
+      "column": 50,
+      "scope": "production",
+      "function": "fetchShrineMeaningPayloadV2Server",
+      "kind": "wrapper-call",
+      "via": "fetchViaBff",
+      "wrapper": "fetchViaBff",
+      "internalTo": null,
+      "method": "GET (wrapper default)",
+      "destination": {
+        "category": "internal-bff",
+        "staticPath": "/api/shrines/{*}/meaning/",
+        "expression": "path",
+        "envNames": []
+      },
+      "runtimeContext": "ssr",
+      "reachableFromEntrypoint": true,
+      "functionReferenced": true,
       "provenance": "original user request (server render / action)",
       "identity": "absent",
       "hmac": "not applicable (non-Backend hop)",
-      "authentication": "headers: cookie",
+      "authentication": "none forwarded (no incoming request passed; anonymous to Backend unless init headers add credentials)",
       "downstreamRoute": "/api/shrines/[id]/meaning",
       "evidence": [
+        "wrapper fetchViaBff (src/lib/api/shrineMeaning.server.ts:54) final sink(s): src/lib/api/shrineMeaning.server.ts:60",
         "server → own BFF: the BFF route sees the Vercel function egress, not the browser (docs/audit/ws04 §13.2; inferred, not measured)"
       ],
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R121",
+      "id": "R123",
+      "file": "src/lib/api/shrineMeaning.server.ts",
+      "line": 92,
+      "column": 76,
+      "scope": "production",
+      "function": "fetchShrineMeaningPayloadV2Server",
+      "kind": "wrapper-call",
+      "via": "fetchAnonymousDirect",
+      "wrapper": "fetchAnonymousDirect",
+      "internalTo": null,
+      "method": "GET (wrapper default)",
+      "destination": {
+        "category": "backend",
+        "staticPath": "/api/shrines/{*}/meaning/",
+        "expression": "path",
+        "envNames": []
+      },
+      "runtimeContext": "ssr",
+      "reachableFromEntrypoint": true,
+      "functionReferenced": true,
+      "provenance": "original user request (server render / action)",
+      "identity": "direct",
+      "hmac": "conditionally signed",
+      "authentication": "none forwarded (no incoming request passed; anonymous to Backend unless init headers add credentials)",
+      "downstreamRoute": null,
+      "evidence": [
+        "wrapper fetchAnonymousDirect (src/lib/api/shrineMeaning.server.ts:69) final sink(s): src/lib/api/shrineMeaning.server.ts:72",
+        "undefined: page request headers via next/headers headers()"
+      ]
+    },
+    {
+      "id": "R124",
       "file": "src/lib/api/shrineMeaning.ts",
       "line": 19,
       "column": 23,
@@ -4472,7 +4616,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R122",
+      "id": "R125",
       "file": "src/lib/api/shrineSubmissions.ts",
       "line": 4,
       "column": 21,
@@ -4503,7 +4647,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R123",
+      "id": "R126",
       "file": "src/lib/api/shrineSubmissions.ts",
       "line": 30,
       "column": 21,
@@ -4534,7 +4678,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R124",
+      "id": "R127",
       "file": "src/lib/api/shrines.list.client.ts",
       "line": 8,
       "column": 21,
@@ -4566,7 +4710,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R125",
+      "id": "R128",
       "file": "src/lib/api/shrines.list.server.ts",
       "line": 13,
       "column": 21,
@@ -4603,7 +4747,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R126",
+      "id": "R129",
       "file": "src/lib/api/shrines.server.ts",
       "line": 45,
       "column": 21,
@@ -4643,7 +4787,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R127",
+      "id": "R130",
       "file": "src/lib/api/shrines.ts",
       "line": 17,
       "column": 21,
@@ -4674,7 +4818,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R128",
+      "id": "R131",
       "file": "src/lib/api/shrines.ts",
       "line": 35,
       "column": 21,
@@ -4705,7 +4849,7 @@
       ]
     },
     {
-      "id": "R129",
+      "id": "R132",
       "file": "src/lib/api/shrines.ts",
       "line": 46,
       "column": 21,
@@ -4737,7 +4881,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R130",
+      "id": "R133",
       "file": "src/lib/api/shrinesSearch.ts",
       "line": 19,
       "column": 21,
@@ -4768,7 +4912,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R131",
+      "id": "R134",
       "file": "src/lib/api/shrinesSuggest.ts",
       "line": 33,
       "column": 21,
@@ -4799,7 +4943,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R132",
+      "id": "R135",
       "file": "src/lib/api/tags.ts",
       "line": 6,
       "column": 19,
@@ -4830,7 +4974,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R133",
+      "id": "R136",
       "file": "src/lib/api/users.ts",
       "line": 38,
       "column": 21,
@@ -4861,7 +5005,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R134",
+      "id": "R137",
       "file": "src/lib/api/visits.ts",
       "line": 22,
       "column": 13,
@@ -4892,7 +5036,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R135",
+      "id": "R138",
       "file": "src/lib/api/visits.ts",
       "line": 23,
       "column": 13,
@@ -4923,7 +5067,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R136",
+      "id": "R139",
       "file": "src/lib/api/visits.ts",
       "line": 29,
       "column": 21,
@@ -4954,7 +5098,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R137",
+      "id": "R140",
       "file": "src/lib/auth/AuthProvider.tsx",
       "line": 55,
       "column": 17,
@@ -4985,7 +5129,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R138",
+      "id": "R141",
       "file": "src/lib/auth/AuthProvider.tsx",
       "line": 181,
       "column": 21,
@@ -5016,7 +5160,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R139",
+      "id": "R142",
       "file": "src/lib/auth/AuthProvider.tsx",
       "line": 198,
       "column": 11,
@@ -5047,7 +5191,7 @@
       "downstreamHmac": "route makes no Backend call"
     },
     {
-      "id": "R140",
+      "id": "R143",
       "file": "src/lib/bff/refreshMutex.ts",
       "line": 27,
       "column": 21,
@@ -5077,7 +5221,7 @@
       ]
     },
     {
-      "id": "R141",
+      "id": "R144",
       "file": "src/lib/conciergeChat.ts",
       "line": 44,
       "column": 26,
@@ -5109,7 +5253,7 @@
       "downstreamHmac": "conditionally signed"
     },
     {
-      "id": "R142",
+      "id": "R145",
       "file": "src/lib/server/__tests__/bffFetch.refreshIsolation.test.ts",
       "line": 123,
       "column": 19,
@@ -5140,7 +5284,7 @@
       ]
     },
     {
-      "id": "R143",
+      "id": "R146",
       "file": "src/lib/server/__tests__/bffFetch.refreshIsolation.test.ts",
       "line": 127,
       "column": 19,
@@ -5171,7 +5315,7 @@
       ]
     },
     {
-      "id": "R144",
+      "id": "R147",
       "file": "src/lib/server/__tests__/bffFetch.refreshIsolation.test.ts",
       "line": 171,
       "column": 19,
@@ -5202,7 +5346,7 @@
       ]
     },
     {
-      "id": "R145",
+      "id": "R148",
       "file": "src/lib/server/__tests__/bffFetch.refreshIsolation.test.ts",
       "line": 175,
       "column": 20,
@@ -5233,7 +5377,7 @@
       ]
     },
     {
-      "id": "R146",
+      "id": "R149",
       "file": "src/lib/server/__tests__/bffFetch.refreshIsolation.test.ts",
       "line": 207,
       "column": 19,
@@ -5264,7 +5408,7 @@
       ]
     },
     {
-      "id": "R147",
+      "id": "R150",
       "file": "src/lib/server/__tests__/bffFetch.refreshIsolation.test.ts",
       "line": 211,
       "column": 19,
@@ -5295,7 +5439,7 @@
       ]
     },
     {
-      "id": "R148",
+      "id": "R151",
       "file": "src/lib/server/__tests__/bffFetch.refreshIsolation.test.ts",
       "line": 242,
       "column": 26,
@@ -5326,7 +5470,7 @@
       ]
     },
     {
-      "id": "R149",
+      "id": "R152",
       "file": "src/lib/server/__tests__/bffFetch.refreshIsolation.test.ts",
       "line": 248,
       "column": 29,
@@ -5357,7 +5501,7 @@
       ]
     },
     {
-      "id": "R150",
+      "id": "R153",
       "file": "src/lib/server/__tests__/bffFetch.refreshIsolation.test.ts",
       "line": 282,
       "column": 23,
@@ -5388,7 +5532,7 @@
       ]
     },
     {
-      "id": "R151",
+      "id": "R154",
       "file": "src/lib/server/__tests__/bffFetch.refreshIsolation.test.ts",
       "line": 302,
       "column": 23,
@@ -5419,7 +5563,7 @@
       ]
     },
     {
-      "id": "R152",
+      "id": "R155",
       "file": "src/lib/server/__tests__/bffFetch.refreshIsolation.test.ts",
       "line": 344,
       "column": 23,
@@ -5450,7 +5594,7 @@
       ]
     },
     {
-      "id": "R153",
+      "id": "R156",
       "file": "src/lib/server/__tests__/bffFetch.refreshIsolation.test.ts",
       "line": 371,
       "column": 23,
@@ -5481,7 +5625,7 @@
       ]
     },
     {
-      "id": "R154",
+      "id": "R157",
       "file": "src/lib/server/__tests__/clientIdentity.test.ts",
       "line": 123,
       "column": 11,
@@ -5512,7 +5656,7 @@
       ]
     },
     {
-      "id": "R155",
+      "id": "R158",
       "file": "src/lib/server/__tests__/clientIdentity.test.ts",
       "line": 142,
       "column": 11,
@@ -5543,7 +5687,7 @@
       ]
     },
     {
-      "id": "R156",
+      "id": "R159",
       "file": "src/lib/server/__tests__/clientIdentity.test.ts",
       "line": 157,
       "column": 11,
@@ -5574,7 +5718,7 @@
       ]
     },
     {
-      "id": "R157",
+      "id": "R160",
       "file": "src/lib/server/__tests__/clientIdentity.test.ts",
       "line": 176,
       "column": 11,
@@ -5605,7 +5749,7 @@
       ]
     },
     {
-      "id": "R158",
+      "id": "R161",
       "file": "src/lib/server/backend.ts",
       "line": 131,
       "column": 26,
@@ -5639,7 +5783,7 @@
       ]
     },
     {
-      "id": "R159",
+      "id": "R162",
       "file": "src/lib/server/bffFetch.ts",
       "line": 82,
       "column": 19,
@@ -5672,7 +5816,7 @@
       ]
     },
     {
-      "id": "R160",
+      "id": "R163",
       "file": "src/lib/server/bffFetch.ts",
       "line": 188,
       "column": 12,
@@ -5708,7 +5852,7 @@
       ]
     },
     {
-      "id": "R161",
+      "id": "R164",
       "file": "src/lib/server/bffFetch.ts",
       "line": 256,
       "column": 10,
@@ -5740,7 +5884,7 @@
       ]
     },
     {
-      "id": "R162",
+      "id": "R165",
       "file": "src/lib/server/favorites.server.ts",
       "line": 53,
       "column": 26,
@@ -6550,9 +6694,9 @@
     "patterns": [
       {
         "pattern": "fetch",
-        "textHits": 63,
+        "textHits": 64,
         "byClass": {
-          "AST request site": 63
+          "AST request site": 64
         },
         "unexplained": []
       },
@@ -6588,9 +6732,9 @@
       },
       {
         "pattern": "clientIdentityHeaders",
-        "textHits": 12,
+        "textHits": 13,
         "byClass": {
-          "AST call (project-fn)": 11,
+          "AST call (project-fn)": 12,
           "declaration": 1
         },
         "unexplained": []
@@ -6605,14 +6749,15 @@
       },
       {
         "pattern": "backend-origin-reference",
-        "textHits": 74,
+        "textHits": 84,
         "byClass": {
           "declaration": 6,
           "backend-origin reference (URL/env construction; see row evidence)": 24,
-          "string/regex literal": 31,
-          "comment": 6,
-          "import/export": 3,
-          "AST call (project-fn)": 4
+          "string/regex literal": 37,
+          "comment": 7,
+          "import/export": 4,
+          "AST call (project-fn)": 5,
+          "AST call (dynamic)": 1
         },
         "unexplained": []
       },
@@ -6640,6 +6785,24 @@
         "byClass": {
           "AST request site": 5,
           "declaration": 1
+        },
+        "unexplained": []
+      },
+      {
+        "pattern": "wrapper:fetchViaBff",
+        "textHits": 2,
+        "byClass": {
+          "declaration": 1,
+          "AST request site": 1
+        },
+        "unexplained": []
+      },
+      {
+        "pattern": "wrapper:fetchAnonymousDirect",
+        "textHits": 2,
+        "byClass": {
+          "declaration": 1,
+          "AST request site": 1
         },
         "unexplained": []
       }
