@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
-from typing import Optional, Any
+from datetime import datetime, timedelta
+from typing import Iterable, Optional, Any
 
 from django.db import transaction
+from django.db.models import Count, Max
 from django.utils import timezone
 
 from temples.models import (
@@ -317,6 +318,11 @@ def build_recent_reflection_hint(*, user, shrine_id: int | None = None) -> dict[
     if reflection is None:
         return None
 
+    return _reflection_hint_payload(reflection)
+
+
+def _reflection_hint_payload(reflection: ShrineReflection) -> dict[str, Any]:
+    """build_recent_reflection_hint の応答形（DB は読まない。shrine は select_related 済みであること）。"""
     state_change = build_reflection_state_change(reflection)
 
     return {
@@ -330,6 +336,173 @@ def build_recent_reflection_hint(*, user, shrine_id: int | None = None) -> dict[
         "source_history_theme": reflection.history_theme,
         "created_at": reflection.created_at.isoformat() if reflection.created_at else None,
     }
+
+
+# ---------------------------------------------------------------------------
+# B-1: recommendation 用の履歴一括取得
+# docs/audit/concierge-latency-result-failure-root-cause-2026-10-27.md §7 B-1
+#
+# 上の per-shrine 関数（classify_shrine_action_state / calculate_shrine_behavior_signal_breakdown /
+# build_recent_reflection_hint）は 1 候補あたり最大 14 クエリを逐次に発行する。Concierge の推薦では候補 20 件に
+# 対して同じ値を、request ごと・table ごとに 1 クエリでまとめて読む。
+#
+# 同値性（tests/test_concierge_history_batch.py で per-shrine 関数と突き合わせる）:
+# - filter は同一（user / shrine_id / action_type / Visit.status="added"）
+# - 「最新」は ORDER BY ... DESC LIMIT 1 の代わりに MAX()。対象の日時列はすべて NOT NULL なので値は一致する
+# - 件数は COUNT()。存在判定は件数 > 0 / 最新日時の有無から導く
+# - recency は同じ _recency_multiplier を、同じ最新日時に対して適用する
+# - action state の優先順位は reflection > visit(added) > favorite > route_open > detail_view
+# - reflection hint の行: per-shrine 版は created_at 降順の先頭（同時刻の行どうしの順は DB 任せで不定）。
+#   一括版は (created_at 降順, id 降順) の先頭で、同時刻のときに決定的になる。日時・signal は同じ
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ShrineHistoryFacts:
+    """1 user × 1 shrine の履歴の要約（推薦の behavior signal / action state / reflection hint の入力）。"""
+
+    detail_view_count: int = 0
+    detail_view_latest: Optional[datetime] = None
+    route_open_count: int = 0
+    route_open_latest: Optional[datetime] = None
+    favorite_latest: Optional[datetime] = None
+    visit_added_latest: Optional[datetime] = None
+    action_completed_latest: Optional[datetime] = None
+    latest_reflection: Optional[ShrineReflection] = None
+
+    @property
+    def reflection_latest(self) -> Optional[datetime]:
+        return self.latest_reflection.created_at if self.latest_reflection is not None else None
+
+
+EMPTY_SHRINE_HISTORY_FACTS = ShrineHistoryFacts()
+
+
+def load_shrine_history_facts(*, user, shrine_ids: Iterable[int | None]) -> dict[int, ShrineHistoryFacts] | None:
+    """`shrine_ids` の履歴を table ごとに 1 クエリで読む（最大 5 クエリ、候補数に依存しない）。
+
+    未認証なら None を返す（呼び出し側は従来の per-shrine 経路 = DB を読まない anonymous 経路を使う）。
+    履歴の無い shrine は結果に含めない（EMPTY_SHRINE_HISTORY_FACTS として扱う）。
+    """
+    if user is None or not getattr(user, "is_authenticated", False):
+        return None
+
+    ids = sorted({int(i) for i in shrine_ids if isinstance(i, int) and not isinstance(i, bool)})
+    if not ids:
+        return {}
+
+    values: dict[int, dict[str, Any]] = {}
+
+    def slot(shrine_id: int) -> dict[str, Any]:
+        return values.setdefault(shrine_id, {})
+
+    interaction_rows = (
+        ShrineInteractionLog.objects.filter(
+            user=user,
+            shrine_id__in=ids,
+            action_type__in=[
+                ShrineInteractionLog.ActionType.DETAIL_VIEW,
+                ShrineInteractionLog.ActionType.ROUTE_OPEN,
+            ],
+        )
+        .order_by()
+        .values("shrine_id", "action_type")
+        .annotate(n=Count("id"), latest=Max("created_at"))
+    )
+    for row in interaction_rows:
+        prefix = "detail_view" if row["action_type"] == ShrineInteractionLog.ActionType.DETAIL_VIEW else "route_open"
+        slot(row["shrine_id"]).update({f"{prefix}_count": int(row["n"]), f"{prefix}_latest": row["latest"]})
+
+    for model, extra_filter, column, key in (
+        (Favorite, {}, "created_at", "favorite_latest"),
+        (Visit, {"status": "added"}, "visited_at", "visit_added_latest"),
+        (ActionEvent, {"action_type": ActionEvent.ActionType.ACTION_COMPLETED}, "created_at", "action_completed_latest"),
+    ):
+        rows = (
+            model.objects.filter(user=user, shrine_id__in=ids, **extra_filter)
+            .order_by()
+            .values("shrine_id")
+            .annotate(latest=Max(column))
+        )
+        for row in rows:
+            slot(row["shrine_id"])[key] = row["latest"]
+
+    # 各 shrine の最新 reflection（hint の内容と reflection signal の日時）。
+    reflections = (
+        ShrineReflection.objects.filter(user=user, shrine_id__in=ids)
+        .select_related("shrine")
+        .order_by("shrine_id", "-created_at", "-id")
+    )
+    for reflection in reflections:
+        bucket = slot(reflection.shrine_id)
+        if "latest_reflection" not in bucket:
+            bucket["latest_reflection"] = reflection
+
+    return {shrine_id: ShrineHistoryFacts(**fields) for shrine_id, fields in values.items()}
+
+
+def behavior_signal_breakdown_from_facts(facts: ShrineHistoryFacts) -> dict[str, float]:
+    """calculate_shrine_behavior_signal_breakdown と同じ計算を、一括取得した値から行う。"""
+    detail_view_signal = facts.detail_view_count * 0.2 * _recency_multiplier(facts.detail_view_latest)
+    route_open_signal = facts.route_open_count * 0.6 * _recency_multiplier(facts.route_open_latest)
+
+    save_signal = 0.0
+    if facts.favorite_latest is not None:
+        save_signal = 1.5 * _recency_multiplier(facts.favorite_latest)
+
+    visit_signal = 0.0
+    if facts.visit_added_latest is not None:
+        visit_signal = 3.0 * _recency_multiplier(facts.visit_added_latest)
+
+    reflection_signal = 0.0
+    if facts.reflection_latest is not None:
+        reflection_signal = 4.0 * _recency_multiplier(facts.reflection_latest)
+
+    action_completed_signal = 0.0
+    if facts.action_completed_latest is not None:
+        action_completed_signal = 2.0 * _recency_multiplier(facts.action_completed_latest)
+
+    total = min(
+        detail_view_signal
+        + route_open_signal
+        + save_signal
+        + visit_signal
+        + reflection_signal
+        + action_completed_signal,
+        10.0,
+    )
+
+    return {
+        "detail_view_signal": float(detail_view_signal),
+        "route_open_signal": float(route_open_signal),
+        "save_signal": float(save_signal),
+        "visit_signal": float(visit_signal),
+        "reflection_signal": float(reflection_signal),
+        "action_completed_signal": float(action_completed_signal),
+        "total": float(total),
+    }
+
+
+def action_state_from_facts(facts: ShrineHistoryFacts) -> HistoryActionState:
+    """classify_shrine_action_state と同じ優先順位。"""
+    if facts.latest_reflection is not None:
+        return "reflected"
+    if facts.visit_added_latest is not None:
+        return "visited"
+    if facts.favorite_latest is not None:
+        return "saved"
+    if facts.route_open_count > 0:
+        return "route_opened"
+    if facts.detail_view_count > 0:
+        return "detail_viewed"
+    return "none"
+
+
+def reflection_hint_from_facts(facts: ShrineHistoryFacts) -> dict[str, Any] | None:
+    """build_recent_reflection_hint(shrine_id=...) と同じ応答形。"""
+    if facts.latest_reflection is None:
+        return None
+    return _reflection_hint_payload(facts.latest_reflection)
 
 
 @dataclass
