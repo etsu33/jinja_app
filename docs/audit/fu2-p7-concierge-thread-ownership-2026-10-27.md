@@ -125,7 +125,7 @@ because the helper returns `null` on 401 / 403 / 404. **Test**: the SSR helper t
 | F2 | **Medium**（privacy, shared device） | Any principal holding the browser's anonymous cookie reads its anonymous threads, including an account that logs in later on the same browser; logout does not clear the cookie | `api/views/concierge.py:121-125`; `auth/logout/route.ts:6-11`; the authentication libraries do not reference the cookie | User B on a shared browser can open user A's earlier anonymous consultation by direct id（e.g. history or a `?tid=` link）; it is never listed | Shared browser + knowledge of the thread id |
 | F7 | **Medium**（availability） | Thread detail / list share the `concierge` 8/min bucket with chat and plan | `views/concierge.py:60, 90`; `api_views_concierge.py:470, 1086`; `settings.py:320`; Test | An authenticated user browsing ≥ 3 shrine pages from a consultation（3 calls each）can exhaust their chat quota for the minute; an anonymous SSR read is keyed by the SSR hop identity（FU-1 F-7）, so unrelated visitors share it. A 429 makes the helper throw, and the page silently drops the concierge sections | Code default 8/min; production override env is **Unknown** |
 | F3 | **Low**（latent）— **CLOSED（FU-2-P7-A, §12）** | `append_chat`'s anonymous branch has no `user__isnull=True`, and the check constraint is OR, not XOR | `concierge_history.py:561-565`; `models.py:1353-1357`; Test（strict xfail: DID NOT RAISE） | If any row has both `user` and `anonymous_id`, the old anonymous cookie can append messages to the user's thread（integrity; the read path is safe） | Such a row exists. No current write path creates one; production data is **Unknown**. A future handoff that keeps `anonymous_id` creates it |
-| F4 | **Low** | The BFF interpolates the decoded `id` param into the upstream path unvalidated; the URL parser resolves `..` | `concierge-threads/[id]/route.ts:8-9`; Next param decoding（`next/dist/shared/lib/router/utils/route-matcher.js:17-31`）; Test（`it.fails`） | A crafted link（`/mypage/history/..%2F..%2F…`）makes the victim's SSR / BFF issue an authenticated **GET** to another Django path with the victim's credentials; the result is rendered only to the victim as a thread object | Victim follows a link; Django GET endpoints keep their own authorization. End-to-end Next decoding of an encoded slash is **Inferred** |
+| F4 | **Low** — **CLOSED（FU-2-P7-B, §13）** | The BFF interpolates the decoded `id` param into the upstream path unvalidated; the URL parser resolves `..` | `concierge-threads/[id]/route.ts:8-9`; Next param decoding（`next/dist/shared/lib/router/utils/route-matcher.js:17-31`）; Test（`it.fails`） | A crafted link（`/mypage/history/..%2F..%2F…`）makes the victim's SSR / BFF issue an authenticated **GET** to another Django path with the victim's credentials; the result is rendered only to the victim as a thread object | Victim follows a link; Django GET endpoints keep their own authorization. End-to-end Next decoding of an encoded slash is **Inferred** |
 | F5 | **Low**（configuration-dependent） | Without `WEB_BASE_URL`, the SSR helper picks its destination from `x-forwarded-host` / `host` and sends the whole Cookie header there | `resolveServerBaseUrl.ts:10-19`; `concierge.server.ts:7-17`; Test | A request whose host headers are not platform-controlled turns SSR into a fetch to an arbitrary host（with the requester's own cookies, so no victim credential） | `WEB_BASE_URL` unset（**Unknown**）and host headers not overwritten by the platform |
 | I1 | Info | Thread ids are sequential integers, but there is no oracle | Test（uniform-404 test） | — | — |
 
@@ -149,7 +149,7 @@ cookie value.
 | user + matching anon cookie（F2）; login does not transfer | ✗ | ✓（pins current contract） |
 | `concierge` scope shared; authenticated read spends the user bucket | ✗ | ✓ |
 | BFF forwards the cookie / bearer, relays the 404, no secrets in logs | ✗ | ✓ web |
-| BFF id traversal（F4） | ✗ | ✓ `it.fails` |
+| BFF id traversal（F4） | ✗ | ✓ `it.fails` → passing boundary tests（FU-2-P7-B） |
 | SSR destination, header-derived host（F5）, encoding, null / throw mapping | partial | ✓ web |
 | thread_id ownership on visit / reflection | ✓ existing | — |
 | action_event / shrine_interaction thread_id | not found by name | not added（same `validate_thread_id` pattern; Code only） |
@@ -199,7 +199,7 @@ The real P7 problem is F7（the shared 8/min bucket）, not the hop. Options for
 | PR | scope | addresses | risk |
 | --- | --- | --- | --- |
 | P7-A | `append_chat` anonymous branch adds `user__isnull=True`（behaviour unchanged for all current rows; the strict xfail flips to pass）— **done, §12** | F3 | very low; a precondition for any handoff |
-| P7-B | `concierge-threads/[id]/route.ts` rejects non-positive-integer ids with 404 before fetching（the `it.fails` flips） | F4 | very low |
+| P7-B | `concierge-threads/[id]/route.ts` rejects non-positive-integer ids with 404 before fetching（the `it.fails` flips）— **done, §13** | F4 | very low |
 | P7-C | SSR thread helpers use a configured origin（or require `WEB_BASE_URL` in production） | F5 | low; needs the production env fact |
 | P7-D | Stop returning `_anon_cookie_value` to the browser. The BFF strips it after setting the cookie, or Django sends it through a header only the BFF reads | F1（JS exposure） | medium（Mobile does not use the body: **Unknown**, to verify） |
 | P7-E | Server-side lifetime for the anonymous id（a `max_age` on unsign, or a versioned issue date）. **Product decision**: affects anonymous history continuity | F1（lifetime） | product |
@@ -261,3 +261,27 @@ The real P7 problem is F7（the shared 8/min bucket）, not the hop. Options for
 - **Remaining:**
   - whether such rows exist in production is still **Unknown**. The guard makes them harmless on the write path;
   - F1, F2, F4, F5 and F7 are unchanged.
+
+## 13. Follow-up: F4 closed（FU-2-P7-B, 2026-10-27）
+
+- **Change:** `apps/web/src/app/api/concierge-threads/[id]/route.ts` validates the decoded `id` before it builds the
+  upstream path.
+  - **Accepted:** only the canonical positive decimal form `^[1-9][0-9]{0,18}$`, up to the BigAutoField maximum
+    `9223372036854775807`.
+  - **Rejected:** anything else gets the Backend's uniform `404 {"detail":"not found"}`, and **Django is not contacted**.
+    This covers traversal, decoded or encoded separators, `?`, `#`, a backslash, `0`, leading zeros, signs, decimals,
+    exponents, hex, whitespace, full-width digits, empty values and values out of range.
+  - The rejected response sets no cookie and starts no refresh.
+- **Unchanged:**
+  - for valid ids: forwarding, the Bearer / Cookie construction, pre-refresh and 401 refresh, the refreshed
+    `access_token` cookie, and Django's ownership decision;
+  - Django, migrations, authentication, cookies, SSR routing;
+  - F1, F2, F5 and F7.
+- **Tests**（`route.p7audit.test.ts`）:
+  - the audit's `it.fails` is now a passing test;
+  - 4 canonical ids are forwarded, including the maximum;
+  - 22 invalid ids return 404 with no upstream request;
+  - valid id + expired access token: pre-refresh, then the owner's 200 and the refreshed cookie.
+- **Mutation check:** with the validation disabled, 23 tests fail.
+- **Note:** `/api/concierge-threads/0105/` used to reach Django, whose `<int:pk>` would have resolved thread 105. The BFF
+  now rejects it. In-app links are built from numeric thread ids（e.g. `buildConciergeHistoryHref`）, so only a hand-edited `tid` such as `0105` changes behaviour: it now renders as "not found".
