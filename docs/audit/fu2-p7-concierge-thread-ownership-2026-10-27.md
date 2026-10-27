@@ -110,7 +110,7 @@ because the helper returns `null` on 401 / 403 / 404. **Test**: the SSR helper t
 | validation | `signing.loads(..., max_age=None)`: **no server-side expiry**（F1） | Code（`:24-26`）; Test |
 | Backend-origin cookie | `HttpOnly`, `Max-Age` 90 days, `SameSite=None; Secure` when not DEBUG, `Lax` in DEBUG | Code（`:70-79`） |
 | Web-origin cookie | The BFF copies `_anon_cookie_value` from the chat body into a `Lax`, `HttpOnly`, 90-day cookie（`authCookies.ts:73-100`）. When Django also sends `Set-Cookie`, the response carries a **single** `concierge_anon_id`, the `Lax` one | Code; local probe of `chat/route.ts`（not committed）; existing route test |
-| body exposure | `_anon_cookie_value` stays in the JSON body the browser receives（`api_views_concierge.py:332-333, 1012-1016`; `chat/route.ts:61-84` relays the body verbatim）（F1） | Code |
+| body exposure | **Web: resolved（§14）.** Before: `_anon_cookie_value` stayed in the JSON body the browser receives（`api_views_concierge.py:332-333, 1012-1016`; `chat/route.ts:61-84` relays the body verbatim）（F1） | Code |
 | transmission to Django | Only inside the forwarded Cookie header（BFF）; never as a header of its own | Code; Test（web） |
 | usage | Detail read（`user IS NULL` required）, append（anonymous branch）, anonymous quota, Compass weekly owner | Code |
 | logging | Booleans only（`anon_cookie_present`, `hasAnonCookie`）; existing privacy tests | Code; Test（existing + P7 web） |
@@ -121,7 +121,7 @@ because the helper returns `null` on 401 / 403 / 404. **Test**: the SSR helper t
 
 | id | severity | finding | evidence | impact | precondition |
 | --- | --- | --- | --- | --- | --- |
-| F1 | **Medium** | The anonymous credential has no server-side lifetime and is readable by page JS through the chat JSON body | `anonymous_id.py:24-26`; `api_views_concierge.py:332-333, 1012-1016`; `chat/route.ts:61-84, 159-162` | Anyone who obtains the value once（XSS on the Web origin, a copied response, a shared device）reads all anonymous consultations of that browser indefinitely; the 90-day `Max-Age` is client-side only | XSS or device / response access |
+| F1 | **Medium** — **OPEN**; only the Web JSON exposure is resolved（§14） | The anonymous credential has no server-side lifetime and is readable by page JS through the chat JSON body | `anonymous_id.py:24-26`; `api_views_concierge.py:332-333, 1012-1016`; `chat/route.ts:61-84, 159-162` | Anyone who obtains the value once（XSS on the Web origin, a copied response, a shared device）reads all anonymous consultations of that browser indefinitely; the 90-day `Max-Age` is client-side only | XSS or device / response access |
 | F2 | **Medium**（privacy, shared device） | Any principal holding the browser's anonymous cookie reads its anonymous threads, including an account that logs in later on the same browser; logout does not clear the cookie | `api/views/concierge.py:121-125`; `auth/logout/route.ts:6-11`; the authentication libraries do not reference the cookie | User B on a shared browser can open user A's earlier anonymous consultation by direct id（e.g. history or a `?tid=` link）; it is never listed | Shared browser + knowledge of the thread id |
 | F7 | **Medium**（availability） | Thread detail / list share the `concierge` 8/min bucket with chat and plan | `views/concierge.py:60, 90`; `api_views_concierge.py:470, 1086`; `settings.py:320`; Test | An authenticated user browsing ≥ 3 shrine pages from a consultation（3 calls each）can exhaust their chat quota for the minute; an anonymous SSR read is keyed by the SSR hop identity（FU-1 F-7）, so unrelated visitors share it. A 429 makes the helper throw, and the page silently drops the concierge sections | Code default 8/min; production override env is **Unknown** |
 | F3 | **Low**（latent）— **CLOSED（FU-2-P7-A, §12）** | `append_chat`'s anonymous branch has no `user__isnull=True`, and the check constraint is OR, not XOR | `concierge_history.py:561-565`; `models.py:1353-1357`; Test（strict xfail: DID NOT RAISE） | If any row has both `user` and `anonymous_id`, the old anonymous cookie can append messages to the user's thread（integrity; the read path is safe） | Such a row exists. No current write path creates one; production data is **Unknown**. A future handoff that keeps `anonymous_id` creates it |
@@ -201,7 +201,7 @@ The real P7 problem is F7（the shared 8/min bucket）, not the hop. Options for
 | P7-A | `append_chat` anonymous branch adds `user__isnull=True`（behaviour unchanged for all current rows; the strict xfail flips to pass）— **done, §12** | F3 | very low; a precondition for any handoff |
 | P7-B | `concierge-threads/[id]/route.ts` rejects non-positive-integer ids with 404 before fetching（the `it.fails` flips）— **done, §13** | F4 | very low |
 | P7-C | SSR thread helpers use a configured origin（or require `WEB_BASE_URL` in production） | F5 | low; needs the production env fact |
-| P7-D | Stop returning `_anon_cookie_value` to the browser. The BFF strips it after setting the cookie, or Django sends it through a header only the BFF reads | F1（JS exposure） | medium（Mobile does not use the body: **Unknown**, to verify） |
+| P7-D | Stop returning `_anon_cookie_value` to the browser. The BFF strips it after setting the cookie, or Django sends it through a header only the BFF reads | F1（JS exposure） | medium（Mobile does not use the body: **Unknown**, to verify）— **Web BFF part done, §14**; Django still returns the field |
 | P7-E | Server-side lifetime for the anonymous id（a `max_age` on unsign, or a versioned issue date）. **Product decision**: affects anonymous history continuity | F1（lifetime） | product |
 | P7-F | Shared-browser policy: clear `concierge_anon_id` on login / logout, and/or skip the anonymous lookup for authenticated principals once a handoff exists. **Product decision** | F2 | product / UX |
 | P7-G | Throttle coupling（§8 options） | F7 | policy decision |
@@ -285,3 +285,45 @@ The real P7 problem is F7（the shared 8/min bucket）, not the hop. Options for
 - **Mutation check:** with the validation disabled, 23 tests fail.
 - **Note:** `/api/concierge-threads/0105/` used to reach Django, whose `<int:pk>` would have resolved thread 105. The BFF
   now rejects it. In-app links are built from numeric thread ids（e.g. `buildConciergeHistoryHref`）, so only a hand-edited `tid` such as `0105` changes behaviour: it now renders as "not found".
+
+## 14. Follow-up: F1 Web JSON exposure resolved（2026-10-27）— F1 stays OPEN
+
+**Scope of this change:** only the Web Concierge Chat BFF（`apps/web/src/app/api/concierge/chat/route.ts`）.
+
+- **Change:**
+  - **Every response path**（normal, refresh-success, refresh-fallback including "refresh ok without access"）goes
+    through one helper.
+  - **When the body has the field:** if the upstream body is a JSON object with `_anon_cookie_value`, the helper reads
+    it server-side, removes it from the browser-facing body, and sets the value only as the existing HttpOnly, `Lax`,
+    90-day `concierge_anon_id` cookie（`setAnonymousConciergeCookie`, unchanged）.
+  - **Everything else is relayed byte for byte:** other bodies（no field, arrays, nested-only, non-JSON, empty）are
+    unchanged, and so are the status, the content type and the remaining fields in their order.
+  - **Logging:** a parse failure now logs only the error name. A `SyntaxError` message can quote the body, so the
+    previous log could include it. Credentials and bodies are never logged.
+- **Unchanged:**
+  - Django and its API contract: the field is still in Django's response;
+  - the anonymous credential lifetime;
+  - login / logout;
+  - Mobile;
+  - recommendations, Premium, DB and UI.
+  - No Web client code read `_anon_cookie_value`（repository grep）, so session continuity relies on the cookie alone,
+    as before.
+- **Tests:**
+  - `chat/__tests__/route.anonCredential.test.ts`（16）covers:
+    - all three paths;
+    - a non-200 JSON body;
+    - a single cookie when Django also sends `Set-Cookie`;
+    - null, empty and non-string values;
+    - byte-for-byte pass-through cases;
+    - no credential in the logs.
+  - `route.test.ts`: the refresh-success expectation that pinned the field in the body now expects it removed.
+  - Mutation check: with the original route, 11 tests fail.
+
+**Deferred / unresolved（F1 is NOT closed）:**
+
+| item | status |
+| --- | --- |
+| Mobile JSON exposure | **Unresolved.** Mobile calls Django directly, and Django still returns `_anon_cookie_value` in the chat JSON. `apps/mobile` has no reference to `_anon_cookie_value` or `concierge_anon_id`（grep）; whether anything logs or stores the body is not verified |
+| native cookie behaviour | **Unresolved / not verified.** How the Mobile HTTP stack stores the Backend-origin `SameSite=None; Secure` cookie, its persistence and its CSRF exposure on POST were not audited |
+| Backend credential lifetime | **Deferred（P7-E, product decision）.** `signing.loads(..., max_age=None)`: a captured value stays valid indefinitely |
+| removing the field from Django's contract | **Deferred.** It needs the Mobile facts above first |
