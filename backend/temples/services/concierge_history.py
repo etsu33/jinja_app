@@ -559,8 +559,11 @@ def append_chat(
                 user=user,
             )
         else:
+            # user を持つ thread は、anonymous_id が一致していても匿名経路からは触れない
+            # （ConciergeThreadDetailView の読み取り条件と同じ。docs/audit/fu2-p7-concierge-thread-ownership-2026-10-27.md F3）。
             thread = ConciergeThread.objects.select_for_update().get(
                 id=thread_id,
+                user__isnull=True,
                 anonymous_id=anonymous_id,
             )
     else:

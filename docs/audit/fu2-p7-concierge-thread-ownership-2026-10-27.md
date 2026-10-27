@@ -93,7 +93,7 @@ Legend: ✓ allowed, ✗ denied（the uniform 404 unless noted）. "anon A cooki
 | **append（chat）** | | | | | |
 | anon A, `thread_id` = own | ✓ | ✗ → new thread | — | ✗ → new thread | P7（service） |
 | user U, `thread_id` = own | — | ✗ → new thread | ✓ | ✗ → new thread | P7（service） |
-| anon A, user thread carrying `anonymous_id=A` | — | — | — | **✓（F3, latent）** | P7 strict xfail |
+| anon A, user thread carrying `anonymous_id=A` | — | — | — | ✗ → new thread（F3, **closed by FU-2-P7-A**） | P7（service + chat endpoint） |
 | **update / delete / save** | no endpoint exists. "Save" is a client-side ownership check against the list（`useConciergeThreadSave.ts:10-17`） | | | | — |
 | **thread_id on visit / action_event / interaction / reflection** | authenticated owner only（`filter(id, user=user).exists()`） | | | | existing（visit, reflection） |
 
@@ -124,7 +124,7 @@ because the helper returns `null` on 401 / 403 / 404. **Test**: the SSR helper t
 | F1 | **Medium** | The anonymous credential has no server-side lifetime and is readable by page JS through the chat JSON body | `anonymous_id.py:24-26`; `api_views_concierge.py:332-333, 1012-1016`; `chat/route.ts:61-84, 159-162` | Anyone who obtains the value once（XSS on the Web origin, a copied response, a shared device）reads all anonymous consultations of that browser indefinitely; the 90-day `Max-Age` is client-side only | XSS or device / response access |
 | F2 | **Medium**（privacy, shared device） | Any principal holding the browser's anonymous cookie reads its anonymous threads, including an account that logs in later on the same browser; logout does not clear the cookie | `api/views/concierge.py:121-125`; `auth/logout/route.ts:6-11`; the authentication libraries do not reference the cookie | User B on a shared browser can open user A's earlier anonymous consultation by direct id（e.g. history or a `?tid=` link）; it is never listed | Shared browser + knowledge of the thread id |
 | F7 | **Medium**（availability） | Thread detail / list share the `concierge` 8/min bucket with chat and plan | `views/concierge.py:60, 90`; `api_views_concierge.py:470, 1086`; `settings.py:320`; Test | An authenticated user browsing ≥ 3 shrine pages from a consultation（3 calls each）can exhaust their chat quota for the minute; an anonymous SSR read is keyed by the SSR hop identity（FU-1 F-7）, so unrelated visitors share it. A 429 makes the helper throw, and the page silently drops the concierge sections | Code default 8/min; production override env is **Unknown** |
-| F3 | **Low**（latent） | `append_chat`'s anonymous branch has no `user__isnull=True`, and the check constraint is OR, not XOR | `concierge_history.py:561-565`; `models.py:1353-1357`; Test（strict xfail: DID NOT RAISE） | If any row has both `user` and `anonymous_id`, the old anonymous cookie can append messages to the user's thread（integrity; the read path is safe） | Such a row exists. No current write path creates one; production data is **Unknown**. A future handoff that keeps `anonymous_id` creates it |
+| F3 | **Low**（latent）— **CLOSED（FU-2-P7-A, §12）** | `append_chat`'s anonymous branch has no `user__isnull=True`, and the check constraint is OR, not XOR | `concierge_history.py:561-565`; `models.py:1353-1357`; Test（strict xfail: DID NOT RAISE） | If any row has both `user` and `anonymous_id`, the old anonymous cookie can append messages to the user's thread（integrity; the read path is safe） | Such a row exists. No current write path creates one; production data is **Unknown**. A future handoff that keeps `anonymous_id` creates it |
 | F4 | **Low** | The BFF interpolates the decoded `id` param into the upstream path unvalidated; the URL parser resolves `..` | `concierge-threads/[id]/route.ts:8-9`; Next param decoding（`next/dist/shared/lib/router/utils/route-matcher.js:17-31`）; Test（`it.fails`） | A crafted link（`/mypage/history/..%2F..%2F…`）makes the victim's SSR / BFF issue an authenticated **GET** to another Django path with the victim's credentials; the result is rendered only to the victim as a thread object | Victim follows a link; Django GET endpoints keep their own authorization. End-to-end Next decoding of an encoded slash is **Inferred** |
 | F5 | **Low**（configuration-dependent） | Without `WEB_BASE_URL`, the SSR helper picks its destination from `x-forwarded-host` / `host` and sends the whole Cookie header there | `resolveServerBaseUrl.ts:10-19`; `concierge.server.ts:7-17`; Test | A request whose host headers are not platform-controlled turns SSR into a fetch to an arbitrary host（with the requester's own cookies, so no victim credential） | `WEB_BASE_URL` unset（**Unknown**）and host headers not overwritten by the platform |
 | I1 | Info | Thread ids are sequential integers, but there is no oracle | Test（uniform-404 test） | — | — |
@@ -139,7 +139,7 @@ cookie value.
 | cross-user IDOR, detail（A/B accounts, A/B anonymous, anonymous → user thread） | ✓ `temples/tests/api/test_concierge_thread_detail_authorization.py` | — |
 | list isolation, list requires auth | ✓ same file | + an anonymous thread is not listed with the anon cookie |
 | foreign `thread_id` on append（4 actor combinations） | ✗ | ✓ backend |
-| append to a user thread carrying `anonymous_id`（F3） | ✗ | ✓ strict xfail |
+| append to a user thread carrying `anonymous_id`（F3） | ✗ | ✓ strict xfail → passing security tests（FU-2-P7-A） |
 | missing vs foreign 404 indistinguishable（anonymous, anon cookie, authenticated） | partial（body only） | ✓ |
 | no identity metadata in the owner payload | ✗ | ✓ |
 | tampered signature, other-salt cookie | unsigned only | ✓ |
@@ -198,7 +198,7 @@ The real P7 problem is F7（the shared 8/min bucket）, not the hop. Options for
 
 | PR | scope | addresses | risk |
 | --- | --- | --- | --- |
-| P7-A | `append_chat` anonymous branch adds `user__isnull=True`（behaviour unchanged for all current rows; the strict xfail flips to pass） | F3 | very low; a precondition for any handoff |
+| P7-A | `append_chat` anonymous branch adds `user__isnull=True`（behaviour unchanged for all current rows; the strict xfail flips to pass）— **done, §12** | F3 | very low; a precondition for any handoff |
 | P7-B | `concierge-threads/[id]/route.ts` rejects non-positive-integer ids with 404 before fetching（the `it.fails` flips） | F4 | very low |
 | P7-C | SSR thread helpers use a configured origin（or require `WEB_BASE_URL` in production） | F5 | low; needs the production env fact |
 | P7-D | Stop returning `_anon_cookie_value` to the browser. The BFF strips it after setting the cookie, or Django sends it through a header only the BFF reads | F1（JS exposure） | medium（Mobile does not use the body: **Unknown**, to verify） |
@@ -237,3 +237,27 @@ The real P7 problem is F7（the shared 8/min bucket）, not the hop. Options for
 - Counter-evidence to the main conclusion: F2 is a deliberate continuity behaviour（an anonymous consultation stays
   readable after login without a handoff）. Removing it without a handoff would break that flow, so the severity
   depends on Mother Ship's shared-device threat model.
+
+## 12. Follow-up: F3 closed（FU-2-P7-A, 2026-10-27）
+
+- **Change:** the anonymous branch of `append_chat` now selects
+  `ConciergeThread(id=T, user IS NULL, anonymous_id=A)`（`concierge_history.py:561-568`）. This is the same ownership rule
+  as the detail view（`api/views/concierge.py:125`）.
+- **Effect:**
+  - a row with both `user` and `anonymous_id` can no longer be written through the anonymous path. `DoesNotExist` makes
+    the chat view start a new anonymous thread, exactly as for any foreign id;
+  - the user-owner path is unchanged, and so is the path for valid anonymous threads（`user IS NULL`）.
+- **Not changed:**
+  - no migration: the check constraint stays OR;
+  - no handoff, authentication, cookie, throttle, recommendation or UI change.
+- **Tests**（`tests/test_fu2_p7_concierge_thread_ownership_audit.py`）:
+  - the strict xfail is now a passing test. It also checks that the hybrid row's owner, anonymous id, `last_message_at`,
+    recommendations and messages are unchanged;
+  - the owner still appends to a hybrid row;
+  - an anonymous owner still appends to its own thread;
+  - end to end through `/api/concierge/chat/`: a hybrid `thread_id` gets a new anonymous thread and leaves the user's row
+    untouched, while a valid anonymous thread is continued.
+- **Mutation check:** without the guard, the service test and the chat-endpoint test both fail.
+- **Remaining:**
+  - whether such rows exist in production is still **Unknown**. The guard makes them harmless on the write path;
+  - F1, F2, F4, F5 and F7 are unchanged.
