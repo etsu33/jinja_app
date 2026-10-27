@@ -10,6 +10,7 @@ from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
 from temples.models import GoriyakuTag
 
 from temples.services.concierge_candidate_utils import _normalize_candidate_fields
+from temples.services.concierge_history import load_shrine_history_facts
 from temples.services.channel_b_typed_need_match import strip_channel_b_carrier
 from temples.services.consultation_interpreter import interpret_consultation
 from temples.services.recommendation_algorithm_v3 import (
@@ -197,7 +198,22 @@ def _attach_chat_rec_enrichment(
     profile_context: Optional[Dict[str, Any]] = None,
     consultation_axis: Optional[str] = None,
     need_gid_label_by_id: Optional[Dict[int, str]] = None,
+    batch_history: bool = True,
 ) -> Dict[str, Any]:
+    # B-1: 認証済み user の履歴を候補ぶんまとめて読む（table ごとに 1 クエリ、候補数に依存しない）。
+    # anonymous / batch_history=False（同値性テスト用）では None になり、従来の per-shrine 経路を使う。
+    history_facts = (
+        load_shrine_history_facts(
+            user=user,
+            shrine_ids=[
+                resolve_shrine_id(rec, policy="live_candidate")
+                for rec in (recs.get("recommendations") or [])
+                if isinstance(rec, dict)
+            ],
+        )
+        if batch_history
+        else None
+    )
     for rec in recs.get("recommendations") or []:
         if not isinstance(rec, dict):
             continue
@@ -215,6 +231,7 @@ def _attach_chat_rec_enrichment(
             user=user,
             profile_context=profile_context,
             consultation_axis=consultation_axis,
+            history_facts=history_facts,
         )
         _apply_soft_signal_highlights(
             rec,

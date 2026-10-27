@@ -16,6 +16,11 @@ from temples.services.channel_b_reason_copy import (
     select_channel_b_reason_match,
 )
 from temples.services.concierge_history import (
+    EMPTY_SHRINE_HISTORY_FACTS,
+    ShrineHistoryFacts,
+    action_state_from_facts,
+    behavior_signal_breakdown_from_facts,
+    reflection_hint_from_facts,
     build_recent_reflection_hint,
     calculate_action_profile_breakdown,
     calculate_light_behavior_profile_breakdown,
@@ -1088,9 +1093,13 @@ def _attach_breakdown(
     user=None,
     profile_context: Optional[Dict[str, Any]] = None,
     consultation_axis: Optional[str] = None,
+    history_facts: Optional[Dict[int, ShrineHistoryFacts]] = None,
 ) -> None:
     """
     rec（1件の神社辞書）にスコアの内訳を追加する。
+
+    history_facts: concierge_history.load_shrine_history_facts の結果（B-1）。渡されたときは user 履歴を
+    per-shrine クエリではなくこの値から計算する（結果は同一）。None なら従来どおり per-shrine 関数を使う。
 
     契約用:
       - breakdown.score_total
@@ -1322,21 +1331,29 @@ def _attach_breakdown(
 
     # shrine_id_int is already computed above for use in behavior_breakdown etc.
 
-    behavior_breakdown = calculate_shrine_behavior_signal_breakdown(
-        user=user,
-        shrine_id=shrine_id_int,
-    )
+    if history_facts is not None and shrine_id_int is not None:
+        # B-1: 一括取得済みの履歴から計算する（per-shrine 関数と同じ結果。tests/test_concierge_history_batch.py）
+        facts = history_facts.get(shrine_id_int, EMPTY_SHRINE_HISTORY_FACTS)
+        behavior_breakdown = behavior_signal_breakdown_from_facts(facts)
+        action_state = action_state_from_facts(facts)
+        reflection_hint = reflection_hint_from_facts(facts)
+    else:
+        # anonymous（DB を読まない）と shrine_id を解決できない候補は従来どおり
+        behavior_breakdown = calculate_shrine_behavior_signal_breakdown(
+            user=user,
+            shrine_id=shrine_id_int,
+        )
+        action_state = classify_shrine_action_state(
+            user=user,
+            shrine_id=shrine_id_int,
+        )
+        reflection_hint = build_recent_reflection_hint(
+            user=user,
+            shrine_id=shrine_id_int,
+        )
     behavior_signal = float(behavior_breakdown.get("total") or 0.0)
     visit_signal = float(behavior_breakdown.get("visit_signal") or 0.0)
     reflection_signal = float(behavior_breakdown.get("reflection_signal") or 0.0)
-    action_state = classify_shrine_action_state(
-        user=user,
-        shrine_id=shrine_id_int,
-    )
-    reflection_hint = build_recent_reflection_hint(
-        user=user,
-        shrine_id=shrine_id_int,
-    )
     rec["action_state"] = action_state
     rec["reflection_hint"] = reflection_hint
     behavior_weight = 0.1
