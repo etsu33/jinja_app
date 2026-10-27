@@ -32,8 +32,8 @@ FINAL STATUS  = PR for Mother Ship review; STOP before merge
 - **`_attach_chat_rec_enrichment`** loads the facts once before the loop. `batch_history=False` keeps the old path for
   equivalence testing.
 - **The per-shrine functions are unchanged** and remain the oracle. They are also still used elsewhere（thread detail
-  `action_state`, `calculate_shrine_behavior_signal_v2`）. The only refactor extracts the hint payload builder
-  `_reflection_hint_payload`, without changing any query.
+  `action_state`, `calculate_shrine_behavior_signal_v2`）. The only refactors extract the hint payload builder
+  `_reflection_hint_payload` and the latest-reflection query `_latest_reflection`, without changing any SQL.
 
 Equivalence basis:
 
@@ -77,11 +77,66 @@ Tests:
   files）: **1389 passed, 4 skipped**.
 - Full backend suite: see the PR.
 
-## 4. Residual risks
+## 4. Compatibility gate: reflections with the same `created_at`（2026-10-27）
 
-- **Reflection tie order**: when two reflections on one shrine share the same `created_at`, the per-shrine query's row
-  order is unspecified. The batch picks the highest id, which is deterministic. Scores and action state are identical;
-  only the hint's source row can differ in this exact-tie case（tested）.
+**Legacy behaviour.** `build_recent_reflection_hint` uses `… ORDER BY created_at DESC LIMIT 1`. When several rows share
+the latest `created_at`, their order is **not defined**: no tie-breaker exists, and the row is whatever PostgreSQL
+returns for that plan.
+
+**First B-1 version（`46a5f53`）.** The batch ordered by `(-created_at, -id)`, which introduced a new rule
+（"highest id wins"）.
+
+- A mutation check on PostgreSQL showed a **real** difference. With two tied rows, the legacy query returned a different
+  row from the batch.
+- Impact, only in this exact-tie case: `reflection_hint.source_reflection_id` and the content derived from the row
+  （`state_change_*`, `next_need_hint`, `next_history_theme_hint`, `source_history_theme`）could differ.
+- Scores, ranking, `action_state` and `reflection_signal` were never affected, because they depend only on the timestamp.
+- `reflection_hint` has no scoring or frontend consumer（repository grep）. It appears in:
+  - the API response and the persisted thread recommendations;
+  - `score_v2.signals` and the `behavior_profile`（observational only）;
+  - observation logs.
+
+**Correction（smallest, no new rule）.** The batch keeps the latest row when it is unique. For each shrine whose latest
+`created_at` is shared by several rows, it re-selects with the **same** query the per-shrine function uses
+（`_latest_reflection`）. The batch therefore inherits the legacy semantics exactly, including the undefined tie order.
+
+- Cost: +1 query per tied shrine, still bounded by the candidate count. A user with no exact ties stays at 5 queries.
+- Making tie order deterministic（for example by id）would be a product decision and is **not** made here.
+
+**Tests**:
+
+- `test_tied_latest_reflection_is_selected_exactly_like_the_per_shrine_query[2|3]`: the full hint must be equal, no
+  difference permitted;
+- `test_tie_fallback_is_limited_to_tied_shrines`: 5 + one query per tied shrine; an older tie does not trigger the
+  fallback;
+- `test_ties_in_other_tables_need_no_fallback`;
+- `test_enrichment_is_identical_with_tied_reflections`.
+
+The old highest-id rule fails the first test on PostgreSQL（mutation check）.
+
+**Results after the correction**:
+
+- batch tests: 22 passed;
+- related backend suites（115 files）: 1393 passed, 4 skipped;
+- baseline capture: still 266 → 5 queries, deep-equal outputs.
+
+## 5. Local full-suite failure（not caused by B-1）
+
+`temples/tests/test_nsrc_000002_g7_source_identity_sql.py::test_sql_normalized_url_equals_importer_normalize_source_url`
+fails locally and is unrelated to this change.
+
+| check | result |
+| --- | --- |
+| on the unchanged base `origin/develop@3384392`（local, Python 3.13） | fails identically |
+| CI backend unit job on `f17cc74`（the #3360 head, whose code `develop` contains; Python 3.11; plain `python -m pytest`） | **success** |
+| cause | `urllib.parse.urlunsplit(("https", "", "example.com/p", "", ""))` returns `https:///example.com/p` on Python 3.11.17 / 3.12.3, but `https:example.com/p` on 3.13.17. The SQL normalisation matches the 3.11 / 3.12 result |
+
+It is pre-existing and depends on the Python version（CI pins 3.11）. If the runtime moves to 3.13, the importer's
+`normalize_source_url` and its SQL counterpart need to be reconciled. That is a separate task.
+
+## 6. Residual risks
+
+- **Tie order**: still undefined, exactly as before（inherited, not changed）.
 - **Reflection row volume**: the reflection query loads all of the user's reflections for the candidate shrines
   （normally a few per shrine）. Aggregates are used for every other table.
 - **Production latency is not measured.** The expected gain follows from the query count（≈ 266–280 → 5 round trips）;

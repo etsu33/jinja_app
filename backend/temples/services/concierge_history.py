@@ -310,15 +310,23 @@ def build_recent_reflection_hint(*, user, shrine_id: int | None = None) -> dict[
     if user is None or not getattr(user, "is_authenticated", False):
         return None
 
-    qs = ShrineReflection.objects.filter(user=user).select_related("shrine")
-    if shrine_id is not None:
-        qs = qs.filter(shrine_id=shrine_id)
-
-    reflection = qs.order_by("-created_at").first()
+    reflection = _latest_reflection(user=user, shrine_id=shrine_id)
     if reflection is None:
         return None
 
     return _reflection_hint_payload(reflection)
+
+
+def _latest_reflection(*, user, shrine_id: int | None) -> ShrineReflection | None:
+    """build_recent_reflection_hint が使う「最新の reflection」の query（created_at 降順の先頭）。
+
+    同じ created_at の行が複数あるときの順序は定義していない（DB の返す順）。一括取得側（B-1）も同時刻の
+    ときはこの関数に委ね、新しい選択規則を持ち込まない。
+    """
+    qs = ShrineReflection.objects.filter(user=user).select_related("shrine")
+    if shrine_id is not None:
+        qs = qs.filter(shrine_id=shrine_id)
+    return qs.order_by("-created_at").first()
 
 
 def _reflection_hint_payload(reflection: ShrineReflection) -> dict[str, Any]:
@@ -352,8 +360,9 @@ def _reflection_hint_payload(reflection: ShrineReflection) -> dict[str, Any]:
 # - 件数は COUNT()。存在判定は件数 > 0 / 最新日時の有無から導く
 # - recency は同じ _recency_multiplier を、同じ最新日時に対して適用する
 # - action state の優先順位は reflection > visit(added) > favorite > route_open > detail_view
-# - reflection hint の行: per-shrine 版は created_at 降順の先頭（同時刻の行どうしの順は DB 任せで不定）。
-#   一括版は (created_at 降順, id 降順) の先頭で、同時刻のときに決定的になる。日時・signal は同じ
+# - reflection hint の行: per-shrine 版は created_at 降順の先頭で、同時刻の行どうしの順は定義していない。
+#   一括版は最新時刻の行が 1 件ならそれを使い、同時刻の行が複数ある shrine だけ per-shrine 版と同じ query
+#   （_latest_reflection）で選び直す。新しい選択規則は持ち込まない（同時刻の shrine ごとに 1 クエリ増える）
 # ---------------------------------------------------------------------------
 
 
@@ -379,7 +388,8 @@ EMPTY_SHRINE_HISTORY_FACTS = ShrineHistoryFacts()
 
 
 def load_shrine_history_facts(*, user, shrine_ids: Iterable[int | None]) -> dict[int, ShrineHistoryFacts] | None:
-    """`shrine_ids` の履歴を table ごとに 1 クエリで読む（最大 5 クエリ、候補数に依存しない）。
+    """`shrine_ids` の履歴を table ごとに 1 クエリで読む（5 クエリ。最新 reflection が同時刻で複数ある shrine
+    ごとに +1。候補数には依存しない）。
 
     未認証なら None を返す（呼び出し側は従来の per-shrine 経路 = DB を読まない anonymous 経路を使う）。
     履歴の無い shrine は結果に含めない（EMPTY_SHRINE_HISTORY_FACTS として扱う）。
@@ -431,12 +441,19 @@ def load_shrine_history_facts(*, user, shrine_ids: Iterable[int | None]) -> dict
     reflections = (
         ShrineReflection.objects.filter(user=user, shrine_id__in=ids)
         .select_related("shrine")
-        .order_by("shrine_id", "-created_at", "-id")
+        .order_by("shrine_id", "-created_at")
     )
+    tied_shrine_ids: set[int] = set()
     for reflection in reflections:
         bucket = slot(reflection.shrine_id)
-        if "latest_reflection" not in bucket:
+        latest = bucket.get("latest_reflection")
+        if latest is None:
             bucket["latest_reflection"] = reflection
+        elif reflection.created_at == latest.created_at:
+            tied_shrine_ids.add(reflection.shrine_id)
+    # 最新時刻の行が複数ある shrine は、per-shrine 版と同じ query で選ぶ（同時刻の順序規則を新設しない）。
+    for shrine_id in sorted(tied_shrine_ids):
+        values[shrine_id]["latest_reflection"] = _latest_reflection(user=user, shrine_id=shrine_id)
 
     return {shrine_id: ShrineHistoryFacts(**fields) for shrine_id, fields in values.items()}
 

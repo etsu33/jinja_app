@@ -22,7 +22,7 @@ from tests import concierge_history_fixtures as fx
 
 pytestmark = pytest.mark.django_db
 
-MAX_BATCH_QUERIES = 5  # interaction logs, favorites, visits, completed actions, reflections
+MAX_BATCH_QUERIES = 5  # interaction logs, favorites, visits, completed actions, reflections（+1 per tied shrine）
 
 
 @pytest.fixture(autouse=True)
@@ -133,22 +133,73 @@ def test_same_timestamp_records_count_and_latest_match(mixed):
     assert _batched(facts, s[3].pk) == _legacy(user, s[3].pk)
 
 
-def test_reflections_with_the_same_timestamp(users, shrines):
-    """Signals are identical. The hint row is deterministic in the batch（highest id）; the per-shrine query's tie order
-    is unspecified, so it must merely be one of the tied rows."""
+def _tied_reflections(user, shrine, n, *, days=3):
+    """n reflections on one shrine with the SAME created_at and distinct content."""
+    return [
+        ShrineReflection.objects.create(
+            user=user,
+            shrine=shrine,
+            answer=f"同時刻の振り返り {i}",
+            history_theme=["再出発", "縁結び", "厄除け"][i % 3],
+            mood_before="不安",
+            mood_after=["安心", "不安", "前向き"][i % 3],
+            created_at=fx.ago(days),
+        )
+        for i in range(n)
+    ]
+
+
+@pytest.mark.parametrize("n", [2, 3])
+def test_tied_latest_reflection_is_selected_exactly_like_the_per_shrine_query(users, shrines, n):
+    """Same-created_at rows have no defined order in the per-shrine query. The batch must NOT introduce its own rule:
+    it re-selects tied shrines with that same query（_latest_reflection）, so the whole hint — including
+    source_reflection_id and every text field — is identical. No difference is permitted."""
     user, _other = users
     shrine = shrines[0]
-    first = ShrineReflection.objects.create(user=user, shrine=shrine, answer="A", created_at=fx.ago(3))
-    second = ShrineReflection.objects.create(user=user, shrine=shrine, answer="B", created_at=fx.ago(3))
+    rows = _tied_reflections(user, shrine, n)
     facts = ch.load_shrine_history_facts(user=user, shrine_ids=[shrine.pk])
 
     b_breakdown, b_state, b_hint = _batched(facts, shrine.pk)
     l_breakdown, l_state, l_hint = _legacy(user, shrine.pk)
     assert b_breakdown == l_breakdown
     assert b_state == l_state == "reflected"
-    assert b_hint["source_reflection_id"] == max(first.id, second.id)
-    assert l_hint["source_reflection_id"] in {first.id, second.id}
-    assert {k: v for k, v in b_hint.items() if k != "source_reflection_id"}.keys() == l_hint.keys() - {"source_reflection_id"}
+    assert b_hint == l_hint
+    assert b_hint["source_reflection_id"] in {r.id for r in rows}
+
+
+def test_tie_fallback_is_limited_to_tied_shrines(users, shrines):
+    """Exactly one extra query per shrine whose latest reflection is tied; untied shrines need none."""
+    user, _other = users
+    _tied_reflections(user, shrines[0], 2)
+    _tied_reflections(user, shrines[1], 3, days=10)
+    ShrineReflection.objects.create(user=user, shrine=shrines[2], answer="単独", created_at=fx.ago(1))
+    ShrineReflection.objects.create(user=user, shrine=shrines[2], answer="古い同時刻 1", created_at=fx.ago(50))
+    ShrineReflection.objects.create(user=user, shrine=shrines[2], answer="古い同時刻 2", created_at=fx.ago(50))  # tie, not latest
+    ids = [s.pk for s in shrines]
+
+    with CaptureQueriesContext(connection) as ctx:
+        facts = ch.load_shrine_history_facts(user=user, shrine_ids=ids)
+    assert len(ctx.captured_queries) == MAX_BATCH_QUERIES + 2
+    assert facts[shrines[2].pk].latest_reflection.answer == "単独"
+    for shrine in shrines[:3]:
+        assert _batched(facts, shrine.pk) == _legacy(user, shrine.pk)
+
+
+def test_ties_in_other_tables_need_no_fallback(mixed):
+    """Interaction logs / visits / favorites / actions contribute only counts and timestamps, so ties cannot change the
+    output; the loader stays at the base query count."""
+    user, _other, s = mixed  # s3 has same-timestamp route opens and a detail view
+    with CaptureQueriesContext(connection) as ctx:
+        ch.load_shrine_history_facts(user=user, shrine_ids=[x.pk for x in s])
+    assert len(ctx.captured_queries) == MAX_BATCH_QUERIES
+
+
+def test_enrichment_is_identical_with_tied_reflections(users, shrines):
+    user, _other = users
+    _tied_reflections(user, shrines[0], 3)
+    batched = _enrich({"recommendations": fx.candidate_recs(shrines)}, user, batch=True)
+    legacy = _enrich({"recommendations": fx.candidate_recs(shrines)}, user, batch=False)
+    assert batched == legacy
 
 
 def test_favorites_and_visits_respect_status_and_latest(mixed):
