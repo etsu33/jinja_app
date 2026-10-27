@@ -970,7 +970,7 @@
     {
       "id": "R009",
       "file": "src/app/api/concierge-threads/[id]/route.ts",
-      "line": 27,
+      "line": 41,
       "column": 10,
       "scope": "production",
       "function": "GET",
