@@ -1,9 +1,9 @@
 {
   "summary": {
-    "filesAnalyzed": 718,
+    "filesAnalyzed": 720,
     "filesByScope": {
       "production": 480,
-      "test": 232,
+      "test": 234,
       "storybook": 6
     },
     "productionRows": 142,
@@ -14,17 +14,17 @@
     },
     "requestSitesByDestination": {
       "relative": 71,
-      "backend": 51,
-      "internal-bff": 11,
+      "backend": 52,
+      "internal-bff": 10,
       "unresolved": 1,
       "backend-or-internal": 1,
       "parameter": 1
     },
     "backendSitesByHmac": {
-      "conditionally signed": 52
+      "conditionally signed": 53
     },
     "backendSitesByIdentity": {
-      "direct": 50,
+      "direct": 51,
       "forwarded": 2
     },
     "requestSitesByContext": {
@@ -507,9 +507,7 @@
       "hmac": [
         "conditionally signed"
       ],
-      "internalServerCallers": [
-        "src/lib/api/publicGoshuins.server.ts:10"
-      ],
+      "internalServerCallers": [],
       "dormantServerCallers": []
     },
     {
@@ -1751,7 +1749,7 @@
       "runtimeContext": "route-handler",
       "reachableFromEntrypoint": true,
       "functionReferenced": true,
-      "provenance": "original or internal (route also called by server-side fetch)",
+      "provenance": "original user request",
       "identity": "direct",
       "hmac": "conditionally signed",
       "authentication": "none (no Authorization / Cookie forwarded)",
@@ -4211,7 +4209,7 @@
     {
       "id": "R114",
       "file": "src/lib/api/publicGoshuins.server.ts",
-      "line": 10,
+      "line": 55,
       "column": 23,
       "scope": "production",
       "function": "fetchPublicGoshuinsForShrineServer",
@@ -4219,31 +4217,28 @@
       "via": "fetch",
       "wrapper": null,
       "internalTo": null,
-      "method": "GET",
+      "method": "dynamic(SIGNED_METHOD)",
       "destination": {
-        "category": "internal-bff",
-        "staticPath": "/api/public/goshuins?limit=12&offset=0&shrine={*}",
-        "expression": "url",
+        "category": "backend",
+        "staticPath": "/api/goshuins/?is_public=true&shrine={*}",
+        "expression": "upstream",
         "envNames": [
-          "PLAYWRIGHT_BASE_URL",
-          "PORT",
-          "VERCEL_PROJECT_PRODUCTION_URL",
-          "VERCEL_URL",
-          "WEB_BASE_URL"
+          "BACKEND_ORIGIN",
+          "DJANGO_ORIGIN"
         ]
       },
       "runtimeContext": "ssr",
       "reachableFromEntrypoint": true,
       "functionReferenced": true,
       "provenance": "original user request (server render / action)",
-      "identity": "absent",
-      "hmac": "not applicable (non-Backend hop)",
+      "identity": "direct",
+      "hmac": "conditionally signed",
       "authentication": "none (no Authorization / Cookie forwarded)",
-      "downstreamRoute": "/api/public/goshuins",
+      "downstreamRoute": null,
       "evidence": [
-        "server → own BFF: the BFF route sees the Vercel function egress, not the browser (docs/audit/ws04 §13.2; inferred, not measured)"
-      ],
-      "downstreamHmac": "conditionally signed"
+        "signing helper reached through: pageIdentityHeaders",
+        "clientIdentityHeaders [init] at src/lib/api/publicGoshuins.server.ts:39: page request headers via next/headers headers()"
+      ]
     },
     {
       "id": "R115",
@@ -6588,9 +6583,9 @@
       },
       {
         "pattern": "clientIdentityHeaders",
-        "textHits": 12,
+        "textHits": 13,
         "byClass": {
-          "AST call (project-fn)": 11,
+          "AST call (project-fn)": 12,
           "declaration": 1
         },
         "unexplained": []
@@ -6605,14 +6600,15 @@
       },
       {
         "pattern": "backend-origin-reference",
-        "textHits": 74,
+        "textHits": 91,
         "byClass": {
           "declaration": 6,
           "backend-origin reference (URL/env construction; see row evidence)": 24,
-          "string/regex literal": 31,
-          "comment": 6,
-          "import/export": 3,
-          "AST call (project-fn)": 4
+          "string/regex literal": 42,
+          "comment": 9,
+          "import/export": 4,
+          "AST call (project-fn)": 5,
+          "AST call (dynamic)": 1
         },
         "unexplained": []
       },
