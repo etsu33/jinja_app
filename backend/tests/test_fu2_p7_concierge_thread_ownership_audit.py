@@ -11,7 +11,8 @@ list views for A/B accounts and A/B anonymous identities. This file adds the cas
 - forged identity headers and an invalid bearer next to a valid anonymous cookie;
 - the shared-browser case（authenticated user + matching anonymous cookie）, pinned as the current contract;
 - the `concierge` throttle scope shared by thread reads and chat;
-- one latent gap, kept as a strict xfail so a future fix flips it.
+- F3（closed by FU-2-P7-A）: a user-owned row that still carries an anonymous_id is never written through the
+  anonymous path, at the service and at the chat endpoint.
 """
 
 from __future__ import annotations
@@ -128,21 +129,90 @@ def test_anonymous_cannot_append_to_a_user_thread_without_anonymous_id(django_us
     assert _messages(victim) == [PRIVATE_TEXT]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "P7-F3（latent）: append_chat's anonymous branch has no user__isnull=True. The check constraint allows a row "
-        "with both user and anonymous_id; no current write path creates one, but a future handoff that keeps "
-        "anonymous_id would let the old anonymous cookie append to the user's thread. The detail view already "
-        "requires user IS NULL."
-    ),
-)
+def _snapshot(thread):
+    thread.refresh_from_db()
+    return (thread.user_id, thread.anonymous_id, thread.last_message_at, thread.recommendations, _messages(thread))
+
+
 def test_anonymous_cookie_cannot_append_to_a_user_thread_that_still_carries_its_anonymous_id(django_user_model):
+    """F3（FU-2-P7-A）: the anonymous branch requires user IS NULL, like the detail view."""
     a = _user(django_user_model, "p7-a")
     victim = _user_thread(a, anonymous_id="anon-a")  # allowed by concierge_thread_user_or_anonymous_required
+    before = _snapshot(victim)
 
     with pytest.raises(ConciergeThread.DoesNotExist):
-        append_chat(anonymous_id="anon-a", query="attacker text", thread_id=victim.pk)
+        append_chat(anonymous_id="anon-a", query="attacker text", thread_id=victim.pk, recommendations=[{"x": 1}])
+
+    assert _snapshot(victim) == before
+
+
+def test_the_owner_still_appends_to_a_user_thread_that_carries_an_anonymous_id(django_user_model):
+    a = _user(django_user_model, "p7-a")
+    thread = _user_thread(a, anonymous_id="anon-a")
+
+    saved = append_chat(user=a, query="owner text", thread_id=thread.pk)
+
+    assert saved.thread.pk == thread.pk
+    assert _messages(thread) == [PRIVATE_TEXT, "owner text"]
+
+
+def test_anonymous_owner_still_appends_to_its_own_thread():
+    thread = _anon_thread("anon-a")
+
+    saved = append_chat(anonymous_id="anon-a", query="follow-up", reply_text="reply", thread_id=thread.pk)
+
+    assert saved.thread.pk == thread.pk
+    assert saved.thread.user_id is None
+    assert _messages(thread) == [PRIVATE_TEXT, "follow-up", "reply"]
+
+
+CHAT_URL = "/api/concierge/chat/"
+
+
+def _stub_chat_pipeline(monkeypatch):
+    monkeypatch.setattr("temples.api_views_concierge.build_chat_candidates", lambda **kwargs: [])
+    monkeypatch.setattr(
+        "temples.api_views_concierge.build_chat_recommendations",
+        lambda **kwargs: {"recommendations": [{"name": "神社A", "reason": "ok", "reason_source": "reason:test"}]},
+    )
+
+
+def _anon_chat(thread_id):
+    return _anon_client("anon-a").post(
+        CHAT_URL,
+        data={"query": "anonymous chat text", "lat": 35.0, "lng": 139.0, "thread_id": thread_id},
+        format="json",
+    )
+
+
+def test_chat_endpoint_does_not_write_into_a_hybrid_user_thread(django_user_model, monkeypatch):
+    """End to end: the view catches DoesNotExist and starts a new anonymous thread; the user's row is untouched."""
+    _stub_chat_pipeline(monkeypatch)
+    a = _user(django_user_model, "p7-a")
+    victim = _user_thread(a, anonymous_id="anon-a")
+    before = _snapshot(victim)
+
+    response = _anon_chat(victim.pk)
+
+    assert response.status_code == 200
+    new_id = int(response.json()["thread"]["id"])
+    assert new_id != victim.pk
+    created = ConciergeThread.objects.get(pk=new_id)
+    assert created.user_id is None
+    assert created.anonymous_id == "anon-a"
+    assert _snapshot(victim) == before
+    assert PRIVATE_TEXT not in response.content.decode("utf-8")
+
+
+def test_chat_endpoint_still_continues_a_valid_anonymous_thread(monkeypatch):
+    _stub_chat_pipeline(monkeypatch)
+    thread = _anon_thread("anon-a")
+
+    response = _anon_chat(thread.pk)
+
+    assert response.status_code == 200
+    assert int(response.json()["thread"]["id"]) == thread.pk
+    assert _messages(thread)[:2] == [PRIVATE_TEXT, "anonymous chat text"]
 
 
 def test_detail_view_does_not_serve_a_user_thread_that_still_carries_its_anonymous_id(django_user_model):
