@@ -200,3 +200,13 @@ See `fu2-p7-f5-preview-runtime-env-verification-2026-10-27.md`. Results:
 - on the SSO-protected Preview, a cookie-forwarding SSR self-fetch passes, and a cookie-less one receives HTML（public
   goshuins rendered empty）. This confirms the §4 / §6 assumption that Preview SSR depends on same-host cookie
   forwarding.
+
+## 12. Follow-up: Preview runtime probe（2026-10-28）
+
+See `fu2-p7-f5-preview-env-probe-2026-10-28.md`. Results:
+
+- on Preview, `VERCEL_ENV === "preview"`, and `VERCEL_URL` / `VERCEL_BRANCH_URL` are present, valid hosts and equal the
+  request host for the deployment URL and the branch alias respectively（PASS）;
+- the Preview part of the allowlist design is supported by runtime data;
+- Production remains UNVERIFIED by design.
+
