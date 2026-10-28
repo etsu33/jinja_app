@@ -5,11 +5,14 @@
 ```text
 RECORD TYPE   = audit-only（no dependency, lockfile or code change）
 BASELINE      = origin/develop@1170b60（after PR #3370 DOMPurify, #3371 Pillow, #3372 Storybook）
-TARGET        = 72 High Dependabot alerts（52 runtime / 20 development, as reported by Mother Ship）
+TARGET        = 72 open High Dependabot alerts（authoritative, retrieved from GitHub by Mother Ship）:
+                npm lockfile 64; Python requirements 8（Django 2, djangorestframework 6）;
+                52 runtime / 20 development
 DATA SOURCES  = pnpm 9.12.3 `pnpm audit --json`（GitHub Advisory Database via the npm registry）;
                 pip-audit 2.x with the PyPI vulnerability service, on backend/requirements-dev.txt;
                 pnpm-lock.yaml snapshots; npm / PyPI package metadata
-NOT AVAILABLE = the Dependabot alert list itself（no Dependabot API tool in this session）
+NOT AVAILABLE = the per-alert Dependabot list（no Dependabot API tool in this session）. Only the totals above are
+                known; the alert-by-alert mapping is UNKNOWN
 FINAL STATUS  = PR for Mother Ship; priorities are Mother Ship's decision; STOP
 ```
 
@@ -24,16 +27,25 @@ Evidence labels:
 
 ## 2. Conclusion
 
-1. **npm: 69 High advisory entries across 19 packages（Audit）.** Python adds 6 known vulnerabilities in Django and DRF.
-   pip-audit gives no severity, so it is **Unknown** which of them Dependabot counts as High. 69 + Python is consistent
-   with 72, but **the mapping to individual alert numbers is not verified**. §3 covers the scope mismatch.
+1. **Three counting systems are involved and must not be mixed（§3）:**
+   - **pnpm audit entries:** 69 npm entries across 19 packages（Audit）. An entry is one advisory × one vulnerable
+     version range.
+   - **Unique vulnerabilities:** 62 unique npm GHSA identifiers, and 5 Python vulnerabilities in pip-audit（Django 2,
+     DRF 3）.
+   - **Dependabot alerts（authoritative）:** 64 npm and 8 Python（Django 2, DRF 6）.
+
+   **The earlier statement that "69 npm entries + Python findings is consistent with 72" was wrong and is withdrawn.**
+   The npm difference（64 alerts vs 62 unique GHSA）and the DRF difference（6 alerts vs 3 pip-audit findings）are
+   **UNKNOWN**.
 2. **Only 3 npm packages are direct dependencies of the production Web app:** `axios`, `zod` and `sharp`, all in
    `apps/web` `dependencies`. Everything else is transitive.
    - Under Mobile `expo`, the affected packages are Expo CLI, config-plugin and Babel tooling, not app runtime code
      （Inferred）.
    - Everything else is Web or root dev, test, lint or Storybook tooling.
-3. **57 of the 69 entries（83 %）need only a lockfile refresh:** the patched version is inside the requirer's declared
-   range（Registry）. This covers `@xmldom/xmldom`（both families）, `fast-uri`, `undici`, `vite`, `brace-expansion`,
+3. **pnpm-audit-based estimate only:** 57 of the 69 pnpm audit entries（83 %; 50 of 62 unique GHSA）have a patched
+   version inside the requirer's declared range（Registry）, so a lockfile refresh is enough for them. **This is not an
+   expected Dependabot closure rate.** How many of the 64 npm alerts would close is **UNKNOWN** until it is checked
+   against the alert list. This covers `@xmldom/xmldom`（both families）, `fast-uri`, `undici`, `vite`, `brace-expansion`,
    `browserslist`, `compression`, `follow-redirects`, `source-map-js`, `axios` and `sharp`.
 4. **The repository's own `pnpm.overrides` pin two vulnerable versions:**
    - `"lodash": "4.17.23"`（vulnerable ≤ 4.17.23; `@stoplight/spectral-core@1.22.0` even asks for `^4.18.1`）;
@@ -50,18 +62,39 @@ Evidence labels:
    - `0.8.13`, via `@expo/plist@0.8.1`（`^0.8.8`）;
    - `0.9.10`, via `simple-plist → plist@3.1.1`（`^0.9.10`）.
 
-   Both reach patched versions（0.8.15 / 0.9.12）within their ranges. Together they account for 19 of the 69 entries.
+   Both reach patched versions（0.8.15 / 0.9.12）within their ranges. Together they account for 19 of the 69 pnpm audit
+   entries, but only 12 unique GHSA: 7 advisories affect both families and appear once per family. How Dependabot
+   counts them is **UNKNOWN**.
 
 ## 3. Method and count reconciliation
 
-- `pnpm audit --json --audit-level high` reports `high: 70`; the High advisory entries number 69. Each entry is one
-  advisory × one vulnerable version range. The difference of 1 is pnpm's metadata counting and was not investigated
-  further.
-- **Scope by manifest section**（the importer's `dependencies` vs `devDependencies` of the top-level parent）: **43
-  runtime / 26 development**. Dependabot reports 52 / 20, a total 3 higher. Possible reasons, none verified:
-  - Python alerts are counted as runtime;
-  - Dependabot's scope inference differs for packages reachable from both sections;
-  - the advisory database differs slightly between the npm audit endpoint and Dependabot.
+**Counting systems:**
+
+| count | npm | Python | total | source | unit |
+| --- | --- | --- | --- | --- | --- |
+| **Dependabot open High alerts（authoritative）** | **64** | **8**（Django 2, DRF 6） | **72** | GitHub, retrieved by Mother Ship | one alert per Dependabot's own key; the per-alert list was not available to this audit |
+| pnpm audit High entries | 69 | — | — | `pnpm audit --json --audit-level high`（Audit） | one advisory × one vulnerable version range |
+| unique vulnerabilities（GHSA）, npm | 62 | — | — | the same output, de-duplicated by GHSA | one advisory per package |
+| pip-audit findings | — | 5 unique（Django 2, DRF 3） | — | pip-audit, PyPI service（Audit） | one vulnerability; no severity given |
+
+- **The 69 → 62 difference is explained:** 7 `@xmldom/xmldom` advisories cover both the 0.8 and the 0.9 family, so pnpm
+  lists them twice（19 entries, 12 unique GHSA）. pnpm's metadata summary says `high: 70`; that one-entry gap was not
+  investigated.
+- **The 62 → 64 difference（npm）is UNKNOWN.** Candidates, none verified:
+  - Dependabot counts some advisory per version family, or per manifest path;
+  - the advisory data behind `pnpm audit` and Dependabot differs.
+- **The 3 → 6 difference（DRF）is UNKNOWN.** Candidates, none verified:
+  - Dependabot counts both `backend/requirements.txt` and `backend/requirements-dev.txt`（which includes it via `-r`）;
+  - there are advisories that the PyPI service does not report.
+
+  Django matches（2 = 2）.
+- **No alert-by-alert mapping exists in this audit.** Every per-group alert number in §9 is therefore UNKNOWN, except
+  the Python groups, where Mother Ship's per-package totals apply.
+- **Scope:**
+  - by manifest section（the importer's `dependencies` vs `devDependencies` of the top-level parent）, the pnpm entries
+    split **43 runtime / 26 development**;
+  - Dependabot's 52 / 20 counts alerts, and includes the 8 Python alerts in some scope that is not known here;
+  - the two splits use different units and cannot be compared directly. The relationship is **UNKNOWN**.
 - **Manifest "runtime" is not the same as production runtime.** `apps/mobile` lists `expo` in `dependencies`, so Expo
   CLI tooling counts as runtime.
 
@@ -157,24 +190,28 @@ including Mobile tooling.
 
 ## 9. PR split proposal（independent, minimal; no order decided here）
 
-| PR | scope | entries（npm） | change | regression and verification gate |
-| --- | --- | --- | --- | --- |
-| **H-1 Mobile Expo tooling refresh** | `@xmldom/xmldom`（both families）, `browserslist`, `compression`, `brace-expansion` | 27 | lockfile refresh only（`pnpm update --depth Infinity <pkgs>`, ranges unchanged） | Mobile: `tsc`, vitest; `expo config` / `expo prebuild --no-install` dry run（plist handling）; confirm no versions change outside the targets |
-| **H-2 Web runtime: axios + follow-redirects** | `axios`, `follow-redirects` | 9 | refresh to 1.20.0 / 1.16.1 | web vitest（API client, interceptors, refresh）, `tsc`, lint, `next build`; Preview smoke test of login and API calls |
-| **H-3 Web runtime: zod 4.x** | `zod` 4.4.3 → 4.6.6（web and eslint-plugin-react-hooks） | 1（partial） | refresh; `apps/web` spec optionally `^4.6.6` | web vitest（schemas, API route validation）, `tsc`, `next build` |
-| **H-4 sharp alignment** | `sharp` 0.35.3 → 0.35.5 | 2 | refresh | `next build`; image optimisation smoke test; Storybook build |
-| **H-5 Test tooling** | `undici`, `vite`, `source-map-js` | 11 | refresh | full web and mobile vitest; Storybook build（source-map-js via Tailwind）; `next build`（Tailwind） |
-| **H-6 Override corrections** | `lodash` 4.18.1, `js-yaml` ≥ 4.3.2 | 4 | edit `pnpm.overrides` | lint（eslintrc）, `pnpm audit:openapi` / spectral, Storybook build, `ts-prune`, markdownlint, Mobile iOS tooling（xcpretty）; affects every workspace |
-| **H-7 Lint / docs tooling** | `markdownlint-cli` → 0.50.0, or scoped overrides for `linkify-it` / `markdown-it` / `smol-toml`; `fast-uri` refresh | 13 | dev dependency bump or overrides; depends on the H-6 js-yaml decision | markdownlint over the repository docs, spectral lint |
-| **H-8 Backend: Django 5.2.17** | `Django` | Python | pin bump | full backend suite（Python 3.11, Postgres）, `manage.py check`, `migrate --plan` |
-| **H-9 Backend: DRF 3.18.2** | `djangorestframework` | Python | **minor** bump | full backend suite; WS-04 throttle and permission tests; OpenAPI generation; auth / JWT flows |
-| **H-10 Risk decisions（no code）** | `zod@3`（Expo CLI）, `webpack-dev-middleware`（Storybook）, `node-forge` | 2（plus the zod 3.x part of H-3's entry） | accept and dismiss with a reason, wait for upstream, or a major override | Mother Ship decision; record the rationale |
+| PR | scope | pnpm entries / unique GHSA | Dependabot alerts | change | regression and verification gate |
+| --- | --- | --- | --- | --- | --- |
+| **H-1 Mobile Expo tooling refresh** | `@xmldom/xmldom`（both families）, `browserslist`, `compression`, `brace-expansion` | 27 / 20 | UNKNOWN | lockfile refresh only（`pnpm update --depth Infinity <pkgs>`, ranges unchanged） | Mobile: `tsc`, vitest; `expo config` / `expo prebuild --no-install` dry run（plist handling）; confirm no versions change outside the targets |
+| **H-2 Web runtime: axios + follow-redirects** | `axios`, `follow-redirects` | 9 / 9 | UNKNOWN | refresh to 1.20.0 / 1.16.1 | web vitest（API client, interceptors, refresh）, `tsc`, lint, `next build`; Preview smoke test of login and API calls |
+| **H-3 Web runtime: zod 4.x** | `zod` 4.4.3 → 4.6.6（web and eslint-plugin-react-hooks） | 1（partial） / 1 | UNKNOWN | refresh; `apps/web` spec optionally `^4.6.6` | web vitest（schemas, API route validation）, `tsc`, `next build` |
+| **H-4 sharp alignment** | `sharp` 0.35.3 → 0.35.5 | 2 / 2 | UNKNOWN | refresh | `next build`; image optimisation smoke test; Storybook build |
+| **H-5 Test tooling** | `undici`, `vite`, `source-map-js` | 11 / 11 | UNKNOWN | refresh | full web and mobile vitest; Storybook build（source-map-js via Tailwind）; `next build`（Tailwind） |
+| **H-6 Override corrections** | `lodash` 4.18.1, `js-yaml` ≥ 4.3.2 | 4 / 4 | UNKNOWN | edit `pnpm.overrides` | lint（eslintrc）, `pnpm audit:openapi` / spectral, Storybook build, `ts-prune`, markdownlint, Mobile iOS tooling（xcpretty）; affects every workspace |
+| **H-7 Lint / docs tooling** | `markdownlint-cli` → 0.50.0, or scoped overrides for `linkify-it` / `markdown-it` / `smol-toml`; `fast-uri` refresh | 13 / 13 | UNKNOWN | dev dependency bump or overrides; depends on the H-6 js-yaml decision | markdownlint over the repository docs, spectral lint |
+| **H-8 Backend: Django 5.2.17** | `Django` | — （pip-audit: 2 unique） | **2** | pin bump | full backend suite（Python 3.11, Postgres）, `manage.py check`, `migrate --plan` |
+| **H-9 Backend: DRF 3.18.2** | `djangorestframework` | — （pip-audit: 3 unique） | **6** | **minor** bump | full backend suite; WS-04 throttle and permission tests; OpenAPI generation; auth / JWT flows |
+| **H-10 Risk decisions（no code）** | `zod@3`（Expo CLI）, `webpack-dev-middleware`（Storybook）, `node-forge` | 2 / 2（plus the zod 3.x part of H-3） | UNKNOWN | accept and dismiss with a reason, wait for upstream, or a major override | Mother Ship decision; record the rationale |
 
 Notes:
 
 - H-8 and H-9 are separate so that the minor DRF bump can be reverted alone.
 - H-1 and H-6 both touch Mobile tooling. Keep them separate so that a Mobile build problem is easy to trace.
-- The entry counts above sum to 69: H-1 27, H-2 9, H-3 1, H-4 2, H-5 11, H-6 4, H-7 13, H-10 2.
+- **Group totals:**
+  - pnpm entries: 69（H-1 27, H-2 9, H-3 1, H-4 2, H-5 11, H-6 4, H-7 13, H-10 2）;
+  - unique GHSA: 62（H-1 20, others unchanged）.
+- **Dependabot alerts per npm group are UNKNOWN.** They sum to 64, but the split is not known. Python: H-8 2 + H-9 6 = 8.
+  Read the alert list before each PR to set its expected closures.
 - Each PR should show, as in #3370 and #3372, that unrelated lockfile changes are explained or reverted, and that
   `pnpm install --lockfile-only` and `--frozen-lockfile` pass.
 
@@ -182,10 +219,14 @@ Notes:
 
 **Uncertainties:**
 
-- **Alert mapping:** the Dependabot alert numbers, and how the 72 split between npm and Python, are not verified
-  （no API access）. Before closing a PR, read the Dependabot list and confirm that the expected alerts close.
-- **Python severity:** which Django / DRF findings Dependabot rates High is **Unknown**.
-- **Scope counts:** 43 / 26（manifest）vs 52 / 20（Dependabot）is **unexplained**.
+- **Alert mapping:** the totals are authoritative（npm 64, Python 8 = Django 2 + DRF 6）. The per-alert mapping to
+  packages, advisories and PR groups is **UNKNOWN**（no API access）. Before each PR, read the Dependabot list, and
+  confirm afterwards that the expected alerts close.
+- **Count differences:** npm 62 unique GHSA vs 64 alerts, and DRF 3 pip-audit findings vs 6 alerts, are **UNKNOWN**
+  （§3）.
+- **The 57 / 69（83 %）figure** is a pnpm-audit-based estimate, not a Dependabot closure forecast.
+- **Scope counts:** 43 / 26（pnpm entries by manifest section）and 52 / 20（Dependabot alerts）use different units. The
+  relationship is **UNKNOWN**.
 - **Usage classes:** these come from requirer chains and code search（Inferred）, not from bundle analysis. A bundle
   analysis of `next build`（e.g. `@next/bundle-analyzer`）would confirm that `follow-redirects` and the dev packages
   are absent from production output.
@@ -199,7 +240,8 @@ Notes:
 - Storybook build, when the Storybook tree changes;
 - the full backend suite for Python PRs;
 - an explained lockfile diff;
-- `pnpm audit --audit-level high` before and after, showing only the targeted entries removed.
+- `pnpm audit --audit-level high` before and after, showing only the targeted entries removed;
+- the Dependabot alert list before and after, which is the authoritative closure check.
 
 **Out of scope:**
 
@@ -208,7 +250,8 @@ Notes:
 
 ## 11. Appendix: High advisory entries（npm, 69）
 
-Generated from `pnpm audit --json --audit-level high` on `origin/develop@1170b60`. Section codes: `dep` =
+Generated from `pnpm audit --json --audit-level high` on `origin/develop@1170b60`. These are **pnpm audit entries, not
+Dependabot alerts**: 69 entries, 62 unique GHSA, against 64 npm Dependabot alerts. Section codes: `dep` =
 `dependencies`, `dev` = `devDependencies`. The parent list is truncated after four entries.
 
 | # | package | advisory | installed | vulnerable | patched | top-level parents（importer:package[section]） |
