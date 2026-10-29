@@ -18,7 +18,7 @@ from rest_framework import status, viewsets
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAdminUser
 from shrine_project.throttling import ScopedRateThrottle
 from rest_framework.decorators import action
 
@@ -270,10 +270,16 @@ class ShrineViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ["name_jp", "name_romaji", "address", "goriyaku"]
 
+    # 公開するのは読み取りと throttle 付きの ingest だけ。それ以外の action（create / update /
+    # partial_update / destroy や将来追加される action）は、どの URL route から到達しても
+    # staff 限定に倒す（default-deny）。Shrine は所有者を持たない共有カタログのため、
+    # 一般ユーザーに object-level の書き込み権限は無い。
+    PUBLIC_ACTIONS = frozenset({"list", "retrieve", "nearest", "ingest"})
+
     def get_permissions(self):
-        if self.action in ("list", "retrieve", "nearest", "ingest"):
+        if self.action in self.PUBLIC_ACTIONS:
             return [AllowAny()]
-        return [IsAuthenticated()]
+        return [IsAdminUser()]
 
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):
