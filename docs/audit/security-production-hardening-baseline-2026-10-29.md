@@ -15,10 +15,10 @@
 ## 0. Conclusion
 
 - **No new Critical issue that can be disclosed publicly** was confirmed in the scope of this public document.
-- The Shrine write-authorization fix is **VERIFIED** in the code: catalog writes are staff-only by default, whatever the route.
-- **The main gap is fail-open code defaults.** `DEBUG` defaults to on, `SECRET_KEY` silently falls back, no `SECURE_*` settings exist, and the DRF default permission is `AllowAny`. Production is protected only if every environment variable is set correctly.
+- The Shrine write-authorization fix is **VERIFIED** in the code (catalog writes are staff-only by default, whatever the route). The deployment of `b1b6612` to Render, reported Live with HTTP 200 health checks on 2026-10-29, was reported by the owner.
+- **The main gap is fail-open code defaults.** `DEBUG` defaults to on, `SECRET_KEY` has no fail-closed startup check, no `SECURE_*` settings exist, and the DRF default permission is `AllowAny`. Production is protected only if every environment variable is set correctly.
   - Of these, only `DEBUG=False` has external observational evidence (2026-10 audit).
-  - The production value of `SECRET_KEY` is **UNKNOWN**. Prior evidence ("the app starts") also matches the fallback, so it is not evidence that the variable is set.
+  - `DJANGO_SECRET_KEY` is **VERIFIED present** in the Render environment (owner visual confirmation, masked, 2026-10-29). Its strength and actual runtime consumption remain UNKNOWN; the code-level fail-closed gap stays a separate finding.
 - **Infrastructure has many evidence gaps:** DB roles, Supabase Data API exposure, backups/PITR, logging and alerting are all UNKNOWN. These are classified as "unverifiable", not as "insecure".
 - **Recommended priority** (for Mother Ship to decide): SPH-02 (fail-closed SECRET_KEY) → SPH-21 (Supabase API exposure check) → SPH-03 (HTTPS / cookie hardening) → SPH-07 (DRF default deny).
 
@@ -38,7 +38,7 @@ Severity is a provisional proposal based on impact × preconditions. Code defaul
 | ID | Component | Classification | Severity (proposed) | One-line summary |
 | --- | --- | --- | --- | --- |
 | SPH-01 | Django `DEBUG` | PARTIAL | Medium | Code default True; production False (external observation) |
-| SPH-02 | Django `SECRET_KEY` | FINDING + UNKNOWN | High (conditional) | No fail-closed when unset; production setting unproven |
+| SPH-02 | Django `SECRET_KEY` | FINDING (code) / production presence VERIFIED | Medium | No fail-closed startup check; Render env present (masked); strength UNKNOWN |
 | SPH-03 | HTTPS / HSTS / cookies (Django) | FINDING | Medium | No `SECURE_*` / cookie `Secure` settings at all |
 | SPH-04 | `ALLOWED_HOSTS` | FINDING | Low | Always adds `.onrender.com` and development hosts |
 | SPH-05 | CORS / CSRF trusted origins | PARTIAL | Low | env-driven, credentials allowed; production values UNKNOWN |
@@ -48,7 +48,7 @@ Severity is a provisional proposal based on impact × preconditions. Code defaul
 | SPH-09 | Throttle store | PARTIAL | Low | LocMem, per-process; disable switch via env |
 | SPH-10 | Login throttle | FINDING (known: WS-06) | Medium | Per-username key only (reference) |
 | SPH-11 | Admin / introspection endpoints | PARTIAL | Low–Medium | Admin at default path; public OpenAPI; whoami returns only the requester's own info |
-| SPH-12 | Shrine write authorization | VERIFIED | — | Default-deny: staff only |
+| SPH-12 | Shrine write authorization | VERIFIED | — | Default-deny: staff only; `b1b6612` deployed (owner report) |
 | SPH-13 | Anonymous Shrine ingest | FINDING (residual) | Low–Medium | Unauthenticated Shrine creation (rate-limited) |
 | SPH-14 | Privileged deletion cascade | FINDING (residual) | Low | Staff deletion cascades to related data; no soft delete |
 | SPH-15 | Next.js image optimisation | FINDING | Low | `dangerouslyAllowLocalIP: true`; development http patterns in all environments |
@@ -74,17 +74,21 @@ Severity is a provisional proposal based on impact × preconditions. Code defaul
 - **Current mitigations:** production env (observation); `start.sh` printing only selected settings.
 - **Remediation PR:** `security/django-debug-fail-closed`. Default to False, and make development opt-in explicitly. Also add a startup check.
 
-### SPH-02 Django `SECRET_KEY` fallback — FINDING (code) + UNKNOWN (production) / High (conditional)
+### SPH-02 Django `SECRET_KEY` configuration hardening — FINDING (code) / production presence VERIFIED / Medium
 
-- **Evidence:** `backend/shrine_project/settings.py:104-109`. When `DJANGO_SECRET_KEY` is unset, a fixed value written in the repository is used (outside CI/pytest as well).
+- **Evidence:**
+  - Code: `backend/shrine_project/settings.py:104-109`. When `DJANGO_SECRET_KEY` is unset outside CI/pytest, the settings do not stop startup (no fail-closed check).
+  - Deployment configuration: the repository owner visually confirmed on 2026-10-29 that `DJANGO_SECRET_KEY` is listed with a masked value under Render > `jinja-backend` > Environment. The value was not revealed or copied.
 - **Confirmed facts:**
-  - No fail-closed exists: there is no `ImproperlyConfigured` when the key is unset.
-  - SimpleJWT signs with `SECRET_KEY` (SPH-06).
-- **Assumptions:** production has `DJANGO_SECRET_KEY` set. The prior audit's "SET (inferred)" is based on "the app starts", which the fallback also satisfies, so it **does not establish the value is set**.
-- **Impact (conditional):** if the fallback were in effect in production, anyone could forge a signature for sessions or JWTs. Because the condition is unconfirmed, this is not concluded to be a vulnerability.
-- **Current mitigations:** none in code. Operational config only (prior audit checklist E-5).
-- **Next verification:** an owner confirms in the Render dashboard that `DJANGO_SECRET_KEY` **is set** (existence only; never record or show the value).
-- **Remediation PR:** `security/secret-key-fail-closed`. Raise `ImproperlyConfigured` when unset outside DEBUG/CI/pytest, and add a test.
+  - The variable is present in the production service configuration (VERIFIED, owner observation).
+  - The code has no startup guard against a missing key in a non-development environment.
+  - Session and JWT signing depend on this key (SPH-06).
+- **UNKNOWN:**
+  - The key's strength (length / randomness).
+  - Whether the running process actually consumes this variable. Presence in the dashboard is configuration evidence, not runtime evidence.
+- **Impact:** the risk now rests on future or secondary environments (new services, previews, a renamed variable) starting without the key. The code does not prevent that.
+- **Current mitigations:** production configuration (VERIFIED presence).
+- **Remediation PR:** `security/secret-key-fail-closed`. Refuse to start in non-development environments when the key is missing or weak, and add a test. Rotating the key, if its strength cannot be confirmed, is an operations decision (it invalidates existing sessions and tokens).
 
 ### SPH-03 HTTPS / HSTS / cookie security (Django) — FINDING / Medium
 
@@ -175,8 +179,8 @@ Severity is a provisional proposal based on impact × preconditions. Code defaul
   - `backend/temples/tests/api/test_shrine_write_authorization.py` checks every registered route for anonymous, ordinary and staff users.
   - Merged into develop as `b1b6612`, identical to the reviewed fix.
 - **Confirmed facts:** the default-deny applies regardless of route, and also to actions added in future.
-- **Production applicability:** whether the fix has been **deployed** to production is UNKNOWN; deployment was not confirmed in this audit.
-- **Next verification:** Mother Ship confirms the production deploy and runs checks on the operations side (out of scope for this audit).
+- **Production applicability:** the owner reported that Render deployed `b1b6612` successfully, with the service Live and health checks returning HTTP 200 on 2026-10-29 (deployment evidence; owner report). No production authorization requests were made in this audit, so runtime behaviour is covered by the tests and the deployed revision, not by a production probe.
+- **Next verification:** none required for this audit. Production checks, if desired, are an operations decision.
 
 ### SPH-13 Anonymous Shrine ingest — FINDING (residual) / Low–Medium
 
@@ -302,7 +306,7 @@ Severity is a provisional proposal based on impact × preconditions. Code defaul
 
 ### Residual risks (provisional priority)
 
-1. SPH-02 SECRET_KEY: production unconfirmed, no fail-closed in code.
+1. SPH-02 SECRET_KEY: no fail-closed in code (production presence VERIFIED; strength UNKNOWN).
 2. SPH-21 Supabase API exposure and RLS: unconfirmed.
 3. SPH-03 / SPH-06 / SPH-07: fail-open defaults.
 4. SPH-13 / SPH-14: Shrine-related residuals.
@@ -310,10 +314,9 @@ Severity is a provisional proposal based on impact × preconditions. Code defaul
 
 ### Evidence gaps (verification by the owner in dashboards; never record values)
 
-- Render: whether `DJANGO_SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `CORS_*`, `CSRF_*`, `WEB_CONCURRENCY` and `DISABLE_THROTTLE` are set; the start command; the deploy branch; log retention.
+- Render: `DJANGO_SECRET_KEY` presence is VERIFIED (2026-10-29), but its strength is UNKNOWN. Still to check: whether `DEBUG`, `ALLOWED_HOSTS`, `CORS_*`, `CSRF_*`, `WEB_CONCURRENCY` and `DISABLE_THROTTLE` are set; the start command; the deploy branch; log retention.
 - Supabase: exposed schemas; anon-key permissions; network restrictions; SSL; backups/PITR; role separation; invalidation of the old credential.
 - Vercel: production branch; environment-variable configuration; public reachability of the legacy projects.
-- Production deployment of the Shrine authorization fix.
 
 ## 4. Follow-up audits (separate investigations; not fixed in this PR)
 
@@ -332,7 +335,7 @@ Severity is a provisional proposal based on impact × preconditions. Code defaul
   - Add the Supabase Data API as a candidate external access path to the DB trust boundary (SPH-21).
 - **docs/core/roadmap.md:**
   - Under Cross-cutting: Security Foundation (around line 441), add as Release Readiness prerequisites: SPH-02 fail-closed, the SPH-21 check, the SPH-03 HTTPS / cookie hardening, and the SPH-07 default deny.
-  - Record that the Shrine authorization fix has been merged and that production deployment is still to be confirmed.
+  - Record that the Shrine authorization fix has been merged and deployed (`b1b6612`, owner report 2026-10-29).
 - **docs/core/runtime-security-baseline.md (reference):**
   - Add to §15 External Verification: Supabase Data API exposure and backups/PITR.
   - Add a contract to §4 that "public endpoints are maintained as an explicit allowlist".
