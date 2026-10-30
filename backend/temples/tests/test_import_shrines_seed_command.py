@@ -14,10 +14,12 @@ Seedの件数・重複・Batch17 identityは既存の
 from __future__ import annotations
 
 import json
+import os
 from io import StringIO
 from pathlib import Path
 
 import pytest
+from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import IntegrityError, transaction
@@ -830,3 +832,170 @@ def test_coordinate_comparator_is_defined_once_with_the_contracted_tolerance():
     assert source.count("def _coordinate_values_equal") == 1
     # relative tolerance を導入しない。
     assert "rel_tol=0.0" in source
+
+
+# --------------------------------------------------------------------------
+# G. location（PointField）比較: latitude / longitude と同じ tolerance を使う
+#
+# location は latitude / longitude から作る派生値。WKT の strict comparison では
+# float8 round-trip 差分が `fields=['location']` の偽 UPDATE になっていた
+# （PostGIS job でのみ発生。USE_GIS=0 では location を payload に載せない）。
+# --------------------------------------------------------------------------
+
+
+# location を payload に載せるのは USE_GIS 有効時だけ（importer は env `USE_GIS` を読む）。
+# conftest の `postgis` marker は setup 時に DB へ問い合わせて判定するため、ここでは使わない。
+_requires_gis_import = pytest.mark.skipif(
+    not (getattr(settings, "USE_GIS", False) and os.getenv("USE_GIS", "1") == "1"),
+    reason="location comparison runs only when USE_GIS is enabled",
+)
+
+
+class _FakeGeometry:
+    """GEOS を import できない GIS 無効ジョブでも comparator を検証するための最小 stub。"""
+
+    def __init__(self, geom_type="Point", x=0.0, y=0.0, srid=4326, hasz=False, wkt=None):
+        self.geom_type = geom_type
+        self.x = x
+        self.y = y
+        self.srid = srid
+        self.hasz = hasz
+        self._wkt = wkt
+
+    def __str__(self):
+        return self._wkt or f"SRID={self.srid};{self.geom_type.upper()} ({self.x!r} {self.y!r})"
+
+
+def _location_equal(current, incoming) -> bool:
+    from temples.management.commands import import_shrines_seed as cmd
+
+    return cmd._location_values_equal(current, incoming)
+
+
+def test_location_comparator_keeps_none_semantics():
+    point = _FakeGeometry(x=139.0, y=35.0)
+
+    assert _location_equal(None, None) is True
+    assert _location_equal(None, point) is False
+    assert _location_equal(point, None) is False
+
+
+@pytest.mark.parametrize(
+    "incoming,expected",
+    [
+        pytest.param((SAPPORO_SEED_LNG, SAPPORO_SEED_LAT), True, id="production-float8-round-trip"),
+        pytest.param((139.0 + 5e-13, 35.0 + 5e-13), True, id="inside-tolerance"),
+        pytest.param((139.0 + 1e-10, 35.0), False, id="x-outside-tolerance"),
+        pytest.param((139.0, 35.0 + 1e-10), False, id="y-outside-tolerance"),
+    ],
+)
+def test_location_comparator_applies_the_coordinate_tolerance_to_x_and_y(incoming, expected):
+    current = (
+        _FakeGeometry(x=SAPPORO_DB_LNG, y=SAPPORO_DB_LAT)
+        if incoming == (SAPPORO_SEED_LNG, SAPPORO_SEED_LAT)
+        else _FakeGeometry(x=139.0, y=35.0)
+    )
+
+    assert _location_equal(current, _FakeGeometry(x=incoming[0], y=incoming[1])) is expected
+
+
+def test_location_comparator_tolerance_boundary_is_inclusive():
+    # 0.0 と 1e-12 / 2e-12 の差は float で正確に表せるため、境界そのものを固定できる。
+    origin = _FakeGeometry(x=0.0, y=0.0)
+
+    assert _location_equal(origin, _FakeGeometry(x=1e-12, y=0.0)) is True
+    assert _location_equal(origin, _FakeGeometry(x=0.0, y=1e-12)) is True
+    assert _location_equal(origin, _FakeGeometry(x=2e-12, y=0.0)) is False
+
+
+def test_location_comparator_treats_different_srids_as_unequal():
+    assert (
+        _location_equal(
+            _FakeGeometry(x=139.0, y=35.0, srid=4326), _FakeGeometry(x=139.0, y=35.0, srid=3857)
+        )
+        is False
+    )
+    assert (
+        _location_equal(
+            _FakeGeometry(x=139.0, y=35.0, srid=None), _FakeGeometry(x=139.0, y=35.0, srid=4326)
+        )
+        is False
+    )
+
+
+def test_location_comparator_does_not_apply_tolerance_to_non_point_geometry():
+    point = _FakeGeometry(x=139.0, y=35.0)
+    line = _FakeGeometry(geom_type="LineString", wkt="SRID=4326;LINESTRING (139 35, 139 35)")
+
+    assert _location_equal(point, line) is False
+    assert _location_equal(line, point) is False
+    # non-Point 同士は従来どおり WKT の strict comparison。
+    assert _location_equal(line, _FakeGeometry(geom_type="LineString", wkt=str(line))) is True
+    # Z 座標を持つ Point も tolerance に落とさない。
+    assert (
+        _location_equal(
+            _FakeGeometry(x=139.0, y=35.0, hasz=True), _FakeGeometry(x=139.0 + 5e-13, y=35.0)
+        )
+        is False
+    )
+
+
+@_requires_gis_import
+def test_location_comparator_with_geos_points():
+    from django.contrib.gis.geos import LineString, Point
+
+    db_point = Point(SAPPORO_DB_LNG, SAPPORO_DB_LAT, srid=4326)
+
+    assert _location_equal(db_point, Point(SAPPORO_SEED_LNG, SAPPORO_SEED_LAT, srid=4326)) is True
+    assert (
+        _location_equal(db_point, Point(SAPPORO_DB_LNG + 1e-10, SAPPORO_DB_LAT, srid=4326)) is False
+    )
+    assert _location_equal(db_point, Point(SAPPORO_DB_LNG, SAPPORO_DB_LAT, srid=3857)) is False
+    assert _location_equal(db_point, LineString((0, 0), (1, 1), srid=4326)) is False
+
+
+@_requires_gis_import
+def test_location_outside_tolerance_is_reported_with_the_coordinates(tmp_path):
+    """PostGIS 有効時、tolerance を超える座標差は location も UPDATE 対象になる。"""
+    shrine = _make_shrine(
+        latitude=35.0,
+        longitude=139.0,
+        goriyaku="",
+        astro_elements=[],
+        visit_style_tags=[],
+        sajin="",
+    )
+    source = _write_seed(tmp_path, [_coordinate_row(shrine, 35.0 + 1e-10, 139.0 + 1e-10)])
+
+    output = _run("--source", str(source))
+
+    assert _summary(output)["updated"] == 1
+    assert {"latitude", "longitude", "location"} <= _reported_fields(output)
+
+    shrine.refresh_from_db()
+    assert shrine.location.x == 139.0 + 1e-10
+    assert shrine.location.y == 35.0 + 1e-10
+
+
+@_requires_gis_import
+def test_location_inside_tolerance_is_not_reported_and_not_written(tmp_path):
+    """PostGIS 有効時、tolerance 内の座標差では location を UPDATE しない（dry-run / apply 共通）。"""
+    shrine = _make_shrine(
+        latitude=SAPPORO_DB_LAT,
+        longitude=SAPPORO_DB_LNG,
+        goriyaku="",
+        astro_elements=[],
+        visit_style_tags=[],
+        sajin="",
+    )
+    shrine.refresh_from_db()
+    before = str(shrine.location)
+    source = _write_seed(tmp_path, [_coordinate_row(shrine, SAPPORO_SEED_LAT, SAPPORO_SEED_LNG)])
+
+    for args in (("--dry-run",), ()):
+        output = _run("--source", str(source), *args)
+        assert _summary(output) == {"created": 0, "updated": 0, "skipped": 1, "total_seed": 1}
+        assert "location" not in output
+
+    shrine.refresh_from_db()
+    assert str(shrine.location) == before
