@@ -24,6 +24,8 @@ import pytest
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 
+from temples.tests._isolated_migration_db import isolated_migration_database
+
 if os.getenv("USE_GIS") != "1":
     pytest.skip("GIS disabled by env", allow_module_level=True)
 
@@ -37,55 +39,18 @@ OLD_LAT, OLD_LNG = 35.5898, 139.6688
 NEW_LAT, NEW_LNG = 35.5875263, 139.6687549
 
 
-def _executor() -> MigrationExecutor:
-    executor = MigrationExecutor(connection)
-    executor.loader.build_graph()
-    return executor
-
-
 def _migrate(executor: MigrationExecutor, target):
     executor.migrate(target)
     executor.loader.build_graph()
 
 
-def _temples_head(executor: MigrationExecutor):
-    """The actual latest `temples` migration in this lineage, resolved at call
-    time from the migration graph."""
-    return list(executor.loader.graph.leaf_nodes("temples"))
-
-
-def _truncate_shrine_tables():
-    """Empty every Shrine-derived table so the forward roll back to HEAD is a
-    guaranteed clean no-op through the fail-closed data migrations (0095+),
-    which raise once their audited subject row exists but does not match.
-    Mirrors `test_gis_migration_0099`'s teardown."""
-    with connection.cursor() as cur:
-        cur.execute("TRUNCATE temples_shrine CASCADE")
-
-
-def _restore_head(executor: MigrationExecutor):
-    """Roll `temples` forward to the real latest migration after a test.
-
-    Previously this restored to a hardcoded `HEAD` pinned at the migration
-    under test (0094), which left every later migration unapplied for the
-    remainder of the pytest session -- including 0102's
-    `HistoryThemeAssignment` table. `pytest-randomly` shuffles module order,
-    so on any seed that placed this file before an unrelated test needing
-    that schema, the unrelated test failed against a stale database.
-    """
-    _truncate_shrine_tables()
-    _migrate(executor, _temples_head(executor))
-
-
 @pytest.fixture
 def pre_0094():
-    """Reverse temples to 0093 (0094 unapplied) and restore afterwards."""
-    executor = _executor()
-    _migrate(executor, PRE_0094)
-    try:
+    """A throwaway database migrated forward to 0093 (0094 unapplied), dropped
+    afterwards. The shared test database stays at HEAD: reversing it to 0093
+    would cross the intentionally irreversible 0108."""
+    with isolated_migration_database(PRE_0094) as executor:
         yield executor
-    finally:
-        _restore_head(executor)
 
 
 def _historical_shrine_model(executor: MigrationExecutor):

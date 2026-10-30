@@ -29,6 +29,8 @@ import pytest
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 
+from temples.tests._isolated_migration_db import isolated_migration_database
+
 if os.getenv("USE_GIS") != "1":
     pytest.skip("GIS disabled by env", allow_module_level=True)
 
@@ -48,66 +50,22 @@ NEW_LAT, NEW_LNG = 35.6717809, 139.799519
 NEAR_LAT, NEAR_LNG = 35.6718, 139.7996
 
 
-def _executor() -> MigrationExecutor:
-    executor = MigrationExecutor(connection)
-    executor.loader.build_graph()
-    return executor
-
-
 def _migrate(executor: MigrationExecutor, target):
     executor.migrate(target)
     executor.loader.build_graph()
 
 
-def _truncate_shrine_tables():
-    """Empty every Shrine-derived table so that any forward roll through the
-    fail-closed data migrations 0095-0098 (which raise once their audited
-    subject row exists but does not match) is a guaranteed clean no-op.
-
-    `test_gis_migration_0094` only ever moves between 0093<->0094 and never
-    needs this; this file is the first coordinate-fix test whose fixture may
-    cross the 0095-0098 band on a `--reuse-db` session where an earlier
-    executor-style test left `temples` below HEAD.
-    """
-    with connection.cursor() as cur:
-        cur.execute("TRUNCATE temples_shrine CASCADE")
-
-
-def _temples_head(executor: MigrationExecutor):
-    """The actual latest `temples` migration in this lineage, resolved at call
-    time from the migration graph."""
-    return list(executor.loader.graph.leaf_nodes("temples"))
-
-
-def _restore_head(executor: MigrationExecutor):
-    """Roll `temples` forward to the real latest migration after a test.
-
-    Previously this restored to a hardcoded `HEAD` pinned at 0099, which left
-    every later migration unapplied for the remainder of the pytest session --
-    including 0102's `HistoryThemeAssignment` table. `pytest-randomly` shuffles
-    module order, so on any seed that placed this file before an unrelated test
-    needing that schema, the unrelated test failed against a stale database.
-    """
-    _truncate_shrine_tables()
-    _migrate(executor, _temples_head(executor))
-
-
 @pytest.fixture
 def pre_0099():
-    """Reverse temples to 0098 (0099 unapplied) and restore to the real HEAD after.
+    """A throwaway database migrated forward to 0098 (0099 unapplied), dropped
+    afterwards. The shared test database stays at HEAD: reversing it to 0098
+    would cross the intentionally irreversible 0108.
 
-    Shrine tables are truncated on both sides so the 0095+ fail-closed
-    guards are clean no-ops regardless of suite ordering. Raise-path tests
-    also delete the pk-49 row they seed before returning, so this teardown's
-    forward roll hits 0099's absent-subject no-op.
+    The database is built from zero, so Shrine tables start empty and the
+    0095-0098 fail-closed data migrations apply as clean no-ops.
     """
-    executor = _executor()
-    _truncate_shrine_tables()
-    _migrate(executor, PRE_0099)
-    try:
+    with isolated_migration_database(PRE_0099) as executor:
         yield executor
-    finally:
-        _restore_head(executor)
 
 
 def _historical_shrine_model(executor: MigrationExecutor):
