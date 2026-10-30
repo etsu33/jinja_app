@@ -43,7 +43,7 @@ trap cleanup EXIT
 
 export USE_GIS=1
 export DEBUG=0
-export SECRET_KEY="migration-safety-e2e-key-not-used-in-prod"
+export DJANGO_SECRET_KEY="migration-safety-e2e-key-not-used-in-prod"
 
 # The local Postgres *server* here may be newer than the default `pg_dump`/
 # `psql` on PATH (this happened during development: server 18, PATH client
