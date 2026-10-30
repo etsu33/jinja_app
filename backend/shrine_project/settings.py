@@ -7,6 +7,7 @@ import dj_database_url
 import environ
 from urllib.parse import urlparse
 
+from shrine_project.secret_key import resolve_secret_key
 from shrine_project.throttle_config import load_throttle_identity_config
 
 
@@ -101,12 +102,8 @@ if USE_SQLITE and USE_GIS:
     os.environ.setdefault("SPATIALITE_LIBRARY_PATH", "mod_spatialite")
 
 # --- security / DEBUG ---
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
-if not SECRET_KEY:
-    if os.getenv("CI") or IS_PYTEST:
-        SECRET_KEY = "django-insecure-ci-only-secret-key-please-override"
-    else:
-        SECRET_KEY = "django-insecure-dev-only-secret"
+# 未設定なら起動を止める（SPH-02）。許可される例外と trust boundary は shrine_project/secret_key.py。
+SECRET_KEY = resolve_secret_key(os.environ)
 
 DEBUG = env.bool("DEBUG", default=True)
 
