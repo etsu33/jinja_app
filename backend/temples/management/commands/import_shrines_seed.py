@@ -64,6 +64,37 @@ def _coordinate_values_equal(current, incoming) -> bool:
     )
 
 
+def _location_values_equal(current, incoming) -> bool:
+    """location（PointField）を X / Y ごとに `_coordinate_values_equal` で比較する。
+
+    `location` は latitude / longitude から作る派生値のため、同じ float8 round-trip
+    差分を WKT の文字列比較で UPDATE に昇格させないよう、座標 tolerance を揃える。
+
+    * None vs None                    -> equal
+    * None vs geometry / geometry vs None -> different
+    * どちらかが Point でない、Z 座標を持つ -> 従来どおり WKT（SRID 付き）の strict comparison
+    * SRID が異なる                    -> different
+    * Point vs Point（同一 SRID）      -> X / Y の両方が tolerance 内なら equal
+    """
+    if current is None or incoming is None:
+        return current is None and incoming is None
+
+    if (
+        getattr(current, "geom_type", None) != "Point"
+        or getattr(incoming, "geom_type", None) != "Point"
+        or getattr(current, "hasz", False)
+        or getattr(incoming, "hasz", False)
+    ):
+        return str(current) == str(incoming)
+
+    if current.srid != incoming.srid:
+        return False
+
+    return _coordinate_values_equal(current.x, incoming.x) and _coordinate_values_equal(
+        current.y, incoming.y
+    )
+
+
 def _parse_visit_style_tags(data: list[dict]) -> dict[int, list[str]]:
     """`visit_style_tags` key を持つ行だけを managed として検証して返す。
 
@@ -362,9 +393,8 @@ class Command(BaseCommand):
                     current = getattr(obj, field)
 
                     if field == "location":
-                        current_cmp = str(current) if current is not None else None
-                        value_cmp = str(value) if value is not None else None
-                        if current_cmp != value_cmp:
+                        # latitude / longitude と同じ tolerance で比較する（Point 同士・同一 SRID のみ）。
+                        if not _location_values_equal(current, value):
                             setattr(obj, field, value)
                             changed_fields.append(field)
                     elif field in COORDINATE_FIELDS:
