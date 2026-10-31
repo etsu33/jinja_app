@@ -58,11 +58,16 @@ class PlaceShrineResolution:
         created                   collision が無かったので新規作成した
         collision_review_required 登録済み Shrine が同じ Place を表しうる
                                   -> 作成も束縛もしない（fail closed）
+        not_registered            未リンクかつ collision 無しだが、呼び出し側が
+                                  作成を許可していない（allow_create=False）。
+                                  Shrine は作らない。place_ref に同期済みの
+                                  PlaceRef を載せる
     """
 
     status: str
     shrine: Optional[Shrine]
     candidates: tuple
+    place_ref: Optional[PlaceRef] = None
 
     @property
     def is_review_required(self) -> bool:
@@ -79,6 +84,12 @@ SHRINE_COLLISION_PUBLIC_DETAIL = (
     "an existing shrine may already represent this place; review required"
 )
 SHRINE_COLLISION_PUBLIC_CODE = "shrine_collision_review_required"
+
+#: Shrine マスタ未登録の place_id を、作成権限の無い呼び出しが解決したときの
+#: public 固定文字列。Shrine マスタの新規作成は staff 限定（一般ユーザーの
+#: 閲覧・検索経路からは作らない）。
+SHRINE_NOT_REGISTERED_PUBLIC_DETAIL = "this place is not registered as a shrine"
+SHRINE_NOT_REGISTERED_PUBLIC_CODE = "shrine_not_registered"
 
 
 class ShrineCollisionReviewRequired(PlacesError):
@@ -104,7 +115,9 @@ class ShrineCollisionReviewRequired(PlacesError):
 
 
 @transaction.atomic
-def resolve_shrine_by_place_id(place_id: str) -> PlaceShrineResolution:
+def resolve_shrine_by_place_id(
+    place_id: str, *, allow_create: bool = True
+) -> PlaceShrineResolution:
     """place_id から Shrine を解決する authoritative 実装（F-6B）。
 
     shadow identity の再発を防ぐため、未リンクの PlaceRef から新規 Shrine を
@@ -113,6 +126,10 @@ def resolve_shrine_by_place_id(place_id: str) -> PlaceShrineResolution:
         COLLISION_DETECTION           != IDENTITY_RESOLUTION
         AUTO_BIND_ON_SINGLE_CANDIDATE  = PROHIBITED
         CREATE_NEW_SHRINE ON_COLLISION = NO
+
+    allow_create=False（Shrine マスタの作成権限が無い呼び出し）では、collision 検出
+    までは同じ規則で行い、作成の直前で `not_registered` を返す。Shrine マスタの
+    新規作成は staff だけに許す（一般ユーザーの閲覧経路から作らない）。
 
     並行制御: PlaceRef 行を `select_for_update()` でロックしてから reverse
     OneToOne を読む。ロック前は 2 並行 resolve が両方「未リンク」と判断し、
@@ -151,6 +168,11 @@ def resolve_shrine_by_place_id(place_id: str) -> PlaceShrineResolution:
             status="collision_review_required",
             shrine=None,
             candidates=tuple(candidates),
+        )
+
+    if not allow_create:
+        return PlaceShrineResolution(
+            status="not_registered", shrine=None, candidates=(), place_ref=pr
         )
 
     try:

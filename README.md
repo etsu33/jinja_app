@@ -428,6 +428,15 @@ export async function GET(req: NextRequest) {
 	•	画像アップロード、即公開、御朱印同時実装はスコープ外
 	•	duplication detection は name + address を基本に扱う
 
+## 神社マスタ（Shrine）の書き込み権限
+	•	神社マスタの作成・更新・削除は staff（`is_staff`）だけが行える。権限は backend で判定する
+	•	`/api/shrines/` の create / update / partial_update / destroy は staff 限定（default-deny）。一般ユーザーと未ログインは 401 / 403
+	•	`POST /api/shrines/ingest/`（place_id から取り込み）は誰でも呼べるが、未登録の Place から神社マスタを新規作成できるのは staff だけ。staff 以外は登録済みの神社を返すか、未登録なら作らずに 404（`shrine_not_registered`）を返す
+	•	`POST /api/places/resolve/` は神社マスタを作らない。登録済みなら神社 id を、未登録なら `registered: false` と Place の表示用情報を返し、Web（`/shrines/resolve`）は場所の情報だけを表示する
+	•	Django Admin は staff ログインが前提で、モデル権限（または superuser）で操作範囲が決まる
+	•	一般ユーザーの神社追加は Shrine Submission（審査後に staff が承認）を通す
+	•	公開の閲覧・検索・推薦と、ユーザー所有のお気に入り・御朱印・参拝記録は対象外（従来どおり）
+
 
 ## Billing State と Premium UI 制御
 	•	premium 判定の正本は backend billing state

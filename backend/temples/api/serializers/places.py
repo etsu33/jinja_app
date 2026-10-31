@@ -69,6 +69,18 @@ class ShrineCollisionConflictSerializer(serializers.Serializer):
     code = serializers.CharField(help_text="shrine_collision_review_required")
 
 
+class ShrineNotRegisteredSerializer(serializers.Serializer):
+    """`POST /api/shrines/ingest/` の 404 body（Shrine マスタ未登録、作成権限なし）。
+
+    Shrine マスタの新規作成は staff 限定。staff 以外が未登録の place_id を渡すと、
+    Shrine は作られずこの body が返る。
+    """
+
+    detail = serializers.CharField()
+    code = serializers.CharField(help_text="shrine_not_registered")
+    place_id = serializers.CharField()
+
+
 class ShrineIngestRequestSerializer(serializers.Serializer):
     """F-6B: `POST /api/shrines/ingest/` の request body（schema 記述用）。"""
 
