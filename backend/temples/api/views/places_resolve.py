@@ -19,7 +19,7 @@ from temples.services.places import (
     SHRINE_COLLISION_PUBLIC_DETAIL,
     PlacesError,
     ShrineCollisionReviewRequired,
-    get_or_create_shrine_by_place_id,
+    resolve_shrine_by_place_id,
 )
 from temples.api.serializers.places import ShrineCollisionConflictSerializer
 from temples.api.serializers.validators import validate_place_id_permissive
@@ -45,10 +45,22 @@ class PlacesResolvePostRequestSerializer(serializers.Serializer):
 
 
 class PlacesResolvePostResponseSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    shrine_id = serializers.IntegerField()
+    """登録済み: id / shrine_id / place_id / candidate_id。
+
+    Shrine マスタ未登録: id / shrine_id は null、registered=false と Place の表示用情報
+    （name_jp / address / lat / lng）を返す。この endpoint は Shrine を作らない
+    （Shrine マスタの新規作成は staff 限定）。
+    """
+
+    id = serializers.IntegerField(allow_null=True)
+    shrine_id = serializers.IntegerField(allow_null=True)
     place_id = serializers.CharField()
     candidate_id = serializers.IntegerField()
+    registered = serializers.BooleanField(required=False)
+    name_jp = serializers.CharField(required=False, allow_blank=True)
+    address = serializers.CharField(required=False, allow_blank=True)
+    lat = serializers.FloatField(required=False, allow_null=True)
+    lng = serializers.FloatField(required=False, allow_null=True)
 
 
 # ---- view ----
@@ -135,13 +147,21 @@ class PlacesResolveView(APIView):
             return Response(e.detail, status=400)
 
         try:
-            shrine = get_or_create_shrine_by_place_id(place_id)
+            # 認証なしの公開 endpoint なので Shrine マスタは作らない（staff 限定）。
+            # 登録済みなら解決し、未登録なら Place 情報だけを返す。
+            resolution = resolve_shrine_by_place_id(place_id, allow_create=False)
+            if resolution.is_review_required:
+                raise ShrineCollisionReviewRequired(place_id, resolution.candidates)
+            shrine = resolution.shrine
 
-            pr = shrine.place_ref or PlaceRef.objects.filter(pk=place_id).first()
-            name_jp = (pr.name if pr else "") or shrine.name_jp or ""
-            address = (pr.address if pr else "") or shrine.address or ""
-            lat = (pr.latitude if pr else None) or shrine.latitude
-            lng = (pr.longitude if pr else None) or shrine.longitude
+            if shrine is not None:
+                pr = shrine.place_ref or PlaceRef.objects.filter(pk=place_id).first()
+            else:
+                pr = resolution.place_ref or PlaceRef.objects.filter(pk=place_id).first()
+            name_jp = (pr.name if pr else "") or (shrine.name_jp if shrine else "") or ""
+            address = (pr.address if pr else "") or (shrine.address if shrine else "") or ""
+            lat = (pr.latitude if pr else None) or (shrine.latitude if shrine else None)
+            lng = (pr.longitude if pr else None) or (shrine.longitude if shrine else None)
 
             now = timezone.now()
             c = ShrineCandidate.objects.filter(place_id=place_id).order_by("-created_at").first()
@@ -169,10 +189,29 @@ class PlacesResolveView(APIView):
                     goriyaku="",
                     source=ShrineCandidate.Source.RESOLVE,
                     status=ShrineCandidate.Status.AUTO,
-                    raw={"place_id": place_id, "shrine_id": shrine.id, "via": "resolve"},
+                    raw={
+                        "place_id": place_id,
+                        "shrine_id": shrine.id if shrine else None,
+                        "via": "resolve",
+                    },
                     synced_at=now,
                 )
 
+            if shrine is None:
+                return Response(
+                    {
+                        "id": None,
+                        "shrine_id": None,
+                        "place_id": place_id,
+                        "candidate_id": c.id,
+                        "registered": False,
+                        "name_jp": name_jp,
+                        "address": address,
+                        "lat": lat,
+                        "lng": lng,
+                    },
+                    status=200,
+                )
             return Response({"id": shrine.id, "shrine_id": shrine.id, "place_id": place_id, "candidate_id": c.id}, status=200)
 
         # F-6B: collision は PlacesError のサブクラスなので、必ず先に捕まえる。

@@ -2,7 +2,8 @@
 
 Collects every URL pattern that dispatches to ShrineViewSet and checks each mutation method
 against anonymous, ordinary authenticated and staff clients. Public reads and the throttled
-ingest action stay open to everyone.
+ingest action stay open to everyone, but only staff can create a shrine master record through
+ingest; `POST /api/places/resolve/` never creates one.
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ import pytest
 from django.urls import URLPattern, URLResolver, get_resolver
 from rest_framework.test import APIClient
 from temples.api.views.shrine import ShrineViewSet
-from temples.models import Shrine
+from temples.models import PlaceRef, Shrine
 
 MUTATION_METHODS = ("post", "put", "patch", "delete")
 DENIED = {401, 403, 405}
@@ -158,3 +159,111 @@ def test_ingest_stays_public(shrine):
     # no place_id → 400 from the view itself, i.e. the permission layer let it through
     res = APIClient().post("/api/shrines/ingest/", {}, format="json")
     assert res.status_code == 400
+
+
+# --------------------------------------------------------------------------- #
+# place_id → Shrine creation is staff-only (ingest) / never (public resolve)
+# --------------------------------------------------------------------------- #
+
+
+@pytest.fixture
+def unregistered_place(db):
+    """A synced PlaceRef with no linked Shrine and no nearby Shrine (no collision)."""
+    return PlaceRef.objects.create(
+        place_id="PID_AUTHZ_UNREGISTERED",
+        name="未登録の場所",
+        address="北海道どこか1-1",
+        latitude=43.0,
+        longitude=141.0,
+    )
+
+
+@pytest.fixture
+def registered_place(db):
+    pr = PlaceRef.objects.create(
+        place_id="PID_AUTHZ_REGISTERED",
+        name="登録済み神社",
+        address="沖縄県どこか1-1",
+        latitude=26.2,
+        longitude=127.7,
+    )
+    shrine = Shrine.objects.create(
+        name_jp="登録済み神社",
+        address="沖縄県どこか1-1",
+        latitude=26.2,
+        longitude=127.7,
+        place_ref=pr,
+    )
+    return pr, shrine
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("who", ["anonymous", "plain"])
+def test_non_staff_ingest_does_not_create_a_shrine(who, unregistered_place, plain_client):
+    client = APIClient() if who == "anonymous" else plain_client
+    before = Shrine.objects.count()
+
+    res = client.post(
+        "/api/shrines/ingest/", {"place_id": unregistered_place.place_id}, format="json"
+    )
+
+    assert res.status_code == 404, res.content
+    assert res.json() == {
+        "detail": "this place is not registered as a shrine",
+        "code": "shrine_not_registered",
+        "place_id": unregistered_place.place_id,
+    }
+    assert Shrine.objects.count() == before
+    assert not Shrine.objects.filter(place_ref=unregistered_place).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("who", ["anonymous", "plain"])
+def test_non_staff_ingest_still_resolves_a_registered_shrine(who, registered_place, plain_client):
+    client = APIClient() if who == "anonymous" else plain_client
+    pr, shrine = registered_place
+    before = Shrine.objects.count()
+
+    res = client.post("/api/shrines/ingest/", {"place_id": pr.place_id}, format="json")
+
+    assert res.status_code == 200, res.content
+    assert res.json()["id"] == shrine.id
+    assert Shrine.objects.count() == before
+
+
+@pytest.mark.django_db
+def test_staff_ingest_creates_the_shrine(unregistered_place, staff_client):
+    res = staff_client.post(
+        "/api/shrines/ingest/", {"place_id": unregistered_place.place_id}, format="json"
+    )
+
+    assert res.status_code == 200, res.content
+    created = Shrine.objects.get(place_ref=unregistered_place)
+    assert res.json()["id"] == created.id
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("who", ["anonymous", "plain", "staff"])
+def test_public_resolve_never_creates_a_shrine(who, unregistered_place, plain_client, staff_client):
+    client = {"anonymous": APIClient(), "plain": plain_client, "staff": staff_client}[who]
+    before = Shrine.objects.count()
+
+    res = client.post(
+        "/api/places/resolve/", {"place_id": unregistered_place.place_id}, format="json"
+    )
+
+    assert res.status_code == 200, res.content
+    body = res.json()
+    assert body["shrine_id"] is None and body["registered"] is False
+    assert body["name_jp"] == "未登録の場所"
+    assert Shrine.objects.count() == before
+
+
+@pytest.mark.django_db
+def test_public_resolve_still_returns_a_registered_shrine(registered_place):
+    pr, shrine = registered_place
+
+    res = APIClient().post("/api/places/resolve/", {"place_id": pr.place_id}, format="json")
+
+    assert res.status_code == 200
+    assert res.json()["shrine_id"] == shrine.id

@@ -81,8 +81,10 @@ class TestPlacesResolveEndpoint:
         primary.refresh_from_db()
         assert primary.place_ref_id is None
 
-    def test_no_collision_still_returns_200_with_the_unchanged_shape(self):
+    def test_no_collision_returns_place_only_and_creates_no_shrine(self):
+        """Shrine マスタの新規作成は staff 限定。公開 resolve は作らずに Place 情報を返す。"""
         _place_ref("PID_API_OK", name="新規神社", address="東京都新規区1-1")
+        before = Shrine.objects.count()
 
         res = APIClient().post(
             "/api/places/resolve/", {"place_id": "PID_API_OK"}, format="json"
@@ -90,11 +92,24 @@ class TestPlacesResolveEndpoint:
 
         assert res.status_code == 200
         body = res.json()
-        assert set(body) == {"id", "shrine_id", "place_id", "candidate_id"}
-        assert body["shrine_id"] == body["id"]
+        assert set(body) == {
+            "id",
+            "shrine_id",
+            "place_id",
+            "candidate_id",
+            "registered",
+            "name_jp",
+            "address",
+            "lat",
+            "lng",
+        }
+        assert body["id"] is None and body["shrine_id"] is None
+        assert body["registered"] is False
         assert body["place_id"] == "PID_API_OK"
+        assert body["name_jp"] == "新規神社"
+        assert Shrine.objects.count() == before
 
-    def test_already_linked_still_returns_200(self):
+    def test_already_linked_still_returns_200_with_the_unchanged_shape(self):
         pr = _place_ref("PID_API_LINKED")
         existing = _shrine(place_ref=pr)
 
@@ -103,7 +118,9 @@ class TestPlacesResolveEndpoint:
         )
 
         assert res.status_code == 200
-        assert res.json()["shrine_id"] == existing.id
+        body = res.json()
+        assert set(body) == {"id", "shrine_id", "place_id", "candidate_id"}
+        assert body["shrine_id"] == body["id"] == existing.id
 
 
 class TestShrineIngestEndpoint:
@@ -120,12 +137,30 @@ class TestShrineIngestEndpoint:
         assert res.json()["code"] == "shrine_collision_review_required"
         assert Shrine.objects.count() == before
 
-    def test_no_collision_still_returns_200(self):
+    def test_no_collision_anonymous_gets_404_and_creates_no_shrine(self):
         _place_ref("PID_INGEST_OK", name="新規神社", address="東京都新規区1-1")
+        before = Shrine.objects.count()
 
         res = APIClient().post(
             "/api/shrines/ingest/", {"place_id": "PID_INGEST_OK"}, format="json"
         )
 
+        assert res.status_code == 404
+        assert res.json()["code"] == "shrine_not_registered"
+        assert Shrine.objects.count() == before
+
+    def test_no_collision_staff_still_creates_and_returns_200(self, django_user_model):
+        _place_ref("PID_INGEST_STAFF", name="新規神社", address="東京都新規区1-1")
+        staff = django_user_model.objects.create_user(
+            username="ingest-staff", password="unused", is_staff=True
+        )
+        client = APIClient()
+        client.force_authenticate(user=staff)
+
+        res = client.post(
+            "/api/shrines/ingest/", {"place_id": "PID_INGEST_STAFF"}, format="json"
+        )
+
         assert res.status_code == 200
-        assert res.json()["place_id"] == "PID_INGEST_OK"
+        assert res.json()["place_id"] == "PID_INGEST_STAFF"
+        assert Shrine.objects.filter(place_ref_id="PID_INGEST_STAFF").count() == 1

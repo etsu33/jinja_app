@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import { resolveServerBaseUrlFromHeaders } from "@/lib/server/resolveServerBaseUrl";
+import { UnregisteredPlaceView } from "./UnregisteredPlaceView";
 
 type SP = {
   place_id?: string;
@@ -34,7 +35,24 @@ export default async function ResolvePage({ searchParams }: { searchParams: Prom
   if (res.status === 401) redirect("/?toast=login_required");
   if (!res.ok) redirect("/?toast=resolve_failed");
 
-  const data = (await res.json()) as { shrine_id?: number | string; id?: number | string };
+  const data = (await res.json()) as {
+    shrine_id?: number | string | null;
+    id?: number | string | null;
+    registered?: boolean;
+    place_id?: string;
+    name_jp?: string | null;
+    address?: string | null;
+  };
+
+  // Shrine マスタ未登録: backend は Shrine を作らない（作成は staff 限定）ので、Place 情報だけを表示する。
+  if (data.registered === false) {
+    return (
+      <UnregisteredPlaceView
+        place={{ place_id: data.place_id ?? placeId, name_jp: data.name_jp, address: data.address }}
+      />
+    );
+  }
+
   const shrineId = data.shrine_id ?? data.id;
   if (!shrineId) redirect("/?toast=resolve_no_shrine");
 

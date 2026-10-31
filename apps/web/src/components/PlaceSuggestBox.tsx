@@ -27,6 +27,13 @@ async function ingest(place_id: string): Promise<Shrine> {
   return r.json();
 }
 
+// 未登録の Place は backend が Shrine を作らず 404 を返す（Shrine マスタの新規作成は staff 限定）。
+export function ingestErrorMessage(message: string): string {
+  if (message.includes("401")) return "取り込みにはログインが必要です。";
+  if (message.includes("404")) return "この場所はまだ神社として登録されていません。";
+  return message;
+}
+
 export function PlaceSuggestBox({ value, onChange, onSelect, limit = 10 }: Props) {
   const [debounced, setDebounced] = useState(value);
   const [items, setItems] = useState<SuggestItem[]>([]);
@@ -130,7 +137,7 @@ export function PlaceSuggestBox({ value, onChange, onSelect, limit = 10 }: Props
                     onSelect(shrine);
                   } catch (e) {
                     const msg = e instanceof Error ? e.message : String(e);
-                    setError(msg.includes("401") ? "取り込みにはログインが必要です。" : msg);
+                    setError(ingestErrorMessage(msg));
                   } finally {
                     setIngestingKey(null);
                   }
