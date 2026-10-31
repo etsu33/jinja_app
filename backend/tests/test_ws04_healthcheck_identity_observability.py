@@ -36,6 +36,7 @@ EXPECTED_RATES = {
     "favorites": "30/min",
     "routes": "60/min",
     "shrines_ingest": "1/min",
+    "places-resolve": "10/min",
 }
 
 

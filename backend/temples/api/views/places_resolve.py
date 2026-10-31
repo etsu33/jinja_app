@@ -25,6 +25,10 @@ from temples.api.serializers.places import ShrineCollisionConflictSerializer
 from temples.api.serializers.validators import validate_place_id_permissive
 
 
+#: POST /api/places/resolve/ 専用の DRF throttle scope（rate は settings の DEFAULT_THROTTLE_RATES）。
+PLACES_RESOLVE_THROTTLE_SCOPE = "places-resolve"
+
+
 # ---- schema-only serializers (decoratorより上に置く) ----
 
 
@@ -90,6 +94,19 @@ class PlacesResolvePostResponseSerializer(serializers.Serializer):
 class PlacesResolveView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+
+    def get_throttles(self):
+        """POST だけに専用 scope `places-resolve` を掛ける（GET は従来どおり global 制限のみ）。
+
+        既定の throttle classes（WS-04 の ScopedRateThrottle / AnonRateThrottle / UserRateThrottle）を
+        そのまま使う。ScopedRateThrottle は `throttle_scope` が無い view では何もしないので、GET では
+        専用制限が掛からず、global の anon 制限は GET / POST の両方に残る。throttle は handler より前に
+        判定されるため、拒否（429）されたリクエストは Google 呼び出しも DB 書き込みも行わない。
+        """
+        self.throttle_scope = (
+            PLACES_RESOLVE_THROTTLE_SCOPE if self.request.method == "POST" else None
+        )
+        return super().get_throttles()
 
     def get(self, request, *args, **kwargs):
         q = (request.query_params.get("q") or "").strip()

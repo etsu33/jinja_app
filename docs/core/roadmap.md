@@ -348,6 +348,8 @@ Recommendation Reasonの固有性（V4構造化表示）、FactとMeaningの分�
 
 神社マスタの書き込みはstaff限定に統一した（MVP Shrine Admin-Only Access）。`/api/shrines/`の直接CRUDに加え、place_idからの取り込み（`/api/shrines/ingest/`）でも新規作成はstaffのみ、公開の`/api/places/resolve/`は神社マスタを作らない。一般ユーザーの追加はShrine Submissionの審査経路に限る。
 
+続けて、認証なしの`POST /api/places/resolve/`（未登録Placeで Google Place Details 呼び出しと PlaceRef / ShrineCandidate 書き込みを伴う）に専用throttle `places-resolve`（10/min、POSTのみ）を追加した。GETとglobalの匿名制限は従来どおりで、`DISABLE_THROTTLE`でも緩めない。PlaceRef / ShrineCandidate の保持・掃除方針は未決定（別Gate）。
+
 ---
 
 ## Phase 7: Release Readiness

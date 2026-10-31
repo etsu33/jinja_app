@@ -8,7 +8,10 @@ import environ
 from urllib.parse import urlparse
 
 from shrine_project.secret_key import resolve_secret_key
-from shrine_project.throttle_config import load_throttle_identity_config
+from shrine_project.throttle_config import (
+    load_throttle_identity_config,
+    relax_rates_for_disable_throttle,
+)
 
 
 # --- Paths ---
@@ -325,6 +328,8 @@ REST_FRAMEWORK = {
         "favorites": "30/min",
         "routes": "60/min",
         "shrines_ingest": "1/min",
+        # POST /api/places/resolve/ 専用（GET は対象外）。Google Places 呼び出しと DB 書き込みを伴う
+        "places-resolve": "10/min",
     },
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
@@ -357,11 +362,12 @@ if os.getenv("THROTTLE_PLACES_NEARBY"):
 if os.getenv("THROTTLE_SHRINES_INGEST"):
     _rates["shrines_ingest"] = os.environ["THROTTLE_SHRINES_INGEST"]
 
-# ローカルでスロットルほぼ無効（例外: ingestは守る）
+if os.getenv("THROTTLE_PLACES_RESOLVE"):
+    _rates["places-resolve"] = os.environ["THROTTLE_PLACES_RESOLVE"]
+
+# ローカルでスロットルほぼ無効（例外: ingest と places-resolve は守る。DISABLE_THROTTLE_EXEMPT_SCOPES）
 if os.getenv("DISABLE_THROTTLE", "0") == "1":
-    for k in list(_rates.keys()):
-        if k != "shrines_ingest":
-            _rates[k] = "1000/min"
+    relax_rates_for_disable_throttle(_rates)
 
 # 旧 env 名互換（これも “あれば上書き” だけ）
 if os.getenv("CONCIERGE_THROTTLE"):
