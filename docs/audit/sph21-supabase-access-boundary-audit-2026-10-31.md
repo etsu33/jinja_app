@@ -17,7 +17,8 @@
 
 ## 1. Executive summary
 
-- **Verified (repository):**
+- **Verified (repository; limited to the reviewed static evidence: code, dependency manifests, environment
+  templates and migrations at the base commit):**
   - The application reaches the database only through Django: Web → BFF (Vercel) → Django (Render) → PostgreSQL
     (Supabase); Mobile → Django.
   - No Supabase client library and no Supabase URL / anon / service-role key are referenced by Web, Mobile or the
@@ -31,7 +32,7 @@
 - **Unknown (decisive):**
   - Whether the Supabase Data API is enabled and exposes `public`.
   - Whether the `anon` / `authenticated` roles hold privileges on the application tables.
-  - Which role Django connects as, and that role's attributes.
+  - Which role Django connects as at runtime, and that role's attributes and effective privileges.
 - **Combined risk (hypothetical, high impact):** if the Data API exposes `public` and those roles hold table
   privileges, then the Django authorization layer could be bypassed for user data. Such data includes password
   hashes, sessions, consultation history, birth data and visit history. Supabase has historically granted those
@@ -94,7 +95,7 @@ record was read.
 | Data API enabled | UNKNOWN | Dashboard: Project Settings → Data API |
 | Exposed schemas | UNKNOWN | Platform default has included `public` (general knowledge, not re-verified) |
 | Application tables in an exposed schema | **Conditional:** every application table is in `public`, so all are reachable *if* `public` is exposed | §3 |
-| `anon` / `authenticated` table, sequence, function privileges | UNKNOWN | Catalog check in §11 (D-1) |
+| `anon` / `authenticated` table, sequence, function privileges | UNKNOWN | Catalog check in §11 (D-1a) |
 | Privileged keys in browser-exposed config | **VERIFIED SECURE CONTROL (repository):** no Supabase key of any kind is referenced | §2 |
 | Database access restricted to backend services | PARTIAL: the application path is Django-only. Platform-side restriction (network restrictions, Data API) is UNKNOWN | — |
 
@@ -106,8 +107,8 @@ owner or has BYPASSRLS, so RLS mainly matters for `anon` / `authenticated` throu
 
 | Item | Status |
 | --- | --- |
-| Role Django connects as | UNKNOWN (credentials are not in the repository; a prior audit inferred an owner-like role) |
-| SUPERUSER / CREATEDB / CREATEROLE / BYPASSRLS of that role | UNKNOWN |
+| Role Django connects as at runtime | UNKNOWN (credentials are not in the repository; a prior audit inferred an owner-like role, not verified). The SQL Editor's `current_user` does not identify it; see D-1b (§11) |
+| SUPERUSER / CREATEDB / CREATEROLE / BYPASSRLS, role memberships and table ownership of that role | UNKNOWN until D-1b |
 | Separation of migration role vs runtime role | UNKNOWN (migrations run from the same service per `docs/infra/render-startup.md`; separate role not evidenced) |
 | Unnecessary write / DDL privileges | UNKNOWN (runtime needs DML; DDL needed only when migrations run on start) |
 | Old-credential invalidation after the 2026-10-22 reset | NOT_VERIFIED (`production-db-auth-recovery-evidence-2026-10-22.md`) |
@@ -154,9 +155,12 @@ owner or has BYPASSRLS, so RLS mainly matters for `anon` / `authenticated` throu
   consultation history, birth data).
 - **Affected component:** the Supabase project configuration, not application code.
 - **Remediation:** see R-1 to R-3.
-- **Runtime behaviour:** disabling the Data API or revoking `anon` / `authenticated` privileges does not affect
-  Django, which does not use those roles. Enabling RLS could affect Django **only** if its role is not the owner
-  and lacks BYPASSRLS, so this must be verified first.
+- **Runtime behaviour: UNKNOWN until D-1b (§11) identifies Django's runtime role and its effective privileges.**
+  - Disabling the Data API is expected not to affect Django, because Django does not call the Data API.
+  - Revoking `anon` / `authenticated` privileges is not automatically zero-impact. It would affect Django if its
+    runtime role were one of those roles, a member of them, or otherwise depended on their grants.
+  - Enabling RLS would affect Django unless its runtime role owns the tables (without `FORCE ROW LEVEL SECURITY`)
+    or has BYPASSRLS.
 - **Mother Ship approval:** required.
 
 **SPH21-02 detail.**
@@ -183,9 +187,9 @@ owner or has BYPASSRLS, so RLS mainly matters for `anon` / `authenticated` throu
 
 | ID | Change | Type | Runtime impact | Approval |
 | --- | --- | --- | --- | --- |
-| R-1 | Owner runs the catalog-only checks in §11 and records results (no user data) | Ops evidence | None | Mother Ship |
-| R-2 | Disable the Data API, or remove `public` from exposed schemas (Django does not use it) | Supabase config | None expected for Django; any unknown Data API consumer would break | Mother Ship |
-| R-3 | Revoke `anon` / `authenticated` privileges on application tables / sequences / functions in `public`, and/or enable RLS without permissive policies on them (only after confirming the Django role is owner or BYPASSRLS) | DB change (migration or ops SQL) | None for Django if preconditions hold | Mother Ship |
+| R-1 | Owner runs the read-only checks in §11 (D-1a platform / catalog, D-1b Django runtime role) and records results without credentials or user data | Ops evidence | None | Mother Ship |
+| R-2 | Disable the Data API, or remove `public` from exposed schemas (Django does not use it) | Supabase config | Expected none for Django (it does not call the Data API); any unknown Data API consumer would break | Mother Ship |
+| R-3 | Revoke `anon` / `authenticated` privileges on application tables / sequences / functions in `public`, and/or enable RLS without permissive policies on them (only after confirming the Django role is owner or BYPASSRLS) | DB change (migration or ops SQL) | **UNKNOWN until D-1b**; not to be treated as zero-impact before Django's runtime role and effective privileges are verified | Mother Ship |
 | R-4 | Dedicated least-privilege runtime role for Django; separate migration role | Ops / config | Credential rotation required | Mother Ship |
 | R-5 | Review and retire legacy drift tables (`favorites_favorite`, `temples_shrine_deities`) | DB change | None (not in current models) | Mother Ship |
 | R-6 | Confirm backups / PITR and run a restore drill | Ops | None | Mother Ship |
@@ -193,15 +197,32 @@ owner or has BYPASSRLS, so RLS mainly matters for `anon` / `authenticated` throu
 
 ## 11. Mother Ship decision gates
 
-- **D-1 (evidence, first).**
+- **D-1a (platform and catalog evidence, first).**
   - Supabase Dashboard: Data API on / off, and the exposed schemas.
   - Run these read-only catalog queries as the project owner. They read catalog metadata only, never table rows;
     record the results without secrets.
+  - In the Supabase SQL Editor, `current_user` is the role that executes the editor's SQL (typically the project's
+    administrative role). It is **not necessarily** the role Django uses at runtime, so the first query describes
+    the editor role, `anon` and `authenticated` only. Django's role is identified separately in D-1b.
     - `SELECT rolname, rolsuper, rolcreatedb, rolcreaterole, rolbypassrls FROM pg_roles WHERE rolname IN (current_user, 'anon', 'authenticated');`
     - `SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind IN ('r','p','v','m') ORDER BY 1;`
     - `SELECT table_name, grantee, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'public' AND grantee IN ('anon','authenticated') ORDER BY 1, 2, 3;`
     - `SELECT n.nspname, p.proname, p.prosecdef FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE p.prosecdef AND n.nspname = 'public';`
-- **D-2:** if D-1 shows exposure, choose R-2 (configuration), R-3 (database), or both.
+- **D-1b (Django runtime role, read-only, no credentials).**
+  - Goal: the role **name** and its attributes. Never record or paste a password, a connection string or
+    `DATABASE_URL`.
+  - Option 1: while the Render service is running, list the roles connected to the database:
+    `SELECT DISTINCT usename, application_name FROM pg_stat_activity WHERE datname = current_database();`
+    Then attribute the Django sessions to their role. Omit client addresses from the record.
+  - Option 2: read only the user-name component of the configured connection in the Render dashboard, without
+    copying the rest of the value.
+  - Then, for that role name (shown as `<django_role>`), record:
+    - `SELECT rolname, rolsuper, rolcreatedb, rolcreaterole, rolbypassrls, rolinherit FROM pg_roles WHERE rolname = '<django_role>';`
+    - `SELECT r.rolname AS member_of FROM pg_auth_members m JOIN pg_roles r ON r.oid = m.roleid JOIN pg_roles u ON u.oid = m.member WHERE u.rolname = '<django_role>';`
+    - `SELECT tableowner, count(*) FROM pg_tables WHERE schemaname = 'public' GROUP BY tableowner;`
+  - Until D-1b is recorded, Django's runtime role and its attributes remain **UNKNOWN**. The runtime impact of
+    R-3 also remains UNKNOWN.
+- **D-2:** if D-1a shows exposure and D-1b is recorded, choose R-2 (configuration), R-3 (database), or both.
 - **D-3:** decide the R-4 role separation and its credential-rotation window.
 - **D-4:** decide R-5 (legacy tables) after a content review.
 - **D-5:** confirm R-6 (backups / PITR) before any further schema change.
@@ -212,11 +233,15 @@ owner or has BYPASSRLS, so RLS mainly matters for `anon` / `authenticated` throu
 
 **INCOMPLETE.**
 
-- The repository-side boundary is sound: Django-only access, no Supabase keys or clients, no application-created
-  privileged database objects.
+- Within the reviewed static evidence (code, dependency manifests, environment templates and migrations at the
+  base commit), the repository-side boundary shows Django-only access, no Supabase keys or clients, and no
+  application-created privileged database objects. This does not cover provider-side configuration, objects
+  created outside the migrations, or runtime state.
+- Django's runtime role and its attributes remain UNKNOWN (D-1b). RLS or GRANT remediation must not be treated as
+  zero-impact before they are verified.
 - The decisive platform-side controls (Data API exposure, `anon` / `authenticated` privileges, current RLS state,
   role attributes, backups) cannot be verified without Mother Ship's dashboard or catalog access.
-- SPH21-01 is high-impact if its preconditions hold and should be the first decision gate (D-1 / D-2).
+- SPH21-01 is high-impact if its preconditions hold and should be the first decision gate (D-1a / D-1b / D-2).
 
 README.md, `docs/core/architecture.md` and `docs/core/roadmap.md` are unchanged: no authoritative contract change
 was identified or approved.
