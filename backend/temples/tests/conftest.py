@@ -23,33 +23,43 @@ if os.getenv("CI") == "true" and os.getenv("DISABLE_GIS_FOR_TESTS") == "1":
     ), f"wrong migration module: {settings.MIGRATION_MODULES.get('temples')}"
 
 
-def _has_postgis() -> bool:
-    """
-    pytest マーカー `postgis` の有効/無効を DB実体で判定する。
-    - ENGINE に postgis が含まれているか
-    - pg_extension に postgis 拡張があるか
-    環境変数 FORCE_POSTGIS_TESTS=1 で強制的に True。
-    """
-    import os
-
-    if os.getenv("FORCE_POSTGIS_TESTS") == "1":
-        return True
-    try:
-        eng = connection.settings_dict.get("ENGINE", "")
-        if "postgis" not in eng:
-            # ここで False を返すと skip になる
-            return False
-        with connection.cursor() as cur:
-            cur.execute("SELECT 1 FROM pg_extension WHERE extname = 'postgis';")
-            ok = cur.fetchone() is not None
-        return ok
-    except Exception:
-        return False
+# `postgis` marker: decided in an autouse fixture, after the test database exists and
+# with database access explicitly unblocked (temples/tests/_postgis_marker.py).
+# FORCE_POSTGIS_TESTS=1 still forces the marked tests to run (manual override only).
+_POSTGIS_SKIP_REASONS: dict[tuple, str | None] = {}
 
 
-def pytest_runtest_setup(item):
-    if "postgis" in item.keywords and not _has_postgis():
-        pytest.skip("PostGIS is not available in this environment.")
+@pytest.fixture(autouse=True)
+def _postgis_marker_gate(request):
+    if request.node.get_closest_marker("postgis") is None:
+        return
+
+    from temples.tests._postgis_marker import (
+        postgis_backend_configured,
+        postgis_extension_installed,
+        postgis_skip_reason,
+    )
+
+    force = os.getenv("FORCE_POSTGIS_TESTS") == "1"
+    if not force and postgis_backend_configured(connection.settings_dict):
+        # The probe must see the test database: make sure it is set up first.
+        request.getfixturevalue("django_db_setup")
+
+    key = (force, connection.settings_dict.get("ENGINE"), connection.settings_dict.get("NAME"))
+    if key not in _POSTGIS_SKIP_REASONS:
+        blocker = request.getfixturevalue("django_db_blocker")
+
+        def probe() -> bool:
+            with blocker.unblock():
+                return postgis_extension_installed(connection)
+
+        _POSTGIS_SKIP_REASONS[key] = postgis_skip_reason(
+            connection.settings_dict, probe, force=force
+        )
+
+    reason = _POSTGIS_SKIP_REASONS[key]
+    if reason is not None:
+        pytest.skip(reason)
 
 
 def pytest_ignore_collect(collection_path: Path, config):
