@@ -290,3 +290,80 @@ def test_settings_env_override_for_places_resolve():
     rates = _rates_in_fresh_settings({"THROTTLE_PLACES_RESOLVE": "30/min", "DISABLE_THROTTLE": "1"})
 
     assert rates["places-resolve"] == "30/min"
+
+
+# --------------------------------------------------------------------------- #
+# WS-04 identity at the resolve bucket: only a valid BFF attestation selects the bucket
+# --------------------------------------------------------------------------- #
+
+ATTEST_SECRET = "a" * 48
+
+
+def _attested_client(
+    ip: str, *, secret: str = ATTEST_SECRET, remote: str = "10.0.0.5"
+) -> APIClient:
+    import time
+
+    from shrine_project.throttling import sign_client_identity
+
+    ts = str(int(time.time()))
+    sig = sign_client_identity(secret.encode("utf-8"), ts, "POST", RESOLVE_URL, ip)
+    return APIClient(
+        REMOTE_ADDR=remote,
+        HTTP_X_KM_CLIENT_IP=ip,
+        HTTP_X_KM_CLIENT_TS=ts,
+        HTTP_X_KM_CLIENT_SIG=sig,
+    )
+
+
+@pytest.fixture
+def bff_secret(settings):
+    settings.THROTTLE_TRUSTED_EDGE = ""
+    settings.THROTTLE_CLIENT_IDENTITY_SECRET = ATTEST_SECRET
+
+
+def test_valid_attestations_get_separate_buckets_behind_one_proxy(bff_secret, google_details):
+    """Every Web request reaches Django from the same address; the signed client IP separates users."""
+    user_a = _attested_client("203.0.113.1")
+    for i in range(10):
+        assert _post(user_a, f"PID_ATT_A_{i}").status_code == 200
+    assert _post(_attested_client("203.0.113.1"), "PID_ATT_A_X").status_code == 429
+
+    assert _post(_attested_client("203.0.113.2"), "PID_ATT_B_0").status_code == 200
+
+
+@pytest.mark.parametrize(
+    "case",
+    ["wrong_secret", "multiple_ips", "malformed_ip", "missing_signature"],
+)
+def test_forged_or_malformed_attestation_cannot_open_a_new_bucket(case, bff_secret, google_details):
+    """An attacker rotating X-KM-Client-IP without a valid signature stays in the shared fallback bucket."""
+    proxy = "10.0.0.9"
+    for i in range(10):
+        assert (
+            _post(_client(proxy), f"PID_FB_{i}").status_code == 200
+        )  # exhaust the fallback bucket
+
+    if case == "wrong_secret":
+        forged = _attested_client("198.51.100.77", secret="b" * 48, remote=proxy)
+    elif case == "multiple_ips":
+        forged = _attested_client("198.51.100.77, 198.51.100.78", remote=proxy)
+    elif case == "malformed_ip":
+        forged = _attested_client("not-an-ip", remote=proxy)
+    else:
+        forged = APIClient(REMOTE_ADDR=proxy, HTTP_X_KM_CLIENT_IP="198.51.100.77")
+
+    calls_before = len(google_details)
+    res = _post(forged, "PID_FB_FORGED")
+
+    assert res.status_code == 429
+    assert len(google_details) == calls_before
+
+
+def test_x_forwarded_for_is_ignored_by_the_backend(google_details):
+    proxy = "10.0.0.10"
+    for i in range(10):
+        assert _post(_client(proxy), f"PID_XFF_{i}").status_code == 200
+
+    spoofed = APIClient(REMOTE_ADDR=proxy, HTTP_X_FORWARDED_FOR="198.51.100.200")
+    assert _post(spoofed, "PID_XFF_X").status_code == 429
