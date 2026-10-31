@@ -346,6 +346,8 @@ Recommendation Reasonの固有性（V4構造化表示）、FactとMeaningの分�
 
 位置情報については Gate C（参拝ナビ座標と神社中心座標を分離）を選択済み。PHASE_1の保存構造・状態表現・将来consumer routingは`docs/core/split-anchor-architecture.md`へ正本化され、Schema Foundationも実装済み。PHASE_2のsubject_type × point_method matrixおよびread-only調査・判定手順は正本化済みだが、Batch 01（春日大社・宇佐神宮・日光東照宮）の実調査は未実行。Canonical backfillおよびCompass等のruntime cutoverも未実施であり、それぞれ別のMother Ship指示を必要とする。
 
+神社マスタの書き込みはstaff限定に統一した（MVP Shrine Admin-Only Access）。`/api/shrines/`の直接CRUDに加え、place_idからの取り込み（`/api/shrines/ingest/`）でも新規作成はstaffのみ、公開の`/api/places/resolve/`は神社マスタを作らない。一般ユーザーの追加はShrine Submissionの審査経路に限る。
+
 ---
 
 ## Phase 7: Release Readiness

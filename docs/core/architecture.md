@@ -250,6 +250,18 @@ Detail は神社理解を担当し、過度なパーソナライズを行わな�
 
 公開検索、ランキング、コンシェルジュ推薦で参照される神社マスター。
 
+書き込み権限（backend で判定）:
+
+```text
+Shrine の作成・更新・削除 = staff（is_staff）のみ
+  /api/shrines/ create / update / partial_update / destroy → staff 限定（default-deny）
+  POST /api/shrines/ingest/  → 誰でも呼べる。新規作成は staff のみ
+                               （staff 以外: 登録済みを返す / 未登録は 404 shrine_not_registered）
+  POST /api/places/resolve/  → 作成しない（未登録は registered=false と Place 情報を返す）
+  Django Admin               → staff ログイン + モデル権限
+一般ユーザーの神社追加     = ShrineSubmission（staff 承認後に Shrine へ反映）
+```
+
 神社位置情報は、既存の参拝ナビ座標と将来の神社中心座標を同一責務として扱わない。
 
 ```text
