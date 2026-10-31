@@ -17,6 +17,11 @@
 The 19 cases that the `postgis` marker previously skipped by mistake now run on PostGIS without
 `FORCE_POSTGIS_TESTS`. The only remaining skips are existing, intended ones.
 
+**Develop CI (added after merge):** the GitHub backend integration job on `61abfdf` succeeded:
+`7416 passed, 5 skipped in 850.12s (0:14:10)`, job duration 15m 42s, within the 40-minute limit. Its counts match
+the local PostGIS run. The individual PASSED lines of the 19 previously false-skipped cases were not directly
+verified in the CI log (§7).
+
 | Environment | Passed | Failed | Errors | Skipped | Collected | Exit code | Duration |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | PostGIS (`USE_GIS=1`) | 7416 | 0 | 0 | 5 | 7421 | 0 | 1511.05 s (25:11) |
@@ -121,11 +126,10 @@ No new failure, error or unintended skip was found.
 
 ## 5. Known limitations
 
-- **Local runs only.** The GitHub backend integration (PostGIS) job runs only on push to `develop` or by
-  `workflow_dispatch`, so PRs skip it. This report does not include that job's result for `61abfdf`.
+- **CI scope.** The GitHub backend integration (PostGIS) job runs only on push to `develop` (paths `backend/**` or
+  the workflow file) or by `workflow_dispatch`, so PRs skip it. Its result for `61abfdf` is recorded in §7.
 - **Runtime.** The PostGIS full suite took 25:11 locally, against 19:29 for the P1 run. The difference was not
-  attributed. It includes the newly executed tests and the throwaway-database migration tests, but local machine
-  load was not controlled. The CI job limit is 40 minutes; confirm with the CI run on `develop`.
+  attributed (local machine load was not controlled). On CI the same suite took 14:10 (§7).
 - `test_gis_smoke.py` is skipped locally (GDAL not found by that smoke check). CI runs it in its own step.
 - `test_concierge_l1_freetext_readiness.py:268` (4 skips) is an existing data condition, outside this gate.
 - The authoritative contract of `/api/shrines/nearby/` and external consumers remain UNCONFIRMED (#3385). The tests
@@ -135,3 +139,46 @@ No new failure, error or unintended skip was found.
 
 README.md, `docs/core/architecture.md` and `docs/core/roadmap.md` are unchanged: no authoritative contract changed
 in Gates P1–P2, which modified tests and test infrastructure only.
+
+## 7. Develop CI Verification
+
+Recorded after #3388 was merged. Read-only; no workflow was dispatched or rerun.
+
+| Item | Value |
+| --- | --- |
+| Workflow run | <https://github.com/etsu33/jinja_app/actions/runs/41175674221> (backend-integration, push to `develop`) |
+| Integration job | <https://github.com/etsu33/jinja_app/actions/runs/41175674221/job/124462625764> (`call / integration`) |
+| Tested commit | `61abfdf11d7ea0cfba77ef035c93b665ca935db4` (#3387 merge) |
+| Job conclusion | SUCCESS |
+| Pytest step (`Run pytest (integration, postgis)`) | SUCCESS |
+| Final pytest summary | `7416 passed, 5 skipped in 850.12s (0:14:10)` |
+| Skips | 4 Concierge data-condition cases, 1 GDAL-dependent smoke test (existing) |
+| Job duration | 15m 42s (limit 40 minutes) |
+
+### 7.1 Direct evidence vs. inference
+
+- **Direct (CI):**
+  - the job and pytest-step conclusions;
+  - the final summary line and its skip composition;
+  - the job duration.
+- **Direct (local, §0–§4):**
+  - both full suites with exit code 0;
+  - the per-case collection of the 28 newly executed PostGIS cases;
+  - the absence of `conftest.py:52` skips.
+- **Inference, not verified per case on CI:** the CI totals (7416 passed / 5 skipped) are identical to the local
+  PostGIS run, and the only CI skips are the 5 existing ones. Therefore the 19 previously false-skipped cases were
+  most likely executed and passed on CI. Their individual PASSED lines were **not directly verified** in the CI log.
+
+### 7.2 Later merge `3b7b2cc`
+
+The documentation-only merge `3b7b2cc` (#3388) did not trigger the backend integration workflow, because its path
+filter covers only `backend/**` and the workflow file. The backend code at `3b7b2cc` is identical to `61abfdf`; the
+only difference is this report.
+
+### 7.3 Updated Gate P3 conclusion
+
+**PASS (CI-confirmed at suite level).**
+
+- The develop integration job on `61abfdf` succeeded, with the same totals as the local PostGIS run and within the
+  CI time limit.
+- Test-level CI evidence for the 19 activated cases remains indirect (§7.1).
