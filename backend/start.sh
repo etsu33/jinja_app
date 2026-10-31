@@ -46,6 +46,24 @@ echo "=== migration divergence diagnostics (temples 0079-0089) ==="
 } || echo "migration divergence diagnostics failed; continuing startup"
 echo "=== end migration divergence diagnostics ==="
 
+# --- Database role probe (read-only, opt-in, one-shot) ---------------------
+# Prints only `[db-role-probe] current_user=<role> session_user=<role>` from
+# `SELECT current_user, session_user` on Django's own connection. No URL, host,
+# database name or password is printed. A failure is logged and startup
+# continues. Disabled unless RUN_DB_ROLE_PROBE_ON_START=1; unset it again after
+# the one deploy that needs it.
+if [ "${RUN_DB_ROLE_PROBE_ON_START:-0}" = "1" ]; then
+  echo "Running database role probe because RUN_DB_ROLE_PROBE_ON_START=1..."
+  if python manage.py report_db_role; then
+    echo "Database role probe completed."
+  else
+    db_role_probe_exit=$?
+    echo "ERROR: Database role probe failed (exit=${db_role_probe_exit}); startup continues."
+  fi
+else
+  echo "Skipping database role probe. Set RUN_DB_ROLE_PROBE_ON_START=1 to run it once."
+fi
+
 # --- Visit Style Production audit (read-only, opt-in, fail closed) ---------
 # Runs the Visit-Style-only sync command in its DEFAULT DRY RUN mode: no
 # --apply, no --expected-* locks, so it cannot write. It reports PRESERVE
