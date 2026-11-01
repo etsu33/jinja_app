@@ -173,9 +173,9 @@ terms review first. The terms could not be read: see §6.
 | Project / API in use | `google-places-cost-audit-2026-11.md`: project `strong-imagery-467113-s5`, Places API (Legacy), 3 requests in the 7 days to 2026-11-01 | CONFIRMED（#3397） |
 | New API in production | That record shows Legacy only. Whether `PLACES_API_NEW=1` is set: UNKNOWN | UNKNOWN |
 | Which key is used | Keys 2 / 3 attribution is UNKNOWN（#3397）. The Backend reads the first non-empty of six env names (`google_places.py:53-62`) | UNKNOWN |
-| API restriction (key limited to the Places APIs) | Not visible | UNKNOWN |
-| Application restriction (server IPs) | Not visible; whether Render egress IPs are static is also UNKNOWN | UNKNOWN |
-| Daily per-API quota cap (hard stop) | Not visible | UNKNOWN |
+| API restrictions on observed keys (2026-11-01 Cloud Console) | **API Key 2:** Places API (Legacy), Places API (New) allowed. **API Key 3:** Geocoding API, Places API (Legacy), Places API (New) allowed. These are the observed API allowlists, **not proof of which key production uses**. | CONFIRMED (UI snapshot); production key UNKNOWN |
+| Application restrictions on observed keys (2026-11-01 Cloud Console) | **API Key 2 and API Key 3: None** in the observed Google Cloud credentials screen. The ability to restrict the production server key by IP depends on verified Render egress characteristics, which remain UNKNOWN. | CONFIRMED (UI snapshot); mitigation feasibility UNKNOWN |
+| Daily per-API quota cap (hard stop) | Previous Cloud Console observations of limits are not sufficient to prove an effective daily cap for Nearby or a billing hard stop. Recheck the specific API/method quotas and units before treating them as enforcement. | UNKNOWN |
 | Budget | JPY 1,000/month alert. It notifies only and does not cap spending（#3397） | CONFIRMED |
 | Legacy Nearby Search and Places Details base SKU prices / free monthly caps | Google Maps Platform official global pricing list (checked 2026-11-01): Nearby Search **5,000 free uses/month, USD 32/1,000** in the first paid tier (through 100,000); Places Details **5,000 free uses/month, USD 17/1,000** in that tier. These are **SKU-level**, not project-wide, free usage caps. | VERIFIED (published prices, not actual invoice) |
 | Legacy additional data SKUs | Nearby Search (Legacy) cannot restrict returned fields and can trigger Basic Data, Contact Data and Atmosphere Data SKU billing alongside the Nearby Search base SKU. Actual SKU mix and billed amount are not verified. | VERIFIED (billing rule) / UNKNOWN (actual charge) |
@@ -187,6 +187,8 @@ terms review first. The terms could not be read: see §6.
 - Global pricing: https://developers.google.com/maps/billing-and-pricing/pricing (Places API Legacy; prices in USD, quoted tier through 100,000 uses).
 - Legacy SKU details: https://developers.google.com/maps/billing-and-pricing/sku-details/legacy (Nearby Search base SKU plus possible additional Places Data SKUs).
 - Nearby Search (Legacy) documentation: https://developers.google.com/maps/documentation/places/web-service/legacy/search-nearby (returned fields are not field-mask-selectable).
+
+**Evidence provenance:** Key 2/3 allowlists and absence of application restrictions were observed in the owner's Google Cloud Credentials screenshots for `strong-imagery-467113-s5` on 2026-11-01. These screenshots are not embedded in this repository. The merged #3397 audit records key-level request attribution as UNKNOWN, which remains unchanged. Do not infer that either observed key is configured in Render production. Never copy key secrets into audit notes.
 
 **FieldMask on the New path:** `places.id`, `displayName`, `formattedAddress`, `location`, `types`
 (`google_places.py:755-761`). This deliberately excludes rating, photos and opening hours. The SKU tier it lands in is
