@@ -75,3 +75,24 @@ Do not query user records, secrets, token tables' contents or other application 
 - SPH-21: `docs/audit/sph21-supabase-access-boundary-audit-2026-10-31.md` §§2, 5, 9, 10 (R-7), 11 (D-1b).
 - Existing `docs/runbooks/evidence-coverage-audit.md` for the separate Production audit safety gate.
 - Postgres libpq SSL behavior, Supabase pooler/SSL documentation: require independent live verification of current provider details before approval.
+
+
+## Owner-approved operational verification: 2026-11-01
+
+- **Verified Django runtime role, D-1b role identity:** the owner explicitly approved a one-shot read-only probe on Render `jinja-backend`. The deploy identified in the owner's 13:25 JST screenshot (commit `1246e91`) reached Live and emitted `[db-role-probe] current_user=postgres session_user=postgres` at approximately 13:24 JST. This is Django's `default` database connection, **not** the dashboard SQL Editor.
+- **Role properties, owner-supplied Supabase catalog result:** `rolsuper=false`, `rolcreatedb=true`, `rolcreaterole=true`, `rolbypassrls=true`, `rolinherit=true`, `rolcanlogin=true` for `postgres`. Thus the observed Django role is powerful and **not eligible as a SELECT-only audit credential**. Effective inherited/schema/DDL privileges beyond these flags still require inspection.
+- **Target identification (owner observation):** Render DATABASE_URL has Session pooler form with a tenant-scoped `postgres.<project-ref>` username, confirmed host `aws-1-ap-northeast-1.pooler.supabase.com`, port 5432, database `postgres`, and **no explicit `sslmode` in the provided URL**. The actual DB password was not shared. This is configuration evidence, not proof of negotiated TLS, certificate verification, or hostname verification.
+- **Recovery:** owner reported returning `RUN_DB_ROLE_PROBE_ON_START` to `0`. Render list_deploys then reported latest deployment `dep-dbjbv267bikc73f0ona0` started 2026-11-01 04:26:48Z (**13:26 JST**) and `status=live`; preceding probe deployment `dep-dbjbt90ae00c73dpdhk0` was deactivated. The Render API does not independently attest the current env value in this review. App-wide regression/health verification was not performed.
+- **TLS_RUNTIME_UNKNOWN:** neither the SQL Editor's TLSv1.3 observation nor the role probe's SQL establishes the actual Django-to-pooler TLS session. Existing `report_db_role` collects role identity only. Require a separate, redacted client-side TLS probe on the actual Django connection with explicit approval for any deploy. Never infer `ssl_in_use` from the URL or the pooler-to-Postgres `pg_stat_ssl` result.
+
+### Dedicated audit role: least-privilege design, not executed
+
+Proposed separate `kamimusubi_audit_ro` (placeholder): LOGIN and schema USAGE; SELECT **only** on the precise tables required by `evidence_coverage_audit` including intermediary/source/eligibility tables after code-based inventory. No INSERT, UPDATE, DELETE, TRUNCATE, TRIGGER, REFERENCES, CREATE, TEMP, CREATEDB, CREATEROLE, BYPASSRLS, SUPERUSER, or escalation through role membership/SET ROLE. Inspect effective grants from PUBLIC, inherited roles, table ownership, default privileges, sequences, and executable SECURITY DEFINER functions. This is not a substitute for read-only transaction enforcement in PR #3396. The live Django application stays on its existing role until a separate migration/rotation plan is approved. **No CREATE ROLE/GRANT/REVOKE or production Evidence Audit run is authorized by this record.**
+
+### Updated status
+
+- D-1b role **identity: VERIFIED** (`postgres`). D-1b effective-privileges detail: **PARTIAL**.
+- Render deployment restoration: **Live VERIFIED**; restored env setting is **owner-reported**, not independently read.
+- Production TLS / CA / hostname verification: **UNKNOWN**.
+- Audit-only role: **DESIGNED IN PRINCIPLE, NOT CREATED**.
+- Production data and schema changes: **NONE** by this documentation task. STOP.
