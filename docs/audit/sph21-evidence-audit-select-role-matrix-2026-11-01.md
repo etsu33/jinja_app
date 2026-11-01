@@ -2,6 +2,20 @@
 
 > **Status: DESIGN / NO PRODUCTION GRANTS.** SPH-21 D-1b と `docs/runbooks/evidence-coverage-audit.md` の補足。Production接続、ロール作成、GRANT/REVOKE、データ取得は行っていない。
 
+## Mother Ship 決定（2026-11-01）: Evidence Coverage 専用ロール
+
+| 項目 | 決定 |
+| --- | --- |
+| ロールの管理単位 | **Evidence Coverage Audit 専用**（他の監査・運用と共用しない） |
+| 正式なロール名 | **`kamimusubi_audit_ro`**（承認済み） |
+| 本番でのロール作成 | **未承認**。ロールは**作成されていない** |
+| 本番への接続・GRANT・監査実行 | **STOP** |
+
+- **名前の承認は、ロールの作成（provisioning）・GRANT / REVOKE・本番での実行を許可しない。** それぞれ別の承認を要する。
+- SELECT の範囲は、承認時点の SHA で生成した `audited_tables()` の結果と完全に一致させる（2026-11-01 の `develop` では 10 テーブル）。本書の一覧をハードコードして付与しない。
+- 既存の gate（最小権限、read-only transaction、TLS、接続先の同一性、credential の扱い）は、名前の承認によって一つも緩めない。
+- 未マージの PR #3406（SPH-21-D Q5）は、全体の権限設計案の中で汎用名 `km_audit_ro`（監査用、SELECT のみ）を提案し、同 PR §3 の「監査（#3396 / #3401 / #3403）」行で `audited_tables()` の 10 テーブルに結び付けている。Evidence Coverage Audit に使うロール名は `kamimusubi_audit_ro` である。`km_audit_ro` が同じ主体を指すのか、別の汎用監査ロールなのかは #3406 側で明示されていない（**未整理**。本書からは #3406 を変更しない）。
+
 ## 監査対象の正本
 
 `backend/temples/management/commands/evidence_coverage_audit.py` の `_AUDITED_MODELS` と `audited_tables()` を正本とする。モデルとM2M throughテーブルを `_meta` から動的に列挙するため、リポジトリ変更で増減し得る。**この文書の一覧をハードコードして権限付与しない。** 参照先: `temples.services.evidence_coverage_audit` / `shrine_knowledge_selector` / `channel_b_typed_need_match` / `knowledge_coverage_report._qa_filtered_shrine_ids`。
@@ -26,7 +40,7 @@
 
 ### 権限モデル
 
-- 専用ロール名案 `kamimusubi_audit_ro`：LOGIN true、SUPERUSER/CREATEDB/CREATEROLE/BYPASSRLS false、余分なINHERIT/SET ROLEによる権限昇格不可。
+- **承認済みロール名 `kamimusubi_audit_ro`**（Evidence Coverage Audit 専用、2026-11-01 Mother Ship 承認。**未作成**。作成・GRANT は未承認）：LOGIN true、SUPERUSER/CREATEDB/CREATEROLE/BYPASSRLS false、余分なINHERIT/SET ROLEによる権限昇格不可。
 - database CONNECT と public schema USAGE は必要。database CREATE/TEMPORARY、schema CREATE、対象・対象外tableへの書き込み権限・所有権、シーケンス更新、危険な関数実行は禁止。デフォルト権限・PUBLIC・所有権・メンバーシップも検査。
 - 対象テーブルにのみSELECT。ユーザー相談文、訪問履歴、認証、Stripe情報を含む他のテーブルへのSELECTを付与しない。SQL Editorの `postgres` は運用用であり監査実行には利用しない。
 - 確認方法: ローカルPostgresで実行時 `audited_tables()` の一致とSELECT成功を確認し、各テーブルの `has_table_privilege`、schema/database権限、role memberships、`SET ROLE`可否、所有権、PUBLIC grantsを検査する。Productionカタログ検査やロール作成は母艦の別途承認後。
@@ -39,7 +53,7 @@
 ## Mother Ship gate / STOP
 
 1. 実行時テーブル集合・最小SELECT範囲と逆参照漏れのローカル検証。
-2. 独立ロールの作成・GRANT/REVOKE方針、監査資格情報の保管と接続方式の承認。
+2. 独立ロール `kamimusubi_audit_ro` の作成・GRANT/REVOKE方針、監査資格情報の保管と接続方式の承認（**名前は承認済み、作成と GRANT は未承認**）。
 3. read-only transaction + least privilege + TLS + Production target identity の全証拠が揃うまで本番Evidence Auditを実行しない。
 4. 本書は設計であり、Productionのロール・DB・Render設定を変更しない。
 

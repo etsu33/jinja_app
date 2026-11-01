@@ -1,5 +1,10 @@
 > **Status: Read-only readiness audit（documentation only）— Production execution: STOP**
 >
+> - **2026-11-01 Mother Ship decision:** the role is dedicated to Evidence Coverage Audit; its approved name is
+>   `kamimusubi_audit_ro`. Production role creation is **NOT APPROVED**, and the role **has not been created**.
+>   Production connection, grants and audit execution remain **STOP**. The naming approval does not authorize
+>   provisioning, GRANT / REVOKE or Production execution.
+>
 > - Audit date: 2026-11-01
 > - Base: `develop` @ `c1fd157`
 > - No Production DB connection, role creation, GRANT / REVOKE, or Render / Supabase / Vercel change.
@@ -91,7 +96,7 @@ TLS verification therefore depends entirely on the connection string used for th
 | Gate | Requirement | Status |
 | --- | --- | --- |
 | G-1 Local inventory | `audited_tables()` equals the observed reads; restricted-role controls run, not skipped | **MET（local）**; CI INFERRED |
-| G-2 Dedicated role | A separate LOGIN role (proposed name `kamimusubi_audit_ro`), not `postgres` and not the Django runtime role | **UNMET**（not created; needs approval） |
+| G-2 Dedicated role | A separate LOGIN role dedicated to Evidence Coverage Audit, with the **approved name `kamimusubi_audit_ro`**（2026-11-01）; not `postgres` and not the Django runtime role | **UNMET**: name approved; creation **NOT APPROVED** and not created |
 | G-3 Role attributes | NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS; no membership in other roles | **UNMET** |
 | G-4 Privilege boundary | CONNECT on the database, USAGE on `public`, SELECT on exactly `audited_tables()`（10 tables on `develop` today）; no write, DDL, TEMP or CREATE; no SELECT on other application tables | **UNMET** |
 | G-5 Session defaults | `default_transaction_read_only = on` and a `statement_timeout` set on the role | **UNMET**（proposal） |
@@ -101,7 +106,7 @@ TLS verification therefore depends entirely on the connection string used for th
 | G-9 Execution host | An owner-controlled host with network access to the database, running a clean checkout of a specified `develop` commit | **UNMET**（choice pending; §5.1） |
 | G-10 Pooler compatibility | The custom role can log in through the chosen endpoint, and the single-transaction command works there | **UNKNOWN** |
 | G-11 Output handling | Raw JSON stays outside the repository; only a summary goes into an audit document | Defined in the runbook §3.2; **adoption per run** |
-| G-12 Approval | Mother Ship approves the role SQL (§5.2), the host, the credential procedure and the run window | **UNMET** |
+| G-12 Approval | Mother Ship approves the role SQL (§5.2), the host, the credential procedure and the run window. The 2026-11-01 naming decision is **not** this approval | **UNMET**（naming only） |
 
 ## 5. Proposed read-only execution architecture（for review; nothing executed）
 
@@ -114,6 +119,8 @@ TLS verification therefore depends entirely on the connection string used for th
 | AI / cloud agent session | **Excluded** by the runbook §2.6 |
 
 ### 5.2 Role（proposal SQL, executed by the owner after approval; the password is set interactively and never written here）
+
+**The role name is approved; this SQL is not.** Running it requires a separate Mother Ship approval of role creation and grants.
 
 ```sql
 CREATE ROLE kamimusubi_audit_ro LOGIN
@@ -186,6 +193,8 @@ SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 
 **GO requires all of the following:**
 
+0. A separate Mother Ship approval of role creation and grants for `kamimusubi_audit_ro`. The 2026-11-01 naming
+   approval is not sufficient.
 1. G-2 to G-5 are created exactly as approved, and the §5.3 pre-flight passes with zero unexplained relations.
 2. G-6: TLS is verified (`verify-full`, `pg_stat_ssl.ssl = t`). #3399 / #3402 are merged, or equivalent evidence is
    recorded.
@@ -208,3 +217,24 @@ SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 - Supabase-specific behaviour (custom-role login through the pooler, CA certificate distribution, PUBLIC grants on
   extension tables) is not verified here.
 - The CI execution of the restricted-role cases is inferred from the workflow, not read from logs.
+
+## 8. Status after the 2026-11-01 naming decision
+
+| Item | Status |
+| --- | --- |
+| Role scope | Dedicated to Evidence Coverage Audit — **DECIDED** |
+| Role name `kamimusubi_audit_ro` | **APPROVED** |
+| Role exists in Production | **NO**（not created） |
+| Role creation / GRANT / REVOKE | **NOT APPROVED** |
+| Production connection / audit execution | **STOP** |
+| SELECT boundary | Exactly `audited_tables()` on the approved SHA（10 tables on `develop` today） — unchanged |
+| TLS / target identity / credential / least-privilege gates（G-3 to G-11） | Unchanged, all still UNMET or UNKNOWN |
+| Relation to PR #3406 `km_audit_ro` | **Unresolved naming overlap:** #3406 (open) proposes a generic `km_audit_ro` and maps it to the same 10-table audit row. For Evidence Coverage Audit the name is `kamimusubi_audit_ro`. #3406 should state whether `km_audit_ro` is this role or a separate generic audit role. This document does not rename anything in #3406 |
+
+**TODO（owner / Mother Ship）**
+
+- [ ] Clarify the scope of `km_audit_ro` in #3406 against `kamimusubi_audit_ro`.
+- [ ] Decide on role creation and grants (§5.2): a separate approval.
+- [ ] Resolve the TLS gate (#3399 / #3402) and the `dj_database_url` `sslmode` / `sslrootcert` pass-through (G-6, §5.4).
+- [ ] Approve the execution host, credential procedure and run window (G-8, G-9).
+- [ ] Verify custom-role login through the chosen endpoint (G-10).
