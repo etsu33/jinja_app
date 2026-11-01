@@ -30,9 +30,9 @@
    - New vs Legacy selection (`PLACES_API_NEW`)
    - kill switch (`GOOGLE_PLACES_ENABLED`)
    - API-key restrictions and Google Cloud quota caps
-   - SKU prices
+   - New API SKU prices and the final billed SKU composition (Legacy base prices are documented in §4)
 
-   Cost figures are therefore given as request counts with the unit price as a variable.
+   Cost scenarios remain request-count estimates; the documented Legacy base prices do not establish final billed cost because additional data SKUs may apply.
 
 ## 1. Caller and request-flow inventory
 
@@ -177,7 +177,16 @@ terms review first. The terms could not be read: see §6.
 | Application restriction (server IPs) | Not visible; whether Render egress IPs are static is also UNKNOWN | UNKNOWN |
 | Daily per-API quota cap (hard stop) | Not visible | UNKNOWN |
 | Budget | JPY 1,000/month alert. It notifies only and does not cap spending（#3397） | CONFIRMED |
-| SKU prices / free monthly caps for Legacy Nearby Search and New Text Search（Pro fields: `displayName`, `formattedAddress`, `location`, `types`） | Google's pricing documentation could not be fetched: `developers.google.com` is not in this session's allowed network domains | UNKNOWN |
+| Legacy Nearby Search and Places Details base SKU prices / free monthly caps | Google Maps Platform official global pricing list (checked 2026-11-01): Nearby Search **5,000 free uses/month, USD 32/1,000** in the first paid tier (through 100,000); Places Details **5,000 free uses/month, USD 17/1,000** in that tier. These are **SKU-level**, not project-wide, free usage caps. | VERIFIED (published prices, not actual invoice) |
+| Legacy additional data SKUs | Nearby Search (Legacy) cannot restrict returned fields and can trigger Basic Data, Contact Data and Atmosphere Data SKU billing alongside the Nearby Search base SKU. Actual SKU mix and billed amount are not verified. | VERIFIED (billing rule) / UNKNOWN (actual charge) |
+| Places API (New) Text Search pricing / free usage | New API prices and the billing tier triggered by the present FieldMask are outside this Legacy pricing verification. | UNKNOWN |
+
+
+**Official sources (reviewed 2026-11-01):**
+
+- Global pricing: https://developers.google.com/maps/billing-and-pricing/pricing (Places API Legacy; prices in USD, quoted tier through 100,000 uses).
+- Legacy SKU details: https://developers.google.com/maps/billing-and-pricing/sku-details/legacy (Nearby Search base SKU plus possible additional Places Data SKUs).
+- Nearby Search (Legacy) documentation: https://developers.google.com/maps/documentation/places/web-service/legacy/search-nearby (returned fields are not field-mask-selectable).
 
 **FieldMask on the New path:** `places.id`, `displayName`, `formattedAddress`, `location`, `types`
 (`google_places.py:755-761`). This deliberately excludes rating, photos and opening hours. The SKU tier it lands in is
@@ -204,12 +213,11 @@ UNKNOWN until the pricing documentation is checked.
 - `F` is the free monthly cap of the billed SKU;
 - `P` is the price per 1,000 requests for that SKU.
 
-Both are **UNKNOWN** here (§4).
+For **Legacy Nearby Search base SKU only**, the official global price list reports `F = 5,000` free uses/month and `P = USD 32` per 1,000 in the first paid tier (through 100,000 uses). However, the full billed cost can include other data SKUs, SKU-specific free caps, taxes/exchange rates, and New API or error/retry calls; those remain **UNKNOWN**. The formula is illustrative, not an invoice estimate.
 
 **Reading the table:**
 
-- At the normal scenarios, the volume is likely to stay within, or near, typical free caps. **Do not rely on this
-  until `F` and `P` are verified.**
+- Under the **Legacy Nearby Search base SKU only**, light and moderate scenarios (480 and 1,950) are below its published 5,000-use monthly free cap; heavy testing (6,000) exceeds it by 1,000 uses, before any retries. **Do not interpret this as zero total cost**, because additional data SKUs and other requests can be billed.
 - The abuse ceiling exceeds normal volume by two to three orders of magnitude. **That gap is the real cost exposure,
   and only the rate limit and a Google-side quota cap bound it.**
 
@@ -227,7 +235,7 @@ Both are **UNKNOWN** here (§4).
 | N-8 | `limit` is not clamped before `maxResultCount` | CONFIRMED |
 | N-9 | `google_places.req_history` is an unbounded module-level list holding request params, including location, for every call (`google_places.py:16, 33-38, 201`). It is not exposed, but grows for the process lifetime | CONFIRMED |
 | N-10 | Production `THROTTLE_PLACES_NEARBY`, `DISABLE_THROTTLE`, `PLACES_API_NEW`, `GOOGLE_PLACES_ENABLED`, `WEB_CONCURRENCY` | UNKNOWN |
-| N-11 | Key restrictions, quota caps, SKU prices and free caps | UNKNOWN |
+| N-11 | Key restrictions, quota caps, actual SKU mix and New API prices | UNKNOWN; Legacy base SKU prices VERIFIED (§4) |
 | N-12 | Dead code: `PlacesNearbyThrottle`, `MapNearbyPicker`, `useNearbyShrines` (no runtime effect) | CONFIRMED |
 | N-13 | Nearby triggers no photo calls; there is no map-move-driven fetching | CONFIRMED（no issue） |
 
@@ -247,8 +255,7 @@ Both are **UNKNOWN** here (§4).
 ## 8. Limitations
 
 - Static analysis plus local runtime introspection only. No production logs or Google metrics beyond #3397.
-- `developers.google.com` (pricing and terms) is not in the session's allowed network domains. Every price, free cap
-  and caching rule is UNKNOWN until the domain is allowed or the owner records the figures.
+- The original coding session could not access `developers.google.com`; a subsequent independent review verified **Legacy base SKU** prices and free caps using the official published pricing documentation (see §4). **New API prices, the actual invoice and caching terms remain unverified here.**
 - The volume model is assumption-driven. Replace it with the `nearby_fetch` analytics event counts
   (`apps/web/src/lib/analytics/searchEvents.ts:26, 202`) once they are available.
 
