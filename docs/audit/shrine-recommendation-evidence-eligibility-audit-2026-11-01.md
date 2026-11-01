@@ -288,6 +288,8 @@
 | **PR-E7** | 相談根拠を補う | Channel B（`ShrineSourceFact`）の Source 調査を、love / career / courage を優先して進める（厳格案では 0 社の軸） | mapping |
 | **PR-E8** | P4 の人気順上限を外す | 既知の F2 gap。`compass_direction_only_core` を Monthly に接続する（既存の決定文書に従う） | ranking |
 
+> **実装メモ（2026-11-01 追記）:** PR-E1 は `knowledge_coverage_report` を拡張せず、出力契約を変えないよう別の read-only command `evidence_coverage_audit` として実装した（手順: `docs/runbooks/evidence-coverage-audit.md`、repository seed baseline: `docs/audit/evidence-coverage-audit-pr-e1-repository-seed-baseline-2026-11-01.md`）。47 origin × 8 方位の Compass 影響シミュレーションは PR-E1 に**含めていない**（未着手）。Production での実行は未実施。
+
 ---
 
 ## 13. 母艦の判断が必要な事項
