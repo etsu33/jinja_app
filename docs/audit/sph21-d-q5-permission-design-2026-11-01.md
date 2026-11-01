@@ -35,7 +35,7 @@
 |---|---|---|
 | **通常（gunicorn）** | アプリのテーブルへの SELECT / INSERT / UPDATE / DELETE。`select_for_update`（5 モジュール）のための UPDATE。Django admin の DML。serial 由来のテーブルなら sequence の権限。PostGIS / pg_trgm の関数と型 | DDL、TRUNCATE、schema / DB の CREATE、TEMPORARY、ロールの作成、DB の作成、RLS の回避 |
 | **migration・修復・bootstrap** | テーブルの所有者権限（ALTER・`CREATE INDEX CONCURRENTLY`）。既存の extension の利用。`post_migrate` の DML。修復コマンドの CREATE TABLE / INDEX。seed の DML | ロールの作成、DB の作成、RLS の回避 |
-| **監査（#3396 / #3401 / #3403）** | `audited_tables()` の 10 テーブルへの SELECT だけ（#3403 で実測） | それ以外のすべて |
+| **監査（#3396 / #3401 / #3403）** — Evidence Coverage Audit 専用ロール **`kamimusubi_audit_ro`**（2026-11-01 Mother Ship が名前を承認。**未作成**。作成・GRANT・本番実行は未承認・STOP。#3407） | `audited_tables()` の 10 テーブルへの SELECT だけ（#3403 で実測。承認時点の SHA で再生成した集合と完全一致させる） | それ以外のすべて |
 
 **休眠中の高権限コード（現在は呼ばれていない）:**
 
@@ -60,7 +60,7 @@
 - `km_owner`（LOGIN なし。アプリ objects の所有者）
 - `km_migrator`（migration の deploy 専用。`km_owner` に所属する）
 - `km_app`（通常用。DML だけを持ち、DDL・TEMP・TRUNCATE は持たない）
-- `km_audit_ro`（監査用。SELECT だけを持つ）
+- `km_audit_ro`（監査用。SELECT だけを持つ）。**汎用の監査ロールの案であり、Evidence Coverage Audit 専用ロール `kamimusubi_audit_ro`（§3）の別名ではない。** Evidence Coverage Audit は `km_audit_ro` を使わない。`km_audit_ro` を将来どの監査に使うか、そもそも作るかは未決定
 
 いずれも、ロールの作成・DB の作成・RLS の回避の権限を持たない。Data API 用ロールからは、アプリのテーブルへの権限を外す。RLS を有効にする段階では、`km_app` だけを対象にした許可 policy を置く。管理用ロールはアプリの接続から外し、パスワードを rotate する。
 
