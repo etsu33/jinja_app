@@ -381,7 +381,11 @@ def test_command_json_runs_in_read_only_transaction_and_compares(mixed_db, tmp_p
     assert report["data_origin"] == ORIGIN
     assert report["summary"]["shrine_count"] == 4
     if connection.vendor == "postgresql":
-        assert report["execution"] == {"read_only_guard": "postgresql_transaction_read_only"}
+        assert report["execution"] == {
+            "read_only_guard": "postgresql_transaction_read_only",
+            "select_only_role_verified": None,
+            "target_identity_verified": False,
+        }
         assert any("set transaction read only" in q["sql"].lower() for q in ctx.captured_queries)
 
     path = tmp_path / "seed.json"
@@ -520,3 +524,221 @@ def test_compare_reports_rejects_schema_mismatch():
     other["schema_version"] = "0"
     with pytest.raises(EvidenceCoverageInputError, match="schema_version"):
         compare_reports(_report_with_rows(ORIGIN, []), other)
+
+
+# ---------- #3396 review amendments (2): Source Fact checks / fail-closed guard ----------
+
+from unittest import mock  # noqa: E402
+
+from temples.management.commands import evidence_coverage_audit as command_module  # noqa: E402
+from temples.services import evidence_coverage_audit as service_module  # noqa: E402
+from temples.services.channel_b_typed_need_match import TypedNeedMatch  # noqa: E402
+
+
+def _typed(key: str, need: str = "study") -> TypedNeedMatch:
+    return TypedNeedMatch(
+        need=need,
+        canonical_concept_name="学業成就",
+        signal_type="official_prayer_supported",
+        source_fact_key=key,
+        source_attested_wording="学業成就",
+    )
+
+
+@pytest.mark.django_db
+def test_source_fact_c_is_attributed_only_to_its_owner(monkeypatch):
+    _tag("学業成就")
+    owner = _shrine("所有神社")
+    other = _shrine("非所有神社", address="東京都港区1-1")
+    for s in (owner, other):
+        _deity(s)
+        _history(s)
+    _source_fact(owner, "e1-owned")
+    _install_registry(monkeypatch, ("e1-owned", "学業成就"))
+
+    report = build_evidence_coverage_report(data_origin=ORIGIN)
+
+    assert _row(report, "所有神社")["c_needs"] == ["focus", "study"]
+    assert _row(report, "非所有神社")["c_needs"] == []
+
+
+@pytest.mark.django_db
+def test_mismatched_source_fact_ownership_fails_closed(monkeypatch):
+    """一致が別 Shrine の Source Fact を指していたら、出典追跡可能として数えない。"""
+    claimant = _shrine("主張側神社")
+    owner = _shrine("実所有神社", address="東京都港区1-1")
+    for s in (claimant, owner):
+        _deity(s)
+        _history(s)
+    _source_fact(owner, "e1-foreign")
+    monkeypatch.setattr(
+        service_module,
+        "fetch_typed_need_matches",
+        lambda ids: {claimant.id: (_typed("e1-foreign"),)},
+    )
+
+    report = build_evidence_coverage_report(data_origin=ORIGIN, trace_shrine_ids=[claimant.id])
+    row = _row(report, "主張側神社")
+    chain = next(c for c in report["trace_chains"] if c["shrine"]["id"] == claimant.id)
+
+    assert row["c_needs"] == []
+    assert row["evidence_class"] == "PARTIAL_A"
+    assert chain["consultation_evidence"]["channel_b_source_backed"][0]["attributable"] is False
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("status", ["draft", "disputed", "unverified"])
+def test_non_fact_ready_source_fact_is_never_c(monkeypatch, status):
+    _tag("学業成就")
+    shrine = _shrine("未確認SF神社")
+    _deity(shrine)
+    _history(shrine)
+    fact = _source_fact(shrine, "e1-status")
+    ShrineSourceFact.objects.filter(pk=fact.pk).update(verification_status=status)
+    _install_registry(monkeypatch, ("e1-status", "学業成就"))
+
+    # runtime gate（fetch_typed_need_matches）で落ちる。
+    assert _row(build_evidence_coverage_report(data_origin=ORIGIN), "未確認SF神社")["c_needs"] == []
+
+    # gate を迂回した一致が来ても、監査側で fact-ready を再確認して数えない（fail closed）。
+    monkeypatch.setattr(
+        service_module, "fetch_typed_need_matches", lambda ids: {shrine.id: (_typed("e1-status"),)}
+    )
+    assert _row(build_evidence_coverage_report(data_origin=ORIGIN), "未確認SF神社")["c_needs"] == []
+
+
+@pytest.mark.django_db
+def test_disputed_only_deity_is_insufficient_with_pillar_conflict():
+    shrine = _shrine("祭神争い神社")
+    _deity(shrine, status="disputed")
+
+    row = _row(build_evidence_coverage_report(data_origin=ORIGIN), "祭神争い神社")
+
+    assert row["eligible_now"] is False
+    assert row["evidence_class"] == "INSUFFICIENT"
+    assert row["pillar_conflicts"] == ["D"]
+
+
+@pytest.mark.django_db
+def test_command_fails_closed_inside_nested_transaction(mixed_db):
+    """pytest の transaction 内（= 入れ子）では guard を張れないので、何も読まずに止まる。"""
+    out = StringIO()
+    with pytest.raises(CommandError, match="cannot establish a PostgreSQL read-only"):
+        call_command("evidence_coverage_audit", "--data-origin", ORIGIN, stdout=out)
+    assert out.getvalue() == ""
+
+
+@pytest.mark.django_db
+def test_allow_unguarded_local_is_explicit_and_recorded(mixed_db):
+    out = StringIO()
+    call_command(
+        "evidence_coverage_audit",
+        "--data-origin",
+        ORIGIN,
+        "--allow-unguarded-local",
+        "--format",
+        "json",
+        stdout=out,
+    )
+    assert json.loads(out.getvalue())["execution"] == {
+        "read_only_guard": "unguarded_explicitly_allowed_local",
+        "select_only_role_verified": None,
+        "target_identity_verified": False,
+    }
+
+
+@pytest.mark.django_db
+def test_allow_unguarded_local_is_refused_for_production(mixed_db):
+    with pytest.raises(CommandError, match="cannot be combined"):
+        call_command(
+            "evidence_coverage_audit",
+            "--data-origin",
+            "production-readonly",
+            "--confirm-read-only-production",
+            "--allow-unguarded-local",
+        )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_guard_aborts_when_read_only_is_not_effective(mixed_db):
+    if connection.vendor != "postgresql":
+        pytest.skip("PostgreSQL-specific guard")
+    fake_cursor = mock.MagicMock()
+    fake_cursor.fetchone.return_value = ("off",)
+    fake_cursor.__enter__.return_value = fake_cursor
+    with mock.patch.object(command_module.connection, "cursor", return_value=fake_cursor):
+        with pytest.raises(CommandError, match="not effective"):
+            call_command("evidence_coverage_audit", "--data-origin", ORIGIN)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_established_guard_rejects_writes():
+    if connection.vendor != "postgresql":
+        pytest.skip("PostgreSQL-specific guard")
+    from django.db import DatabaseError, transaction
+
+    with pytest.raises(DatabaseError):
+        with transaction.atomic():
+            command_module._establish_read_only_transaction()
+            Shrine.objects.create(name_jp="書込拒否", address="東京都")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_production_origin_fails_closed_for_writable_role(mixed_db):
+    """confirm フラグは権限の証明ではない。書き込み可能なロール（test DB の所有者）なら止まる。"""
+    if connection.vendor != "postgresql":
+        pytest.skip("PostgreSQL-specific guard")
+    out = StringIO()
+    with pytest.raises(CommandError, match="SELECT-only"):
+        call_command(
+            "evidence_coverage_audit",
+            "--data-origin",
+            "production-readonly",
+            "--confirm-read-only-production",
+            stdout=out,
+        )
+    assert out.getvalue() == ""
+
+
+@pytest.mark.django_db(transaction=True)
+def test_production_origin_runs_with_select_only_role(mixed_db):
+    if connection.vendor != "postgresql":
+        pytest.skip("PostgreSQL-specific guard")
+    import uuid
+
+    role = f"ecaudit_ro_{uuid.uuid4().hex[:8]}"
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT rolcreaterole OR rolsuper FROM pg_roles WHERE rolname = current_user"
+        )
+        if not cursor.fetchone()[0]:
+            pytest.skip("test role cannot create roles")
+        cursor.execute(f"CREATE ROLE {role} NOLOGIN")
+        cursor.execute(f"GRANT USAGE ON SCHEMA public TO {role}")
+        cursor.execute(f"GRANT SELECT ON ALL TABLES IN SCHEMA public TO {role}")
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(f"SET ROLE {role}")
+        out = StringIO()
+        call_command(
+            "evidence_coverage_audit",
+            "--data-origin",
+            "production-readonly",
+            "--confirm-read-only-production",
+            "--format",
+            "json",
+            stdout=out,
+        )
+        report = json.loads(out.getvalue())
+    finally:
+        with connection.cursor() as cursor:
+            cursor.execute("RESET ROLE")
+            cursor.execute(f"DROP OWNED BY {role}")
+            cursor.execute(f"DROP ROLE {role}")
+
+    assert report["execution"] == {
+        "read_only_guard": "postgresql_transaction_read_only",
+        "select_only_role_verified": True,
+        "target_identity_verified": False,
+    }
+    assert report["summary"]["shrine_count"] == 4

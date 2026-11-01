@@ -21,6 +21,19 @@
 - 出典が追跡できないこと（provenance 欠落）を「事実として誤り」とは扱わない。
   legacy の goriyaku タグは `legacy_unattributed`（未検証）として別枠で数え、C(axis) には数えない。
 - 出力は決定的（時刻・乱数・DB 実装依存の順序を含まない）。
+
+`knowledge_coverage_report` との責務分担と、意図的な重複クエリ:
+
+- `knowledge_coverage_report` は Knowledge の量（件数・分布・fact-ready 件数）の集計であり、
+  出力の意味も形も変えない。本モジュールは「出典で追跡できるか」と相談根拠までの連鎖の観測で、
+  同じ command へは混ぜない。
+- 本モジュールは ShrineDeity / ShrineHistory を Source（fact-ready 以外も含む全件）付きで読む。
+  Source ごとの URL / 確認日を見る必要があるため、coverage report の集計クエリは流用できない。
+- そのうえで `eligible_now` は `shrine_knowledge_selector.fetch_fact_ready_*`（deity / history
+  各 2 クエリ）で別に読む。行から再計算すれば省けるが、Shared Eligibility の正本を通して
+  runtime と判定がずれないことを優先した、意図的な重複である（対象 Shrine 数によらず定数回）。
+- Channel B は `fetch_typed_need_matches` で読み、その Source Fact を出典確認のためにもう一度
+  （Source 付きで）読む。gate・registry・Need の意味は runtime の正本だけが判定する。
 """
 
 from __future__ import annotations
@@ -462,9 +475,20 @@ def load_shrine_records(shrine_ids: list[int]) -> list[ShrineRecord]:
         .prefetch_related(all_sources)
     }
 
-    def source_fact_attributable(key: str) -> bool:
+    def source_fact_attributable(key: str, shrine_id: int) -> bool:
+        """Channel B の一致を出典追跡可能として数えてよいか（fail closed）。
+
+        - stable_key は DB で一意（`ShrineSourceFact.stable_key unique=True`）。見つからなければ不可。
+        - Source Fact の所有 Shrine が一致の対象 Shrine と同じであること。
+        - Source Fact 自身が fact-ready であること（runtime gate の再確認）。
+        - fact-ready で URL（または書誌）と確認日を持つ Source が 1 件以上あること。
+        """
         fact = source_facts.get(key)
-        return bool(fact) and any(_source_record(s).attributable for s in fact.sources.all())
+        if fact is None or fact.shrine_id != shrine_id:
+            return False
+        if fact.verification_status not in evidence_gate.FACT_READY_VERIFICATION_STATUSES:
+            return False
+        return any(_source_record(s).attributable for s in fact.sources.all())
 
     records: list[ShrineRecord] = []
     for shrine in (
@@ -476,7 +500,7 @@ def load_shrine_records(shrine_ids: list[int]) -> list[ShrineRecord]:
                 canonical_concept_name=m.canonical_concept_name,
                 source_fact_key=m.source_fact_key,
                 signal_type=m.signal_type,
-                attributable=source_fact_attributable(m.source_fact_key),
+                attributable=source_fact_attributable(m.source_fact_key, shrine.id),
             )
             for m in typed.get(shrine.id, ())
         )

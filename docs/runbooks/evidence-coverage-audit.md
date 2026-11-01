@@ -45,9 +45,28 @@
 ## 2. 安全性
 
 1. **主たる保証は接続ロール。** Production では SELECT 権限だけを持つ DB ロールで接続する。
-2. **多層防御。** PostgreSQL では、command 全体を `SET TRANSACTION READ ONLY` の transaction の中で実行する。書き込みは DB 側で拒否される（`execution.read_only_guard = postgresql_transaction_read_only`）。
-3. `--data-origin production-readonly` を指定したときは、`--confirm-read-only-production` が無いと実行しない。
-4. **Production での実行は、オーナーが読み取り専用の経路を明示的に承認した場合に限る。** 承認が無い session（AI agent を含む）では実行しない。
+2. **read-only guard（fail closed）。** 既定では、次をすべて満たした場合だけデータを読む。どれか 1 つでも満たさなければ、何も読まずに CommandError で止まる。
+   - DB が PostgreSQL である
+   - command の transaction が最外側である（入れ子の場合、guard が呼び出し側へ漏れるため止める）
+   - `SET TRANSACTION READ ONLY` の後、`SHOW transaction_read_only` が `on` を返す
+
+   成立した guard の種類は `execution.read_only_guard = postgresql_transaction_read_only` として記録する。
+3. **production-readonly の追加条件。** 上記に加えて、次の 2 つを満たさなければ止まる。
+   - `--confirm-read-only-production` を指定する。これは運用者の確認にすぎず、権限や接続先の証明ではない
+   - 実効ロールが superuser ではなく、監査対象テーブル（M2M の中間テーブルを含む）のどれにも INSERT / UPDATE / DELETE / TRUNCATE 権限を持たないことを、DB に問い合わせて確認できる（`execution.select_only_role_verified = true`）
+4. **検証できないこと。** 接続先が本当に意図した DB（Production）かどうかは、この command では確かめられない。そのため `execution.target_identity_verified` は常に `false` になる。接続先の確認は運用者の責任である。なお、ロールの確認は監査対象テーブルへの書き込み権限だけを見ており、それ以外の権限（schema の CREATE など）は対象外である。
+5. `--allow-unguarded-local` は、ローカル / テスト専用の明示的な例外である（SQLite や入れ子 transaction で使う）。`production-readonly` と同時に指定すると拒否する。
+6. **Production での実行は、オーナーが読み取り専用の経路を明示的に承認した場合に限る。** 承認が無い session（AI agent を含む）では実行しない。
+
+### 2.1 `knowledge_coverage_report` との分担と意図的な重複クエリ
+
+- `knowledge_coverage_report` は Knowledge の量（件数・分布・fact-ready 件数）を集計する。本 command はその出力を変えず、「出典を追跡できるか」と、相談根拠までのつながりを別の command で観測する。
+- 本 command は、Source ごとの URL と確認日を見るために、Fact を Source 付きで読む。そのうえで、`eligible_now` は Shared Eligibility の正本（`fetch_fact_ready_*`）を通して別に読む。runtime と判定がずれないことを優先した意図的な重複で、クエリ数は対象数によらず一定である。
+- Channel B は runtime の正本（`fetch_typed_need_matches`）で読む。そのうえで、出典の確認のために Source Fact を再読込し、次の 3 点を fail closed で確かめる。
+  - Source Fact の所有 Shrine が一致の対象と同じであること
+  - Source Fact が fact-ready であること
+  - 出典を追跡できる Source があること
+- `stable_key` は DB で一意である（`unique=True`）。
 
 ## 3. 実行手順
 
