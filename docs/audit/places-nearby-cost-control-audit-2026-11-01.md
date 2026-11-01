@@ -265,3 +265,25 @@ For **Legacy Nearby Search base SKU only**, the official global price list repor
 
 README.md, `docs/core/architecture.md` and `docs/core/roadmap.md` are unchanged: no canonical behaviour or priority
 changes. The remediation PRs above should update them when they land.
+
+## 10. Update — R-1（WS-13）implemented（branch `fix/places-nearby-ws13-throttle`）
+
+- The three Nearby URLs now share one DRF view (`PlacesNearbySearchView`; the legacy aliases use a schema-excluded
+  subclass) with `throttle_scope = "places-nearby"` on the class.
+- The default WS-04 throttle classes apply (scoped + global anon / user). The manual `REMOTE_ADDR` throttle
+  (`_nearby_ident`, `_apply_places_nearby_throttle`) is removed.
+- Legacy requests are dispatched once, so each request consumes one scope slot.
+- Rate values are unchanged (`30/min` default, `THROTTLE_PLACES_NEARBY` override).
+- This closes N-1 and N-2. N-3 now depends on WS-04 identity in production (BFF attestation / edge), which is still
+  UNKNOWN (see the PR #3394 security gate).
+- N-4 to N-11 are unchanged.
+
+### 10.1 WS-04 production signature evidence and CI verification (2026-11-01)
+
+- **Production observation already recorded before WS-13:** Render aggregate identity diagnostics showed `bff=12`, `attestation_valid=12`, `attestation_rejected=0`. This confirms that WS-04 BFF attestation **was functioning for observed production traffic at that point**. It does **not** prove that every production request or post-deployment Nearby GET uses BFF identity, nor disclose any IP, token, or secret.
+- **Post-merge WS-13 Nearby identity:** **NOT YET VERIFIED**. The effective `THROTTLE_PLACES_NEARBY`, `DISABLE_THROTTLE`, and worker/cache topology remain **UNKNOWN**.
+- **GitHub Actions at head `1a873f00`:** `backend-pr`, `codeql`, `dependency-review`, and `readme-guard` completed with **success**. Vercel commit status was **success**.
+- **Local test failures:** Author reported Python 3.13 run `7384 passed, 4 failed, 29 skipped`, with the same four failures on pre-change `develop` (three concierge tests, one URL-normalization test). This **baseline equivalence is author-reported**, not independently proven by before/after logs in this audit. The CI backend unit job on the supported workflow succeeded. Do not mark the four local failures as fixed.
+- **Remaining known product issue:** Web BFF still translates Django 429/503 into HTTP 200 with empty results; this is separate follow-up R-2 and is **not resolved** by WS-13.
+
+**Review gate:** code/CI review PASS; documentation check PASS; Mother Ship merge decision PENDING. No deployment or Google Places test requests were performed in this documentation update.
