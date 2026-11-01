@@ -27,6 +27,21 @@
 
 出力は決定的である（時刻・乱数を含まず、並びは id 昇順・キー昇順）。相談文・Concierge thread / message・利用ログは一切読まない（test で固定）。
 
+### 1.1 Need ごとの状態の読み方と限界
+
+| 状態 | report 上の条件 |
+|---|---|
+| 根拠なし（absent） | その Need が `c_needs` にも `legacy_unattributed_needs` にも無い |
+| 未検証（unreviewed） | `legacy_unattributed_needs` にだけある（出典を追跡できない。誤りではない） |
+| 出典あり（source-backed） | `c_needs` にある。D と H も揃っていれば `verified_needs` |
+| 矛盾（conflicting） | `conflicting_needs` にある（review 記録の入力による） |
+
+限界:
+
+- `recommendation-evidence-review-contract.md` で PASS になった goriyaku は、provenance が Markdown の review 文書にしか無く、DB には印が無い。そのため、本 command では `legacy_unattributed` として数え、C には数えない（過小評価の方向にずれる）。
+- 軸単位の矛盾は、`--axis-conflicts-file` で渡したものしか出ない。入力が無い Need を「矛盾なし」と読まない。
+- fact-ready の Source には model の `clean()` で `verified_at` が必須なので、出典追跡可否を実際に分けるのは主に URL と書誌の有無である。
+
 ## 2. 安全性
 
 1. **主たる保証は接続ロール。** Production では SELECT 権限だけを持つ DB ロールで接続する。
@@ -92,6 +107,7 @@ DB と一致しなかった entry は `axis_conflict_input.unmatched_identity_ke
 | `only_in_current`（Production にだけある） | Places 同期・Admin 作成・投稿による Shrine | 想定内。多くは `INSUFFICIENT` になる |
 | `changed`（class / pillar / `c_needs`） | Knowledge の部分 import、Production 側でのデータ編集、registry の差 | 対象 Shrine を `--trace-shrine-id` で追い、Fact と Source の状態を確認する |
 | `schema_version` の不一致 | command の版が違う | 同じ版で取り直す（比較は CommandError で止まる） |
+| `duplicate_identity_keys` | 同じ `name_jp` + `address` の行が複数ある（`place_ref` 付きの shadow 行など。過去例: migration 0100 で除去した 101 / 103 / 104） | 突き合わせから外して列挙する（1 行に潰さない）。identity 監査の手順で扱う |
 
 差分はすべて監査文書に記録し、データの修正は別 PR・別承認で行う。provenance の欠落を「誤り」として扱わない。
 

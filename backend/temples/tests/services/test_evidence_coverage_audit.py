@@ -412,3 +412,111 @@ def test_read_only_guard_rejects_writes_on_postgresql():
             with connection.cursor() as cursor:
                 cursor.execute("SET TRANSACTION READ ONLY")
             Shrine.objects.create(name_jp="書込不可", address="東京都")
+
+
+# ---------- #3396 review amendments ----------
+
+
+@pytest.mark.django_db
+def test_empty_explicit_scope_is_a_valid_zero_report(mixed_db):
+    """空の明示スコープは 0 社監査であり、既定スコープへフォールバックしない。"""
+    report = build_evidence_coverage_report(data_origin=ORIGIN, shrine_ids=[])
+
+    assert report["scope"] == {"mode": "explicit", "requested_count": 0, "resolved_in_db": 0}
+    assert report["shrines"] == []
+    assert report["trace_chains"] == []
+    assert report["summary"]["shrine_count"] == 0
+    assert report["summary"]["class_counts"] == {
+        "VERIFIED": 0,
+        "PARTIAL_A": 0,
+        "PARTIAL_B": 0,
+        "INSUFFICIENT": 0,
+    }
+    assert report["summary"]["by_prefecture"] == {}
+    assert all(v["legacy_unattributed"] == 0 for v in report["summary"]["by_need"].values())
+
+
+@pytest.mark.django_db
+def test_multiple_sources_one_attributable_is_enough():
+    shrine = _shrine("複数出典神社")
+    deity = _deity(shrine, source=_source(status="draft"))
+    deity.sources.add(_source(url=""))  # fact-ready だが URL なし
+    deity.sources.add(_source(url="https://example.jp/official"))  # 出典追跡可能
+    _history(shrine, "founding")
+
+    report = build_evidence_coverage_report(data_origin=ORIGIN, trace_shrine_ids=[shrine.id])
+    row = _row(report, "複数出典神社")
+    deity_trace = next(f for f in report["trace_chains"][0]["facts"] if f["kind"] == "deity")
+
+    assert row["pillar_d"] is True
+    assert [s["attributable"] for s in deity_trace["sources"]] == [False, False, True]
+    assert deity_trace["attributable"] is True
+
+
+@pytest.mark.django_db
+def test_missing_provenance_keeps_current_eligibility_but_not_pillars():
+    """URL も書誌も無い fact-ready Source は usable（現行 eligibility）だが出典追跡不可。
+
+    provenance 欠落は「誤り」ではない: eligible_now は変えず、柱に数えないだけ。
+    """
+    shrine = _shrine("出典欠落神社")
+    _deity(shrine, source=_source(url=""))
+    _history(shrine, "tradition", source=_source(url=""))
+
+    row = _row(build_evidence_coverage_report(data_origin=ORIGIN), "出典欠落神社")
+
+    assert row["eligible_now"] is True
+    assert (row["pillar_d"], row["pillar_h"]) == (False, False)
+    assert row["evidence_class"] == "PARTIAL_B"
+    assert row["pillar_conflicts"] == []
+    assert row["disputed_fact_count"] == 0
+
+
+def _report_with_rows(origin, rows):
+    return {
+        "schema_version": "1",
+        "data_origin": origin,
+        "shrines": rows,
+        "summary": {
+            "class_counts": {c: 0 for c in ("VERIFIED", "PARTIAL_A", "PARTIAL_B", "INSUFFICIENT")}
+        },
+    }
+
+
+def _cmp_row(key, evidence_class="PARTIAL_A"):
+    return {
+        "identity_key": key,
+        "evidence_class": evidence_class,
+        "eligible_now": True,
+        "pillar_d": True,
+        "pillar_h": True,
+        "c_needs": [],
+    }
+
+
+def test_compare_reports_never_collapses_duplicate_identity_keys():
+    current = _report_with_rows(
+        "production-readonly",
+        [
+            _cmp_row("同名神社\t東京都"),
+            _cmp_row("同名神社\t東京都", "PARTIAL_B"),
+            _cmp_row("単独神社\t東京都"),
+        ],
+    )
+    other = _report_with_rows(
+        ORIGIN, [_cmp_row("同名神社\t東京都"), _cmp_row("単独神社\t東京都", "PARTIAL_B")]
+    )
+
+    diff = compare_reports(current, other)
+
+    assert diff["duplicate_identity_keys"] == {"current": ["同名神社\t東京都"], "other": []}
+    assert diff["only_in_current"] == []
+    assert diff["only_in_other"] == []
+    assert [c["identity_key"] for c in diff["changed"]] == ["単独神社\t東京都"]
+
+
+def test_compare_reports_rejects_schema_mismatch():
+    other = _report_with_rows(ORIGIN, [])
+    other["schema_version"] = "0"
+    with pytest.raises(EvidenceCoverageInputError, match="schema_version"):
+        compare_reports(_report_with_rows(ORIGIN, []), other)

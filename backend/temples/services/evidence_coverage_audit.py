@@ -41,7 +41,10 @@ from temples.models import (
     ShrineSourceFact,
 )
 from temples.services import evidence_gate
-from temples.services.channel_b_typed_need_match import fetch_typed_need_matches
+from temples.services.channel_b_typed_need_match import (
+    fetch_typed_need_matches,
+    needs_for_concept_id,
+)
 from temples.services.concierge_chat_candidates import is_recommendation_eligible
 from temples.services.knowledge_coverage_report import _qa_filtered_shrine_ids, _resolve_scope
 from temples.services.shrine_knowledge_selector import (
@@ -87,10 +90,6 @@ PREFECTURES = tuple(value for value, _ in PREF_CHOICES if value)
 _GMAPS_PREFIX_RE = re.compile(r"^日本、\s*〒?[0-9\-－]*\s*")
 
 NEEDS = tuple(sorted(NEED_TO_GORIYAKU_IDS))
-_NEEDS_BY_GORIYAKU_ID: dict[int, set[str]] = defaultdict(set)
-for _need, _ids in NEED_TO_GORIYAKU_IDS.items():
-    for _gid in _ids:
-        _NEEDS_BY_GORIYAKU_ID[_gid].add(_need)
 
 
 def prefecture_of(address: str | None) -> str | None:
@@ -103,9 +102,10 @@ def prefecture_of(address: str | None) -> str | None:
 
 
 def needs_for_goriyaku_ids(goriyaku_ids: Iterable[int]) -> list[str]:
+    """GoriyakuTag id 群 → Need（Channel B と同じ `needs_for_concept_id` を使い、写像を複製しない）。"""
     needs: set[str] = set()
     for gid in goriyaku_ids:
-        needs |= _NEEDS_BY_GORIYAKU_ID.get(int(gid), set())
+        needs.update(needs_for_concept_id(int(gid)))
     return sorted(needs)
 
 
@@ -539,6 +539,11 @@ def parse_axis_conflicts(entries: Any) -> dict[str, dict[str, str]]:
     return out
 
 
+def _duplicate_identity_keys(rows: Iterable[Mapping[str, Any]]) -> set[str]:
+    counts = Counter(r["identity_key"] for r in rows)
+    return {key for key, n in counts.items() if n > 1}
+
+
 def compare_reports(current: Mapping[str, Any], other: Mapping[str, Any]) -> dict[str, Any]:
     """2つの report を identity_key（name_jp + address）で突き合わせる。
 
@@ -549,8 +554,12 @@ def compare_reports(current: Mapping[str, Any], other: Mapping[str, Any]) -> dic
             f"schema_version mismatch: current={current.get('schema_version')!r} "
             f"other={other.get('schema_version')!r}"
         )
-    cur = {r["identity_key"]: r for r in current["shrines"]}
-    oth = {r["identity_key"]: r for r in other["shrines"]}
+    # 同じ identity_key（name_jp + address）を持つ行が複数ある場合は、黙って1行へ潰さない。
+    # 突き合わせ対象から外し、duplicate_identity_keys として明示する（identity 監査の対象）。
+    cur_dups = _duplicate_identity_keys(current["shrines"])
+    oth_dups = _duplicate_identity_keys(other["shrines"])
+    cur = {r["identity_key"]: r for r in current["shrines"] if r["identity_key"] not in cur_dups}
+    oth = {r["identity_key"]: r for r in other["shrines"] if r["identity_key"] not in oth_dups}
     fields = ("evidence_class", "eligible_now", "pillar_d", "pillar_h", "c_needs")
     changed = []
     for key in sorted(cur.keys() & oth.keys()):
@@ -565,8 +574,12 @@ def compare_reports(current: Mapping[str, Any], other: Mapping[str, Any]) -> dic
     oth_counts = other["summary"]["class_counts"]
     return {
         "other_data_origin": other.get("data_origin"),
-        "only_in_current": sorted(cur.keys() - oth.keys()),
-        "only_in_other": sorted(oth.keys() - cur.keys()),
+        "duplicate_identity_keys": {
+            "current": sorted(cur_dups),
+            "other": sorted(oth_dups),
+        },
+        "only_in_current": sorted(cur.keys() - oth.keys() - oth_dups),
+        "only_in_other": sorted(oth.keys() - cur.keys() - cur_dups),
         "changed": changed,
         "class_count_delta": {c: cur_counts.get(c, 0) - oth_counts.get(c, 0) for c in CLASSES},
     }

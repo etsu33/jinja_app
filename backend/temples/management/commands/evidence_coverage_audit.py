@@ -94,6 +94,10 @@ def render_text_report(report: dict) -> str:
         lines.append(f"  only_in_current: {len(cmp_['only_in_current'])}")
         lines.append(f"  only_in_other: {len(cmp_['only_in_other'])}")
         lines.append(f"  changed: {len(cmp_['changed'])}")
+        dups = cmp_["duplicate_identity_keys"]
+        lines.append(
+            f"  duplicate_identity_keys: current={len(dups['current'])} other={len(dups['other'])}"
+        )
         lines.append(
             "  class_count_delta: "
             + ", ".join(f"{c}={cmp_['class_count_delta'][c]:+d}" for c in CLASSES)
