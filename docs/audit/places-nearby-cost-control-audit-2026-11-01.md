@@ -287,3 +287,5 @@ changes. The remediation PRs above should update them when they land.
 - **Remaining known product issue:** Web BFF still translates Django 429/503 into HTTP 200 with empty results; this is separate follow-up R-2 and is **not resolved** by WS-13.
 
 **Review gate:** code/CI review PASS; documentation check PASS; Mother Ship merge decision PENDING. No deployment or Google Places test requests were performed in this documentation update.
+
+- Production WS-04 evidence after #3400: `ws04-production-identity-evidence-2026-11-01.md`. BFF attestation is verified at aggregate level; Nearby-specific identity is still UNKNOWN.
