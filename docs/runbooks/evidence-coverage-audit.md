@@ -44,7 +44,7 @@
 
 ## 2. 安全性
 
-1. **主たる保証は接続ロール。** Production では SELECT 権限だけを持つ DB ロールで接続する。
+1. **主たる保証は接続ロール。** Production では SELECT 権限だけを持つ DB ロールで接続する。ロールは Evidence Coverage Audit 専用で、承認済みの名前は **`kamimusubi_audit_ro`**（2026-11-01 Mother Ship 決定）。**このロールはまだ作成されておらず、作成・GRANT / REVOKE・本番実行は未承認**（名前の承認はこれらを許可しない）。
 2. **read-only guard（fail closed）。** 既定では、次をすべて満たした場合だけデータを読む。どれか 1 つでも満たさなければ、何も読まずに CommandError で止まる。
    - DB が PostgreSQL である
    - command の transaction が最外側である（入れ子の場合、guard が呼び出し側へ漏れるため止める）
@@ -92,7 +92,7 @@ python manage.py evidence_coverage_audit --data-origin repository-seed-local --f
 
 ### 3.2 Production（承認済みの読み取り専用経路でのみ）
 
-- 接続先は SELECT 権限だけを持つロールにする。credential は repo 外のファイル（mode 600）から環境変数として読み込み、argv・ログ・出力に出さない（`scripts/migration_safety/README.md` と同じ規律）。
+- 接続先は SELECT 権限だけを持つ専用ロール `kamimusubi_audit_ro` にする（未作成。作成と GRANT には別の承認が必要）。SELECT の範囲は承認時点の `audited_tables()` と完全に一致させる。credential は repo 外のファイル（mode 600）から環境変数として読み込み、argv・ログ・出力に出さない（`scripts/migration_safety/README.md` と同じ規律）。
 - 書き込みが可能なロールしか無い場合は実行しない。
 - 実行前の gate（専用ロール、権限境界、TLS、接続先の確認、credential の扱い）と STOP / GO 条件は `docs/audit/evidence-coverage-production-readiness-2026-11-01.md` を参照する。2026-11-01 時点では **STOP**。
 
