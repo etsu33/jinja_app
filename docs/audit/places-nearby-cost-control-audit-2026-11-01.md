@@ -265,3 +265,16 @@ For **Legacy Nearby Search base SKU only**, the official global price list repor
 
 README.md, `docs/core/architecture.md` and `docs/core/roadmap.md` are unchanged: no canonical behaviour or priority
 changes. The remediation PRs above should update them when they land.
+
+## 10. Update — R-1（WS-13）implemented（branch `fix/places-nearby-ws13-throttle`）
+
+- The three Nearby URLs now share one DRF view (`PlacesNearbySearchView`; the legacy aliases use a schema-excluded
+  subclass) with `throttle_scope = "places-nearby"` on the class.
+- The default WS-04 throttle classes apply (scoped + global anon / user). The manual `REMOTE_ADDR` throttle
+  (`_nearby_ident`, `_apply_places_nearby_throttle`) is removed.
+- Legacy requests are dispatched once, so each request consumes one scope slot.
+- Rate values are unchanged (`30/min` default, `THROTTLE_PLACES_NEARBY` override).
+- This closes N-1 and N-2. N-3 now depends on WS-04 identity in production (BFF attestation / edge), which is still
+  UNKNOWN (see the PR #3394 security gate).
+- N-4 to N-11 are unchanged.
+
