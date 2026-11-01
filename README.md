@@ -501,19 +501,23 @@ LLM_BASE_URL=...
 
 Concierge API（`/api/concierge/chat/`）は `throttle_scope="concierge"` を使用します。デフォルトのレートは **8/min** です。
 
+`POST /api/places/resolve/` は専用 scope `places-resolve`（デフォルト **10/min**）を使用します。GET（候補検索）は対象外で、global の匿名制限（`anon` 100/min）は GET / POST の両方に従来どおり掛かります。識別子は WS-04 の client identity（`shrine_project/throttling.py`）をそのまま使い、制限を超えたリクエストは 429 を返し、Google 呼び出しも DB 書き込みも行いません。
+Web の `/shrines/resolve`（server component）は Django を `djFetch` で直接呼び、利用者リクエストの `x-forwarded-for` で client identity を署名します（Next.js サーバー自身が送信元として全利用者で bucket を共有しないため）。
+
 ### 上書き（必要なときだけ）
 
 環境変数で変更できます。
 
 - 推奨: `THROTTLE_CONCIERGE`
 - 互換: `CONCIERGE_THROTTLE`（旧名称。設定されていれば上書き）
+- `THROTTLE_PLACES_RESOLVE`（`places-resolve` の上書き。例: `30/min`）
 
 例:
 
 ```bash
 export THROTTLE_CONCIERGE=1/min
 
-# ローカルでほぼ無効化（ingest以外）
+# ローカルでほぼ無効化（shrines_ingest と places-resolve は除外。外部APIとDB書き込みを伴うため）
 export DISABLE_THROTTLE=1
 ```
 

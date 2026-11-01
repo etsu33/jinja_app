@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
-import { resolveServerBaseUrlFromHeaders } from "@/lib/server/resolveServerBaseUrl";
+import { djFetch } from "@/lib/server/backend";
 import { UnregisteredPlaceView } from "./UnregisteredPlaceView";
 
 type SP = {
@@ -17,17 +17,23 @@ export default async function ResolvePage({ searchParams }: { searchParams: Prom
   const placeId = sp.place_id?.trim();
   if (!placeId) redirect("/?toast=resolve_missing_place");
 
+  // Django を直接呼び、利用者リクエストの x-forwarded-for で WS-04 client identity を署名する。
+  // 以前の自己 fetch（`${baseUrl}/api/places/resolve/`）では BFF が見る送信元が Next.js サーバー自身になり、
+  // `places-resolve` throttle（POST 10/min）の bucket を全利用者で共有しうるため。
+  // Django 側の resolve は認証を使わない（authentication_classes = []）ので、cookie / 認証は転送しない。
   const h = await headers();
-  const cookieHeader = h.get("cookie") ?? "";
-  const baseUrl = resolveServerBaseUrlFromHeaders(h);
+  const forwardedFor = h.get("x-forwarded-for");
+  const identitySource = new Request("http://web.invalid/shrines/resolve", {
+    headers: forwardedFor ? { "x-forwarded-for": forwardedFor } : {},
+  });
 
-  const res = await fetch(`${baseUrl}/api/places/resolve/`, {
+  const res = await djFetch("/api/places/resolve/", {
     method: "POST",
     cache: "no-store",
-    credentials: "include",
+    clientIdentityFrom: identitySource,
     headers: {
+      Accept: "application/json",
       "Content-Type": "application/json",
-      ...(cookieHeader ? { cookie: cookieHeader } : {}),
     },
     body: JSON.stringify({ place_id: placeId }),
   });

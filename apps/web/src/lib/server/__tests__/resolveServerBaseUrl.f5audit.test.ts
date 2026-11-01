@@ -114,10 +114,6 @@ describe.each([
     ["favorites list", () => getFavoritesServer()],
     ["shrine favorite initial state", () => getShrineFavoriteInitialState(7)],
     ["shrine meaning（auth branch → BFF）", () => fetchShrineMeaningPayloadV2Server(7)],
-    [
-      "place resolution page",
-      () => ResolvePage({ searchParams: Promise.resolve({ place_id: "abc" }) }).catch(() => undefined),
-    ],
   ];
 
   it.each(callers)("%s: currently sends credentials to the request-derived host", async (_name, run) => {
@@ -138,6 +134,37 @@ describe.each([
     await run();
     expect(credentialsSentTo(ATTACKER)).toEqual([]);
     expect(credentialsSentTo("configured.test").length).toBeGreaterThan(0);
+  });
+});
+
+// The place resolution page no longer derives a URL from request headers: it calls Django (DJANGO_ORIGIN) directly
+// via djFetch and forwards no cookie / Authorization（places-resolve throttle change）. It is therefore not an F5
+// caller any more; this pins that it sends nothing credential-bearing to any host, attacker or configured.
+describe.each([
+  ["x-forwarded-host", { host: "web.test", "x-forwarded-host": ATTACKER, "x-forwarded-proto": "https" }],
+  ["host", { host: ATTACKER, "x-forwarded-proto": "https" }],
+])("place resolution page with malicious %s", (_label, h) => {
+  const runResolve = () =>
+    ResolvePage({ searchParams: Promise.resolve({ place_id: "abc" }) }).catch(() => undefined);
+
+  it("sends no credentials to the request-derived host and calls only the configured backend", async () => {
+    page(h);
+    await runResolve();
+
+    expect(credentialsSentTo(ATTACKER)).toEqual([]);
+    const hosts = fetchMock.mock.calls.map(([url]) => new URL(String(url)).host);
+    expect(hosts).toEqual(["backend.test"]);
+    expect(credentialsSentTo("backend.test")).toEqual([]);
+  });
+
+  it("does not use WEB_BASE_URL either（no credentials anywhere）", async () => {
+    vi.stubEnv("WEB_BASE_URL", "https://configured.test");
+    page(h);
+    await runResolve();
+
+    expect(credentialsSentTo(ATTACKER)).toEqual([]);
+    expect(credentialsSentTo("configured.test")).toEqual([]);
+    expect(fetchMock.mock.calls.map(([url]) => new URL(String(url)).host)).toEqual(["backend.test"]);
   });
 });
 

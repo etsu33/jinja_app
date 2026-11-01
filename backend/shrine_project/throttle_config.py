@@ -52,3 +52,18 @@ def load_throttle_identity_config(environ: Mapping[str, str]) -> ThrottleIdentit
             "without surrounding whitespace, or unset"
         )
     return ThrottleIdentityConfig(trusted_edge=edge, client_identity_secret=secret)
+
+
+# --- Local throttle relaxation（DISABLE_THROTTLE）--------------------------------------------
+#: `DISABLE_THROTTLE=1` でも緩めない scope。どちらも外部 API 呼び出し（Google Places）と DB 書き込みを
+#: 伴うため、ローカル用の一括緩和が誤って有効になっても専用制限を残す。個別に緩めたい場合は
+#: `THROTTLE_SHRINES_INGEST` / `THROTTLE_PLACES_RESOLVE` で上書きする。
+DISABLE_THROTTLE_EXEMPT_SCOPES = frozenset({"shrines_ingest", "places-resolve"})
+DISABLE_THROTTLE_RELAXED_RATE = "1000/min"
+
+
+def relax_rates_for_disable_throttle(rates: dict[str, str]) -> None:
+    """`DISABLE_THROTTLE=1` 用に、除外 scope 以外の rate を in-place で緩める。"""
+    for scope in list(rates.keys()):
+        if scope not in DISABLE_THROTTLE_EXEMPT_SCOPES:
+            rates[scope] = DISABLE_THROTTLE_RELAXED_RATE

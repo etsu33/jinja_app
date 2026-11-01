@@ -258,6 +258,7 @@ Shrine の作成・更新・削除 = staff（is_staff）のみ
   POST /api/shrines/ingest/  → 誰でも呼べる。新規作成は staff のみ
                                （staff 以外: 登録済みを返す / 未登録は 404 shrine_not_registered）
   POST /api/places/resolve/  → 作成しない（未登録は registered=false と Place 情報を返す）
+                               専用 throttle `places-resolve`（10/min、POST のみ。DISABLE_THROTTLE でも緩めない）
   Django Admin               → staff ログイン + モデル権限
 一般ユーザーの神社追加     = ShrineSubmission（staff 承認後に Shrine へ反映）
 ```
