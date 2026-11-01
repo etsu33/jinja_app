@@ -94,6 +94,7 @@ python manage.py evidence_coverage_audit --data-origin repository-seed-local --f
 
 - 接続先は SELECT 権限だけを持つロールにする。credential は repo 外のファイル（mode 600）から環境変数として読み込み、argv・ログ・出力に出さない（`scripts/migration_safety/README.md` と同じ規律）。
 - 書き込みが可能なロールしか無い場合は実行しない。
+- 実行前の gate（専用ロール、権限境界、TLS、接続先の確認、credential の扱い）と STOP / GO 条件は `docs/audit/evidence-coverage-production-readiness-2026-11-01.md` を参照する。2026-11-01 時点では **STOP**。
 
 ```bash
 python manage.py evidence_coverage_audit --data-origin production-readonly --confirm-read-only-production --format json --compare-with /tmp/evidence-coverage-seed.json > /tmp/evidence-coverage-production.json
