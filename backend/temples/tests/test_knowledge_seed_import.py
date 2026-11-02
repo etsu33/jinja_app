@@ -460,14 +460,19 @@ def test_export_refuses_when_knowledge_exists_on_qa_fixture_shrine(tmp_path):
 
 # ---------- Source URL fail-closed (docs/audit/source-url-fail-closed-hardening.md) ----------
 
-MALFORMED_SEED_URLS = (
+# normalize_source_url cannot produce an identity -> also SOURCE_REUSE_INVALID_URL
+IDENTITY_UNPARSEABLE_SEED_URLS = (
     "https://example.jp:abc/source",
     "https://example.jp:99999/source",
     "https://[2001:db8::1/source",
-    "https://:443/source",
-    "https://exa\nmple.jp/source",
     12345,
 )
+# identity value unchanged (G7 SQL contract); rejected as seed input only
+SEED_ONLY_REJECTED_URLS = (
+    "https://:443/source",
+    "https://exa\nmple.jp/source",
+)
+MALFORMED_SEED_URLS = IDENTITY_UNPARSEABLE_SEED_URLS + SEED_ONLY_REJECTED_URLS
 
 
 def _assert_no_knowledge_writes(source_count: int = 0) -> None:
@@ -518,7 +523,8 @@ def test_dry_run_and_apply_block_on_malformed_source_url_before_writes(tmp_path,
             stderr=err,
         )
     assert "sources[0].url: " in err.getvalue()
-    assert "SOURCE_REUSE_INVALID_URL" in err.getvalue()
+    if bad_url in IDENTITY_UNPARSEABLE_SEED_URLS:
+        assert "SOURCE_REUSE_INVALID_URL" in err.getvalue()
     _assert_no_knowledge_writes()
 
 

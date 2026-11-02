@@ -201,8 +201,10 @@ class SourceUrlError(ValueError):
     """
 
 
-# urlsplit silently deletes TAB/CR/LF (WHATWG unsafe bytes), so two different
-# inputs would collapse to one identity. Every C0 control and DEL is refused.
+# Seed-input hygiene only (see validate_seed_source_url). normalize_source_url
+# itself keeps urlsplit's TAB/CR/LF removal and leading-C0 strip, because the
+# G7 preflight SQL (scripts/migration_safety/sql/*_g7_*.sql) reproduces that
+# exact behavior as part of the Source identity contract.
 _URL_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
 _HOST_REQUIRED_SCHEMES = frozenset({"http", "https"})
 
@@ -216,8 +218,6 @@ def _split_source_url_port(hostinfo: str) -> str | None:
     ``[v1.x]`` would otherwise lose its brackets and collide with host
     ``v1.x``).
     """
-    if any(ch.isspace() or ch == "\\" for ch in hostinfo):
-        raise SourceUrlError("host must not contain whitespace or backslashes")
     if "[" not in hostinfo:
         if "]" in hostinfo:
             raise SourceUrlError("host has ']' without a matching '['")
@@ -267,9 +267,10 @@ def normalize_source_url(url: str | None) -> str:
     byte-for-byte significant, and http/https remain distinct.
 
     Fails closed: raises ``SourceUrlError`` (a ``ValueError``) for URLs whose
-    identity cannot be decided without guessing — malformed ports, broken
-    IPv6 brackets, control characters, or an authority / http(s) URL with an
-    empty host. It never returns a value for such input.
+    identity cannot be decided without guessing — a non-string value, a port
+    that is not ASCII digits 0-65535, or a malformed / non-IPv6 bracketed
+    host. These are exactly the inputs the G7 preflight SQL maps to NULL.
+    Every other input keeps its existing normalized value (identity contract).
     """
     if url is None:
         return ""
@@ -278,10 +279,6 @@ def normalize_source_url(url: str | None) -> str:
     value = url.strip()
     if not value:
         return ""
-    if _URL_CONTROL_CHARS.search(value):
-        raise SourceUrlError(
-            "contains control characters (tab, newline, NUL, ...); remove them from the URL"
-        )
     try:
         parts = urlsplit(value)
     except ValueError as exc:
@@ -293,10 +290,6 @@ def normalize_source_url(url: str | None) -> str:
     scheme = parts.scheme.lower()
     port = _parse_source_url_port(_split_source_url_port(parts.netloc.rpartition("@")[2]))
     hostname = (parts.hostname or "").lower()
-    if parts.netloc and not hostname:
-        raise SourceUrlError("URL has an authority ('//...') but its host is empty")
-    if scheme in _HOST_REQUIRED_SCHEMES and not hostname:
-        raise SourceUrlError(f"{scheme} URL must have a host (expected '{scheme}://host/...')")
     if port is not None and not (
         (scheme == "http" and port == 80) or (scheme == "https" and port == 443)
     ):
@@ -305,6 +298,35 @@ def normalize_source_url(url: str | None) -> str:
     if path != "/":
         path = path.rstrip("/")
     return urlunsplit((scheme, hostname, path, parts.query, ""))
+
+
+def validate_seed_source_url(url: Any) -> None:
+    """Validate a URL written in a seed file; raise ``SourceUrlError`` if unfit.
+
+    Stricter than ``normalize_source_url`` on purpose: it refuses input that
+    normalization would silently rewrite (control characters, which urlsplit
+    drops) or that names no document (an empty host). It applies only to new
+    seed input and never to stored rows, so existing Source identities are
+    unaffected.
+    """
+    normalize_source_url(url)
+    if not url or not url.strip():
+        return
+    value = url.strip()
+    if _URL_CONTROL_CHARS.search(value):
+        raise SourceUrlError(
+            "contains control characters (tab, newline, NUL, ...); "
+            "they would be silently dropped, remove them from the URL"
+        )
+    parts = urlsplit(value)
+    hostinfo = parts.netloc.rpartition("@")[2]
+    if any(ch.isspace() or ch == "\\" for ch in hostinfo):
+        raise SourceUrlError("host must not contain whitespace or backslashes")
+    scheme = parts.scheme.lower()
+    if parts.netloc and not parts.hostname:
+        raise SourceUrlError("URL has an authority ('//...') but its host is empty")
+    if scheme in _HOST_REQUIRED_SCHEMES and not parts.hostname:
+        raise SourceUrlError(f"{scheme} URL must have a host (expected '{scheme}://host/...')")
 
 
 _SOURCE_REUSE_FIELDS = (
@@ -757,7 +779,7 @@ def _parse_source(
     if url is None:
         url = ""
     try:
-        normalize_source_url(url)
+        validate_seed_source_url(url)
     except SourceUrlError as exc:
         # The raw value is kept so resolve_source_identity also reports
         # INVALID_URL instead of treating the Source as URL-less.
@@ -1301,6 +1323,7 @@ __all__ = [
     "resolve_shrine",
     "SourceUrlError",
     "normalize_source_url",
+    "validate_seed_source_url",
     "resolve_source_identity",
     "find_existing_source",
     "find_existing_deity",

@@ -13,7 +13,12 @@ from pathlib import Path
 
 import pytest
 
-from temples.services.knowledge_seed import SourceUrlError, normalize_source_url, parse_seed
+from temples.services.knowledge_seed import (
+    SourceUrlError,
+    normalize_source_url,
+    parse_seed,
+    validate_seed_source_url,
+)
 from temples.tests.test_source_url_sheet_parity import BOUNDARY_CASES
 
 SEED_DIR = Path(__file__).resolve().parents[1] / "data" / "knowledge_seeds"
@@ -51,49 +56,73 @@ def test_additional_valid_inputs_keep_existing_normalization(raw_url, expected):
     assert normalize_source_url(raw_url) == expected
 
 
-MALFORMED = (
+# normalize_source_url raises for these. The G7 preflight SQL maps the same
+# inputs to NULL, so failing here keeps importer and SQL in agreement.
+IDENTITY_UNPARSEABLE = (
     # malformed ports
     ("https://example.com:99999/a", "out of range"),
     ("https://example.com:65536/a", "out of range"),
     ("https://example.com:+443/a", "not a number"),
     ("https://example.com:-1/a", "not a number"),
     ("https://example.com:４４３/a", "not a number"),
+    ("https://example.com: 443/a", "not a number"),
     ("https://example.com:443:80/a", "not a number"),
     ("https://a:b:c/", "not a number"),
     ("https://[2001:db8::1]:abc/a", "not a number"),
-    ("https://example.com: 443/a", "whitespace"),
-    # broken IPv6 / bracket structure
+    # broken IPv6 / bracket structure (SQL: any bracket -> NULL)
     ("https://[2001:db8::1/a", "invalid URL structure"),
     ("https://[2001:db8::1]x/a", "invalid URL structure"),
     ("https://[zzz]/a", "invalid URL structure"),
     ("https://[v1.x]/a", "not an IPv6 address"),
     ("https://[::1%25eth0]/a", "zone identifiers"),
-    # empty host: these all used to collapse to 'https:///a'
-    ("https://:443/a", "host is empty"),
-    ("https://user@/a", "host is empty"),
-    ("//:80/x", "host is empty"),
-    ("https:///a", "must have a host"),
-    ("https:/a", "must have a host"),
-    ("https:example.com", "must have a host"),
-    ("http://", "must have a host"),
-    # characters urlsplit would silently drop or keep inside the host
-    ("https://exa\nmple.com/a", "control characters"),
-    ("https://example.com/a\tb", "control characters"),
-    ("https://example.com/a\rb", "control characters"),
-    ("https://example.com/a\x00b", "control characters"),
-    ("https://example.com/a\x7fb", "control characters"),
-    ("https://ex ample.com/a", "whitespace"),
-    ("https://example.com\\a", "backslashes"),
     # non-string input
     (123, "must be a string"),
     (["https://example.com/"], "must be a string"),
 )
 
 
-@pytest.mark.parametrize(("raw_url", "message"), MALFORMED)
-def test_malformed_inputs_fail_closed_with_actionable_error(raw_url, message):
+@pytest.mark.parametrize(("raw_url", "message"), IDENTITY_UNPARSEABLE)
+def test_unparseable_inputs_fail_closed_with_actionable_error(raw_url, message):
     with pytest.raises(SourceUrlError, match=message):
         normalize_source_url(raw_url)
+
+
+# Rejected only as *seed input*. normalize_source_url keeps its existing value
+# for them (pinned here, computed from the pre-hardening implementation),
+# because the G7 preflight SQL reproduces that value as Source identity.
+# docs/audit/source-url-fail-closed-hardening.md §4
+SEED_ONLY_REJECTED = (
+    ("https://:443/a", "https:///a", "host is empty"),
+    ("https://user@/a", "https:///a", "host is empty"),
+    ("//:80/x", "//:80/x", "host is empty"),
+    ("https:///a", "https:///a", "must have a host"),
+    ("https:/a", "https:///a", "must have a host"),
+    # legacy value is Python-version dependent (urlunsplit: 3.11 'https:///example.com',
+    # 3.13 'https:example.com'); not pinned. See audit doc §7.
+    ("https:example.com", None, "must have a host"),
+    ("http://", "http:///", "must have a host"),
+    ("https://exa\nmple.com/a", "https://example.com/a", "control characters"),
+    ("https://example.com/a\tb", "https://example.com/ab", "control characters"),
+    ("https://example.com/a\rb", "https://example.com/ab", "control characters"),
+    ("https://example.com/a\x00b", "https://example.com/a\x00b", "control characters"),
+    ("https://example.com/a\x7fb", "https://example.com/a\x7fb", "control characters"),
+    ("\x01https://example.com/a", "https://example.com/a", "control characters"),
+    ("https://ex ample.com/a", "https://ex ample.com/a", "whitespace"),
+    ("https://example.com\\a", "https://example.com\\a/", "backslashes"),
+)
+
+
+@pytest.mark.parametrize(("raw_url", "legacy_normalized", "_message"), SEED_ONLY_REJECTED)
+def test_seed_only_rejections_keep_existing_identity_value(raw_url, legacy_normalized, _message):
+    normalized = normalize_source_url(raw_url)  # must not raise
+    if legacy_normalized is not None:
+        assert normalized == legacy_normalized
+
+
+@pytest.mark.parametrize(("raw_url", "_legacy", "message"), SEED_ONLY_REJECTED)
+def test_seed_only_rejections_fail_seed_validation(raw_url, _legacy, message):
+    with pytest.raises(SourceUrlError, match=message):
+        validate_seed_source_url(raw_url)
 
 
 def test_source_url_error_is_a_value_error_and_does_not_echo_credentials():
@@ -101,6 +130,9 @@ def test_source_url_error_is_a_value_error_and_does_not_echo_credentials():
         normalize_source_url("https://user:s3cret@[::1/a")
     assert isinstance(excinfo.value, SourceUrlError)
     assert "s3cret" not in str(excinfo.value)
+
+
+SEED_REJECTED = tuple(IDENTITY_UNPARSEABLE) + tuple((u, m) for u, _l, m in SEED_ONLY_REJECTED)
 
 
 def _seed_with_url(url) -> dict:
@@ -119,7 +151,7 @@ def _seed_with_url(url) -> dict:
     }
 
 
-@pytest.mark.parametrize(("raw_url", "message"), MALFORMED)
+@pytest.mark.parametrize(("raw_url", "message"), SEED_REJECTED)
 def test_parse_seed_reports_malformed_url_without_raising(raw_url, message):
     parsed = parse_seed(_seed_with_url(raw_url))
     url_errors = [e for e in parsed.errors if e.startswith("sources[0].url: ")]
@@ -146,6 +178,6 @@ def test_every_committed_seed_url_still_normalizes():
         raw = json.loads(path.read_text(encoding="utf-8"))
         for source in raw.get("sources") or []:
             if "url" in source:
-                normalize_source_url(source["url"])
+                validate_seed_source_url(source["url"])
                 checked += 1
     assert checked > 0

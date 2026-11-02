@@ -5,95 +5,92 @@
 - Date: 2026-11-02
 - Base: `develop` / `73bef9f3fc5b9f21751fc6d133a82ebf937f689c`
 - 対象: `normalize_source_url` / `resolve_source_identity` / `parse_seed` / `import_shrine_knowledge` の Source 検証経路
-- 結論: 不正な Source URL は **DB write 前**に、型付きの actionable error（`SourceUrlError` / plan error）で止まる
-- 有効 URL の正規化結果: **変更なし**（既存16境界値のうち有効15件は同値を維持）
-- Source identity 契約（`source_type + normalized URL`、metadata 一致時のみ REUSE）: **変更なし**
+- 結論: 不正な Source URL は **DB write 前**に、型付きの actionable error で止まる。`--validate-only` / `--dry-run` / 本 import のどれも未処理例外を出さない
+- Source identity 契約（`source_type + normalize_source_url()`、metadata 一致時のみ REUSE）: **変更なし**。G7 preflight SQL（`scripts/migration_safety/sql/*_g7_*.sql`）との一致も維持
+- 有効 URL の正規化結果: **変更なし**
 - Shrine identity / Recommendation / production data: **変更なし**
-- Mother Ship 判断待ち: §6 の3項目（現行挙動を維持したまま記録のみ）
+- Mother Ship 判断待ち: §6 の4項目（現行挙動を維持し、記録のみ）
 
-## 1. 変更前の挙動（事実：旧コードに新テストを当てて再現）
+## 1. 変更前の挙動（事実：base に新テストを当てて再現）
 
 | 入力の種類 | `--validate-only` | `--dry-run` | 本 import |
 |---|---|---|---|
 | 不正 port（`:abc`, `:99999`）/ 壊れた IPv6（`[2001:db8::1`） | **OK を返す** | 未処理 `ValueError`（traceback） | 未処理 `ValueError` |
-| 空 host（`https://:443/a`）/ 制御文字（`exa\nmple`） | **OK を返す** | **`dry-run: OK` を返す**（unsafe decision） | transaction 内で `URLField` の `ValidationError` が未処理送出（rollback されるが crash） |
+| 空 host（`https://:443/a`）/ 制御文字（`exa\nmple`） | **OK を返す** | **`dry-run: OK` を返す**（unsafe decision） | transaction 内で `URLField` の `ValidationError` が未処理送出（rollback はされる） |
 | 非文字列 url（`12345`） | OK を返す | 未処理 `AttributeError` | 未処理 `AttributeError` |
-| 同 `source_type` の既存 Source に不正 URL が1行ある | — | 未処理 `ValueError` | 未処理 `ValueError` |
+| 同 `source_type` の既存 Source に不正 port の URL が1行ある | — | 未処理 `ValueError` | 未処理 `ValueError` |
+| `normalize_source_url` は通るが model が拒否（`//host/p`、前後空白、201文字超） | OK | **`dry-run: OK`** | `ValidationError` が未処理送出 |
 
-`--validate-only` は Source URL を一切検査していなかった。`--dry-run` は
-`normalize_source_url` が送出する例外を握っておらず、さらに空 host や
-制御文字のように「例外にならず別 URL に潰れる」入力は plan を OK と判定していた。
-
-正規化そのものの衝突（事実）:
-
-- `https://:443/a` / `https://user@/a` / `https:/a` / `https:///a` → すべて `https:///a`
-- `https://exa\nmple.com/a` → `https://example.com/a`（`urlsplit` が TAB/CR/LF を黙って削除）
-- `https://[v1.x]/a`（IPvFuture）→ `https://v1.x/a`（実在しうる host `v1.x` と衝突）
+`--validate-only` は Source URL を検査していなかった。`--dry-run` は
+`normalize_source_url` の例外を握っておらず、CREATE 時に `_apply()` の
+`full_clean()` が拒否する URL も OK と判定していた。
 
 ## 2. 変更内容
 
-### 2.1 `normalize_source_url`（`backend/temples/services/knowledge_seed.py`）
+### 2.1 `normalize_source_url`：identity を決められない入力だけを raise
 
-`SourceUrlError(ValueError)` を追加し、以下を **raise**（値を返さない）:
+`SourceUrlError(ValueError)` を追加した。対象は **G7 preflight SQL が NULL
+（identity にしない）を返す入力** に限る:
 
-| 規則 | 例 |
-|---|---|
-| 非文字列（`None` は従来どおり `""`） | `123` |
-| C0 制御文字・DEL を含む | `\t` `\n` `\r` `\x00` `\x7f` |
-| `urlsplit` が拒否する構造 | `[::1`、`[::1]x`、`[zzz]` |
-| port が ASCII 数字以外 / 65535 超 | `:abc` `:+443` `:-1` `:４４３` `:443:80` `:99999` |
-| host に空白・backslash | `ex ample.com`、`example.com\a` |
-| `[` の前 / `]` の後に余計な文字、括弧の不整合 | `a[::1]`、`[::1]x` |
-| 括弧内が IPv6 アドレスでない、zone id 付き | `[v1.x]`、`[::1%25eth0]` |
-| authority（`//`）があるのに host が空 | `https://:443/a`、`https://user@/a`、`//:80/x` |
-| http/https で host が空 | `https:///a`、`https:example.com`、`http://` |
+| 規則 | 例 | 変更前 |
+|---|---|---|
+| 非文字列（`None` は従来どおり `""`） | `123` | `AttributeError` |
+| port が ASCII 数字以外 / 65535 超 | `:abc` `:+443` `:-1` `:４４３` `:443:80` `:99999` | `ValueError`（3.13）。3.11 の `int()` の寛容さに依存しない |
+| `urlsplit` が拒否する括弧構造 | `[::1`、`[::1]x`、`[zzz]` | `ValueError` |
+| 括弧内が IPv6 でない / zone id 付き / `[` の前に文字 | `[v1.x]`、`[::1%25eth0]`、`a[::1]` | 括弧が落ちて `https://v1.x/a` 等。**host `v1.x` と衝突** |
 
-port 判定は `SplitResult.port` に依存せず自前で ASCII 数字を検査する。
-Python のバージョンで `int()` の寛容さが異なっても受理集合が変わらないようにするため
-（3.11.18 / 3.13 で38入力の出力が一致することを確認）。
+port の判定は SQL と同じ `^[0-9]+$` かつ 65535 以下で、`SplitResult.port` に頼らない。
+Python 3.11.18 と 3.13 で、38入力の出力が一致することを確認した。
 
-エラーメッセージは問題のある部品だけを示し、URL 全体は出さない
-（userinfo に資格情報が含まれる可能性があるため）。`urlsplit` の例外文言は netloc を
-含みうるので、chain するだけで本文には転記しない。
+エラーメッセージには問題の部品だけを出し、URL 全体は出さない（userinfo に資格情報が
+入っている可能性がある）。`urlsplit` の例外文言は netloc を含むことがあるため、
+chain するだけで本文には写さない。
 
-### 2.2 `resolve_source_identity`
+### 2.2 `validate_seed_source_url`：seed 入力だけに使う追加検査
 
-- seed URL が正規化不能 → `INVALID_URL`
-- 同じ `source_type` の既存行に正規化不能な URL がある → `INVALID_EXISTING_URL`（該当 id を列挙）
-- どちらも例外を送出しない
+次の入力は `normalize_source_url` では **従来どおりの値を返す**（§4）。そのうえで、
+seed に書かれた場合だけ拒否する:
 
-既存行の不正 URL を「読み飛ばす」設計は採らない。その行が同一文書である可能性を
+| 規則 | 例 | 正規化値（維持） |
+|---|---|---|
+| C0 制御文字・DEL | `exa\nmple`、`a\tb`、`\x01https://…` | `\t\r\n` は削除、先頭の C0 は strip |
+| authority があるのに host が空 | `https://:443/a`、`https://user@/a` | `https:///a` |
+| http/https で host が空 | `https:///a`、`https:/a`、`http://` | `https:///a` 等 |
+| host に空白・backslash | `ex ample.com`、`example.com\a` | そのまま |
+
+既存の DB 行には適用しないため、既存 Source の identity は変わらない。
+
+### 2.3 `resolve_source_identity`
+
+- seed URL を正規化できない → `INVALID_URL`
+- 同じ `source_type` の既存行に正規化できない URL がある → `INVALID_EXISTING_URL`（該当 id を列挙）
+- どちらの場合も例外は送出しない
+
+既存行の不正 URL を読み飛ばす設計は採らなかった。その行が同じ文書である可能性を
 否定できず、読み飛ばすと重複 Source を CREATE しうるため（fail closed）。
 
-### 2.3 `parse_seed`（`_parse_source`）
+### 2.4 `parse_seed` / `import_shrine_knowledge`
 
-`sources[i].url` を `normalize_source_url` で検査し、失敗時は
-`sources[i].url: <理由>` を `errors` に積む。これにより `--validate-only` も失敗する。
-非文字列 url は raw のまま保持し、identity 解決でも `INVALID_URL` になる。
-
-### 2.4 `import_shrine_knowledge`（`_build_plan`）
-
-- `INVALID_URL` / `INVALID_EXISTING_URL` を `CONFLICT` / `AMBIGUOUS` と同様に blocking error とする
-- **CREATE 予定の Source に限り**、model field（`URLField`, `max_length=200`）の validators を
-  plan 時に実行し、失敗を `SOURCE_URL_REJECTED_ON_CREATE` として報告する。
-  `_apply()` が CREATE 時に必ず `full_clean()` するのと同じ検査を前倒ししただけで、
-  REUSE_EXISTING 経路には適用しない（＝現在成功している import の挙動は変わらない）
+- `_parse_source` が `validate_seed_source_url` で検査し、`sources[i].url: <理由>` を返す
+  → `--validate-only` も失敗するようになった
+- `_build_plan` は `INVALID_URL` / `INVALID_EXISTING_URL` を `CONFLICT` / `AMBIGUOUS` と同じく blocking error として扱う
+- **CREATE 予定の Source に限り**、model field（`URLField`, `max_length=200`）の
+  validators を plan 時に実行し、失敗を `SOURCE_URL_REJECTED_ON_CREATE` として報告する。
+  `_apply()` が CREATE 時に行う `full_clean()` を前倒ししただけで、REUSE_EXISTING には適用しない
 
 ## 3. 互換性
 
 - 有効 URL の正規化出力: 変更なし。既存16境界値（`test_source_url_sheet_parity.py`）は
-  そのまま green。唯一の例外ケース `:abc` は `ValueError` のサブクラスで送出されるため既存テストも green
-- 新たに拒否される入力は、変更前に「例外」「別 URL への衝突」「apply 時 crash」の
-  いずれかだったものに限る
-- 影響確認（事実）: `backend/temples/data/knowledge_seeds/*.json` の全 Source URL
-  （147件）が新規則で正規化可能、かつ model validator も通過
-- 影響未確認（推測ではなく未観測）: **production DB の既存 Source URL**。
-  新規則で正規化不能な行が同じ `source_type` に1行でもあると、その `source_type` の
-  URL-backed Source を含む import はすべて `INVALID_EXISTING_URL` で停止する。
-  変更前も port / IPv6 不正行は crash していたため悪化はないが、
-  空 host・制御文字・IPvFuture・host 内空白の行は「従来通っていた → 停止」に変わる
+  そのまま green。`:abc` は `ValueError` のサブクラスで送出されるため、既存テストも green
+- G7 SQL parity テスト（`test_nsrc_*_g7_source_identity_sql.py` 他）: Python 3.11 で全件 green
+- 影響確認（事実）: `backend/temples/data/knowledge_seeds/*.json` の Source URL 147件は、
+  すべて `validate_seed_source_url` と model validator を通過する
+- 未観測: **production DB の既存 Source URL**。`INVALID_EXISTING_URL` になるのは
+  §2.1 の行（port 不正・括弧不正）だけ。port 不正と `urlsplit` が拒否する括弧は
+  変更前から crash していたので、悪化はない。新たに停止するのは
+  IPvFuture、zone id、`[` の前に文字がある行だけ
 
-本番投入前の read-only 確認手順（DB write なし）:
+本番 import 前の read-only 確認（DB write なし）:
 
 ```python
 # python manage.py shell
@@ -110,40 +107,51 @@ print(len(bad), bad)
 
 ## 4. 変更しなかったもの（Source identity を変えないため）
 
-以下は「情報を落とす / 不自然」な正規化だが、出力を変えると既存 identity
-（`a5b_reproducibility_projection` が出力する normalized URL、G7 SQL 生成テストの期待値を含む）
-が変わるため **現状維持** とし、テストで固定した。
+当初は `normalize_source_url` 自体で制御文字と空 host を拒否した。しかし backend 全体の
+テストで、G7 preflight SQL（10 set）がこの挙動を identity 契約として再現していることが
+分かった（例：`"\x01https://…/m04/"`、`"…/cal\tendar/m04/"` は target と同一 identity）。
+importer 側だけを変えると SQL preflight と importer の判定が食い違う。そのため、
+これらは §2.2 の seed 入力検査に移した。
 
-| 現行挙動 | 理由 |
+| 現行挙動（維持） | 理由 |
 |---|---|
-| IPv6 の括弧を落とす（`https://[2001:db8::1]/p` → `https://2001:db8::1/p`） | 出力変更＝identity 変更。括弧なし形は入力として正規化不能なので有効入力同士の衝突はない |
-| userinfo を落とす（`user:secret@`） | 既存16境界値の契約。生 URL は `entry.url` としてそのまま保存される |
-| `:0443` を default port とみなし除去 | 既存16境界値の契約 |
-| 空 port（`host:`）、空 query（`?`）を除去 | 既存16境界値の契約 |
-| path 内の空白を保持（`/a b`） | 情報を落とさない。CREATE 時は model validator が拒否する |
-| port 0 を受理 | RFC 3986 上は構文的に有効 |
+| `\t\r\n` を削除し、先頭の C0 を strip する | G7 SQL が再現している identity 契約 |
+| 空 host を `https:///a` 等に正規化する | 同上（SQL も値を返す） |
+| IPv6 の括弧を落とす（`[2001:db8::1]` → `2001:db8::1`） | 出力を変えると identity が変わる。括弧なしの形は入力として正規化できないので、有効入力同士は衝突しない |
+| userinfo を落とす | 既存16境界値の契約。生 URL は `entry.url` のまま保存される |
+| `:0443` を default port として除去する | 既存16境界値の契約（SQL も `ltrim('0')`） |
+| 空 port（`host:`）・空 query（`?`）を除去する | 既存16境界値の契約 |
+| port 0 を受理する | RFC 3986 上は構文的に有効。SQL も受理する |
 
 ## 5. 検証結果
 
-- `test_source_url_sheet_parity.py` + `test_source_url_fail_closed.py` + `test_knowledge_seed_import.py`: 162 passed（Python 3.13 / 3.11.18、PostgreSQL 16 non-GIS）
-- 旧コード（base）に同じ162テストを当てた場合: 83 failed / 79 passed（§1 の表はその出力）
-- backend 全体: PR 本文に記載
-- ruff check / ruff format --check: pass
+- `test_source_url_sheet_parity.py` + `test_source_url_fail_closed.py` + `test_knowledge_seed_import.py`
+  - 変更後: **179 passed**（Python 3.11.18 / 3.13、PostgreSQL 16 non-GIS）
+  - base（`73bef9f`）に同じテストを当てた場合: **85 failed / 94 passed**（§1 はこの出力から作成）
+- backend 全体（`pytest -n 4`、PostgreSQL 16 non-GIS、GIS 依存は skip）
+  - Python 3.11.18（CI と同じ版）: **7662 passed, 27 skipped, 0 failed**
+  - Python 3.13: 7661 passed, 1 failed。失敗は §7 の既存不具合で、base でも同じ1件が失敗する
+- `ruff check` / `ruff format --check`: pass
 
 ## 6. Mother Ship 判断が必要な事項（未変更・記録のみ）
 
-1. **scheme なし / 非 http(s) URL の扱い**: `//example.com/path`、`example.com/a`、
-   `ftp://…`、`mailto:`、`javascript:` は正規化で受理される（`//…` は既存16境界値の契約）。
-   CREATE 時は model validator が `//…` と `example.com/a` を止めるが、REUSE 経路と
-   正規化関数自体は受理する。拒否に変えると Source identity 契約の変更になる
-2. **IPv6 括弧の除去**（§4）: 正しい形（括弧保持）へ直すと normalized URL が変わり、
-   a5b projection 出力など既存 artifact と不一致になる
-3. **userinfo 付き URL**: 正規化では落ちるが raw は DB に保存される。資格情報を含む URL を
+1. **制御文字・空 host を identity 上も不正にするか**: 実施するには、`normalize_source_url`
+   と G7 SQL 10 set を同時に変える必要がある（identity 契約の変更）
+2. **scheme なし / 非 http(s) URL**: `//host/p`、`host/p`、`ftp:`、`mailto:`、`javascript:`
+   は正規化で受理される（`//…` は既存16境界値の契約）。CREATE 時は model validator が
+   一部を止めるが、REUSE 経路では受理される
+3. **IPv6 括弧の除去**（§4）: 括弧を保持する形に直すと normalized URL が変わり、
+   a5b projection の出力など既存 artifact と一致しなくなる
+4. **userinfo 付き URL**: 正規化では落ちるが、raw は DB に保存される。資格情報を含む URL を
    seed で拒否するかはポリシー判断
 
 ## 7. 残リスク
 
-- production の既存 Source URL は未観測（§3 の手順で事前確認が必要）
+- **Python 3.13 での既存の不一致**（本 PR とは無関係。base でも再現）:
+  `normalize_source_url("https:example.com/p/")` は 3.11 で `https:///example.com/p`、
+  3.13 で `https:example.com/p` を返す（`urlunsplit` の挙動差）。G7 SQL は 3.11 側と一致する。
+  CI は 3.11 なので green だが、runtime を 3.13 に上げると identity 値が変わる
+- production の既存 Source URL は未観測（§3 の手順で事前に確認すること）
 - `a5b_reproducibility_projection._source` は `SourceUrlError`（`ValueError`）を
-  `ProjectionUnresolved` に変換していない。本タスクのスコープ外のため未変更
-- §6 の3項目は現行挙動のまま
+  `ProjectionUnresolved` に変換していない。スコープ外のため未変更
+- §6 の4項目は現行挙動のまま
