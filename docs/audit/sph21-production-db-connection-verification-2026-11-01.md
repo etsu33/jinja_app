@@ -1,6 +1,7 @@
 # SPH-21 follow-up: Production DB connection and privilege verification (2026-11-01)
 
-> Status: **DESIGN ONLY / NOT RUN**. Supplements `docs/audit/sph21-supabase-access-boundary-audit-2026-10-31.md` (D-1b, R-7). This document does not authorize Production execution or changes.
+> Status (updated): **role identity probe COMPLETED (owner-approved, 2026-11-01); TLS verification (Gate 2), the Gate 1 private comparison record and catalog queries NOT RUN.** The original design-only status below applied when this document was first written; see "Owner-approved operational verification" for what has since run. Published identifiers in this document are pending owner review; do not copy them elsewhere.
+> Original status: **DESIGN ONLY / NOT RUN**. Supplements `docs/audit/sph21-supabase-access-boundary-audit-2026-10-31.md` (D-1b, R-7). This document does not authorize Production execution or changes.
 > Source: Owner's 2026-11-01 Supabase dashboard observations, Codex read-only design review, existing SPH-21. No secrets collected.
 
 ## Goal and boundaries
@@ -41,7 +42,13 @@ Distinguish:
 3. **CA validation:** issuer is trusted, with correct CA chain.
 4. **Hostname verification:** verified against the exact endpoint hostname, including any pooler endpoint.
 
-Pass for a future hardened audit connection requires `verify-full` with trusted CA/hostname success, unless Mother Ship explicitly approves a documented lesser control. `require` enforces encryption but is not a general guarantee of hostname validation. SQL Editor's `pg_stat_ssl` result confirms only that editor's connection; with poolers, backend `pg_stat_ssl` may not observe the application-to-pooler leg. Non-authenticated `openssl` examination is a candidate **only after** network and approval review and must not be mistaken for proof of Django's effective configuration. Existing Supabase SSL enforcement OFF is not permission to change it.
+Pass for a future hardened audit connection requires `verify-full` with trusted CA/hostname success, unless Mother Ship explicitly approves a documented lesser control. **For the Evidence Coverage Audit connection, `docs/audit/evidence-coverage-production-readiness-2026-11-01.md` (G-6, §6) governs: anything weaker than `verify-full` is STOP; that document defines no lesser control.** `require` enforces encryption but is not a general guarantee of hostname validation. SQL Editor's `pg_stat_ssl` result confirms only that editor's connection; with poolers, backend `pg_stat_ssl` may not observe the application-to-pooler leg. Non-authenticated `openssl` examination is a candidate **only after** network and approval review and must not be mistaken for proof of Django's effective configuration. Existing Supabase SSL enforcement OFF is not permission to change it.
+
+Evidence levels (none of them is Production evidence until run with approval):
+- **Configuration propagation（#3408, merged）:** offline tests show that `sslmode` / `sslrootcert` in `DATABASE_URL` reach Django `OPTIONS` and the psycopg connect arguments unchanged. This proves propagation only, not certificate or hostname verification.
+- **Client-side TLS use（#3402 `report_db_tls`, merged）:** `ssl_in_use=true` on the actual client connection proves that TLS is in use on the client-to-pooler (or direct) leg. It does **not** prove CA or hostname verification; the probe always reports `certificate_verified=unknown hostname_verified=unknown`.
+- **`pg_stat_ssl`:** supplementary. Through a pooler it describes the server-side session and cannot independently prove client-to-pooler TLS.
+- **Hostname vs tenant:** `verify-full` against a shared pooler hostname validates that hostname's certificate. It does not prove the project / tenant; that is Gate 1.
 
 ## Gate 3: Actual application role / effective privileges
 
@@ -83,16 +90,17 @@ Do not query user records, secrets, token tables' contents or other application 
 - **Role properties, owner-supplied Supabase catalog result:** `rolsuper=false`, `rolcreatedb=true`, `rolcreaterole=true`, `rolbypassrls=true`, `rolinherit=true`, `rolcanlogin=true` for `postgres`. Thus the observed Django role is powerful and **not eligible as a SELECT-only audit credential**. Effective inherited/schema/DDL privileges beyond these flags still require inspection.
 - **Target identification (owner observation):** Render DATABASE_URL has Session pooler form with a tenant-scoped `postgres.<project-ref>` username, confirmed host `aws-1-ap-northeast-1.pooler.supabase.com`, port 5432, database `postgres`, and **no explicit `sslmode` in the provided URL**. The actual DB password was not shared. This is configuration evidence, not proof of negotiated TLS, certificate verification, or hostname verification.
 - **Recovery:** owner reported returning `RUN_DB_ROLE_PROBE_ON_START` to `0`. Render list_deploys then reported latest deployment `dep-dbjbv267bikc73f0ona0` started 2026-11-01 04:26:48Z (**13:26 JST**) and `status=live`; preceding probe deployment `dep-dbjbt90ae00c73dpdhk0` was deactivated. The Render API does not independently attest the current env value in this review. App-wide regression/health verification was not performed.
-- **TLS_RUNTIME_UNKNOWN:** neither the SQL Editor's TLSv1.3 observation nor the role probe's SQL establishes the actual Django-to-pooler TLS session. Existing `report_db_role` collects role identity only. Require a separate, redacted client-side TLS probe on the actual Django connection with explicit approval for any deploy. Never infer `ssl_in_use` from the URL or the pooler-to-Postgres `pg_stat_ssl` result.
+- **TLS_RUNTIME_UNKNOWN:** neither the SQL Editor's TLSv1.3 observation nor the role probe's SQL establishes the actual Django-to-pooler TLS session. Existing `report_db_role` collects role identity only. Require a separate, redacted client-side TLS probe on the actual Django connection with explicit approval for any deploy. That probe now exists (`report_db_tls`, #3402, merged; `docs/runbooks/db-tls-probe.md`) and **has not been run in Production**. Never infer `ssl_in_use` from the URL or the pooler-to-Postgres `pg_stat_ssl` result.
 
 ### Dedicated audit role: least-privilege design, not executed
 
-Proposed separate `kamimusubi_audit_ro` (placeholder): LOGIN and schema USAGE; SELECT **only** on the precise tables required by `evidence_coverage_audit` including intermediary/source/eligibility tables after code-based inventory. No INSERT, UPDATE, DELETE, TRUNCATE, TRIGGER, REFERENCES, CREATE, TEMP, CREATEDB, CREATEROLE, BYPASSRLS, SUPERUSER, or escalation through role membership/SET ROLE. Inspect effective grants from PUBLIC, inherited roles, table ownership, default privileges, sequences, and executable SECURITY DEFINER functions. This is not a substitute for read-only transaction enforcement in PR #3396. The live Django application stays on its existing role until a separate migration/rotation plan is approved. **No CREATE ROLE/GRANT/REVOKE or production Evidence Audit run is authorized by this record.**
+Separate role **`kamimusubi_audit_ro`** — the name approved by Mother Ship on 2026-11-01, dedicated to Evidence Coverage Audit (#3407). **Role creation, GRANT / REVOKE and Production execution are NOT APPROVED, and the role has not been created**: LOGIN and schema USAGE; SELECT **only** on the precise tables required by `evidence_coverage_audit` including intermediary/source/eligibility tables after code-based inventory. No INSERT, UPDATE, DELETE, TRUNCATE, TRIGGER, REFERENCES, CREATE, TEMP, CREATEDB, CREATEROLE, BYPASSRLS, SUPERUSER, or escalation through role membership/SET ROLE. Inspect effective grants from PUBLIC, inherited roles, table ownership, default privileges, sequences, and executable SECURITY DEFINER functions. This is not a substitute for read-only transaction enforcement in PR #3396. The live Django application stays on its existing role until a separate migration/rotation plan is approved. **No CREATE ROLE/GRANT/REVOKE or production Evidence Audit run is authorized by this record.**
 
 ### Updated status
 
 - D-1b role **identity: VERIFIED** (`postgres`). D-1b effective-privileges detail: **PARTIAL**.
 - Render deployment restoration: **Live VERIFIED**; restored env setting is **owner-reported**, not independently read.
-- Production TLS / CA / hostname verification: **UNKNOWN**.
-- Audit-only role: **DESIGNED IN PRINCIPLE, NOT CREATED**.
+- Production TLS / CA / hostname verification: **UNKNOWN**. The TLS probe (#3402) and offline propagation tests (#3408) are merged; no Production TLS check has run.
+- Audit-only role `kamimusubi_audit_ro`: **name APPROVED（2026-11-01）; creation NOT APPROVED; NOT CREATED**.
+- Open decisions / unknowns: TLS policy for the Render Django runtime connection（SPH-21 R-7）— **Mother Ship decision, not selected here**; provider CA acquisition for `sslrootcert` — **UNKNOWN**; audit-role login through the pooler — **UNKNOWN**.
 - Production data and schema changes: **NONE** by this documentation task. STOP.
