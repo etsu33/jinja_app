@@ -456,3 +456,169 @@ def test_export_refuses_when_knowledge_exists_on_qa_fixture_shrine(tmp_path):
     with pytest.raises(CommandError):
         call_command("export_shrine_knowledge", str(output_path), stdout=io.StringIO())
     assert not output_path.exists()
+
+
+# ---------- Source URL fail-closed (docs/audit/source-url-fail-closed-hardening.md) ----------
+
+MALFORMED_SEED_URLS = (
+    "https://example.jp:abc/source",
+    "https://example.jp:99999/source",
+    "https://[2001:db8::1/source",
+    "https://:443/source",
+    "https://exa\nmple.jp/source",
+    12345,
+)
+
+
+def _assert_no_knowledge_writes(source_count: int = 0) -> None:
+    assert ShrineKnowledgeSource.objects.count() == source_count
+    assert ShrineDeity.objects.count() == 0
+    assert ShrineHistory.objects.count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("bad_url", MALFORMED_SEED_URLS)
+def test_validate_only_fails_safely_on_malformed_source_url(tmp_path, bad_url):
+    Shrine.objects.create(name_jp="テスト対象神社", kind="shrine", address="東京都テスト区1-1-1")
+    seed = _minimal_seed()
+    seed["sources"][0]["url"] = bad_url
+    seed_path = tmp_path / "seed.json"
+    seed_path.write_text(json.dumps(seed), encoding="utf-8")
+
+    err = io.StringIO()
+    with pytest.raises(CommandError, match="validation failed"):
+        call_command(
+            "import_shrine_knowledge",
+            str(seed_path),
+            "--validate-only",
+            stdout=io.StringIO(),
+            stderr=err,
+        )
+    assert "sources[0].url: " in err.getvalue()
+    _assert_no_knowledge_writes()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("mode", [("--dry-run",), ()])
+@pytest.mark.parametrize("bad_url", MALFORMED_SEED_URLS)
+def test_dry_run_and_apply_block_on_malformed_source_url_before_writes(tmp_path, bad_url, mode):
+    Shrine.objects.create(name_jp="テスト対象神社", kind="shrine", address="東京都テスト区1-1-1")
+    seed = _minimal_seed()
+    seed["sources"][0]["url"] = bad_url
+    seed_path = tmp_path / "seed.json"
+    seed_path.write_text(json.dumps(seed), encoding="utf-8")
+
+    err = io.StringIO()
+    with pytest.raises(CommandError, match="import blocked"):
+        call_command(
+            "import_shrine_knowledge",
+            str(seed_path),
+            *mode,
+            stdout=io.StringIO(),
+            stderr=err,
+        )
+    assert "sources[0].url: " in err.getvalue()
+    assert "SOURCE_REUSE_INVALID_URL" in err.getvalue()
+    _assert_no_knowledge_writes()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("mode", [("--dry-run",), ()])
+def test_existing_source_with_malformed_url_blocks_instead_of_crashing(tmp_path, mode):
+    """A same-source_type row whose stored URL cannot be normalized might be
+    the same document, so neither reuse nor create is safe."""
+    Shrine.objects.create(name_jp="テスト対象神社", kind="shrine", address="東京都テスト区1-1-1")
+    broken = ShrineKnowledgeSource.objects.create(
+        source_type="shrine_official",
+        title="壊れたURLの既存出典",
+        url="https://example.jp:abc/",
+        verification_status="draft",
+    )
+    seed_path = tmp_path / "seed.json"
+    seed_path.write_text(json.dumps(_minimal_seed()), encoding="utf-8")
+
+    err = io.StringIO()
+    with pytest.raises(CommandError, match="import blocked"):
+        call_command(
+            "import_shrine_knowledge",
+            str(seed_path),
+            *mode,
+            stdout=io.StringIO(),
+            stderr=err,
+        )
+    assert "SOURCE_REUSE_INVALID_EXISTING_URL" in err.getvalue()
+    assert f"[{broken.pk}]" in err.getvalue()
+    _assert_no_knowledge_writes(source_count=1)
+
+
+@pytest.mark.django_db
+def test_existing_malformed_url_of_other_source_type_does_not_block(tmp_path):
+    Shrine.objects.create(name_jp="テスト対象神社", kind="shrine", address="東京都テスト区1-1-1")
+    ShrineKnowledgeSource.objects.create(
+        source_type="government",
+        title="別種別の壊れたURL",
+        url="https://example.jp:abc/",
+        verification_status="draft",
+    )
+    seed_path = tmp_path / "seed.json"
+    seed_path.write_text(json.dumps(_minimal_seed()), encoding="utf-8")
+
+    out = io.StringIO()
+    call_command("import_shrine_knowledge", str(seed_path), "--dry-run", stdout=out)
+    assert "dry-run: OK" in out.getvalue()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "unpersistable_url",
+    [
+        "//example.jp/source",
+        " https://example.jp/source ",
+        "https://example.jp:/source",
+        "https://example.jp/" + "a" * 200,
+    ],
+)
+def test_dry_run_blocks_create_whose_url_the_model_would_reject(tmp_path, unpersistable_url):
+    """normalize_source_url accepts these, but ShrineKnowledgeSource.url
+    (URLField, max_length=200) rejects them in _apply()'s full_clean()."""
+    Shrine.objects.create(name_jp="テスト対象神社", kind="shrine", address="東京都テスト区1-1-1")
+    seed = _minimal_seed()
+    seed["sources"][0]["url"] = unpersistable_url
+    seed_path = tmp_path / "seed.json"
+    seed_path.write_text(json.dumps(seed), encoding="utf-8")
+
+    for mode in (("--dry-run",), ()):
+        err = io.StringIO()
+        with pytest.raises(CommandError, match="import blocked"):
+            call_command(
+                "import_shrine_knowledge",
+                str(seed_path),
+                *mode,
+                stdout=io.StringIO(),
+                stderr=err,
+            )
+        assert "SOURCE_URL_REJECTED_ON_CREATE" in err.getvalue()
+    _assert_no_knowledge_writes()
+
+
+@pytest.mark.django_db
+def test_reuse_of_existing_source_is_not_subject_to_create_url_check(tmp_path):
+    """Unchanged behavior: a seed URL that normalizes to an existing row is
+    reused without a write, even if the raw seed string is not persistable."""
+    Shrine.objects.create(name_jp="テスト対象神社", kind="shrine", address="東京都テスト区1-1-1")
+    existing = ShrineKnowledgeSource.objects.create(
+        source_type="shrine_official",
+        title="公式サイト",
+        url="https://example.jp/source",
+        verification_status="source_confirmed",
+        verified_at="2026-01-01T00:00:00Z",
+        confidence="high",
+    )
+    seed = _minimal_seed()
+    seed["sources"][0]["url"] = " https://EXAMPLE.jp/source/ "
+    seed_path = tmp_path / "seed.json"
+    seed_path.write_text(json.dumps(seed), encoding="utf-8")
+
+    call_command("import_shrine_knowledge", str(seed_path), stdout=io.StringIO())
+    assert list(ShrineKnowledgeSource.objects.all()) == [existing]
+    assert list(ShrineDeity.objects.get().sources.all()) == [existing]

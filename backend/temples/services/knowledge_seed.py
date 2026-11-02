@@ -17,6 +17,8 @@ never uses `.first()` on an unordered/ambiguous match; see `resolve_shrine`.
 
 from __future__ import annotations
 
+import ipaddress
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Literal
@@ -91,7 +93,16 @@ _SOURCE_FACT_KEYS = frozenset(
 _CITATION_KEYS = frozenset({"source_key", "locator_text"})
 
 ShrineIdentityStatus = Literal["OK", "OK_CANONICAL_PREFERRED", "NOT_FOUND", "AMBIGUOUS"]
-SourceIdentityStatus = Literal["CREATE", "REUSE_EXISTING", "CONFLICT", "AMBIGUOUS"]
+SourceIdentityStatus = Literal[
+    "CREATE",
+    "REUSE_EXISTING",
+    "CONFLICT",
+    "AMBIGUOUS",
+    # seed 側 URL が normalize_source_url で一意に正規化できない。
+    "INVALID_URL",
+    # 同じ source_type の既存 Source に正規化できない URL があり、同一性を判定できない。
+    "INVALID_EXISTING_URL",
+]
 
 
 @dataclass(frozen=True)
@@ -180,20 +191,112 @@ def resolve_shrine(name_jp: str, address: str = "") -> ShrineIdentityResult:
     )
 
 
-def normalize_source_url(url: str) -> str:
+class SourceUrlError(ValueError):
+    """A Source URL that cannot be normalized without guessing.
+
+    Subclasses ``ValueError`` so existing callers that already treat a
+    malformed URL as ``ValueError`` keep working. Messages name only the
+    offending component, never the whole URL, because a URL may carry
+    userinfo credentials. See docs/audit/source-url-fail-closed-hardening.md.
+    """
+
+
+# urlsplit silently deletes TAB/CR/LF (WHATWG unsafe bytes), so two different
+# inputs would collapse to one identity. Every C0 control and DEL is refused.
+_URL_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
+_HOST_REQUIRED_SCHEMES = frozenset({"http", "https"})
+
+
+def _split_source_url_port(hostinfo: str) -> str | None:
+    """Return the raw port text of ``host[:port]`` (``None`` when absent).
+
+    Mirrors ``urllib.parse`` host/port splitting, but refuses the inputs where
+    it would silently drop characters (text before ``[`` or after ``]``) or
+    accept a bracketed host that is not an IPv6 address (IPvFuture
+    ``[v1.x]`` would otherwise lose its brackets and collide with host
+    ``v1.x``).
+    """
+    if any(ch.isspace() or ch == "\\" for ch in hostinfo):
+        raise SourceUrlError("host must not contain whitespace or backslashes")
+    if "[" not in hostinfo:
+        if "]" in hostinfo:
+            raise SourceUrlError("host has ']' without a matching '['")
+        _, has_port, port_text = hostinfo.partition(":")
+        return port_text if has_port else None
+    if not hostinfo.startswith("["):
+        raise SourceUrlError("host has characters before '['")
+    host, closed, rest = hostinfo[1:].partition("]")
+    if not closed:
+        raise SourceUrlError("host has '[' without a matching ']'")
+    if rest and not rest.startswith(":"):
+        raise SourceUrlError("host has characters after ']' that are not ':port'")
+    if "%" in host:
+        raise SourceUrlError("IPv6 zone identifiers are not accepted in Source URLs")
+    try:
+        ipaddress.IPv6Address(host)
+    except ValueError as exc:
+        raise SourceUrlError(f"bracketed host {host!r} is not an IPv6 address") from exc
+    return rest[1:] if rest else None
+
+
+def _parse_source_url_port(port_text: str | None) -> int | None:
+    """Parse a port strictly as ASCII digits 0-65535.
+
+    Checked here rather than through ``SplitResult.port`` so the accepted set
+    does not depend on the Python version's int() leniency (``+443``,
+    `` 443``, full-width digits). An empty port (``host:``) stays ``None``,
+    matching the existing normalization contract.
+    """
+    if not port_text:
+        return None
+    if not (port_text.isascii() and port_text.isdigit()):
+        raise SourceUrlError(
+            f"port {port_text!r} is not a number; use ASCII digits 0-65535 or omit the port"
+        )
+    port = int(port_text)
+    if port > 65535:
+        raise SourceUrlError(f"port {port_text!r} is out of range 0-65535")
+    return port
+
+
+def normalize_source_url(url: str | None) -> str:
     """Normalize only URL syntax that cannot change the cited document.
 
     Scheme and host case and default ports are normalized, fragments are
     removed, and a non-root trailing slash is ignored. Query strings remain
     byte-for-byte significant, and http/https remain distinct.
+
+    Fails closed: raises ``SourceUrlError`` (a ``ValueError``) for URLs whose
+    identity cannot be decided without guessing — malformed ports, broken
+    IPv6 brackets, control characters, or an authority / http(s) URL with an
+    empty host. It never returns a value for such input.
     """
-    value = (url or "").strip()
+    if url is None:
+        return ""
+    if not isinstance(url, str):
+        raise SourceUrlError(f"must be a string, got {type(url).__name__}")
+    value = url.strip()
     if not value:
         return ""
-    parts = urlsplit(value)
+    if _URL_CONTROL_CHARS.search(value):
+        raise SourceUrlError(
+            "contains control characters (tab, newline, NUL, ...); remove them from the URL"
+        )
+    try:
+        parts = urlsplit(value)
+    except ValueError as exc:
+        # urllib's message can echo the netloc (including userinfo), so it is
+        # chained for debugging but not copied into the reported error.
+        raise SourceUrlError(
+            "invalid URL structure; check the '[...]' IPv6 brackets and host characters"
+        ) from exc
     scheme = parts.scheme.lower()
+    port = _parse_source_url_port(_split_source_url_port(parts.netloc.rpartition("@")[2]))
     hostname = (parts.hostname or "").lower()
-    port = parts.port
+    if parts.netloc and not hostname:
+        raise SourceUrlError("URL has an authority ('//...') but its host is empty")
+    if scheme in _HOST_REQUIRED_SCHEMES and not hostname:
+        raise SourceUrlError(f"{scheme} URL must have a host (expected '{scheme}://host/...')")
     if port is not None and not (
         (scheme == "http" and port == 80) or (scheme == "https" and port == 443)
     ):
@@ -220,16 +323,39 @@ def resolve_source_identity(entry: "SourceEntry") -> SourceIdentityResult:
     identity. Exactly one matching row is reusable only when important
     metadata agrees. Multiple matches or metadata drift block the whole
     import. URL-less Sources retain the original title/bibliography lookup.
+
+    Fails closed on malformed URLs: an unnormalizable seed URL is
+    ``INVALID_URL``, and an existing same-``source_type`` row whose URL cannot
+    be normalized is ``INVALID_EXISTING_URL`` (it might be the same document,
+    so neither reuse nor create is safe). Neither status ever raises.
     """
-    normalized_url = normalize_source_url(entry.url)
+    try:
+        normalized_url = normalize_source_url(entry.url)
+    except SourceUrlError as exc:
+        return SourceIdentityResult(None, "INVALID_URL", f"seed url: {exc}")
     if normalized_url:
-        candidates = [
-            source
-            for source in ShrineKnowledgeSource.objects.filter(source_type=entry.source_type)
+        candidates = []
+        invalid_existing_ids = []
+        for source in (
+            ShrineKnowledgeSource.objects.filter(source_type=entry.source_type)
             .exclude(url="")
             .order_by("id")
-            if normalize_source_url(source.url) == normalized_url
-        ]
+        ):
+            try:
+                existing_url = normalize_source_url(source.url)
+            except SourceUrlError:
+                invalid_existing_ids.append(source.pk)
+                continue
+            if existing_url == normalized_url:
+                candidates.append(source)
+        if invalid_existing_ids:
+            return SourceIdentityResult(
+                None,
+                "INVALID_EXISTING_URL",
+                f"existing Source id(s) {invalid_existing_ids} with the same source_type "
+                "have URLs that cannot be normalized; identity cannot be decided until "
+                "they are corrected",
+            )
         if len(candidates) > 1:
             return SourceIdentityResult(
                 None,
@@ -627,12 +753,22 @@ def _parse_source(
     verified_at = _parse_datetime(raw.get("verified_at"), f"{prefix}.verified_at", errors)
     _check_verification_fields(verification_status, confidence, verified_at, prefix, errors)
 
+    url = raw.get("url", "")
+    if url is None:
+        url = ""
+    try:
+        normalize_source_url(url)
+    except SourceUrlError as exc:
+        # The raw value is kept so resolve_source_identity also reports
+        # INVALID_URL instead of treating the Source as URL-less.
+        errors.append(f"{prefix}.url: {exc}")
+
     sources[key] = SourceEntry(
         key=key,
         source_type=source_type or "",
         title=str(title or ""),
         publisher=raw.get("publisher", "") or "",
-        url=raw.get("url", "") or "",
+        url=url,
         bibliography=raw.get("bibliography", "") or "",
         accessed_at=accessed_at,
         verified_at=verified_at,
@@ -1163,6 +1299,7 @@ __all__ = [
     "ShrineIdentityResult",
     "SourceIdentityResult",
     "resolve_shrine",
+    "SourceUrlError",
     "normalize_source_url",
     "resolve_source_identity",
     "find_existing_source",
