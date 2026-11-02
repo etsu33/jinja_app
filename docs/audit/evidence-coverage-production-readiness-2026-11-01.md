@@ -33,7 +33,7 @@ The command's own guard is necessary but not sufficient (§2.2).
 | `docs/runbooks/evidence-coverage-audit.md` §2–§3 | Operating rules (production-readonly flags, credential discipline, no AI-agent execution) |
 | `docs/audit/sph21-evidence-audit-select-role-matrix-2026-11-01.md` | Least-privilege design, the `postgres` role facts, PR #3403 inventory record |
 | `backend/temples/tests/services/test_evidence_coverage_audit_sql_inventory.py`（#3403） | Dynamic SQL inventory plus restricted-role positive / negative control |
-| Open PRs #3399（SPH-21 production DB connection, TLS and privilege verification procedure）and #3402（Django TLS read-only probe） | **Unmerged** dependencies for the TLS gate. Not duplicated here |
+| #3399 `docs/audit/sph21-production-db-connection-verification-2026-11-01.md`（merged `32257cff`）, #3402 `report_db_tls` + `docs/runbooks/db-tls-probe.md`（merged `0ca270e4`）, #3408 `backend/tests/test_db_tls_options_propagation.py`（merged `a79bc38e`） | Canonical TLS / target-identity procedure (Gate 1 / Gate 2), the client-side TLS probe, and offline option-propagation tests. G-6 / G-7 reference them and do not redefine them. None of them has been run against Production |
 
 ## 2. Confirmed local safety evidence
 
@@ -87,7 +87,7 @@ TLS verification therefore depends entirely on the connection string used for th
 | --- | --- |
 | The Django runtime connects as `postgres`（`current_user` / `session_user`, 2026-11-01 diagnostic）; the role has CREATEDB, CREATEROLE and BYPASSRLS | RECORDED（matrix doc）. **Unsuitable for the audit; must not be used** |
 | Dedicated audit role | **Does not exist**（design only） |
-| Production TLS on the actual connection | **UNKNOWN**（#3399 / #3402 unmerged） |
+| Production TLS on the actual connection | **UNKNOWN**: the procedure (#3399) and the probe (#3402) are merged; neither has been run in Production |
 | Production table ACLs for a new role | **UNKNOWN** |
 | Pooler compatibility of a custom role (Supavisor username format, transaction vs session mode) | **UNKNOWN** |
 
@@ -100,8 +100,8 @@ TLS verification therefore depends entirely on the connection string used for th
 | G-3 Role attributes | NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS; no membership in other roles | **UNMET** |
 | G-4 Privilege boundary | CONNECT on the database, USAGE on `public`, SELECT on exactly `audited_tables()`（10 tables on `develop` today）; no write, DDL, TEMP or CREATE; no SELECT on other application tables | **UNMET** |
 | G-5 Session defaults | `default_transaction_read_only = on` and a `statement_timeout` set on the role | **UNMET**（proposal） |
-| G-6 TLS | `sslmode=verify-full` with the provider CA certificate in the audit connection string; `pg_stat_ssl.ssl = true` for the session | **UNMET / UNKNOWN**（the CA file and pooler TLS behaviour are unverified; depends on #3399 / #3402） |
-| G-7 Target identity | An operator pre-check proves the session is the intended Production database before the command runs | **UNMET**（the command cannot do this） |
+| G-6 TLS | Per the connection-verification document's Gate 2: `sslmode=verify-full` with the approved provider CA (`sslrootcert`) in the audit connection string, **explicit CA and hostname verification**, and client-side `ssl_in_use=true` from `report_db_tls` on the same connection settings. `pg_stat_ssl.ssl = true` is supplementary only (§5.3) | **UNMET / UNKNOWN**（the provider CA acquisition, the pooler TLS behaviour and the accepted evidence for CA / hostname verification are unverified or undecided; §8） |
+| G-7 Target identity | (a) the connection-verification document's **Gate 1** secret-safe comparison of the audit connection string（`target_project_match`, `endpoint_kind`, `port_match`, `db_name_match`, `sslmode_class`）, **and** (b) the §5.3 catalog checks against the owner-held inventory. A shared pooler hostname that passes `verify-full` does **not** prove project / tenant identity | **UNMET**（the command cannot do this） |
 | G-8 Credential handling | The secret lives in a mode-600 file outside the repository, is loaded as an env var only, and never appears in argv, logs, output, PRs or AI sessions; the role is disabled or its password rotated after the run | **UNMET**（procedure proposed in §5; not adopted） |
 | G-9 Execution host | An owner-controlled host with network access to the database, running a clean checkout of a specified `develop` commit | **UNMET**（choice pending; §5.1） |
 | G-10 Pooler compatibility | The custom role can log in through the chosen endpoint, and the single-transaction command works there | **UNKNOWN** |
@@ -161,7 +161,7 @@ SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
    AND has_table_privilege(c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER');                        -- expect 0
 -- G-5 / G-6 session
 SHOW default_transaction_read_only;                                                                              -- expect on
-SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid();                                                        -- expect t
+SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid();                                                        -- expect t（supplementary only, see below）
 -- G-7 target identity (catalog only; record pass/fail, not values)
 SELECT current_database();
 SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -171,13 +171,26 @@ SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 - The breadth query may also list relations that are readable through PUBLIC grants (for example, extension-owned
   tables). Any relation other than `audited_tables()` is a **STOP** until it is explained and approved.
 - The target-identity check compares against the owner-held Production inventory (the table count and name set).
-  Record only PASS / FAIL in shared documents.
+  Record only PASS / FAIL in shared documents. It complements, and does not replace, the Gate 1 comparison of the
+  connection string (G-7 (a)): a schema-identical database elsewhere would pass the catalog check alone.
+- **`pg_stat_ssl` is supplementary evidence.** Through a pooler it describes the server-side session the pooler
+  holds, and cannot on its own prove that the client-to-pooler leg is encrypted（connection-verification document,
+  Gate 2）. A false or unknown value is still a STOP (§6); a true value is not sufficient for G-6.
+- **Client-side TLS use:** before the audit command, run `python manage.py report_db_tls`（#3402; no SQL, credential-
+  safe）with the same audit `DATABASE_URL`. `ssl_in_use=true` proves only that this client connection uses TLS. It
+  does **not** prove CA or hostname verification; the probe always prints
+  `certificate_verified=unknown hostname_verified=unknown`.
 
 ### 5.4 Connection and credential handling
 
 - The connection string carries `sslmode=verify-full` and `sslrootcert=<path to the provider CA file>`. Both are
-  read from the mode-600 file into `DATABASE_URL` for that shell only. Whether `dj_database_url` passes these query
-  parameters to libpq unchanged must be confirmed locally first (UNKNOWN; no code change proposed here).
+  read from the mode-600 file into `DATABASE_URL` for that shell only.
+- **Option propagation: CONFIRMED offline（#3408）.** With synthetic URLs and a mocked `psycopg.connect`, both
+  options reach Django `OPTIONS` and the psycopg connect arguments unchanged. Settings and Django add, default or
+  validate no TLS option. This is configuration propagation only, **not** evidence that a certificate or hostname
+  was verified on a real connection.
+- The shared pooler hostname is what `verify-full` checks. Hostname verification does not establish which project /
+  tenant the session belongs to; that is G-7 (a).
 - Never put the URL in argv, shell history or logs. The command does not print the role or host (code: CONFIRMED).
 - After the run: `unset DATABASE_URL`, delete the local file or keep it outside synced folders, and set the role to
   NOLOGIN.
@@ -196,9 +209,11 @@ SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 0. A separate Mother Ship approval of role creation and grants for `kamimusubi_audit_ro`. The 2026-11-01 naming
    approval is not sufficient.
 1. G-2 to G-5 are created exactly as approved, and the §5.3 pre-flight passes with zero unexplained relations.
-2. G-6: TLS is verified (`verify-full`, `pg_stat_ssl.ssl = t`). #3399 / #3402 are merged, or equivalent evidence is
-   recorded.
-3. G-7: the target-identity pre-check passes against the owner-held inventory.
+2. G-6: TLS is verified: `verify-full` with the approved CA, explicit CA and hostname verification evidence of a
+   kind the Mother Ship accepts, client-side `ssl_in_use=true` (`report_db_tls`), and `pg_stat_ssl.ssl = t` as
+   supplementary evidence. #3399 / #3402 / #3408 are merged; none of them is itself Production evidence.
+3. G-7: Gate 1 (connection string: project / tenant, endpoint kind, port, database name) **and** the catalog
+   pre-check against the owner-held inventory both pass.
 4. G-8 / G-9: the credential file, host and post-run disable steps are approved and followed.
 5. G-10: login through the chosen endpoint works with the custom role.
 6. The approved `develop` SHA is recorded, and its `audited_tables()` matches the granted set.
@@ -207,6 +222,8 @@ SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 
 - The only available role is `postgres`, or any role with superuser / CREATEDB / CREATEROLE / BYPASSRLS.
 - TLS cannot be verified (`sslmode` weaker than `verify-full`, or `pg_stat_ssl.ssl` is false or unknown).
+- Client-side `ssl_in_use` is not `true`, or CA / hostname verification has no accepted evidence.
+- Only the shared pooler hostname is verified, with no Gate 1 project / tenant match.
 - Any readable relation outside `audited_tables()` is unexplained.
 - The target identity is unproven.
 - Execution would happen inside an AI / cloud agent session or a production web runtime.
@@ -229,12 +246,23 @@ SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 | Production connection / audit execution | **STOP** |
 | SELECT boundary | Exactly `audited_tables()` on the approved SHA（10 tables on `develop` today） — unchanged |
 | TLS / target identity / credential / least-privilege gates（G-3 to G-11） | Unchanged, all still UNMET or UNKNOWN |
-| Relation to PR #3406 `km_audit_ro` | **Unresolved naming overlap:** #3406 (open) proposes a generic `km_audit_ro` and maps it to the same 10-table audit row. For Evidence Coverage Audit the name is `kamimusubi_audit_ro`. #3406 should state whether `km_audit_ro` is this role or a separate generic audit role. This document does not rename anything in #3406 |
+| Relation to PR #3406 `km_audit_ro` | **Resolved:** #3406 (merged `80cd4d03`) maps the 10-table audit row to `kamimusubi_audit_ro` and states that the generic `km_audit_ro` is not its alias; the future use of `km_audit_ro` is undecided |
 
 **TODO（owner / Mother Ship）**
 
-- [ ] Clarify the scope of `km_audit_ro` in #3406 against `kamimusubi_audit_ro`.
+- [x] Clarify the scope of `km_audit_ro` in #3406 against `kamimusubi_audit_ro`（#3406 merged）.
 - [ ] Decide on role creation and grants (§5.2): a separate approval.
-- [ ] Resolve the TLS gate (#3399 / #3402) and the `dj_database_url` `sslmode` / `sslrootcert` pass-through (G-6, §5.4).
+- [x] Confirm the `dj_database_url` `sslmode` / `sslrootcert` pass-through (offline, #3408; propagation only).
+- [ ] Resolve the TLS gate (G-6): provider CA acquisition, and the evidence accepted for CA / hostname verification
+  (Mother Ship decisions; §8.1).
 - [ ] Approve the execution host, credential procedure and run window (G-8, G-9).
 - [ ] Verify custom-role login through the chosen endpoint (G-10).
+
+### 8.1 Unresolved TLS items（UNKNOWN / Mother Ship decisions）
+
+| Item | Status |
+| --- | --- |
+| Provider CA certificate: source, distribution and fingerprint check for `sslrootcert` | **UNKNOWN**; Mother Ship decision |
+| Evidence accepted for CA and hostname verification on the audit connection（`report_db_tls` reports them as `unknown` by design） | **Mother Ship decision**; until decided, G-6 is UNMET |
+| `kamimusubi_audit_ro` login through the chosen pooler endpoint（username format, session vs transaction mode） | **UNKNOWN**（G-10） |
+| TLS policy for the Render Django runtime connection（SPH-21 R-7 `require` or stronger vs `verify-full`） | **Mother Ship decision; not selected here.** It does not change this document's Evidence Coverage gates: anything weaker than `verify-full` is STOP |
