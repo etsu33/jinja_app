@@ -760,3 +760,44 @@ the explicit CA is still undefined**（§10.6 item 3）. G6-E3（the CA file has
 | §10.2 F-F CA propagation | **Audit command path implemented**; the §5.3 preflight connection method is still undefined |
 | G-6 / G-7 | **UNMET** |
 | Role creation / GRANT / REVOKE / Production execution | **NOT APPROVED / STOP** |
+
+## 12. G-7 Gate 1 offline identity parser（2026-11-02; code and offline tests only）
+
+> **Status: IMPLEMENTED（local tool）.** Mother Ship decision `G7_PARSER_POLICY = LOCAL_OFFLINE_REDACTED`. Nothing
+> was run against a real connection string. G-6 **UNMET**, G-7 **UNMET**, Production **STOP**. This resolves the
+> "no parser exists" part of §10.2 F-E only.
+
+**Tool:** `scripts/g7_gate1_identity_check.py`（standard library only）. **Tests:**
+`backend/tests/test_g7_gate1_identity_check.py`（synthetic values; socket creation and name resolution are made to
+fail in every test）.
+
+| Field | Compared with the owner-approved target | UNKNOWN when |
+| --- | --- | --- |
+| G7-A1 project | The user-name suffix of `<role>.<suffix>` equals `project_ref`. **The host name is never used** | No suffix, more than one `.`, or an invalid target value |
+| G7-A2 tenant | The host equals the approved `pooler_host`（exact, case-insensitive） | No host, or the target value is missing |
+| G7-A3 endpoint kind | Derived only for the approved pooler host, an explicit port（5432 → `SESSION_POOLER`, 6543 → `TRANSACTION_POOLER`）and a `<role>.<suffix>` user name; equals `endpoint_kind` | Any other host, a missing or unsupported port, or an ambiguous user name |
+| G7-A4 database name | The single path segment equals `dbname` | No path, or a nested path |
+| G7-A5 port | The explicit port equals `port` | No explicit port（the libpq default is not evidence） |
+| G7-A6 user-name format | The user name is exactly `<role>.<suffix>`; a user name without a suffix is FAIL | No user name, or an ambiguous one |
+
+- **Treated as UNKNOWN for every field:** a malformed URL, a non-PostgreSQL scheme, a fragment, multiple hosts,
+  IPv6 literals and an unencoded reserved character in the credentials. libpq query parameters that override
+  `host` / `hostaddr` / `port` / `user` / `dbname` / `service` make the affected fields UNKNOWN.
+- **Supported formats: the two pooler kinds only**（decision of 2026-11-02）. Direct connections are not supported,
+  so they are always UNKNOWN; no verified record of that format exists in this repository.
+- **Output:** `g7_<field>=PASS|FAIL|UNKNOWN`, `g7_gate1_overall`, `g7_b1_catalog=not_evaluated`,
+  `g7_b2_owner_confirmation=not_evaluated` and **`g7_satisfied=false` always**. Exit status 0 only when all six are
+  PASS. Input problems print a fixed `g7_gate1_input=<token>`. The tool never prints the URL, password, host,
+  user name, project reference, tenant identifier, file paths, argv or exception text.
+- **Inputs:** the URL comes only from an environment variable（default `DATABASE_URL`）. The target JSON must be a
+  regular file outside the repository that group and others cannot access.
+
+**Remaining limitations**
+
+- It checks the configuration string only. It does not prove which database a live session reaches. That needs
+  G7-B1（the catalog comparison）and G7-B2（the owner confirmation）, which are separate and not evaluated.
+- The target is only as independent as its source. The owner must take it from the provider dashboard, not copy it
+  from the connection string being checked.
+- The port-to-kind mapping（5432 / 6543）is the provider convention approved for this tool. It has not been
+  re-verified against the provider here.
+- The tool has not been run on the owner host. Running it is an operator step and needs no Production connection.
