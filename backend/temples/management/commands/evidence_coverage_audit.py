@@ -13,6 +13,12 @@
       権限を一切持たないこと（DB へ問い合わせて確認する）
   を必須とする。接続先が本当に Production かどうか（target identity）はこの command では
   検証できないため、report に `target_identity_verified: false` と明記する。
+- TLS の自己観測（2026-11-02 Mother Ship 決定 IN_TRANSACTION_SELF_OBSERVATION）: guard が成立した後、
+  監査と同じ接続・同じ read-only transaction で、実効 sslmode（libpq の live conninfo）、
+  sslrootcert の有無、クライアント側 ssl_in_use、pg_stat_ssl を観測し、`execution.tls_evidence`
+  に伏せた状態値だけを載せる。production-readonly では、verify-full・sslrootcert・ssl_in_use・
+  pg_stat_ssl のどれかが確認できなければ、データを読む前に止まる（fail closed）。終了時に別の接続へ
+  入れ替わっていた場合も止まる。G-6 / G-7 の判定はしない。
 - `--allow-unguarded-local` はローカル / テスト専用の明示的な例外で、production-readonly では拒否する。
 - 相談文・Concierge thread / message・利用ログは読まない。
 - 手順: docs/runbooks/evidence-coverage-audit.md
@@ -33,6 +39,11 @@ from temples.models import (
     ShrineHistory,
     ShrineKnowledgeSource,
     ShrineSourceFact,
+)
+from temples.services.audit_tls_evidence import (
+    collect_tls_evidence,
+    confirm_same_connection,
+    production_tls_problems,
 )
 from temples.services.evidence_coverage_audit import (
     CLASSES,
@@ -125,6 +136,22 @@ def _read_json(path_str: str, flag: str):
         raise CommandError(f"{flag}: invalid JSON: {exc}") from exc
 
 
+def _render_tls_evidence(evidence) -> str:
+    if not isinstance(evidence, dict):
+        return "n/a"
+    keys = (
+        "effective_sslmode",
+        "verify_full_observed",
+        "sslrootcert_configured",
+        "client_ssl_in_use",
+        "server_pg_stat_ssl",
+        "client_server_consistency",
+        "connection_correlation",
+        "gate_evaluation",
+    )
+    return " ".join(f"{k}={evidence.get(k, 'n/a')}" for k in keys)
+
+
 def render_text_report(report: dict) -> str:
     s = report["summary"]
     lines = [
@@ -135,6 +162,7 @@ def render_text_report(report: dict) -> str:
         f"Read-only Guard: {report.get('execution', {}).get('read_only_guard', 'n/a')}",
         f"SELECT-only Role Verified: {report.get('execution', {}).get('select_only_role_verified')}",
         f"Target Identity Verified: {report.get('execution', {}).get('target_identity_verified')}",
+        "TLS Evidence: " + _render_tls_evidence(report.get("execution", {}).get("tls_evidence")),
         f"Scope: {report['scope']['mode']} "
         f"(requested={report['scope']['requested_count']}, resolved_in_db={report['scope']['resolved_in_db']})",
         "",
@@ -287,15 +315,26 @@ class Command(BaseCommand):
             # guard は最外側の transaction でだけ張る（入れ子の savepoint 内で張ると
             # 呼び出し側の transaction 全体を read-only にしてしまうため、その場合は上で止める）。
             role_verified = None
+            tls_evidence = {"collection": "not_collected_unguarded"}
+            tls_handle = None
             with transaction.atomic():
                 if guard_problem:
                     guard = GUARD_UNGUARDED_LOCAL
                 else:
                     _establish_read_only_transaction()
                     guard = GUARD_ESTABLISHED
+                    # guard 成立後、監査と同じ接続・同じ transaction で TLS を自己観測する。
+                    tls_evidence, tls_handle = collect_tls_evidence(connection)
                     if origin == DATA_ORIGIN_PRODUCTION_READONLY:
                         _verify_select_only_role()
                         role_verified = True
+                        problems = production_tls_problems(tls_evidence)
+                        if problems:
+                            raise CommandError(
+                                "production-readonly requires observed TLS evidence on the audit "
+                                f"connection; not established: {', '.join(problems)}. Aborting "
+                                "without reading data."
+                            )
                 report = build_evidence_coverage_report(
                     data_origin=origin,
                     shrine_ids=shrine_ids,
@@ -303,11 +342,23 @@ class Command(BaseCommand):
                     trace_per_class=options["trace_per_class"],
                     trace_shrine_ids=options["trace_shrine_id"],
                 )
+                if not guard_problem:
+                    tls_evidence = confirm_same_connection(connection, tls_handle, tls_evidence)
+                    if (
+                        origin == DATA_ORIGIN_PRODUCTION_READONLY
+                        and tls_evidence["connection_correlation"] != "same_connection"
+                    ):
+                        raise CommandError(
+                            "production-readonly: the audit did not finish on the observed "
+                            "connection; discarding the report."
+                        )
             report["execution"] = {
                 "read_only_guard": guard,
                 "select_only_role_verified": role_verified,
                 # 接続先が本当に意図した DB（例: Production）かは検証できない。運用者の責任。
                 "target_identity_verified": False,
+                # 観測値だけ（伏せた状態値）。G-6 / G-7 の判定ではない。
+                "tls_evidence": tls_evidence,
             }
             if other is not None:
                 report["comparison"] = compare_reports(report, other)
