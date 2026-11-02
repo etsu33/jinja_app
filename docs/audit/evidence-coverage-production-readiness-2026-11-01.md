@@ -279,13 +279,25 @@ SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 | Certificate expiry | 2031-04-26 |
 | Offline check date | 2026-11-02 |
 
+**Acquisition source — OWNER-ATTESTED（2026-11-02）**
+
+| Item | Status |
+| --- | --- |
+| Source | **OWNER-ATTESTED:** on 2026-11-02 the owner attested that `prod-ca-2021.crt` was downloaded directly from the KAMI MUSUBI Supabase Dashboard > Database Settings > SSL Configuration > Download Certificate |
+| Exact download timestamp | **UNKNOWN** |
+| Screenshot or other acquisition record | **NOT RECORDED** |
+
+An owner attestation records where the owner says the file came from. It is not independent verification of the
+certificate's authenticity. The SHA-256 and offline checks above are unchanged.
+
 **What this does not establish（UNVERIFIED）:**
 
-- The exact official download time and the acquisition evidence（where and how the file was obtained）.
-- Independent verification that the certificate is authentic. A matching SHA-256 shows only that the same bytes
+- The exact download time and any recorded acquisition evidence: the source is owner-attested only, and no
+  screenshot is recorded.
+- Independent verification that the certificate is authentic: **UNVERIFIED**. A matching SHA-256 shows only that the same bytes
   are held. It does not prove the certificate is the provider's genuine CA, and is not treated as authenticity
   evidence here.
-- Mother Ship acceptance of this file as the CA trust source for `sslrootcert`.
+- Mother Ship acceptance of this file as the CA trust source for `sslrootcert`: **PENDING**.
 - The approved evidence requirements for CA and hostname verification on the audit connection.
 - Any Production TLS connection verification. No connection was made.
 
