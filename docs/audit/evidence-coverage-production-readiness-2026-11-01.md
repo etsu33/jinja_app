@@ -545,3 +545,56 @@ Django runtime role (`postgres`) and no privilege escalation. A STOP is reported
 3. Dedicated-role creation and grants（P-2, P-3）.
 4. Execution host, credential procedure and run window（P-1, P-6, P-7）.
 5. Render Django runtime TLS policy（SPH-21 R-7）: out of scope for these gates, still undecided.
+
+### 9.8 Implemented: in-transaction TLS self-observation（code; not run in Production）
+
+**Mother Ship decision:** `AUDIT_TLS_EVIDENCE_IMPLEMENTATION = IN_TRANSACTION_SELF_OBSERVATION`.
+
+**What the code now does**（`backend/temples/services/audit_tls_evidence.py`, called from
+`evidence_coverage_audit`）:
+
+- **Timing and connection:** after the read-only guard succeeds, inside the same transaction and on the audit's own
+  connection, the command records `execution.tls_evidence`. This is a backward-compatible extension: a new key,
+  with `schema_version` unchanged.
+- **Values recorded（redacted state tokens only）:**
+  - `effective_sslmode`: from the **live libpq conninfo** (`pgconn.info`), never from Django settings. Verified
+    locally against psycopg 3.3.4 / libpq 18: the live conninfo reports the mode the connection was opened with,
+    including libpq defaults.
+  - `sslrootcert_configured`: presence only, never the path.
+  - `client_ssl_in_use`: from `pgconn.ssl_in_use` of that connection.
+  - `server_pg_stat_ssl`: queried in a savepoint of the same read-only transaction.
+  - `client_server_consistency`, `connection_correlation`: same driver connection object at the end of the
+    audit, or `mismatch`.
+  - `certificate_verified` / `hostname_verified`: always `unknown`.
+  - `gate_evaluation`: always `not_evaluated`.
+- **production-readonly fails closed, before reading data,** unless all of the following hold:
+  - `effective_sslmode` = `verify-full`;
+  - `sslrootcert` is configured;
+  - `ssl_in_use` = true;
+  - `pg_stat_ssl` = true;
+  - client and server observations are not contradictory.
+
+  If the audit ends on a different connection, the report is discarded. There are no retries and no fallback.
+- `--allow-unguarded-local` records `tls_evidence = {"collection": "not_collected_unguarded"}`.
+
+**Effect on the §9.6 gaps（mechanism only; no Production evidence exists）:**
+
+| Gap | Status |
+| --- | --- |
+| GAP-1 effective `sslmode` | **Mechanism implemented**: live conninfo on the audit connection. G6-E2b stays UNKNOWN until an authorized run records it |
+| GAP-2 correlation | **Mechanism implemented**: the evidence comes from the audit's own connection, with a same-connection check |
+| GAP-3 in-transaction evidence | **Mechanism implemented**: `pg_stat_ssl` is read in the audit's read-only transaction（savepoint） |
+| GAP-4 pooler backend semantics | **Open**: `pooler_detection` is always `unknown`. Agreement between the client and server values does not exclude a pooler |
+| GAP-5 / GAP-6 libpq `verify-full` semantics as CA / hostname evidence | **Open**: the collector observes the effective mode and does not verify certificates or hostnames itself. §9.7 item 1 is unchanged |
+| GAP-7 audit-role pooler login | **Open** |
+
+**New finding（local test DB）:** after `SET ROLE` to an unprivileged role, `pg_stat_ssl` returned no row for the
+session's own backend, so the result is `unknown`, which fails closed. **The audit role must be the login
+(session) role, not a role reached through `SET ROLE`.** Whether the same visibility rule applies through the
+provider's pooler is UNKNOWN.
+
+**Tests:** `backend/temples/tests/services/test_audit_tls_evidence.py`（offline synthetic connections plus the
+local disposable test DB）.
+
+**Unchanged:** G-6 **UNMET**, G-7 **UNMET**, every §6 STOP condition, and §9.5（Production STOP）. The code has not
+been run against Production.

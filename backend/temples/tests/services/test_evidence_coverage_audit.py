@@ -381,11 +381,17 @@ def test_command_json_runs_in_read_only_transaction_and_compares(mixed_db, tmp_p
     assert report["data_origin"] == ORIGIN
     assert report["summary"]["shrine_count"] == 4
     if connection.vendor == "postgresql":
+        tls = report["execution"].pop("tls_evidence")
         assert report["execution"] == {
             "read_only_guard": "postgresql_transaction_read_only",
             "select_only_role_verified": None,
             "target_identity_verified": False,
         }
+        # backward-compatible extension: observed on the audit connection, never a gate PASS
+        assert tls["collection"] == "in_transaction_self_observation"
+        assert tls["connection_correlation"] == "same_connection"
+        assert tls["gate_evaluation"] == "not_evaluated"
+        assert tls["certificate_verified"] == tls["hostname_verified"] == "unknown"
         assert any("set transaction read only" in q["sql"].lower() for q in ctx.captured_queries)
 
     path = tmp_path / "seed.json"
@@ -644,6 +650,7 @@ def test_allow_unguarded_local_is_explicit_and_recorded(mixed_db):
         "read_only_guard": "unguarded_explicitly_allowed_local",
         "select_only_role_verified": None,
         "target_identity_verified": False,
+        "tls_evidence": {"collection": "not_collected_unguarded"},
     }
 
 
@@ -716,19 +723,41 @@ def test_production_origin_runs_with_select_only_role(mixed_db):
         cursor.execute(f"CREATE ROLE {role} NOLOGIN")
         cursor.execute(f"GRANT USAGE ON SCHEMA public TO {role}")
         cursor.execute(f"GRANT SELECT ON ALL TABLES IN SCHEMA public TO {role}")
+    # The local test DB is not a verify-full connection; substitute observed TLS evidence for the
+    # audit connection so this test keeps exercising the role path (TLS fail-closed is tested separately).
+    verified_tls = {
+        "collection": "in_transaction_self_observation",
+        "effective_sslmode": "verify-full",
+        "verify_full_observed": "true",
+        "sslrootcert_configured": "yes",
+        "client_ssl_in_use": "true",
+        "server_pg_stat_ssl": "true",
+        "server_scope": "backend_session",
+        "pooler_detection": "unknown",
+        "client_server_consistency": "consistent",
+        "connection_correlation": "pending",
+        "certificate_verified": "unknown",
+        "hostname_verified": "unknown",
+        "gate_evaluation": "not_evaluated",
+    }
     try:
         with connection.cursor() as cursor:
             cursor.execute(f"SET ROLE {role}")
         out = StringIO()
-        call_command(
-            "evidence_coverage_audit",
-            "--data-origin",
-            "production-readonly",
-            "--confirm-read-only-production",
-            "--format",
-            "json",
-            stdout=out,
-        )
+        with mock.patch.object(
+            command_module,
+            "collect_tls_evidence",
+            side_effect=lambda conn: (dict(verified_tls), conn.connection),
+        ):
+            call_command(
+                "evidence_coverage_audit",
+                "--data-origin",
+                "production-readonly",
+                "--confirm-read-only-production",
+                "--format",
+                "json",
+                stdout=out,
+            )
         report = json.loads(out.getvalue())
     finally:
         with connection.cursor() as cursor:
@@ -736,9 +765,12 @@ def test_production_origin_runs_with_select_only_role(mixed_db):
             cursor.execute(f"DROP OWNED BY {role}")
             cursor.execute(f"DROP ROLE {role}")
 
+    tls = report["execution"].pop("tls_evidence")
     assert report["execution"] == {
         "read_only_guard": "postgresql_transaction_read_only",
         "select_only_role_verified": True,
         "target_identity_verified": False,
     }
+    assert tls["connection_correlation"] == "same_connection"
+    assert tls["gate_evaluation"] == "not_evaluated"
     assert report["summary"]["shrine_count"] == 4
