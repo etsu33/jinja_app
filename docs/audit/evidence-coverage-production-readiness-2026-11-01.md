@@ -290,15 +290,41 @@ SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 An owner attestation records where the owner says the file came from. It is not independent verification of the
 certificate's authenticity. The SHA-256 and offline checks above are unchanged.
 
+**Reacquisition and SHA-256 comparison（2026-11-02, owner-performed; no Production connection）**
+
+| Item | Result |
+| --- | --- |
+| Reacquisition date | 2026-11-02 |
+| Reacquisition time | About 13:26 JST, taken from the downloaded file's modification timestamp（approximate） |
+| Source | KAMI MUSUBI Supabase Dashboard > Database Settings > SSL Configuration > Download Certificate（**owner-attested**） |
+| Downloaded file | `prod-ca-2021 (1).crt` |
+| Existing local file | `prod-ca-2021.crt` |
+| SHA-256 of both files | `700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7` |
+| Result | **PASS**: identical file content |
+
+| Classification | Status |
+| --- | --- |
+| Reacquisition reproducibility | **PASS** |
+| Independent third-party authenticity verification | **UNVERIFIED** |
+| Mother Ship CA trust-source acceptance | **PENDING** |
+| Mother Ship TLS evidence-policy approval | **PENDING** |
+| G-6 / G-7 | **UNMET** |
+
+The comparison shows that a second download from the same owner-attested source returned the same bytes. It is
+**not** independent third-party verification: both files are owner-attested downloads from the same dashboard
+source, and no value from an independent source was compared.
+
 **What this does not establish（UNVERIFIED）:**
 
-- The exact download time and any recorded acquisition evidence: the source is owner-attested only, and no
-  screenshot is recorded.
+- The exact time of the original download, and any recorded acquisition evidence: the source is owner-attested
+  only, and no screenshot is recorded. The 2026-11-02 reacquisition time is approximate（file modification
+  timestamp）.
 - Independent verification that the certificate is authentic: **UNVERIFIED**. A matching SHA-256 shows only that the same bytes
   are held. It does not prove the certificate is the provider's genuine CA, and is not treated as authenticity
   evidence here.
 - Mother Ship acceptance of this file as the CA trust source for `sslrootcert`: **PENDING**.
-- The approved evidence requirements for CA and hostname verification on the audit connection.
+- The approved evidence requirements for CA and hostname verification on the audit connection（Mother Ship TLS
+  evidence-policy approval: **PENDING**）.
 - Any Production TLS connection verification. No connection was made.
 
 G-6 and G-7 remain **UNMET**. Every STOP condition in §6 is unchanged.
