@@ -262,7 +262,31 @@ SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 
 | Item | Status |
 | --- | --- |
-| Provider CA certificate: source, distribution and fingerprint check for `sslrootcert` | **UNKNOWN**; Mother Ship decision |
+| Provider CA certificate: source, distribution and fingerprint check for `sslrootcert` | **PARTIAL**: local file checks recorded offline on 2026-11-02 (§8.1.1). Acquisition evidence, independent authenticity verification and Mother Ship acceptance of the trust source are **UNVERIFIED**; Mother Ship decision |
 | Evidence accepted for CA and hostname verification on the audit connection（`report_db_tls` reports them as `unknown` by design） | **Mother Ship decision**; until decided, G-6 is UNMET |
 | `kamimusubi_audit_ro` login through the chosen pooler endpoint（username format, session vs transaction mode） | **UNKNOWN**（G-10） |
 | TLS policy for the Render Django runtime connection（SPH-21 R-7 `require` or stronger vs `verify-full`） | **Mother Ship decision; not selected here.** It does not change this document's Evidence Coverage gates: anything weaker than `verify-full` is STOP |
+
+#### 8.1.1 Provider CA file — offline checks（2026-11-02, owner-reported; no Production connection）
+
+| Check | Result |
+| --- | --- |
+| File name | `prod-ca-2021.crt` |
+| Local location | `~/.config/kamimusubi/certs/`（outside the repository） |
+| File permissions | `600` |
+| File SHA-256 | `700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7` |
+| Certificate subject CN | `Supabase Root 2021 CA` |
+| Certificate expiry | 2031-04-26 |
+| Offline check date | 2026-11-02 |
+
+**What this does not establish（UNVERIFIED）:**
+
+- The exact official download time and the acquisition evidence（where and how the file was obtained）.
+- Independent verification that the certificate is authentic. A matching SHA-256 shows only that the same bytes
+  are held. It does not prove the certificate is the provider's genuine CA, and is not treated as authenticity
+  evidence here.
+- Mother Ship acceptance of this file as the CA trust source for `sslrootcert`.
+- The approved evidence requirements for CA and hostname verification on the audit connection.
+- Any Production TLS connection verification. No connection was made.
+
+G-6 and G-7 remain **UNMET**. Every STOP condition in §6 is unchanged.
