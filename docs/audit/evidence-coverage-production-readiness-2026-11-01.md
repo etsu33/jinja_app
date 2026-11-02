@@ -950,30 +950,47 @@ No INSERT, UPDATE, DELETE, TRUNCATE, DDL, `COPY`, `LOCK`, temporary object or se
 | `PRODUCTION_CONNECTION` | `STOP` |
 | G-6 / G-7 | `UNMET` / `UNMET` |
 
-The decision text does not list the conditions behind `CONDITIONAL_APPROVAL`. This document therefore treats
-nothing as approved to execute. The conditions in §14.3 are **candidates for approval as role-creation
-conditions**. They are not an approval to execute `CREATE ROLE` or any GRANT（AG-1 / AG-2 remain NOT AUTHORIZED）.
+**Final design decisions（2026-11-02, later the same day）:**
+
+| Decision | Value | Recorded in |
+| --- | --- | --- |
+| `ROLE_CREATION_CONDITIONS_DETAIL` | `ACCEPT_14_3_WITH_PROVIDER_VERIFICATION` | §14.3 |
+| `PREFLIGHT_CA_TRANSPORT` | `DEDICATED_RUNNER` | §14.4 OP-6, §14.5 |
+| `PF16_INDEPENDENT_INVENTORY` | `UNRESOLVED` | §14.6.1 |
+| `RUNNER_EXECUTION_CONTRACT` | `SEQUENTIAL_FAIL_CLOSED` | §14.6 |
+| `ROLE_CREATION_EXECUTION` / `GRANT_EXECUTION` | `NOT_AUTHORIZED` / `NOT_AUTHORIZED` | §14.2 |
+| `PRODUCTION_CONNECTION` | `STOP` | §14.2 |
+| G-6 / G-7 | `UNMET` / `UNMET` | — |
+
+These decisions settle the **design**. None of them authorizes `CREATE ROLE`, GRANT, REVOKE, a Production
+connection, the preflight or the audit run.
 
 ### 14.2 Independent approval gates
 
-Each gate needs its own explicit approval. An approval of one gate never implies another.
+Each gate needs its own explicit approval. An approval of one gate never implies another. **AG-1 to AG-5 all remain
+separately gated, and none is authorized for Production execution.**
 
 | Gate | What it authorizes | Current state | Depends on |
 | --- | --- | --- | --- |
-| AG-1 Role creation | The owner runs `CREATE ROLE kamimusubi_audit_ro …` exactly as approved（§5.2, §14.3）. No grant | **NOT AUTHORIZED**（conditions: `CONDITIONAL_APPROVAL`） | — |
+| AG-1 Role creation | The owner runs `CREATE ROLE kamimusubi_audit_ro …` exactly as approved（§5.2, §14.3）. No grant | **NOT AUTHORIZED**（the §14.3 conditions are accepted as design requirements; provider verification pending） | — |
 | AG-2 Privilege grants | The owner runs the approved CONNECT / USAGE / SELECT grants for the 10 tables of the approved SHA | **NOT AUTHORIZED** | AG-1 executed |
 | AG-3 Connection approval | One audit-role login to the approved endpoint from the approved owner host, inside a named window | **STOP** | AG-1, AG-2; §14.4 prerequisites |
-| AG-4 Read-only preflight approval | Running the §14.6 catalog SQL（and the PF-16 aggregate counts）in that session | **DESIGN ONLY** | AG-3 |
+| AG-4 Read-only preflight approval | Running the §14.6 catalog SQL（and the PF-16 aggregate counts）in that session, through the dedicated runner only | **DESIGN ONLY; NOT AUTHORIZED** | AG-3; OP-6 |
 | AG-5 Audit run approval | `evidence_coverage_audit --data-origin production-readonly` | **STOP**（§6, §9.5） | AG-4 all PASS; G-6 and G-7 evidence |
 
 Remediation of any finding（a REVOKE, a changed grant, a role attribute change）is **not** part of any gate above. It
 needs a new approval, and the preflight must then be repeated from the start.
 
-### 14.3 Role creation conditions（candidates for approval as conditions; not an execution approval）
+### 14.3 Role creation conditions（approved design requirements; provider verification required before execution）
 
-> These five items are **candidate conditions** for `ROLE_CREATION_CONDITIONS`. Confirming them as conditions does
-> **not** authorize executing `CREATE ROLE`, GRANT or REVOKE. Execution still needs AG-1 and AG-2 respectively
-> （§14.2）, and both are NOT AUTHORIZED.
+> **Mother Ship: `ROLE_CREATION_CONDITIONS_DETAIL = ACCEPT_14_3_WITH_PROVIDER_VERIFICATION`.** The five items below
+> are **approved design requirements** for the role. Before any execution, each must be verified against
+> provider-specific behaviour. Items that depend on behaviour still UNKNOWN（§14.10）are condition 1
+> （`CONNECTION LIMIT 1` with pooled server connections; item 3）and condition 3（`ALTER ROLE … SET` on pooled
+> connections; item 4）.
+>
+> This approval of requirements does **not** authorize executing `CREATE ROLE`, GRANT or REVOKE. Execution still
+> needs AG-1 and AG-2 respectively（§14.2）, and both are NOT AUTHORIZED.
 
 1. Exactly the attributes in §5.2 / §13.4: LOGIN, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS,
    NOINHERIT, `CONNECTION LIMIT 1`, a short `VALID UNTIL`, no memberships.
@@ -995,27 +1012,40 @@ needs a new approval, and the preflight must then be repeated from the start.
 | OP-3 | G7-A1–A6 PASS with `scripts/g7_gate1_identity_check.py`（§12）against an owner-approved target taken from the provider dashboard | The tool's token output（shareable） | Not run |
 | OP-4 | CA file: SHA-256 equals §8.1.1（G6-E3） | match yes / no（shareable） | Owner check |
 | OP-5 | Connection string carries `sslmode=verify-full` and an explicit `sslrootcert` that is a file path, not `system`（§11.3） | yes / no（shareable） | Not run |
-| OP-6 | **A preflight client that uses that explicit CA**（§14.5） | — | **UNRESOLVED: STOP** |
-| OP-7 | An **independent** inventory for G7-B1（table set and per-table row counts）, retained before the run | Private | **Not defined**: source, capture time and verifiability are undecided（§14.6.1） |
+| OP-6 | **The dedicated preflight runner**（§14.5）, enforcing the explicit CA and the sequential fail-closed contract（§14.6） | Review and test record（shareable） | **UNIMPLEMENTED: STOP** until the runner is implemented in a separate PR, independently reviewed and tested |
+| OP-7 | An **independent** inventory for G7-B1（table set and per-table row counts）, retained before the run | Private | **UNRESOLVED**: source, capture time and verification method（§14.6.1）. Missing → PF-16 UNKNOWN, STOP |
 
-### 14.5 Explicit CA for the preflight connection（unresolved）
+### 14.5 Explicit CA for the preflight connection（design decided: dedicated runner; unimplemented）
 
 - The audit command enforces the explicit CA itself（§11.3）. **The preflight SQL is not run by the audit command**, so
   that enforcement does not cover it.
 - The existing credential bridge（`scripts/migration_safety/guard.py` `pg_env_exports()`, used by
   `readonly_query.sh`）exports `PGSSLMODE` but **not** `PGSSLROOTCERT`. With `verify-full`, libpq would then use its
   default root file instead of the approved CA, or fail. **It must not be used for this preflight as it is.**
-- Candidate designs, each needing its own review and approval:
-  - (a) a reviewed bridge change that exports `PGSSLROOTCERT` and refuses `verify-ca` / `verify-full` without it;
-  - (b) a dedicated preflight runner with the same rules as §11.3, plus live-conninfo confirmation.
-- **Recommendation: (b) the dedicated preflight runner.** It leaves the shared migration-safety bridge unchanged and
-  can enforce the audit's explicit-CA and redaction rules in one place.
-- **The method is undecided until the Mother Ship's final decision.** This recommendation is not a decision.
-- **Until a method is decided, reviewed and implemented, AG-3 / AG-4 stay STOP.**
+- **Decision（Mother Ship: `PREFLIGHT_CA_TRANSPORT = DEDICATED_RUNNER`）: the preflight uses a dedicated preflight
+  runner.** Changing the shared credential bridge was not chosen. The bridge stays as it is and must not be used for
+  this preflight.
+- **The runner must, at minimum:**
+  - apply the §11.3 rules before connecting: `sslmode=verify-full`, and an explicit `sslrootcert` that is a file path,
+    not `system`;
+  - confirm after connecting that the live conninfo `sslrootcert` equals the explicitly configured value;
+  - connect as the login role only;
+  - follow the `SEQUENTIAL_FAIL_CLOSED` contract（§14.6）;
+  - apply the redaction rules（§14.8）.
+- **The runner is not implemented in this PR.** OP-6 is **UNIMPLEMENTED**. AG-3 and AG-4 stay **STOP** until the
+  runner is implemented in a separate PR, independently reviewed and tested.
 - The preflight session must also be the login role itself. `SET ROLE` hides the session's own `pg_stat_ssl` row
   （§9.8）and is not allowed.
 
 ### 14.6 Preflight sequence
+
+**Execution contract（Mother Ship: `RUNNER_EXECUTION_CONTRACT = SEQUENTIAL_FAIL_CLOSED`）:**
+- The dedicated runner submits the PF checks **one at a time, in order**. It evaluates each result against its
+  expected value before submitting the next check.
+- **The SQL in §14.7 is never submitted as a single batch.** That includes `psql -f`, a multi-statement string and a
+  script that keeps going after an error.
+- On the first FAIL or UNKNOWN, the runner submits nothing further, issues `ROLLBACK`, disconnects and records only
+  the results so far.
 
 **Rules for every step:**
 - Run as `kamimusubi_audit_ro`（the login role）, inside `BEGIN READ ONLY` … `ROLLBACK`.
@@ -1055,13 +1085,13 @@ needs a new approval, and the preflight must then be repeated from the start.
   evidence（§9.8, §11.3）and the CA / hostname evidence decision（§9.7 item 1）. G-7 needs PF-0 together with
   PF-16 and PF-17, recorded as G7-A, G7-B1 and G7-B2.
 
-#### 14.6.1 Independent inventory for PF-16（undecided）
+#### 14.6.1 Independent inventory for PF-16（UNRESOLVED）
 
-- **Undecided:** the inventory's **source**, its **capture time** relative to the run, and **how it can be
-  verified**. An inventory taken from the same Production database through the same path would compare the target
+- **UNRESOLVED（Mother Ship: `PF16_INDEPENDENT_INVENTORY = UNRESOLVED`）:** the inventory's **source**, its
+  **capture time** relative to the run, and **how it can be verified**. An inventory taken from the same Production database through the same path would compare the target
   with itself and prove nothing.
-- **Rule: if no independent inventory exists, PF-16 is UNKNOWN and G7-B1 is UNMET.** By the §14.6 rule this is a
-  STOP, and no PF-16 count query is run.
+- **Rule: if no independent inventory exists, PF-16 is UNKNOWN and G7-B1 is UNMET. That is a STOP**（§14.6）, and
+  no PF-16 count query is submitted.
 - Defining the inventory source is a separate decision. This document does not choose one.
 
 ### 14.7 Preflight SQL（design; validated only offline and on a local disposable database）
@@ -1109,13 +1139,15 @@ SELECT current_setting('statement_timeout') <> '0' AS statement_timeout_set;
 ROLLBACK;
 ```
 
+- **This block lists the checks in order. It is not a script to run.** The dedicated runner submits each statement
+  separately under `SEQUENTIAL_FAIL_CLOSED`（§14.6）. Never submit the block as a single batch.
 - The 10 table names are those of `audited_tables()` on the baseline. **Regenerate them on the approved SHA** before
   use.
 - **Validation done（2026-11-02; no Production）:**
   - `guard.is_readonly_sql()` returns `(True, 'ok')` for PF-1 to PF-15.
   - The whole block ran without error inside `BEGIN READ ONLY` on a local disposable PostgreSQL 16 database, as the
-    local test superuser. **The values there are meaningless for Production**; the run only checked syntax and
-    semantics.
+    local test superuser. That local run checked syntax and semantics only, and it ran the block as one batch.
+    **The values are meaningless for Production, and batch submission is not permitted there**（§14.6）.
   - One defect was found and fixed: `has_sequence_privilege()` must be wrapped in `CASE WHEN relkind = 'S'`,
     because the planner may evaluate it on non-sequence relations.
 
@@ -1140,9 +1172,11 @@ STOP if any of the following holds:
 
 - Any of AG-1 to AG-4 is not explicitly approved.
 - OP-6 is unresolved, or the preflight session is not `verify-full` with the approved, explicit CA.
-- Any PF step is FAIL or UNKNOWN; no later SQL is run（§14.6）.
+- Any PF step is FAIL or UNKNOWN; no later SQL is submitted, and the session is rolled back and disconnected（§14.6）.
+- The SQL would be submitted as a single batch, or by any client other than the dedicated runner（§14.5, §14.6）.
 - No independent inventory exists for PF-16（PF-16 UNKNOWN, G7-B1 UNMET; §14.6.1）.
-- The preflight connection method（§14.5）is not decided by the Mother Ship, reviewed and implemented.
+- The dedicated runner（OP-6）is not implemented, independently reviewed and tested.
+- Any §14.3 condition has not been verified against provider-specific behaviour.
 - An unexplained readable relation, schema `USAGE`, `SECURITY DEFINER` function or PUBLIC default ACL is found.
 - The session is reached through `SET ROLE`, or uses any role other than `kamimusubi_audit_ro`.
 
@@ -1155,3 +1189,5 @@ STOP if any of the following holds:
 4. Whether `ALTER ROLE … SET` defaults apply on pooled connections（PF-15）.
 5. The RLS state and the existence of legacy relations in Production（PF-12, PF-13）.
 6. Whether a provider restricts the catalog views or functions in PF-14.
+7. Not a provider item, but still open: the PF-16 independent inventory（source, capture time, verification
+   method）is **UNRESOLVED**（§14.6.1）.
