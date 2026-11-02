@@ -801,3 +801,133 @@ fail in every test）.
 - The port-to-kind mapping（5432 / 6543）is the provider convention approved for this tool. It has not been
   re-verified against the provider here.
 - The tool has not been run on the owner host. Running it is an operator step and needs no Production connection.
+
+## 13. Required database access inventory for the audit role（2026-11-02; repository evidence only）
+
+> **Status: AUDIT（documentation only）.** Baseline: `develop` @ `85b311cf`. No Production or remote database was
+> contacted. No role, GRANT / REVOKE or configuration change was made. **This section describes what the code
+> requires. It says nothing about what Production grants**; no Production privilege is inferred from code. G-6
+> **UNMET**, G-7 **UNMET**, Production **STOP**. The TEMP decision（§11.1）and the RLS fail-closed policy（§11.2）
+> are unchanged.
+>
+> **Method:**
+> 1. Static trace of `evidence_coverage_audit` and every helper it calls, plus model metadata and migrations.
+> 2. Corroboration on the local disposable test database: every statement issued by the full guarded command was
+>    captured and resolved with `EXPLAIN (VERBOSE)`, for the three Channel B registry states（mapped / unmapped-only
+>    / empty）. The capture harness was not committed; the committed equivalent is #3403
+>    `test_evidence_coverage_audit_sql_inventory.py`.
+
+### 13.1 Call graph（application-data reads）
+
+| Step | Source | Reads |
+| --- | --- | --- |
+| Default scope（QA-fixture exclusion） | `services/evidence_coverage_audit.py:629` → `services/knowledge_coverage_report.py:54` → `services/shrine_qa_fixture_exclusion.py:40-44` | `temples_shrine`（id, filtered by `name_jp`） |
+| `--scope-id` / `--scope-ids-file` | `commands/knowledge_coverage_report.py` `_parse_scope_ids_file` | Local file only, no DB |
+| Deities + all Sources | `services/evidence_coverage_audit.py:427, 431` | `temples_shrinedeity`, `temples_shrinedeity_sources`, `temples_shrineknowledgesource` |
+| Histories + all Sources | same `:448` | `temples_shrinehistory`, `temples_shrinehistory_sources`, `temples_shrineknowledgesource` |
+| Shared Eligibility（fact-ready） | same `:465-466` → `services/shrine_knowledge_selector.py:30, 49, 89` | the same deity / history / Source tables |
+| Channel B typed need match | same `:470` → `services/channel_b_typed_need_match.py:109, 115, 133` | `temples_shrinesourcefact`, `temples_shrinesourcefact_sources`, `temples_shrineknowledgesource`, `temples_goriyakutag`（only when a mapped Fact exists） |
+| Source-fact attribution | `services/evidence_coverage_audit.py:473` | `temples_shrinesourcefact`, `temples_shrinesourcefact_sources`, `temples_shrineknowledgesource` |
+| Shrines + legacy tags | same `:495` | `temples_shrine`, `temples_shrine_goriyaku_tags`, `temples_goriyakutag` |
+
+- The registry is built from repository data（`domain/source_fact_mapping_registry_v1.py:291`）.
+  `validate_registry_db_consistency()`（`:210`）is **not** called on the audit path.
+- `is_recommendation_eligible()`, `evidence_gate`, `NEED_TO_GORIYAKU_IDS` and `PREF_CHOICES` issue no query.
+- No `select_related`, raw SQL or `.raw()` touches application data. Foreign keys that are loaded but never followed
+  （`Shrine.place_ref`, `Shrine.owner`）cause no read of `place_ref` or the user table.
+- Physical names: none of the six models sets `db_table`; all three M2M through tables are auto-created
+  （`models.py:262, 511, 772, 921`）. No migration renames them（`AlterModelTable` / `db_table` appear only for
+  other tables）.
+
+### 13.2 Access matrix
+
+**Application tables（schema `public`）**
+
+| Object | Operation | Required privilege | Source | Confidence |
+| --- | --- | --- | --- | --- |
+| `temples_shrine` | SELECT | SELECT | `evidence_coverage_audit.py:495`; `knowledge_coverage_report.py:54` | CONFIRMED（static + local capture） |
+| `temples_shrine_goriyaku_tags` | SELECT（prefetch join） | SELECT | `evidence_coverage_audit.py:495` | CONFIRMED |
+| `temples_goriyakutag` | SELECT | SELECT | `evidence_coverage_audit.py:495`; `channel_b_typed_need_match.py:133` | CONFIRMED（read in every registry state through the tag prefetch） |
+| `temples_shrinedeity` | SELECT | SELECT | `evidence_coverage_audit.py:431`; `shrine_knowledge_selector.py:49` | CONFIRMED |
+| `temples_shrinedeity_sources` | SELECT | SELECT | prefetch at the same lines | CONFIRMED |
+| `temples_shrinehistory` | SELECT | SELECT | `evidence_coverage_audit.py:448`; `shrine_knowledge_selector.py:89` | CONFIRMED |
+| `temples_shrinehistory_sources` | SELECT | SELECT | prefetch at the same lines | CONFIRMED |
+| `temples_shrineknowledgesource` | SELECT | SELECT | `evidence_coverage_audit.py:427`; `shrine_knowledge_selector.py:30` | CONFIRMED |
+| `temples_shrinesourcefact` | SELECT | SELECT | `evidence_coverage_audit.py:473`; `channel_b_typed_need_match.py:115` | CONFIRMED |
+| `temples_shrinesourcefact_sources` | SELECT | SELECT | prefetch at the same lines | CONFIRMED |
+| `public` schema | name resolution | USAGE | all of the above | CONFIRMED（required for any unqualified table access） |
+| database | connect | CONNECT | connection | CONFIRMED（requirement; Production ACL UNKNOWN） |
+
+**Catalog, statistics and functions（visibility, not application SELECT）**
+
+| Object | Operation | Source | Path | Confidence |
+| --- | --- | --- | --- | --- |
+| `pg_roles`（view over `pg_authid`） | SELECT | `evidence_coverage_audit.py:127`; `audit_rls_visibility.py:34` | role check（production-readonly）; RLS bypass check（every guarded run） | CONFIRMED（local capture shows `pg_authid` through the view） |
+| `pg_class` + `to_regclass()` + `unnest()` | SELECT | `audit_rls_visibility.py:28` | RLS visibility（every guarded run） | CONFIRMED |
+| `has_table_privilege()` | function | `evidence_coverage_audit.py:136` | role check（production-readonly） | CONFIRMED |
+| `pg_stat_ssl`（view over a statistics function）+ `pg_backend_pid()` | SELECT | `audit_tls_evidence.py:44` | TLS evidence（every guarded run, in a savepoint） | CONFIRMED（a row is visible only for the login role itself; §9.8） |
+| `pg_type` | SELECT | Django `contrib/postgres/signals.py`（hstore / citext OIDs, on `connection_created`, cached per process）; Django PostGIS `register_geometry_adapters` when the GIS engine is used | connect time, outside the guarded transaction | CONFIRMED from Django 5.2 source; not seen in the local capture because of the per-process cache and the non-GIS test engine |
+| libpq conninfo / `ssl_in_use` | client-side only | `audit_tls_evidence.py:68, 137` | no SQL | CONFIRMED |
+
+**Session-level operations（no table privilege needed）**
+
+| Statement | Source | Scope |
+| --- | --- | --- |
+| `SET TRANSACTION READ ONLY` / `SHOW transaction_read_only` | `evidence_coverage_audit.py:112-113` | guarded transaction |
+| `SET LOCAL row_security = off` / `SHOW row_security` | `audit_rls_visibility.py:48-49` | guarded transaction only; **not an RLS bypass**（§11.2） |
+| `SAVEPOINT` / `RELEASE SAVEPOINT` | `audit_tls_evidence.py`（`pg_stat_ssl` read） | guarded transaction |
+| `SET TIME ZONE`（only if the server zone differs from `Asia/Tokyo`） | Django `postgresql/base.py` `_configure_timezone` | connect time |
+
+No INSERT, UPDATE, DELETE, TRUNCATE, DDL, `COPY`, `LOCK`, temporary object or sequence access appears on any path.
+
+### 13.3 `audited_tables()` coverage
+
+- `audited_tables()`（`evidence_coverage_audit.py:92`）yields exactly the 10 application tables in §13.2.
+- The local capture read exactly the same 10 tables in all three registry states: **no missing entry and no
+  unnecessary entry.**
+- `audited_tables()` enumerates forward M2M fields only. That is sufficient: the reverse relations from
+  `ShrineKnowledgeSource` use the same three through tables.
+- **Must not be granted:** the ORM-less legacy table `temples_shrine_deities`（the field was removed in migration
+  0072; migration 0100 refers to it as legacy）. No audit path reads it. Whether it still exists in Production is
+  **UNKNOWN**.
+- **Caveat:** `audited_tables()` is a code-level list. Any future model or helper change can widen the reads; #3403
+  guards this in CI.
+
+### 13.4 Minimum privilege proposal（proposal only — nothing is granted）
+
+**Granted today: nothing.** The role does not exist, and creation and grants are **NOT APPROVED**（§8）.
+
+| Proposed | Why |
+| --- | --- |
+| LOGIN; NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS, NOINHERIT; no memberships | G-3. The audit must use the login role itself, not `SET ROLE`（§9.8） |
+| CONNECT on the database | connection |
+| USAGE on schema `public` | name resolution |
+| SELECT on exactly the 10 tables of `audited_tables()` on the approved SHA | §13.2 |
+| Nothing else: no write-class privilege, no CREATE on the database or schema, no sequence privilege | §13.2 shows no other need |
+| TEMPORARY: only through the default PUBLIC grant | accepted with documented risk（§11.1）; never granted directly |
+| Catalog / statistics visibility and function EXECUTE through the **default** PUBLIC grants only | §13.2. No extra grant is proposed. If a provider default removes any of them, the command fails closed rather than needing a new grant |
+
+### 13.5 UNKNOWN（needs a later, authorized DB-side check）
+
+1. Whether Production keeps the default PUBLIC visibility of `pg_roles`, `pg_class`, `pg_type` and `pg_stat_ssl`,
+   and EXECUTE on `has_table_privilege`, `to_regclass`, `unnest` and `pg_backend_pid`.
+2. Whether `pg_stat_ssl` shows the audit role's own backend through the provider pooler（§10.5）.
+3. The RLS state of the 10 tables in Production（§11.2; the run stops if any has RLS）.
+4. The Production ACLs of the 10 tables, of schema `public` and of the database, including PUBLIC and
+   provider-default grants that would widen what the role can read（§5.3 breadth check）.
+5. Whether `temples_shrine_deities` or other legacy relations exist and are readable through PUBLIC.
+6. Whether the `postgis`, `hstore` or `citext` types exist（only the connect-time `pg_type` lookups depend on them;
+   absence is tolerated by the code）.
+
+### 13.6 Decisions and STOP conditions（unchanged unless stated）
+
+- **Decisions still open:**
+  - role creation and grants（§8 / P-2, P-3）;
+  - execution host, credential procedure and run window（P-1, P-6, P-7）;
+  - the §5.3 preflight connection method with an explicit CA（§11.3）;
+  - the audit endpoint kind（§10.6）.
+- **STOP（unchanged）:** every §6 and §9.5 condition. In particular, STOP if:
+  - any readable relation outside the 10 tables is unexplained;
+  - any of the 10 tables has RLS enabled;
+  - the role can bypass RLS;
+  - TLS or target identity is not established（G-6 / G-7 **UNMET**）.
