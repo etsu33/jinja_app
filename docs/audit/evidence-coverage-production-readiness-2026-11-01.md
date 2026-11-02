@@ -951,7 +951,8 @@ No INSERT, UPDATE, DELETE, TRUNCATE, DDL, `COPY`, `LOCK`, temporary object or se
 | G-6 / G-7 | `UNMET` / `UNMET` |
 
 The decision text does not list the conditions behind `CONDITIONAL_APPROVAL`. This document therefore treats
-nothing as approved to execute. The conditions in §14.3 are a **proposal for Mother Ship confirmation**.
+nothing as approved to execute. The conditions in §14.3 are **candidates for approval as role-creation
+conditions**. They are not an approval to execute `CREATE ROLE` or any GRANT（AG-1 / AG-2 remain NOT AUTHORIZED）.
 
 ### 14.2 Independent approval gates
 
@@ -968,7 +969,11 @@ Each gate needs its own explicit approval. An approval of one gate never implies
 Remediation of any finding（a REVOKE, a changed grant, a role attribute change）is **not** part of any gate above. It
 needs a new approval, and the preflight must then be repeated from the start.
 
-### 14.3 Role creation conditions（proposal for confirmation）
+### 14.3 Role creation conditions（candidates for approval as conditions; not an execution approval）
+
+> These five items are **candidate conditions** for `ROLE_CREATION_CONDITIONS`. Confirming them as conditions does
+> **not** authorize executing `CREATE ROLE`, GRANT or REVOKE. Execution still needs AG-1 and AG-2 respectively
+> （§14.2）, and both are NOT AUTHORIZED.
 
 1. Exactly the attributes in §5.2 / §13.4: LOGIN, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS,
    NOINHERIT, `CONNECTION LIMIT 1`, a short `VALID UNTIL`, no memberships.
@@ -991,7 +996,7 @@ needs a new approval, and the preflight must then be repeated from the start.
 | OP-4 | CA file: SHA-256 equals §8.1.1（G6-E3） | match yes / no（shareable） | Owner check |
 | OP-5 | Connection string carries `sslmode=verify-full` and an explicit `sslrootcert` that is a file path, not `system`（§11.3） | yes / no（shareable） | Not run |
 | OP-6 | **A preflight client that uses that explicit CA**（§14.5） | — | **UNRESOLVED: STOP** |
-| OP-7 | The owner-held inventory for G7-B1（table set and per-table row counts）, retained before the run | Private | Not prepared |
+| OP-7 | An **independent** inventory for G7-B1（table set and per-table row counts）, retained before the run | Private | **Not defined**: source, capture time and verifiability are undecided（§14.6.1） |
 
 ### 14.5 Explicit CA for the preflight connection（unresolved）
 
@@ -1000,10 +1005,13 @@ needs a new approval, and the preflight must then be repeated from the start.
 - The existing credential bridge（`scripts/migration_safety/guard.py` `pg_env_exports()`, used by
   `readonly_query.sh`）exports `PGSSLMODE` but **not** `PGSSLROOTCERT`. With `verify-full`, libpq would then use its
   default root file instead of the approved CA, or fail. **It must not be used for this preflight as it is.**
-- Acceptable designs, each needing its own review and approval:
+- Candidate designs, each needing its own review and approval:
   - (a) a reviewed bridge change that exports `PGSSLROOTCERT` and refuses `verify-ca` / `verify-full` without it;
   - (b) a dedicated preflight runner with the same rules as §11.3, plus live-conninfo confirmation.
-- **Until one exists, AG-3 / AG-4 stay STOP.**
+- **Recommendation: (b) the dedicated preflight runner.** It leaves the shared migration-safety bridge unchanged and
+  can enforce the audit's explicit-CA and redaction rules in one place.
+- **The method is undecided until the Mother Ship's final decision.** This recommendation is not a decision.
+- **Until a method is decided, reviewed and implemented, AG-3 / AG-4 stay STOP.**
 - The preflight session must also be the login role itself. `SET ROLE` hides the session's own `pg_stat_ssl` row
   （§9.8）and is not allowed.
 
@@ -1014,8 +1022,9 @@ needs a new approval, and the preflight must then be repeated from the start.
 - Allowed SQL categories: catalog / statistics `SELECT`, `SHOW` and privilege-inquiry functions.
   - The only exception is PF-16: aggregate `count(*)` on the 10 audited tables, under `row_security = off`.
 - No DDL, DML, GRANT / REVOKE, `SET ROLE` or temporary objects.
-- The first FAIL or UNKNOWN is a **STOP**. There are no retries, no fallback role and no remediation in the same
-  session. Later steps may still run for the record.
+- **If any step from PF-0 to PF-17 is FAIL or UNKNOWN, STOP immediately: run no further SQL, end the session
+  （`ROLLBACK` and disconnect）and record only the result so far.** There are no retries, no fallback role and no
+  remediation in the same session. A new attempt needs fresh approval and starts again from PF-0.
 
 | Step | Gate | Check | Expected | PASS / FAIL / UNKNOWN | Shared output |
 | --- | --- | --- | --- | --- | --- |
@@ -1036,7 +1045,7 @@ needs a new approval, and the preflight must then be repeated from the start.
 | PF-13 | §13.3 | legacy relation | `legacy_readable=f`（`legacy_present` recorded） | readable → FAIL | booleans |
 | PF-14 | §13.2 | catalog visibility and function EXECUTE used by the command; own `pg_stat_ssl` row | all `t`; `own_pg_stat_ssl_rows=1`, `own_ssl=t` | any `f` → FAIL（the command would fail closed）; 0 rows → UNKNOWN | booleans, count |
 | PF-15 | G-5 | session defaults | `default_transaction_read_only=on`, `statement_timeout_set=t` | mismatch FAIL（defence in depth; never a substitute for PF-2 to PF-13） | booleans |
-| PF-16 | G7-B1 | aggregate row counts of the 10 tables, compared privately with OP-7（`SET LOCAL row_security = off` first, so an RLS effect errors instead of returning fewer rows） | every count matches the owner-held inventory | any difference FAIL; an error or a missing inventory → UNKNOWN | match yes / no |
+| PF-16 | G7-B1 | aggregate row counts of the 10 tables, compared privately with OP-7（`SET LOCAL row_security = off` first, so an RLS effect errors instead of returning fewer rows） | every count matches the owner-held inventory | any difference FAIL; an error, or no independent inventory（§14.6.1）→ UNKNOWN | match yes / no |
 | PF-17 | G7-B2 | owner confirmation that the matched target is the intended one | explicit, dated | absent → UNKNOWN | yes / no, date |
 
 - **PF-6 to PF-11 widen §5.3.** They cover every non-system schema rather than `public` only, add column-level
@@ -1045,6 +1054,15 @@ needs a new approval, and the preflight must then be repeated from the start.
 - **Even if PF-0 to PF-17 all PASS, G-6 and G-7 are not met.** G-6 also needs the audit command's own TLS
   evidence（§9.8, §11.3）and the CA / hostname evidence decision（§9.7 item 1）. G-7 needs PF-0 together with
   PF-16 and PF-17, recorded as G7-A, G7-B1 and G7-B2.
+
+#### 14.6.1 Independent inventory for PF-16（undecided）
+
+- **Undecided:** the inventory's **source**, its **capture time** relative to the run, and **how it can be
+  verified**. An inventory taken from the same Production database through the same path would compare the target
+  with itself and prove nothing.
+- **Rule: if no independent inventory exists, PF-16 is UNKNOWN and G7-B1 is UNMET.** By the §14.6 rule this is a
+  STOP, and no PF-16 count query is run.
+- Defining the inventory source is a separate decision. This document does not choose one.
 
 ### 14.7 Preflight SQL（design; validated only offline and on a local disposable database）
 
@@ -1122,7 +1140,9 @@ STOP if any of the following holds:
 
 - Any of AG-1 to AG-4 is not explicitly approved.
 - OP-6 is unresolved, or the preflight session is not `verify-full` with the approved, explicit CA.
-- Any PF step is FAIL or UNKNOWN.
+- Any PF step is FAIL or UNKNOWN; no later SQL is run（§14.6）.
+- No independent inventory exists for PF-16（PF-16 UNKNOWN, G7-B1 UNMET; §14.6.1）.
+- The preflight connection method（§14.5）is not decided by the Mother Ship, reviewed and implemented.
 - An unexplained readable relation, schema `USAGE`, `SECURITY DEFINER` function or PUBLIC default ACL is found.
 - The session is reached through `SET ROLE`, or uses any role other than `kamimusubi_audit_ro`.
 
