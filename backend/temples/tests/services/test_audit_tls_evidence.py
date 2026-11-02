@@ -348,7 +348,10 @@ def test_production_origin_fails_closed_without_verify_full(monkeypatch):
         pytest.skip("PostgreSQL only")
     monkeypatch.undo()
     out = StringIO()
-    with mock.patch.object(command_module, "_verify_select_only_role", return_value=None):
+    with (
+        mock.patch.object(command_module, "_verify_select_only_role", return_value=None),
+        mock.patch.object(command_module, "preconnect_ca_problems", return_value=[]),
+    ):
         with mock.patch.object(command_module, "build_evidence_coverage_report") as build:
             with pytest.raises(CommandError, match="effective_sslmode_not_verify_full"):
                 call_command(
@@ -378,11 +381,20 @@ def test_production_origin_discards_report_on_connection_mismatch(monkeypatch):
         "gate_evaluation": "not_evaluated",
     }
     out = StringIO()
+    clean_rls = {
+        "collection": "in_transaction_catalog",
+        "row_security": "off",
+        "status": "no_rls",
+        "role_bypasses_rls": "false",
+    }
     with (
         mock.patch.object(command_module, "_verify_select_only_role", return_value=None),
         mock.patch.object(
             command_module, "collect_tls_evidence", return_value=(dict(ok), object())
         ),
+        mock.patch.object(command_module, "preconnect_ca_problems", return_value=[]),
+        mock.patch.object(command_module, "observe_ca_propagation", return_value="explicit_match"),
+        mock.patch.object(command_module, "collect_rls_visibility", return_value=clean_rls),
     ):
         with pytest.raises(CommandError, match="did not finish on the observed connection"):
             call_command(

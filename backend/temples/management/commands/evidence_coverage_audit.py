@@ -19,6 +19,15 @@
   に伏せた状態値だけを載せる。production-readonly では、verify-full・sslrootcert・ssl_in_use・
   pg_stat_ssl のどれかが確認できなければ、データを読む前に止まる（fail closed）。終了時に別の接続へ
   入れ替わっていた場合も止まる。G-6 / G-7 の判定はしない。
+- CA の明示（2026-11-02 決定 EXPLICIT_SSLROOTCERT_FAIL_CLOSED、production-readonly の接続経路だけ）:
+  接続を開く前に、設定上 sslmode=verify-full と明示的な sslrootcert（`system` は不可）を要求する。接続後は
+  live conninfo の sslrootcert が、明示した値と一致することを要求する（パスは出力しない）。接続に失敗した場合は、
+  ホスト・ユーザー・証明書パス・ドライバのメッセージを出さない CommandError で止まる。
+- RLS（2026-11-02 決定 FAIL_CLOSED_WITH_VISIBILITY_AUDIT）: guard 成立後、同じ transaction で
+  `SET LOCAL row_security = off` を張る。これは RLS の回避ではなく、policy が効くはずの読み取りを
+  0 行ではなくエラー（SQLSTATE 42501）にする設定である。あわせて監査対象テーブルの RLS 状態と、実効ロールが
+  RLS を回避できるかを catalog だけで記録する（`execution.rls_visibility`）。production-readonly では、
+  RLS が有効なテーブル・状態不明・回避可能なロールのどれかがあれば、データを読む前に止まる。
 - `--allow-unguarded-local` はローカル / テスト専用の明示的な例外で、production-readonly では拒否する。
 - 相談文・Concierge thread / message・利用ログは読まない。
 - 手順: docs/runbooks/evidence-coverage-audit.md
@@ -30,7 +39,7 @@ import json
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db import connection, transaction
+from django.db import DatabaseError, connection, transaction
 from temples.management.commands.knowledge_coverage_report import _parse_scope_ids_file
 from temples.models import (
     GoriyakuTag,
@@ -40,9 +49,18 @@ from temples.models import (
     ShrineKnowledgeSource,
     ShrineSourceFact,
 )
+from temples.services.audit_rls_visibility import (
+    collect_rls_visibility,
+    enforce_row_security_off,
+    production_rls_problems,
+    refusal_reason,
+)
 from temples.services.audit_tls_evidence import (
     collect_tls_evidence,
     confirm_same_connection,
+    observe_ca_propagation,
+    preconnect_ca_problems,
+    production_ca_problems,
     production_tls_problems,
 )
 from temples.services.evidence_coverage_audit import (
@@ -126,6 +144,59 @@ def _verify_select_only_role() -> None:
         )
 
 
+def _open_production_connection() -> None:
+    """production-readonly only: CA gate before connecting, then connect without exposing details."""
+    problems = preconnect_ca_problems(connection.settings_dict.get("OPTIONS"))
+    if problems:
+        raise CommandError(
+            "production-readonly requires an explicit CA on the audit connection; not established: "
+            f"{', '.join(problems)}. Aborting before connecting."
+        )
+    try:
+        connection.ensure_connection()
+    except Exception:  # noqa: BLE001 - never echo driver text (host, user, certificate path)
+        raise CommandError(
+            "production-readonly: could not connect to the database. Details are withheld "
+            "(host, user, certificate path and driver message are not printed). Aborting."
+        ) from None
+
+
+def _observe_guarded_connection(origin: str):
+    """After the read-only guard, on the same connection and in the same transaction.
+
+    TLS self-observation, explicit CA propagation, `row_security = off` and the RLS visibility audit; for
+    production-readonly also the role check and every fail-closed rule. Reads catalog / session state only.
+    """
+    tls_evidence, tls_handle = collect_tls_evidence(connection)
+    tls_evidence["ca_propagation"] = observe_ca_propagation(connection)
+    # RLS: policy が効く読み取りをエラーにする（回避ではない）。catalog で状態を記録する。
+    row_security = enforce_row_security_off(connection)
+    if row_security != "off":
+        raise CommandError(
+            f"row_security could not be set to off (row_security={row_security!r}); "
+            "aborting without reading data."
+        )
+    rls_visibility = collect_rls_visibility(connection, audited_tables(), row_security)
+    if origin != DATA_ORIGIN_PRODUCTION_READONLY:
+        return tls_evidence, tls_handle, rls_visibility, None
+    _verify_select_only_role()
+    problems = production_tls_problems(tls_evidence) + production_ca_problems(
+        tls_evidence["ca_propagation"]
+    )
+    if problems:
+        raise CommandError(
+            "production-readonly requires observed TLS evidence on the audit connection; not "
+            f"established: {', '.join(problems)}. Aborting without reading data."
+        )
+    rls_problems = production_rls_problems(rls_visibility)
+    if rls_problems:
+        raise CommandError(
+            "production-readonly requires audited tables without row-level security effects; not "
+            f"established: {', '.join(rls_problems)}. Aborting without reading data."
+        )
+    return tls_evidence, tls_handle, rls_visibility, True
+
+
 def _read_json(path_str: str, flag: str):
     path = Path(path_str).expanduser()
     if not path.is_file():
@@ -147,9 +218,20 @@ def _render_tls_evidence(evidence) -> str:
         "server_pg_stat_ssl",
         "client_server_consistency",
         "connection_correlation",
+        "ca_propagation",
         "gate_evaluation",
     )
     return " ".join(f"{k}={evidence.get(k, 'n/a')}" for k in keys)
+
+
+def _render_rls_visibility(visibility) -> str:
+    if not isinstance(visibility, dict) or "status" not in visibility:
+        return "n/a"
+    enabled = ",".join(visibility.get("rls_enabled_tables") or []) or "none"
+    return (
+        f"row_security={visibility.get('row_security')} status={visibility.get('status')} "
+        f"rls_enabled_tables={enabled} role_bypasses_rls={visibility.get('role_bypasses_rls')}"
+    )
 
 
 def render_text_report(report: dict) -> str:
@@ -163,6 +245,8 @@ def render_text_report(report: dict) -> str:
         f"SELECT-only Role Verified: {report.get('execution', {}).get('select_only_role_verified')}",
         f"Target Identity Verified: {report.get('execution', {}).get('target_identity_verified')}",
         "TLS Evidence: " + _render_tls_evidence(report.get("execution", {}).get("tls_evidence")),
+        "RLS Visibility: "
+        + _render_rls_visibility(report.get("execution", {}).get("rls_visibility")),
         f"Scope: {report['scope']['mode']} "
         f"(requested={report['scope']['requested_count']}, resolved_in_db={report['scope']['resolved_in_db']})",
         "",
@@ -316,32 +400,35 @@ class Command(BaseCommand):
             # 呼び出し側の transaction 全体を read-only にしてしまうため、その場合は上で止める）。
             role_verified = None
             tls_evidence = {"collection": "not_collected_unguarded"}
+            rls_visibility = {"collection": "not_collected_unguarded"}
             tls_handle = None
+            if origin == DATA_ORIGIN_PRODUCTION_READONLY:
+                _open_production_connection()
             with transaction.atomic():
                 if guard_problem:
                     guard = GUARD_UNGUARDED_LOCAL
                 else:
                     _establish_read_only_transaction()
                     guard = GUARD_ESTABLISHED
-                    # guard 成立後、監査と同じ接続・同じ transaction で TLS を自己観測する。
-                    tls_evidence, tls_handle = collect_tls_evidence(connection)
-                    if origin == DATA_ORIGIN_PRODUCTION_READONLY:
-                        _verify_select_only_role()
-                        role_verified = True
-                        problems = production_tls_problems(tls_evidence)
-                        if problems:
-                            raise CommandError(
-                                "production-readonly requires observed TLS evidence on the audit "
-                                f"connection; not established: {', '.join(problems)}. Aborting "
-                                "without reading data."
-                            )
-                report = build_evidence_coverage_report(
-                    data_origin=origin,
-                    shrine_ids=shrine_ids,
-                    axis_conflicts=axis_conflicts,
-                    trace_per_class=options["trace_per_class"],
-                    trace_shrine_ids=options["trace_shrine_id"],
-                )
+                    tls_evidence, tls_handle, rls_visibility, role_verified = (
+                        _observe_guarded_connection(origin)
+                    )
+                try:
+                    report = build_evidence_coverage_report(
+                        data_origin=origin,
+                        shrine_ids=shrine_ids,
+                        axis_conflicts=axis_conflicts,
+                        trace_per_class=options["trace_per_class"],
+                        trace_shrine_ids=options["trace_shrine_id"],
+                    )
+                except DatabaseError as exc:
+                    reason = refusal_reason(exc)
+                    if reason is None:
+                        raise
+                    raise CommandError(
+                        f"a read was refused by the database ({reason}, SQLSTATE 42501); no report "
+                        "was produced. Aborting."
+                    ) from None
                 if not guard_problem:
                     tls_evidence = confirm_same_connection(connection, tls_handle, tls_evidence)
                     if (
@@ -359,6 +446,8 @@ class Command(BaseCommand):
                 "target_identity_verified": False,
                 # 観測値だけ（伏せた状態値）。G-6 / G-7 の判定ではない。
                 "tls_evidence": tls_evidence,
+                # catalog だけの RLS 可視性（行は読まない）。
+                "rls_visibility": rls_visibility,
             }
             if other is not None:
                 report["comparison"] = compare_reports(report, other)
