@@ -24,6 +24,10 @@ Limits:
 - A pooler cannot be detected here (`pooler_detection=unknown`).
 - No G-6 / G-7 gate is evaluated or passed here (`gate_evaluation=not_evaluated`).
 
+Explicit CA propagation (functions at the end of this module) is a separate gate: it compares the live
+`sslrootcert` with the explicitly configured one, so it reads the configured value as a reference. That
+comparison is not TLS evidence and does not change anything `collect_tls_evidence()` reports.
+
 Redaction: only the allowlisted tokens below leave this module. Never connection strings, passwords,
 hostnames, users, project references, certificate paths, backend PIDs or exception text.
 """
@@ -183,3 +187,52 @@ def production_tls_problems(evidence: dict[str, str]) -> list[str]:
     if evidence.get("connection_correlation") not in ("pending", "same_connection"):
         problems.append("connection_not_correlated")
     return problems
+
+
+# --------------------------------------------------------------------------- #
+# Explicit CA propagation (Mother Ship 2026-11-02: CA_PROPAGATION_POLICY = EXPLICIT_SSLROOTCERT_FAIL_CLOSED)
+#
+# Applies only to the audit's production-readonly connection path. The configured values are a pre-connection
+# gate, never TLS evidence; the live conninfo then has to show the same explicitly configured CA file.
+# Paths are compared, never returned or logged.
+# --------------------------------------------------------------------------- #
+
+SYSTEM_ROOTCERT = "system"
+
+
+def preconnect_ca_problems(options: dict | None) -> list[str]:
+    """Reasons to stop **before opening** the production-readonly connection. Configured values only."""
+    options = options or {}
+    problems = []
+    if options.get("sslmode") != "verify-full":
+        problems.append("configured_sslmode_not_verify_full")
+    root = options.get("sslrootcert")
+    if not isinstance(root, str) or not root.strip():
+        problems.append("sslrootcert_not_explicit")
+    elif root.strip().lower() == SYSTEM_ROOTCERT:
+        problems.append("sslrootcert_system_not_accepted")
+    return problems
+
+
+def observe_ca_propagation(conn) -> str:
+    """Whether the live connection uses the explicitly configured `sslrootcert`.
+
+    Returns one token: `explicit_match`, `mismatch`, `system`, `implicit` (live value without an explicit
+    configuration, e.g. from a PG* environment variable), `not_configured` or `unknown`.
+    """
+    configured = (getattr(conn, "settings_dict", None) or {}).get("OPTIONS", {}).get("sslrootcert")
+    available, live = _conninfo_option(_pgconn(_raw_connection(conn)), b"sslrootcert")
+    if not available:
+        return UNKNOWN
+    configured = configured.strip() if isinstance(configured, str) and configured.strip() else None
+    if live and live.strip().lower() == SYSTEM_ROOTCERT:
+        return "system"
+    if not live:
+        return "not_configured"
+    if configured is None:
+        return "implicit"
+    return "explicit_match" if live == configured else "mismatch"
+
+
+def production_ca_problems(ca_propagation: str) -> list[str]:
+    return [] if ca_propagation == "explicit_match" else ["ca_not_explicitly_propagated"]

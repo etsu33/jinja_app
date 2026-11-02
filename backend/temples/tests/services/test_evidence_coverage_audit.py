@@ -382,11 +382,17 @@ def test_command_json_runs_in_read_only_transaction_and_compares(mixed_db, tmp_p
     assert report["summary"]["shrine_count"] == 4
     if connection.vendor == "postgresql":
         tls = report["execution"].pop("tls_evidence")
+        rls = report["execution"].pop("rls_visibility")
         assert report["execution"] == {
             "read_only_guard": "postgresql_transaction_read_only",
             "select_only_role_verified": None,
             "target_identity_verified": False,
         }
+        # backward-compatible extension: catalog-only RLS visibility in the guarded transaction
+        assert rls["row_security"] == "off"
+        assert rls["status"] == "no_rls"
+        assert rls["tables_checked"] == len(command_module.audited_tables())
+        assert any("row_security = off" in q["sql"].lower() for q in ctx.captured_queries)
         # backward-compatible extension: observed on the audit connection, never a gate PASS
         assert tls["collection"] == "in_transaction_self_observation"
         assert tls["connection_correlation"] == "same_connection"
@@ -651,6 +657,7 @@ def test_allow_unguarded_local_is_explicit_and_recorded(mixed_db):
         "select_only_role_verified": None,
         "target_identity_verified": False,
         "tls_evidence": {"collection": "not_collected_unguarded"},
+        "rls_visibility": {"collection": "not_collected_unguarded"},
     }
 
 
@@ -696,14 +703,16 @@ def test_production_origin_fails_closed_for_writable_role(mixed_db):
     if connection.vendor != "postgresql":
         pytest.skip("PostgreSQL-specific guard")
     out = StringIO()
-    with pytest.raises(CommandError, match="SELECT-only"):
-        call_command(
-            "evidence_coverage_audit",
-            "--data-origin",
-            "production-readonly",
-            "--confirm-read-only-production",
-            stdout=out,
-        )
+    # the local test DB has no explicit CA; skip only the pre-connection CA gate (tested separately)
+    with mock.patch.object(command_module, "preconnect_ca_problems", return_value=[]):
+        with pytest.raises(CommandError, match="SELECT-only"):
+            call_command(
+                "evidence_coverage_audit",
+                "--data-origin",
+                "production-readonly",
+                "--confirm-read-only-production",
+                stdout=out,
+            )
     assert out.getvalue() == ""
 
 
@@ -744,10 +753,16 @@ def test_production_origin_runs_with_select_only_role(mixed_db):
         with connection.cursor() as cursor:
             cursor.execute(f"SET ROLE {role}")
         out = StringIO()
-        with mock.patch.object(
-            command_module,
-            "collect_tls_evidence",
-            side_effect=lambda conn: (dict(verified_tls), conn.connection),
+        with (
+            mock.patch.object(
+                command_module,
+                "collect_tls_evidence",
+                side_effect=lambda conn: (dict(verified_tls), conn.connection),
+            ),
+            mock.patch.object(command_module, "preconnect_ca_problems", return_value=[]),
+            mock.patch.object(
+                command_module, "observe_ca_propagation", return_value="explicit_match"
+            ),
         ):
             call_command(
                 "evidence_coverage_audit",
@@ -766,6 +781,10 @@ def test_production_origin_runs_with_select_only_role(mixed_db):
             cursor.execute(f"DROP ROLE {role}")
 
     tls = report["execution"].pop("tls_evidence")
+    rls = report["execution"].pop("rls_visibility")
+    # real catalog check as the restricted role: no RLS on the audited tables, role cannot bypass RLS
+    assert rls["status"] == "no_rls"
+    assert rls["role_bypasses_rls"] == "false"
     assert report["execution"] == {
         "read_only_guard": "postgresql_transaction_read_only",
         "select_only_role_verified": True,

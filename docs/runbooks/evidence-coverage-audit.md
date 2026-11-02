@@ -51,9 +51,14 @@
    - `SET TRANSACTION READ ONLY` の後、`SHOW transaction_read_only` が `on` を返す
 
    成立した guard の種類は `execution.read_only_guard = postgresql_transaction_read_only` として記録する。
-3. **production-readonly の追加条件。** 上記に加えて、次の 2 つを満たさなければ止まる。
+3. **production-readonly の追加条件。** 上記に加えて、次をすべて満たさなければ止まる。
    - `--confirm-read-only-production` を指定する。これは運用者の確認にすぎず、権限や接続先の証明ではない
    - 実効ロールが superuser ではなく、監査対象テーブル（M2M の中間テーブルを含む）のどれにも INSERT / UPDATE / DELETE / TRUNCATE 権限を持たないことを、DB に問い合わせて確認できる（`execution.select_only_role_verified = true`）
+   - **CA の明示：** 接続前に、`DATABASE_URL` の `sslmode=verify-full` と、明示的な `sslrootcert` を確認する（`system` は不可）。満たさなければ接続しない。接続後は、live の `sslrootcert` が明示した値と一致すること（`ca_propagation = explicit_match`）を確認する。接続に失敗した場合は、ホスト・ユーザー・証明書パス・ドライバのメッセージを出さずに止まる
+   - **TLS の自己観測（`execution.tls_evidence`）：** 実効 `verify-full`、`sslrootcert` あり、`ssl_in_use = true`、`pg_stat_ssl = true`、同じ接続で終わること
+   - **RLS（`execution.rls_visibility`）：** 監査対象テーブルに RLS が有効なものがなく、実効ロールが RLS を回避できないこと。全 guarded 実行で `SET LOCAL row_security = off` を張る。これは RLS の回避ではなく、policy が効く読み取りを 0 行ではなくエラーにする設定である
+
+   詳細は `docs/audit/evidence-coverage-production-readiness-2026-11-01.md` §9.8 と §11 を参照。どれも G-6 / G-7 の PASS ではない。
 4. **検証できないこと。** 接続先が本当に意図した DB（Production）かどうかは、この command では確かめられない。そのため `execution.target_identity_verified` は常に `false` になる。接続先の確認は運用者の責任である。なお、ロールの確認は監査対象テーブルへの書き込み権限だけを見ており、それ以外の権限（schema の CREATE など）は対象外である。
 5. `--allow-unguarded-local` は、ローカル / テスト専用の明示的な例外である（SQLite や入れ子 transaction で使う）。`production-readonly` と同時に指定すると拒否する。
 6. **Production での実行は、オーナーが読み取り専用の経路を明示的に承認した場合に限る。** 承認が無い session（AI agent を含む）では実行しない。

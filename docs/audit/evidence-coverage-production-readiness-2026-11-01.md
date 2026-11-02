@@ -151,7 +151,7 @@ SELECT rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls FROM p
 SELECT count(*) FROM pg_auth_members WHERE member = (SELECT oid FROM pg_roles WHERE rolname = current_user);   -- expect 0
 -- G-4 database / schema capabilities
 SELECT has_database_privilege(current_database(), 'CREATE'), has_database_privilege(current_database(), 'TEMP'),
-       has_schema_privilege('public', 'CREATE');                                                                  -- expect f, f, f（TEMP: see §10.2 F-A）
+       has_schema_privilege('public', 'CREATE');                                                                  -- expect f, f, f（TEMP: PUBLIC-derived `t` accepted with documented risk, §11.1）
 -- G-4 table breadth: readable relations in public must equal audited_tables()
 SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
  WHERE n.nspname = 'public' AND c.relkind IN ('r','p','v','m') AND has_table_privilege(c.oid, 'SELECT') ORDER BY 1;
@@ -675,3 +675,88 @@ been run against Production.
 4. The audit endpoint kind（session vs transaction pooler, or direct）.
 
 **Unchanged:** P-1 to P-10 remain STOP. G-6 and G-7 remain **UNMET**. Role creation and grants are **NOT APPROVED**.
+
+## 11. Mother Ship decisions on the §10 findings and their implementation（2026-11-02）
+
+> **Status: DECIDED（policy）and IMPLEMENTED（code, offline tests only）.** No Production connection, role
+> creation, GRANT / REVOKE, Production environment change, deployment or audit execution. G-6 **UNMET**, G-7
+> **UNMET**, Production **STOP**. Every §6 / §9.5 condition stands. No other role privilege requirement is
+> relaxed.
+
+| Decision | Value | Implemented in |
+| --- | --- | --- |
+| TEMP | `TEMP_POLICY = ACCEPT_PUBLIC_TEMP_WITH_DOCUMENTED_RISK` | This document（§11.1） |
+| RLS | `RLS_POLICY = FAIL_CLOSED_WITH_VISIBILITY_AUDIT` | `backend/temples/services/audit_rls_visibility.py`, `evidence_coverage_audit`（§11.2） |
+| CA propagation | `CA_PROPAGATION_POLICY = EXPLICIT_SSLROOTCERT_FAIL_CLOSED` | `audit_tls_evidence.py`（explicit CA functions）, `evidence_coverage_audit`; **only the production-readonly audit connection path**（§11.3） |
+| G-7 parser | `G7_PARSER_POLICY = LOCAL_OFFLINE_REDACTED` | **Not yet implemented.** A separate PR follows after this one is merged |
+
+### 11.1 TEMP: accepted with documented risk（resolves §10.2 F-A as policy）
+
+- The §5.3 TEMP check is no longer a STOP **if, and only if, the privilege comes from the default PUBLIC grant**.
+  The role must not receive TEMPORARY directly or through a membership. G-3 already requires no memberships.
+- **Unchanged:** database CREATE `f`, schema CREATE `f`, no write-class privilege, no memberships, NOBYPASSRLS and
+  the other G-3 / G-4 rules. §5.2 still makes no PUBLIC or default-privilege change.
+- **Documented residual risk:**
+  - Anyone holding the credential can create temporary objects. Temporary objects live only for the session, and
+    they need a session outside a read-only transaction. The audit command never creates them.
+  - Temporary objects use resources（`temp_buffers`, temporary files）. Mitigations are `statement_timeout`, a
+    short `VALID UNTIL`, `CONNECTION LIMIT` and NOLOGIN after the run（§5.2）.
+  - No persistent object and no write to application tables is possible through TEMP.
+
+### 11.2 RLS: fail closed, with a visibility audit（mechanism for §10.2 F-B）
+
+Inside the guarded read-only transaction, after the read-only guard and the TLS observation, on the same
+connection:
+
+1. `SET LOCAL row_security = off`; `SHOW row_security` must return `off`, otherwise the command stops before
+   reading（every guarded run）.
+   - **This is not an RLS bypass.** With `row_security = off`, PostgreSQL raises SQLSTATE 42501 ("query would be
+     affected by row-level security policy") for any read that a policy would filter, instead of returning fewer
+     rows. Roles that already bypass RLS（superuser, BYPASSRLS, table owner without FORCE）are unaffected, and
+     nothing is granted. Local evidence: an RLS-enabled table returned 0 rows to the restricted role by default,
+     and an error under `row_security = off`.
+2. A catalog-only visibility audit is recorded as `execution.rls_visibility`. It covers `relrowsecurity` /
+   `relforcerowsecurity` for every `audited_tables()` table, and whether the effective role is a superuser or has
+   BYPASSRLS. Only table names, booleans and fixed tokens are recorded; no row is read.
+3. **production-readonly stops before reading** if any of the following holds:
+   - row security is not `off`;
+   - any audited table has RLS enabled;
+   - the RLS state is unknown（an unresolved table or a catalog error）;
+   - the effective role can bypass RLS, or that is unknown.
+4. If a read is refused during the audit, the command stops with `row_level_security_would_apply` or
+   `privilege_missing`（SQLSTATE 42501）, produces no report, and prints no table name or driver text.
+
+`execution.rls_visibility` is a backward-compatible extension; `schema_version` is unchanged. Unguarded local runs
+record `{"collection": "not_collected_unguarded"}`. The owner-held per-table row counts（§10.3）stay part of the
+G7-B1 preflight; this mechanism does not replace them.
+
+### 11.3 Explicit CA propagation（mechanism for §10.2 F-F, audit path only）
+
+The production-readonly connection path of `evidence_coverage_audit` now:
+
+- **Checks before connecting**, using configured values as a gate and never as TLS evidence. It requires
+  `sslmode=verify-full` and an explicit, non-empty `sslrootcert` in `DATABASE_URL`. `sslrootcert=system` is refused.
+  If any of these is missing, it stops without opening a connection.
+- **Checks after connecting:** the live libpq conninfo `sslrootcert` must equal the explicitly configured value
+  （`ca_propagation = explicit_match`）. The other outcomes are `mismatch`, `system`, `implicit`（for example from a
+  `PG*` environment variable）, `not_configured` and `unknown`; each of them stops the run. Paths are compared,
+  never printed.
+- **Redacts connection failures**（§10.2 F-D, production-readonly path）: a failed connect raises a fixed message
+  without the host, user, certificate path or driver text. The driver exception is not chained.
+
+**Not changed:** the Django runtime connection settings, `report_db_tls`, and the `scripts/migration_safety`
+credential bridge. The bridge still does not export `sslrootcert`, so **the way §5.3 runs its catalog queries with
+the explicit CA is still undefined**（§10.6 item 3）. G6-E3（the CA file hash）remains an operator check.
+
+### 11.4 Status after this section
+
+| Item | Status |
+| --- | --- |
+| §10.2 F-A TEMP | **Policy decided**（accepted with documented risk） |
+| §10.2 F-B RLS | **Mechanism implemented**; Production RLS state **UNKNOWN** until an authorized run |
+| §10.2 F-C session-overridable defaults | Unchanged（defence in depth only） |
+| §10.2 F-D connection-error exposure | **Redacted** on the production-readonly path; local runs unchanged |
+| §10.2 F-E Gate 1 parser | **Not implemented**; separate PR（`LOCAL_OFFLINE_REDACTED`） |
+| §10.2 F-F CA propagation | **Audit command path implemented**; the §5.3 preflight connection method is still undefined |
+| G-6 / G-7 | **UNMET** |
+| Role creation / GRANT / REVOKE / Production execution | **NOT APPROVED / STOP** |
