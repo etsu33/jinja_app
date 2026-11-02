@@ -391,3 +391,145 @@ evidence policy only. They do **not** authorize any of the following:
 - GRANT, REVOKE or other database privilege changes;
 - Evidence Coverage queries against Production;
 - deployment or merging.
+
+## 9. G-6 / G-7 evidence preflight specification（design only; 2026-11-02）
+
+> **Status: DESIGN.** This section turns the §8.1.2 policy (`VERIFY_FULL_WITH_CLIENT_EVIDENCE`) into a fail-closed
+> preflight specification. Nothing here has been run. G-6 and G-7 remain **UNMET**. §6 governs; this section adds
+> detail and does not relax any §6 condition. It does not authorize Production connections, role creation, GRANT /
+> REVOKE, TLS tests or execution.
+>
+> Baseline: `develop` @ `5bab0ca9`.
+
+### 9.1 Repository facts this specification relies on（read from the code, not inferred）
+
+| ID | Fact | Source |
+| --- | --- | --- |
+| F-1 | `report_db_tls` opens Django's `default` connection (`ensure_connection()`), then reads `pgconn.ssl_in_use` and an allowlisted protocol token. It issues no SQL | `backend/temples/management/commands/report_db_tls.py` `inspect_tls()` |
+| F-2 | The `sslmode` it prints comes from `settings_dict["OPTIONS"]["sslmode"]`, the **configured** value, and not from the live libpq connection. Invalid or missing values print `unspecified` | same, `inspect_tls()` |
+| F-3 | It always prints `certificate_verified=unknown hostname_verified=unknown`. It emits no backend PID, connection identifier, host or user | same, `Command.handle()` |
+| F-4 | `evidence_coverage_audit` collects no TLS or `pg_stat_ssl` evidence. It reads inside one `transaction.atomic()` block after the read-only guard | `backend/temples/management/commands/evidence_coverage_audit.py` `handle()` |
+| F-5 | `report_db_tls` and `evidence_coverage_audit` are separate management commands, so each run uses its own process and its own database connection | Django management command model |
+| F-6 | Settings add no TLS option; `sslmode` / `sslrootcert` come only from `DATABASE_URL`. Offline tests show that both reach the psycopg connect arguments unchanged | `backend/shrine_project/settings.py`; `backend/tests/test_db_tls_options_propagation.py`（#3408） |
+| F-7 | `CONN_MAX_AGE` is 600 when `DEBUG` is false. Django may close a connection and open a new one; nothing in the repository records whether a given command reused or reopened its connection | `settings.py` `build_database_config()` |
+| F-8 | No application code reads `pg_backend_pid()` or `pg_stat_ssl` | repository search（`backend/`） |
+
+### 9.2 Evidence classes
+
+| Class | Meaning | Example source | Proves |
+| --- | --- | --- | --- |
+| C1 Configuration propagation | The settings would pass the options to the driver | #3408 tests | Options are not lost in Django. Says nothing about a live connection |
+| C2 Effective connection settings | The settings in force on the actual connection | Operator's private env file (configured value); live libpq parameter (not observed today, GAP-1) | What the connection was asked to do |
+| C3 Successful verified connection | A connection succeeded with `sslmode=verify-full` and the accepted `sslrootcert` | A successful command run under C2 | Per libpq's documented `verify-full` behaviour, the server certificate chained to `sslrootcert` and the certificate matched the hostname connected to. **This libpq behaviour is cited, not re-verified here（GAP-5）** |
+| C4 Independent third-party authenticity | The CA is the provider's genuine CA, established independently of the dashboard channel | None | **UNVERIFIED**（§8.1.1 / §8.1.2）. Not implied by C1–C3 |
+
+### 9.3 Evidence matrix
+
+Each item has three possible results. **PASS** means the item matches its expected value. **FAIL** means it is
+observed and does not match. **UNKNOWN** means it is not observed, ambiguous or not correlated. **Any FAIL or UNKNOWN
+on a required item is a STOP**（§9.5）.
+
+| Evidence ID | Gate | Collection mechanism | Expected value | Actual value（placeholder） | Correlation requirement | Class | PASS / FAIL / UNKNOWN rule | Redaction |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| G6-E1 Endpoint and hostname | G-6 / G-7 | Operator inspects the private audit connection string offline (Gate 1 parser) | Endpoint kind and hostname are the approved ones | `<ENDPOINT_KIND>`, `<HOST_CLASS>` | Same env file as G6-E2 to E5 and G7-A | C2 | PASS if both match the approval; FAIL if they differ; UNKNOWN if it cannot be parsed | Record the endpoint kind and PASS / FAIL only; never the hostname or URL |
+| G6-E2 Effective `sslmode` | G-6 | (a) configured value from the env file; (b) `report_db_tls` `sslmode=` token (configured, F-2); (c) the live libpq parameter — **not available（GAP-1）** | `verify-full` from (a) and (b); (c) when available | `<SSLMODE_CONFIGURED>` | (b) runs with the same env file as the audit | C2 | PASS needs (a) and (b) to equal `verify-full`. Any other value is FAIL; `unspecified` or missing is UNKNOWN | Record the mode token only |
+| G6-E3 `sslrootcert` is the accepted CA | G-6 | Operator computes the SHA-256 of the file named by `sslrootcert` in the env file and compares it with §8.1.1 | `700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7` | `<SHA256_MATCH: yes/no>` | Same env file | C2 | PASS if the hash matches and the option is explicitly set; FAIL on a mismatch; UNKNOWN if the option is unset or the file is unreadable | Record match yes / no only; never a local absolute path |
+| G6-E4 Successful verified connection | G-6 | `report_db_tls` exits 0 with G6-E1 to E3 in force (the connection succeeded) | Exit 0 | `<EXIT_STATUS>` | Same env file, same session window as the audit | C3 | PASS on exit 0 with E1–E3 PASS; FAIL on a connection or TLS error; UNKNOWN if E1–E3 are not all PASS | Record the exit status and the `[db-tls-probe]` line only; never exception text |
+| G6-E5 Client-side TLS use | G-6 | `report_db_tls` `ssl_in_use=` token | `true` | `<SSL_IN_USE>` | **Must be tied to the audit's own connection. Not supported today（GAP-2）**; only the same env file, host and time window can be shown | C2 / C3 | PASS needs `true` **and** an accepted correlation（§9.4）; FAIL on `false`; UNKNOWN if the token is missing or the correlation is not accepted | Token only |
+| G6-E6 `pg_stat_ssl` | G-6（supplementary） | `SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid();` as the audit role（§5.3） | `t` | `<PG_STAT_SSL>` | Must run on the same server-side session as the audit reads. Through a pooler, see §9.4（GAP-3, GAP-4） | Supplementary | `t` is supplementary only and never sufficient alone; `f` is a STOP; no row, an error or `unknown` is a STOP | Boolean only; never the PID or `client_addr` |
+| G6-E7 Contradiction check | G-6 | Compare E5 and E6 | No contradiction | `<CONSISTENT: yes/no>` | Same run | — | Any contradiction (for example E5 `true` with E6 `f`, or the reverse) is a STOP | — |
+| G7-A1–A6 Connection identity | G-7 | Gate 1 secret-safe parse of the audit connection string（connection-verification document） | A1 project, A2 tenant, A3 endpoint kind, A4 database name, A5 port, A6 username format（for example `<role>.<tenant>` on a pooler）: each equals the approved target | `<A1..A6: PASS/FAIL/UNKNOWN>` | Same env file as G-6 | C2 | PASS only if all six PASS. Any FAIL is FAIL; a malformed or missing field is UNKNOWN | Record PASS / FAIL per field only; never a project reference, host, user or URL |
+| G7-B1 Catalog comparison | G-7 | §5.3 catalog queries as the audit role | Table count and name set equal the owner-held, independently retained inventory | `<CATALOG_MATCH: yes/no>` | Same connection as the audit (single session window) | C2 | PASS on an exact match; FAIL on any difference; UNKNOWN if the inventory or the result is missing | Record match yes / no only |
+| G7-B2 Owner confirmation | G-7 | Owner records that the matched target is the intended one | Explicit confirmation | `<OWNER_CONFIRMED: yes/no, date>` | After A and B1 | Attestation | PASS only with an explicit dated confirmation; absent is UNKNOWN | No identifiers |
+
+A shared pooler hostname that passes `verify-full`（G6-E4）does **not** satisfy G-7. G-7 needs A1–A6, B1 and B2.
+
+**Synthetic example（illustration only; not real values）:**
+
+```text
+G6-E1 endpoint_kind=SESSION_POOLER host_class=APPROVED_POOLER  -> PASS
+G6-E2 sslmode_configured=verify-full probe_sslmode=verify-full live_param=NOT_AVAILABLE -> PASS (a,b); GAP-1 noted
+G6-E3 sslrootcert_set=yes sha256_match=yes                     -> PASS
+G6-E4 report_db_tls exit=0                                     -> PASS
+G6-E5 ssl_in_use=true correlation=CONFIG_AND_WINDOW_ONLY       -> UNKNOWN (GAP-2)  => STOP
+G6-E6 pg_stat_ssl=t                                            -> supplementary
+G7-A  A1..A6=PASS
+G7-B1 catalog_match=yes ; G7-B2 owner_confirmed=yes 2026-11-XX -> PASS
+RESULT: STOP (G6-E5 UNKNOWN)
+```
+
+### 9.4 Connection correlation and pooler semantics
+
+**Client side（`report_db_tls`）**
+
+- Today, `ssl_in_use` describes the connection that `report_db_tls` itself opened, in its own process（F-1, F-5）.
+  It is not the connection `evidence_coverage_audit` uses.
+- Neither command emits a connection identifier（F-3）. If Django reopens a connection（F-7）, nothing records it.
+- Correlation available today: **same env file, same host, same time window**. That is configuration-level
+  correlation, not connection identity（GAP-2）.
+- Exact correlation would need the audit command to record the TLS state of its own connection inside its own
+  transaction（GAP-3）. That is a separate code PR and is not part of this design.
+- Whether configuration-level correlation is acceptable for G6-E5 is a **Mother Ship decision**. Until it is
+  decided, G6-E5 is UNKNOWN, which is a STOP.
+
+**Server side（`pg_stat_ssl`）**
+
+| Path | What `pg_stat_ssl` for `pg_backend_pid()` describes |
+| --- | --- |
+| Direct PostgreSQL | The client's own TLS session with PostgreSQL |
+| Pooler, session mode | The pooler-to-PostgreSQL session that serves this client session. It does not describe the client-to-pooler leg |
+| Pooler, transaction mode | The server session for **the current transaction only**. A later transaction may use another backend. The query must run in the same transaction as the audit reads; today it does not（F-4, GAP-3） |
+
+- How Supavisor reports backend identity, and whether a client-visible backend PID corresponds to `pg_backend_pid()`,
+  is **UNKNOWN（GAP-4）**.
+- The §6 rule is unchanged: `pg_stat_ssl.ssl` false or unknown is a STOP. A missing row, an error, an unavailable
+  view or a contradiction with G6-E5 is treated as unknown, which is a STOP.
+- No other signal substitutes for `pg_stat_ssl`, and `pg_stat_ssl` substitutes for no other item.
+
+**What may be recorded:** the mode token, `ssl_in_use`, the protocol token, the exit status, PASS / FAIL /
+UNKNOWN per item, hash-match yes / no, and dates.
+
+**What must never be logged:** connection strings, passwords, project references, hostnames, usernames, local
+absolute paths, backend PIDs, client addresses, the full `pgconn.info`, and exception text.
+
+### 9.5 Preflight STOP matrix（fail closed）
+
+Each row is required. **Absent, FAIL or UNKNOWN means STOP.** There are no automatic retries, no fallback to the
+Django runtime role (`postgres`) and no privilege escalation. A STOP is reported as is, and the run ends.
+
+| # | Preflight item | Required state | Current state（2026-11-02） | Result |
+| --- | --- | --- | --- | --- |
+| P-1 | Mother Ship execution approval | Explicit approval for a named run window | NOT GRANTED | STOP |
+| P-2 | Dedicated-role creation approval（`kamimusubi_audit_ro`） | Approved and executed by the owner（§5.2） | NOT GRANTED | STOP |
+| P-3 | Database privileges | §5.3: exactly `audited_tables()` SELECT; no write, DDL, TEMP, CREATE; no memberships | Not observable（no role） | STOP |
+| P-4 | G-6 evidence | G6-E1 to E5 PASS, E6 `t`, E7 consistent | Not collected; GAP-1 / GAP-2 / GAP-3 open | STOP |
+| P-5 | G-7 evidence | G7-A1–A6, B1, B2 PASS | Not collected | STOP |
+| P-6 | Execution host | Approved owner host, clean checkout of the approved SHA（§5.1） | Not approved | STOP |
+| P-7 | Credential handling procedure | §5.4 adopted（mode-600 file, env only, post-run NOLOGIN） | Proposed, not adopted | STOP |
+| P-8 | Pooler compatibility | Audit-role login through the chosen endpoint confirmed（G-10） | UNKNOWN | STOP |
+| P-9 | Approved SHA vs audited table set | `audited_tables()` on the approved SHA equals the granted set（§6 item 6） | No approved SHA; no grants | STOP |
+| P-10 | TLS observations | No failed, missing or contradictory observation（E4–E7） | None collected | STOP |
+
+**Overall: STOP.** G-6 **UNMET**, G-7 **UNMET**, Production execution **STOP**.
+
+### 9.6 Design gaps（not fixed here）
+
+| Gap | Description | Effect |
+| --- | --- | --- |
+| GAP-1 | `report_db_tls` reports the configured `sslmode`, not the live libpq parameter | G6-E2 relies on configuration only |
+| GAP-2 | No exact correlation between `report_db_tls` and the audit connection（separate processes, no identifier） | G6-E5 is UNKNOWN unless the Mother Ship accepts configuration-level correlation |
+| GAP-3 | `evidence_coverage_audit` records no TLS or `pg_stat_ssl` evidence inside its own transaction | Exact client-side correlation and transaction-mode `pg_stat_ssl` correlation are impossible today |
+| GAP-4 | Supavisor backend identity / PID semantics are UNKNOWN | G6-E6 meaning through the pooler is uncertain |
+| GAP-5 | libpq `verify-full` semantics are cited from libpq documentation, not re-verified against the provider endpoint | C3 rests on that documented behaviour |
+| GAP-6 | Nothing records that CA-chain and hostname verification were enforced, other than a successful `verify-full` connection（C3） | Accepting C3 as policy item 5 evidence is a Mother Ship decision |
+| GAP-7 | Audit-role pooler compatibility（username format, mode） | P-8 UNKNOWN |
+
+### 9.7 Remaining Mother Ship decisions
+
+1. Whether a successful `verify-full` connection with the accepted `sslrootcert`（C3, G6-E4）is accepted as the
+   §8.1.2 item 5 evidence（GAP-5, GAP-6）.
+2. Whether configuration-level correlation is acceptable for G6-E5, or whether a code PR adding in-transaction TLS
+   evidence（GAP-2, GAP-3）is required first.
+3. Dedicated-role creation and grants（P-2, P-3）.
+4. Execution host, credential procedure and run window（P-1, P-6, P-7）.
+5. Render Django runtime TLS policy（SPH-21 R-7）: out of scope for these gates, still undecided.
