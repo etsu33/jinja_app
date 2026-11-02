@@ -262,8 +262,8 @@ SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 
 | Item | Status |
 | --- | --- |
-| Provider CA certificate: source, distribution and fingerprint check for `sslrootcert` | **PARTIAL**: local file checks recorded offline on 2026-11-02 (§8.1.1). Acquisition evidence, independent authenticity verification and Mother Ship acceptance of the trust source are **UNVERIFIED**; Mother Ship decision |
-| Evidence accepted for CA and hostname verification on the audit connection（`report_db_tls` reports them as `unknown` by design） | **Mother Ship decision**; until decided, G-6 is UNMET |
+| Provider CA certificate: source, distribution and fingerprint check for `sslrootcert` | **Trust source DECIDED（Mother Ship, 2026-11-02: `ACCEPT_PROVIDER_DASHBOARD_CA`; §8.1.2）.** Local file checks, owner attestation and reacquisition comparison are recorded in §8.1.1. Independent third-party authenticity verification remains **UNVERIFIED** |
+| Evidence accepted for CA and hostname verification on the audit connection（`report_db_tls` reports them as `unknown` by design） | **Policy DECIDED（Mother Ship, 2026-11-02: `VERIFY_FULL_WITH_CLIENT_EVIDENCE`; §8.1.2）.** The evidence has not been collected; G-6 remains **UNMET** |
 | `kamimusubi_audit_ro` login through the chosen pooler endpoint（username format, session vs transaction mode） | **UNKNOWN**（G-10） |
 | TLS policy for the Render Django runtime connection（SPH-21 R-7 `require` or stronger vs `verify-full`） | **Mother Ship decision; not selected here.** It does not change this document's Evidence Coverage gates: anything weaker than `verify-full` is STOP |
 
@@ -328,3 +328,66 @@ source, and no value from an independent source was compared.
 - Any Production TLS connection verification. No connection was made.
 
 G-6 and G-7 remain **UNMET**. Every STOP condition in §6 is unchanged.
+
+#### 8.1.2 Mother Ship decisions（2026-11-02）: CA trust source and TLS evidence policy
+
+```text
+Decision Date: 2026-11-02
+CA_TRUST_SOURCE = ACCEPT_PROVIDER_DASHBOARD_CA
+TLS_EVIDENCE_POLICY = VERIFY_FULL_WITH_CLIENT_EVIDENCE
+```
+
+These are approved **policy decisions**. They are not completed technical verification gates. No runtime validation
+is marked PASS by this record.
+
+**CA trust source — `ACCEPT_PROVIDER_DASHBOARD_CA`**
+
+- The Mother Ship accepted the CA obtained through the owner-attested Supabase Dashboard distribution channel
+  (§8.1.1).
+- The recorded reacquisition and SHA-256 comparison (§8.1.1, reacquisition reproducibility PASS) support this
+  operational trust decision.
+- Independent third-party authenticity verification remains **UNVERIFIED**. This decision is an operational trust
+  decision, not third-party cryptographic verification of the certificate.
+- Accepting the trust source does not prove that this CA is compatible with the actual audit connection endpoint.
+  That is shown only by an authorized verify-full connection (below).
+
+**TLS evidence policy — `VERIFY_FULL_WITH_CLIENT_EVIDENCE`（approved audit evidence policy）**
+
+Required evidence for a future authorized verification of the audit connection:
+
+1. `sslmode=verify-full`.
+2. An explicit `sslrootcert` pointing to the accepted CA.
+3. A successful connection using the documented settings and the intended hostname.
+4. Client-side TLS confirmation showing `ssl_in_use=true` for that connection.
+5. Evidence that CA-chain and hostname verification were enforced by the connection configuration.
+6. A separate G-7 verification of the intended project and tenant: the connection URL identity comparison (Gate 1)
+   plus owner-held catalog evidence.
+7. The existing `pg_stat_ssl` STOP behaviour is preserved: a `false` or `unknown` result is a STOP.
+
+`report_db_tls` reports TLS use and the configured `sslmode` only. It does **not** independently verify the
+certificate chain or the hostname; it always prints `certificate_verified=unknown hostname_verified=unknown`.
+
+**Status after these decisions**
+
+| Item | Status |
+| --- | --- |
+| G-6 TLS | **UNMET** |
+| G-7 Target identity | **UNMET** |
+| §6 Production STOP conditions | **Unchanged**（all preserved） |
+| Dedicated audit-role creation approval | **NOT GRANTED** |
+| Production Evidence Coverage execution approval | **NOT GRANTED** |
+
+The "PENDING" entries for these two decisions in §8.1.1 record the status at the time of that evidence. For these
+two items they are superseded by this section; the §8.1.1 evidence itself is unchanged.
+
+**Authorization boundary.** These decisions authorize documentation of the CA trust-source policy and the TLS
+evidence policy only. They do **not** authorize any of the following:
+
+- Production database connections;
+- TLS tests against Production;
+- changes to Render or Supabase settings;
+- changes to environment variables or credentials;
+- creating database users or roles;
+- GRANT, REVOKE or other database privilege changes;
+- Evidence Coverage queries against Production;
+- deployment or merging.
