@@ -68,7 +68,7 @@ was not read.
 | Membership in privileged roles; the ability to `SET ROLE` | **No** | — |
 | Database `CREATE` / `TEMP`, schema `CREATE` | **No** | — |
 | SELECT on non-audited tables (least-privilege breadth) | **No** | — |
-| TLS in use and the server certificate verified | **No** | — |
+| TLS in use and the server certificate verified | **Observed, not verified**（#3415）: effective `sslmode`, `ssl_in_use` and `pg_stat_ssl` are recorded on the audit connection, and production-readonly stops without `verify-full`. Certificate and hostname verification are not performed by the command（§9.8） | `audit_tls_evidence.py` |
 | Target is the intended Production DB | **No**: `target_identity_verified` is always `false` | `handle()` |
 
 The read-only transaction blocks writes even for a powerful role, so the gaps are defence-in-depth and exposure
@@ -151,7 +151,7 @@ SELECT rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls FROM p
 SELECT count(*) FROM pg_auth_members WHERE member = (SELECT oid FROM pg_roles WHERE rolname = current_user);   -- expect 0
 -- G-4 database / schema capabilities
 SELECT has_database_privilege(current_database(), 'CREATE'), has_database_privilege(current_database(), 'TEMP'),
-       has_schema_privilege('public', 'CREATE');                                                                  -- expect f, f, f
+       has_schema_privilege('public', 'CREATE');                                                                  -- expect f, f, f（TEMP: see §10.2 F-A）
 -- G-4 table breadth: readable relations in public must equal audited_tables()
 SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
  WHERE n.nspname = 'public' AND c.relkind IN ('r','p','v','m') AND has_table_privilege(c.oid, 'SELECT') ORDER BY 1;
@@ -227,6 +227,8 @@ SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 - Any readable relation outside `audited_tables()` is unexplained.
 - The target identity is unproven.
 - Execution would happen inside an AI / cloud agent session or a production web runtime.
+- Row-level security is enabled on any `audited_tables()` table and its effect on the audit role is not approved and
+  explained (§10.2 F-B).
 
 ## 7. Limitations
 
@@ -598,3 +600,78 @@ local disposable test DB）.
 
 **Unchanged:** G-6 **UNMET**, G-7 **UNMET**, every §6 STOP condition, and §9.5（Production STOP）. The code has not
 been run against Production.
+
+## 10. Dedicated-role preflight audit（2026-11-02; documentation only）
+
+> **Status: AUDIT.** No Production connection, Production SQL, role creation, GRANT / REVOKE, credential or
+> environment change, or deployment. Baseline: `develop` @ `55c45bd6`. G-6 **UNMET**, G-7 **UNMET**, Production
+> **STOP**. This section adds findings; it relaxes no §6 or §9.5 condition.
+>
+> Local evidence below comes from a disposable local PostgreSQL 16.15 cluster with Django 5.2.17, psycopg 3.3.4 and
+> libpq 18. Every local role and database was dropped afterwards.
+
+### 10.1 Facts confirmed（code or local run）
+
+| ID | Fact | Source |
+| --- | --- | --- |
+| R-1 | `audited_tables()` is derived at runtime from `_AUDITED_MODELS`（6 models plus their M2M through tables）. It yields the 10 tables listed in §5.2 on this baseline | `evidence_coverage_audit.py` |
+| R-2 | **Full command as a LOGIN role, least privilege（local）.** A role with LOGIN, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS, NOINHERIT and CONNECTION LIMIT 1, holding only CONNECT, `public` USAGE and SELECT on `audited_tables()`, completed the whole command on populated data（mapped registry）: the guard was established, TLS evidence was collected with `pg_stat_ssl=true`, and `current_user = session_user`. In production-readonly mode, `_verify_select_only_role()` passed and the run then stopped at the TLS gate（`effective_sslmode_not_verify_full`, `sslrootcert_not_configured`）, as designed | local scratch test; not committed |
+| R-3 | The existing restricted-role test（#3403）runs the **service function** under `SET ROLE`, not the command as a login role. Under `SET ROLE`, `pg_stat_ssl` shows no row（§9.8）, so R-2 is the relevant evidence for the command path | `test_evidence_coverage_audit_sql_inventory.py` |
+| R-4 | The command's own role check covers only `rolsuper` and INSERT / UPDATE / DELETE / TRUNCATE on the audited tables（§2.2）. G-3 / G-4 breadth stays an operator preflight（§5.3） | `_verify_select_only_role()` |
+| R-5 | Django 5.2 drops OPTIONS `assume_role` from the connect parameters and issues `SET ROLE` after connecting. **The audit connection must not set `assume_role`**: the login role itself must be `kamimusubi_audit_ro`（§9.8 finding） | Django `postgresql/base.py` |
+| R-6 | Django 5.2 uses client-side binding cursors and sets `prepare_threshold=None` by default, so it creates no server-side prepared statements | same |
+| R-7 | The whole audit, including TLS collection, runs inside one `transaction.atomic()` | `handle()` |
+| R-8 | At connect time, Django may run `SET TIME ZONE`（`TIME_ZONE = "Asia/Tokyo"`, `USE_TZ = True`）outside the audit transaction. With the PostGIS engine it also reads `pg_type` to register geometry types. Both are catalog or session operations, not table reads | Django `postgresql/base.py`, `postgis/base.py`; `settings.py` |
+
+### 10.2 Findings that change the preflight
+
+| ID | Finding | Evidence | Effect |
+| --- | --- | --- | --- |
+| F-A | **Database TEMP is granted to PUBLIC by default.** A new role therefore has `has_database_privilege(..., 'TEMP') = t`, and §5.3 expects `f`. Meeting `f` needs `REVOKE TEMPORARY ON DATABASE ... FROM PUBLIC`, a global PUBLIC change, which §5.2 excludes | local: `t` for a role with no TEMP grant | Under the current §5.2 rule the §5.3 check fails, so the result is **STOP**. **A Mother Ship decision is needed:** either accept PUBLIC TEMP for this role as documented residual risk, or approve the global revoke as a separate SPH-21 change. This audit does neither. Production's actual TEMP ACL is **UNKNOWN** |
+| F-B | **Row-level security can silently reduce results.** For a NOBYPASSRLS role with SELECT on a table that has RLS enabled and no policy for the role, the query returns **0 rows without an error**. The Django runtime role `postgres` has BYPASSRLS（§3）, so the application would not show this | local: an RLS-enabled table returned 0 of 2 rows | A run could produce a plausible but wrong report. **Preflight addition:** read `pg_class.relrowsecurity` for every `audited_tables()` table, and compare row counts with the owner-held inventory. RLS that is enabled and not explained is a **STOP**（added to §6）. Production's RLS state for these tables is **UNKNOWN** |
+| F-C | **G-5 role defaults can be overridden by the session.** The role can run `SET default_transaction_read_only = off` and `SET statement_timeout = 0` | local | G-5 is defence in depth only. The boundaries remain the privileges（G-3 / G-4）and the command's own `SET TRANSACTION READ ONLY` guard |
+| F-D | **Connection errors expose identifiers on stderr.** The command does not catch connection failures. A failed connect prints a traceback that contains the **server address, the username and the `sslrootcert` path**. The password was not printed | local, synthetic URLs | G-8: raw stderr is sensitive and must never be pasted into a PR, an issue or an AI session; record only PASS / FAIL. Redacting connection errors in the command would be a separate code PR（not proposed here）. `report_db_tls` already redacts its errors（`backend/tests/test_db_tls_options_propagation.py`） |
+| F-E | **No Gate 1 parser exists in the repository.** `scripts/migration_safety/check_credential_presence.sh` reports structural booleans only（scheme, host, port, database name, userinfo present）. It does not compare the project / tenant, endpoint kind or port with an approved target | repository search | G-7 (a) has no implemented tool. The connection-verification document requires any local parser to be reviewed for redaction before use. **G-7 stays UNMET** |
+| F-F | **The credential bridge drops `sslrootcert`.** `guard.py pg_env_exports()` exports `PGSSLMODE` but not `PGSSLROOTCERT`. Running the §5.3 preflight through `readonly_query.sh` with `verify-full` would therefore not use the accepted CA file. libpq would fall back to its default root file, or fail | `scripts/migration_safety/guard.py` | The way the §5.3 preflight connects is **undefined**. It must use the same explicit `sslrootcert`（G6-E3）as the audit, or a reviewed change to the bridge. Until then, P-4 / P-10 cannot be correlated with the preflight |
+
+### 10.3 G-7 offline identity check（what can be done without a connection）
+
+- **Possible offline, by the owner only, in the private environment:** a Gate 1 comparison of the audit connection
+  string. It checks the tenant-scoped username, endpoint kind, port, database name and `sslmode` class against the
+  approved target, and records PASS / FAIL / UNKNOWN only. **It needs a reviewed parser, which does not exist（F-E）.**
+- **Not possible offline:** G7-B1（the catalog comparison）needs the audit-role connection. G7-B2（the owner
+  confirmation）follows B1.
+- The owner-held inventory for B1 must be retained independently **before** the run. It should also hold expected
+  per-table row counts, because of F-B.
+
+### 10.4 G-8 / G-9 controls（status）
+
+| Control | Status |
+| --- | --- |
+| Mode-600 credential file outside the repository, loaded as an env var | Precedent exists（`scripts/migration_safety` credential bridge）; **not adopted** for this audit, and the bridge lacks `sslrootcert`（F-F） |
+| No URL in argv, history or logs | Holds for the command's normal output. **Fails on connection errors**（F-D）: stderr must be treated as sensitive |
+| Clean checkout of an approved SHA on an owner host | Not approved（P-6）. The host needs Python dependencies from `backend/requirements.txt`, and GDAL / GEOS if `USE_GIS` stays at its default `true`. `DJANGO_SECRET_KEY` must be set; any non-production value suffices for this command |
+| Post-run NOLOGIN / password rotation | Proposed（§5.2）; **not adopted** |
+| AI / cloud agent execution | Excluded（runbook §2.6）; unchanged |
+
+### 10.5 G-10 pooler compatibility — unknowns
+
+| Item | Status |
+| --- | --- |
+| Custom-role login through the provider pooler（tenant-scoped username format, password / auth lookup for a new role） | **UNKNOWN** |
+| Whether `CONNECTION LIMIT 1` counts pooler-held server connections and can block the run | **UNKNOWN** |
+| Whether role-level `ALTER ROLE ... SET` defaults（G-5）are applied on pooled server connections | **UNKNOWN**（the command's own guard does not depend on them; F-C） |
+| `pg_stat_ssl` visibility of the audit role's own backend through the pooler | **UNKNOWN**（visible locally for a login role; R-2） |
+| Transaction-mode pooler | The audit's reads and TLS collection share one transaction（R-7）, and Django creates no prepared statements（R-6）. Django's connect-time `SET TIME ZONE`（R-8）would not reliably persist. Its effect on the report is not analysed. **Session mode**（the endpoint kind observed for Render, connection-verification document）avoids this; the audit endpoint is not chosen |
+| Session vs transaction endpoint for the audit | **Not decided**（G7-A3） |
+
+### 10.6 Decisions needed（no change to existing decisions）
+
+1. F-A: either accept PUBLIC TEMP as a residual risk, or approve a separate global `REVOKE TEMPORARY` change.
+2. F-B: the expected RLS state of `audited_tables()` in Production and how it is checked（the preflight addition
+   above）.
+3. F-E / F-F: whether to build and review a Gate 1 parser, and how the §5.3 preflight connects with the explicit
+   CA. Either would be a separate PR.
+4. The audit endpoint kind（session vs transaction pooler, or direct）.
+
+**Unchanged:** P-1 to P-10 remain STOP. G-6 and G-7 remain **UNMET**. Role creation and grants are **NOT APPROVED**.
