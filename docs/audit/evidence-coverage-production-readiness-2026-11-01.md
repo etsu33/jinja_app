@@ -985,9 +985,9 @@ needs a new approval, and the preflight must then be repeated from the start.
 
 > **Mother Ship: `ROLE_CREATION_CONDITIONS_DETAIL = ACCEPT_14_3_WITH_PROVIDER_VERIFICATION`.** The five items below
 > are **approved design requirements** for the role. Before any execution, each must be verified against
-> provider-specific behaviour. Items that depend on behaviour still UNKNOWN（§14.10）are condition 1
-> （`CONNECTION LIMIT 1` with pooled server connections; item 3）and condition 3（`ALTER ROLE … SET` on pooled
-> connections; item 4）.
+> provider-specific behaviour. The provider-dependent requirements still marked UNKNOWN in §14.10
+> are condition 1（`CONNECTION LIMIT 1`; §14.10 item 3）and condition 3（`ALTER ROLE … SET`; §14.10 item 4）.
+> Both require provider-specific verification before any execution approval.
 >
 > This approval of requirements does **not** authorize executing `CREATE ROLE`, GRANT or REVOKE. Execution still
 > needs AG-1 and AG-2 respectively（§14.2）, and both are NOT AUTHORIZED.
