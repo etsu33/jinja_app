@@ -345,6 +345,17 @@ def test_stop_after_first_fail_or_unknown(ca_file, sub):
     assert "preflight_overall=STOP" in report.render()
 
 
+def test_pf12_accepts_collation_independent_row_order(ca_file):
+    results = _pass_results()
+    original = results["PF-12"]
+    results["PF-12"] = Q(original.columns, tuple(reversed(original.rows)))
+    report, conn, _ = _run(ca_file, results=results)
+    assert report.stopped_at == "PF-16"  # PF-12 passes; default inventory gate stops later.
+    assert next(step for step in report.steps if step.step == "PF-12").status == "PASS"
+    assert _submitted_subs(conn)[-1] == "PF-15b"
+    _assert_redacted(report.render(), ca_file)
+
+
 def test_rls_enabled_is_a_stop(ca_file):
     results = _pass_results()
     rows = [(t, True, True, t == "temples_shrine", False) for t in pf.APPROVED_TABLES]
@@ -406,9 +417,17 @@ MALFORMED = [
         "PF-12",
         Q(
             ("name", "present", "can_select", "rls_enabled", "rls_forced"),
-            tuple((t, True, True, False, False) for t in reversed(pf.APPROVED_TABLES)),
+            tuple((t, True, True, False, False) for t in pf.APPROVED_TABLES[:-1])
+            + ((pf.APPROVED_TABLES[0], True, True, False, False),),
         ),
-    ),
+    ),  # duplicate and missing name
+    (
+        "PF-12",
+        Q(
+            ("name", "present", "can_select", "rls_enabled", "rls_forced"),
+            tuple((t, True, True, False, False) for t in pf.APPROVED_TABLES[:-1]),
+        ),
+    ),  # missing one table
     (
         "PF-12",
         Q(
