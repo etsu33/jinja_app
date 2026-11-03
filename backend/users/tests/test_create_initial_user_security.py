@@ -37,4 +37,6 @@ def test_initial_user_create_once_and_never_update(django_user_model):
         assert not user.is_superuser
         with pytest.raises(CommandError, match="bootstrap_user_already_exists"):
             call_command("create_initial_user")
-        assert django_user_model.objects.get(pk=user.pk).check_password(env["KAMIMUSUBI_BOOTSTRAP_PASSWORD"])
+        assert django_user_model.objects.get(pk=user.pk).check_password(
+            env["KAMIMUSUBI_BOOTSTRAP_PASSWORD"]
+        )

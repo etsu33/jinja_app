@@ -1,8 +1,12 @@
 # SEC-B02 Bootstrap Exit-Status Compatibility Audit（2026-11-03）
 
-> **Status: Audit / Historical（read-only audit + tests; PR #3429 follow-up）**
+> **Status: Audit / Historical（PR #3429 follow-up）. Final decision: C-1 = Option C, `backend/create_user_once.py`
+> deleted（§7）.**
 >
-> - Target: PR #3429 branch `fix/security-remove-hardcoded-credentials` @ `136267c`（base `develop` @ `f9cf35c4`）.
+> - Target: PR #3429 branch `fix/security-remove-hardcoded-credentials`.
+>   - §1–§6: audited @ `136267c`; tests added @ `2fee4ff`.
+>   - §7: the deletion, on top of `2fee4ff`.
+>   - Base: `develop` @ `f9cf35c4`.
 > - Question: PR #3429 changes the "user already exists" outcome of both bootstrap paths from a normal exit to an
 >   error exit. Who calls these paths, and what breaks?
 > - No Production connection, no credential retrieval, no account change and no history rewrite. Local disposable
@@ -12,6 +16,14 @@
 
 ## 0. Verdict
 
+- **Final（§7）:** Mother Ship chose C-1 = Option C. The obsolete superuser script `backend/create_user_once.py` is
+  deleted.
+  - Its silent-success path（C-1）and its undocumented working path（C-2）no longer exist.
+  - No other privileged-user creation mechanism was introduced.
+  - The only bootstrap left is `manage.py create_initial_user`. It is explicit opt-in, fails closed, and creates a
+    **regular** user.
+- **Deleting the file does not revoke the previously exposed credentials.** They remain in git history. Production
+  account status and external operational callers stay **UNKNOWN** until the owner checks them（SEC-E01; §6）.
 - **No tracked caller exists, and none ever existed.** This holds across the whole history of `develop`（4,486
   commits）. The exit-status change breaks nothing that the repository runs.
 - External callers are **UNKNOWN**: Render one-off jobs, a Render shell, or manual procedures kept outside the
@@ -58,7 +70,7 @@ does not authorize the superuser path（tested）.
 | History | Both names occur in exactly three commits: `94a23291`（2025-12-10, scripts added）, `3b57b92b`（2025-12-10, #439）and `692ff715`（2026-08-06, backlog document）. **No script, workflow or configuration file has ever referenced them** |
 | External / operational | **UNKNOWN**: Render dashboard one-off commands, a Render shell, or local runbooks outside the repository. To confirm with the owner, without exposing values |
 
-## 3. Invocation paths（measured on a local disposable database after PR #3429）
+## 3. Invocation paths（measured on a local disposable database @ `136267c`; paths (a)–(c) removed by §7）
 
 | Path | Result | Evidence |
 | --- | --- | --- |
@@ -78,7 +90,7 @@ does not authorize the superuser path（tested）.
 Existing users are never modified on any path. That covers password, email, superuser / staff / active flags and
 last login. It is tested for a regular user（no privilege escalation）and for an existing superuser.
 
-## 5. Tests（`backend/tests/test_create_user_once_security.py`, 27 tests）
+## 5. Tests @ `2fee4ff`（`backend/tests/test_create_user_once_security.py`, 27 tests; superseded by §7.4）
 
 - **Authorization:** a missing or non-exact flag（`""`, `"0"`, `"true"`, `"yes"`, `" 1"`, `"1 "`, `"01"`）is refused.
   The command's flag does not authorize the superuser path.
@@ -100,11 +112,96 @@ last login. It is tested for a regular user（no privilege escalation）and for 
 | A regular user is created instead of a superuser | 3 failed |
 | Credentials are printed | 1 failed |
 
-## 6. Residual risks
+## 6. Residual risks（updated after §7）
 
-1. **The removed credentials stay in git history.** Whether a matching account exists in Production, and its
-   rotation or deactivation, are owner operations（SEC-E01）. Nothing in this PR changes that.
-2. **External callers are UNKNOWN**（§2）.
-3. C-1 and C-2 are recorded, not fixed.
+1. **Deleting the file does not revoke the previously exposed credentials.** The values committed before PR #3429
+   remain in git history, and no history rewrite is done.
+   - Whether a matching account exists in Production, and its rotation or deactivation, are owner operations
+     （SEC-E01）.
+   - Until checked, the Production account status is **UNKNOWN**. Nothing in this PR changes it.
+2. **External operational callers are UNKNOWN**（§2）. A Render one-off job, a Render shell or a local runbook that
+   still invokes `create_user_once.py` will now fail with "file not found". It no longer exits 0 silently.
+3. ~~C-1 and C-2 are recorded, not fixed.~~ Resolved by deletion（§7）.
 4. The old behaviour is inferred from code. The old scripts were deliberately not executed, because they contain the
    committed credentials.
+
+## 7. C-1 decision and deletion（Mother Ship: C-1 = Option C）
+
+### 7.1 What changed
+
+- `backend/create_user_once.py` is **deleted**（`git rm`）.
+- `backend/tests/test_create_user_once_security.py` was renamed with `git mv` to
+  `backend/tests/test_bootstrap_user_security.py` and rewritten. Tests that depended on the deleted script were
+  removed. Their security assertions now apply to the surviving command, and new guards cover the deletion（§7.4）.
+- `backend/users/management/commands/create_initial_user.py` is **unchanged**: a regular user, explicit opt-in,
+  fail-closed.
+
+### 7.2 Deletion evidence（`git grep -n -I create_user_once` over all tracked files, after the deletion）
+
+| Location | Result |
+| --- | --- |
+| Startup（`backend/start.sh`）, deployment（`scripts/deploy.sh`, `scripts/django.sh`, `docker-manage.sh`, `bin/dev`） | No reference |
+| CI（`.github/`）, Makefile and `mk/`, Dockerfiles, Procfile, TOML / JSON / INI configuration | No reference |
+| Application code（`*.py`, `*.ts`, `*.tsx`, `*.js`） | No reference |
+| Remaining references | Documentation only: this record, and `docs/audit/security-follow-up-backlog.md:59`. The backlog line is historical text and is not rewritten, under that document's own rule. The test guard `test_no_executable_reference_to_the_deleted_script` also refers to the name |
+| `KAMIMUSUBI_BOOTSTRAP_SUPERUSER`（the deleted script's flag） | Referenced only by documentation and the test guard; it no longer authorizes anything（tested） |
+
+### 7.3 Compatibility impact
+
+| Invocation | Before PR #3429 | @ `2fee4ff` | After deletion |
+| --- | --- | --- | --- |
+| `python manage.py shell < backend/create_user_once.py` | Created a superuser with the committed credentials | Exit 0, nothing created（C-1） | The calling shell cannot open the input file（bash: "No such file or directory", exit 1）. `manage.py` never starts and nothing is created. The silent success is gone（measured） |
+| `python backend/create_user_once.py` | Failed（`ImproperlyConfigured`） | Failed（`ImproperlyConfigured`） | Python cannot open the file, exit 2（measured） |
+| `manage.py shell -c` importing `create_user_once` | — | Created a superuser | Import fails because the module no longer exists, and nothing is created（inferred; the tests that exercised this path were removed with the script） |
+| `manage.py create_initial_user` | Regular user, fixed credentials, existing user → exit 0 | Regular user from environment variables, explicit flag, existing user → exit 1 | Unchanged from `2fee4ff` |
+
+### 7.4 Regular-user creation vs superuser creation
+
+| | `create_initial_user`（kept） | `create_user_once.py`（deleted） |
+| --- | --- | --- |
+| Privileges created | **Regular user**: `is_superuser=False`, `is_staff=False`（tested） | **Superuser**: `is_superuser=True`, `is_staff=True`, i.e. full Django Admin and permission bypass |
+| Authorization | `KAMIMUSUBI_BOOTSTRAP_INITIAL_USER=1`, exact match | `KAMIMUSUBI_BOOTSTRAP_SUPERUSER=1`; obsolete, and it no longer authorizes anything |
+| Supported invocation | `manage.py create_initial_user`（a management command that configures Django） | None documented; the only working path was `shell -c` with an import |
+| Status | Kept as-is | Deleted |
+
+**No automatic superuser bootstrap exists in the repository after this change.** Creating a superuser now needs a
+deliberate, interactive operator action outside these bootstrap paths, such as Django's own `createsuperuser`. That
+is subject to the operator's own approval and is not automated anywhere in the repository（verified: no startup, CI or
+deployment file calls `createsuperuser` or `create_superuser`, §2）.
+
+### 7.5 Tests（`backend/tests/test_bootstrap_user_security.py`, 27 tests, plus the 3 tests in `backend/users/tests/test_create_initial_user_security.py`）
+
+- **Deletion guards:**
+  - the script is absent;
+  - no tracked executable file refers to it;
+  - no tracked non-documentation file refers to `KAMIMUSUBI_BOOTSTRAP_SUPERUSER`;
+  - the obsolete flag does not authorize the command.
+- **Explicit opt-in:** a missing or non-exact flag（`""`, `"0"`, `"true"`, `"yes"`, `" 1"`, `"1 "`, `"01"`）is
+  refused.
+- **Missing credentials:** a missing or blank username, email or password is refused, and no user is created.
+- **Existing user:** a regular user and a superuser are both refused and left unchanged（no escalation and no
+  demotion）. A second run keeps the first user.
+- **Success:** a regular user only（not superuser, not staff）, with the password stored hashed and no credentials in
+  the output. The command source contains no `create_superuser` call and no fixed credentials.
+- **Exit status:** an existing user exits 1; refusals exit 1, with no credential in the output.
+- **Mutation**（temporary edits, restored byte-for-byte）: all seven mutants were detected.
+
+| Mutant | Detection |
+| --- | --- |
+| The command creates a superuser | 2 failed |
+| The command updates an existing user | 4 failed |
+| The authorization accepts any truthy value | 6 failed |
+| The obsolete superuser flag also authorizes the command | 2 failed |
+| Only the password is required | 5 failed |
+| The deleted script reappears | 1 failed |
+| `backend/start.sh` refers to the deleted script again | 1 failed |
+
+### 7.6 Core documents
+
+| Document | Review | Change |
+| --- | --- | --- |
+| `README.md` | Line 436 says Django Admin requires a staff login and that model permissions（or superuser）define the scope. It does not mention any bootstrap script | None: still accurate |
+| `docs/core/architecture.md` | No reference to bootstrap scripts or superuser creation | None |
+| `docs/core/roadmap.md` | No reference to bootstrap scripts or superuser creation | None |
+
+OP-6 stays **STOP**; G-6 / G-7 **UNMET**; AG-3 / AG-4 **NOT_AUTHORIZED**; `PRODUCTION_CONNECTION = STOP`.
