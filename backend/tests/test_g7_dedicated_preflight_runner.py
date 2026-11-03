@@ -137,11 +137,12 @@ INVENTORY = {t: i * 7 for i, t in enumerate(pf.APPROVED_TABLES)}
 
 
 class FakeConnection:
-    def __init__(self, live, results, raise_on=None, rollback_raises=False):
+    def __init__(self, live, results, raise_on=None, rollback_raises=False, close_raises=False):
         self._live = live
         self._results = results
         self._raise_on = raise_on
         self._rollback_raises = rollback_raises
+        self._close_raises = close_raises
         self.executed: list[str] = []
         self.rolled_back = 0
         self.closed = 0
@@ -172,6 +173,8 @@ class FakeConnection:
 
     def close(self):
         self.closed += 1
+        if self._close_raises:
+            raise RuntimeError(DRIVER_TEXT)
 
 
 class FakeConnector:
@@ -801,9 +804,53 @@ def test_connector_without_accepted_kind_is_never_called(ca_file, kind):
     assert connector.params == [] and conn.executed == []
 
 
+def test_spoofed_kind_from_untrusted_connector_never_connects(ca_file):
+    class RemoteConnector:
+        PREFLIGHT_CONNECTOR_KIND = "offline_test_double"
+
+        def __init__(self):
+            self.called = False
+
+        def connect(self, params):
+            self.called = True
+            raise AssertionError("must never call untrusted connector")
+
+    connector = RemoteConnector()
+    report = pf.run_preflight(_config(ca_file), connector)
+    assert (report.stopped_at, report.stop_reason) == ("CONNECT", "connector_not_authorized")
+    assert not connector.called
+
+
+def test_spoofed_subclass_is_rejected(ca_file):
+    class RemoteSubclass(FakeConnector):
+        pass
+
+    connector = RemoteSubclass()
+    report = pf.run_preflight(_config(ca_file), connector)
+    assert report.stop_reason == "connector_not_authorized"
+    assert connector.params == []
+
+
 def test_accepted_connector_kinds_have_no_production_kind():
     assert pf.ACCEPTED_CONNECTOR_KINDS == frozenset({"offline_test_double", "local_disposable"})
     assert pf.ACCEPTED_INVENTORY_POLICY_KINDS == frozenset({"offline_test_double"})
+
+
+@pytest.mark.parametrize("cleanup_failure", ["rollback_raises", "close_raises"])
+def test_cleanup_failure_turns_all_pass_into_stop(ca_file, cleanup_failure):
+    config = _config(
+        ca_file,
+        pf16_inventory=INVENTORY,
+        pf17_owner_confirmation=pf.OwnerConfirmation(True, date(2026, 11, 2)),
+    )
+    report, conn, _ = _run(ca_file, config=config, policy=AcceptingInventoryPolicy(), **{cleanup_failure: True})
+    assert all(step.status == "PASS" for step in report.steps)
+    assert report.stopped_at == "CLEANUP"
+    assert report.stop_reason == "session_cleanup_failed"
+    assert not report.all_pass
+    assert "preflight_overall=STOP" in report.render()
+    assert conn.rolled_back == 1 and conn.closed == 1
+    _assert_redacted(report.render(), ca_file)
 
 
 def test_connection_failure_is_redacted(ca_file):
