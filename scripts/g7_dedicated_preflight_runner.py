@@ -44,6 +44,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import importlib.util
+import inspect
 import os
 import re
 import sys
@@ -80,6 +81,12 @@ REQUIRED_SSLMODE = "verify-full"
 # independently reviewed PR and AG-3 / AG-4 approval (§14.2).
 CONNECTOR_KIND_ATTR = "PREFLIGHT_CONNECTOR_KIND"
 ACCEPTED_CONNECTOR_KINDS = frozenset({"offline_test_double", "local_disposable"})
+# Offline test implementations must originate from these exact checked-in test files.
+# This is defence in depth, not a substitute for OS-level network isolation.
+TRUSTED_OFFLINE_CONNECTORS = {
+    "offline_test_double": (Path(__file__).resolve().parent.parent / "backend/tests/test_g7_dedicated_preflight_runner.py", "FakeConnector"),
+    "local_disposable": (_REPO_ROOT / "backend/tests/test_g7_dedicated_preflight_runner_db.py", "LocalConnector"),
+}
 INVENTORY_POLICY_KIND_ATTR = "PREFLIGHT_INVENTORY_POLICY_KIND"
 ACCEPTED_INVENTORY_POLICY_KINDS = frozenset({"offline_test_double"})
 
@@ -760,6 +767,26 @@ class PreflightConfig:
     )
 
 
+def _trusted_offline_connector(connector: Any) -> bool:
+    """Accept only the concrete checked-in test connector classes, never a claimed kind alone.
+
+    Code inside this process is trusted; hard network isolation belongs to the test sandbox.
+    """
+    kind = getattr(connector, CONNECTOR_KIND_ATTR, None)
+    if kind not in TRUSTED_OFFLINE_CONNECTORS:
+        return False
+    expected_path, expected_name = TRUSTED_OFFLINE_CONNECTORS[kind]
+    cls = type(connector)
+    if cls.__name__ != expected_name or CONNECTOR_KIND_ATTR not in cls.__dict__:
+        return False
+    try:
+        class_path = Path(inspect.getfile(cls)).resolve(strict=True)
+        method_path = Path(inspect.getfile(cls.connect)).resolve(strict=True)
+        return class_path == expected_path.resolve(strict=True) and method_path == class_path
+    except (OSError, TypeError, ValueError):
+        return False
+
+
 class UnresolvedInventoryAcceptance:
     """Default PF-16 policy. §14.6.1: the inventory source, capture time and verification are UNRESOLVED, so no
     inventory can be accepted. PF-16 is UNKNOWN, G7-B1 UNMET, and no count query is submitted."""
@@ -800,6 +827,10 @@ class PreflightReport:
             self.stopped_at is None
             and [s.step for s in self.steps] == list(STEP_ORDER)
             and all(s.status == PASS for s in self.steps)
+            and self.connected
+            and self.transaction_opened
+            and self.rollback == "done"
+            and self.close == "done"
         )
 
     def render(self) -> str:
@@ -1087,7 +1118,7 @@ def run_preflight(
         _record(report, "PF-0b", evaluate_pf0b(config))
         if connector is None:
             raise _Stop("CONNECT", UNKNOWN, "production_connection_disabled")
-        if getattr(connector, CONNECTOR_KIND_ATTR, None) not in ACCEPTED_CONNECTOR_KINDS:
+        if not _trusted_offline_connector(connector):
             raise _Stop("CONNECT", UNKNOWN, "connector_not_authorized")
         try:
             conn = connector.connect(
@@ -1138,6 +1169,9 @@ def _end_session(conn: Any, report: PreflightReport) -> None:
         report.close = "done"
     except Exception:  # noqa: BLE001
         report.close = "error"
+    if report.rollback == "error" or report.close == "error":
+        report.stopped_at = report.stopped_at or "CLEANUP"
+        report.stop_reason = report.stop_reason or "session_cleanup_failed"
 
 
 # --------------------------------------------------------------------------- #
