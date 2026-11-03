@@ -190,3 +190,39 @@ def test_real_session_stops_at_pf1_and_rolls_back(ca_file):
     assert connector.conn.raw.closed
     shared = dict(report.steps[-1].shared)
     assert shared["role_is_audit_role"] is False and shared["txn_read_only_on"] is True
+
+
+def test_sr1_instance_connect_override_on_local_connector_is_rejected(ca_file):
+    """SR-1 R2 for the local-disposable kind: the override is never called and no session is opened."""
+    connector = LocalConnector()
+    called = []
+    connector.connect = lambda params: called.append(params)
+    report = pf.run_preflight(_config(ca_file), connector)
+    assert (report.stopped_at, report.stop_reason) == ("CONNECT", "connector_not_authorized")
+    assert called == [] and connector.conn is None
+
+
+def test_sr1_local_connector_cannot_return_a_fake_connection(ca_file, monkeypatch):
+    """SR-1 R1: the local-disposable kind accepts only `LocalConnection`, and never uses anything else."""
+
+    class Other:
+        def __init__(self):
+            self.calls = []
+
+        def live_settings(self):
+            self.calls.append("live_settings")
+
+        def execute(self, sql):
+            self.calls.append("execute")
+
+        def rollback(self):
+            self.calls.append("rollback")
+
+        def close(self):
+            self.calls.append("close")
+
+    other = Other()
+    monkeypatch.setattr(sys.modules[__name__], "LocalConnection", lambda live_override=None: other)
+    report = pf.run_preflight(_config(ca_file), LocalConnector())
+    assert (report.stopped_at, report.stop_reason) == ("CONNECT", "connection_not_trusted")
+    assert other.calls == []
