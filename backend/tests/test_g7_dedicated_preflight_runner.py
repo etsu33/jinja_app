@@ -219,19 +219,56 @@ class FakeConnection:
             raise RuntimeError(DRIVER_TEXT)
 
 
+class FakeResource:
+    """A connector-owned handle（stands in for a socket or libpq handle the connector opened itself）."""
+
+    def __init__(self):
+        self.released = 0
+
+    def release(self):
+        self.released += 1
+
+
 class FakeConnector:
+    """Trusted offline connector. `conn` is injected by the test and stays caller-owned; with `allocate=True` the
+    connector also opens a `FakeResource` of its own, recorded before anything in `connect()` can fail.
+    """
+
     PREFLIGHT_CONNECTOR_KIND = "offline_test_double"
 
-    def __init__(self, conn=None, connect_raises=False):
+    def __init__(
+        self, conn=None, connect_raises=False, allocate=False, connect_exc=None, release_exc=None
+    ):
         self.conn = conn
         self.connect_raises = connect_raises
+        self.allocate = allocate
+        self.connect_exc = connect_exc
+        self.release_exc = release_exc
         self.params = []
+        self.allocated: list[FakeResource] = []
+        self._unadopted: list[FakeResource] = []
+        self.release_calls = 0
 
     def connect(self, params):
         self.params.append(params)
+        if self.allocate:
+            resource = FakeResource()
+            self.allocated.append(resource)
+            self._unadopted.append(resource)  # recorded before anything else can fail
+        if self.connect_exc is not None:
+            raise self.connect_exc
         if self.connect_raises:
             raise RuntimeError(DRIVER_TEXT)
         return self.conn
+
+    def release_unadopted(self):
+        """Release only handles this connector allocated; never the returned or injected object."""
+        self.release_calls += 1
+        pending, self._unadopted = self._unadopted, []
+        for resource in pending:
+            resource.release()
+        if self.release_exc is not None:
+            raise self.release_exc
 
 
 class AcceptingInventoryPolicy:
@@ -1292,3 +1329,176 @@ def test_sr1_r2_connect_is_called_through_the_class_even_if_provenance_check_is_
         len(connector.params) == 1
     )  # the class method ran and returned the trusted FakeConnection
     assert report.stopped_at == "PF-16"
+
+
+# --------------------------------------------------------------------------- #
+# Ownership contract（PR #3425 follow-up）: connector-owned until validated and assigned
+# --------------------------------------------------------------------------- #
+
+
+def _ownership_report(ca_file, connector, **kwargs):
+    return pf.run_preflight(_config(ca_file), connector, **kwargs)
+
+
+def test_ownership_rejected_connection_is_released_by_connector_with_zero_sql(ca_file):
+    untrusted = CallRecorder(ca_file)
+    connector = FakeConnector(untrusted, allocate=True)
+    report = _ownership_report(ca_file, connector)
+    assert (report.stopped_at, report.stop_reason) == ("CONNECT", "connection_not_trusted")
+    assert connector.release_calls == 1 and connector.allocated[0].released == 1
+    assert untrusted.calls == []  # the returned object is never touched, not even by the release
+    assert report.statements_submitted == 0 and not report.connected
+    assert (report.rollback, report.close, report.connector_release) == (
+        "not_needed",
+        "not_needed",
+        "done",
+    )
+    assert not report.all_pass
+    text = report.render()
+    assert "preflight_overall=STOP" in text and "preflight_connector_release=done" in text
+    _assert_redacted(text, ca_file)
+
+
+def test_ownership_connect_failure_after_allocation_is_released(ca_file):
+    connector = FakeConnector(allocate=True, connect_raises=True)
+    report = _ownership_report(ca_file, connector)
+    assert (report.stopped_at, report.stop_reason) == ("CONNECT", "connection_failed")
+    assert connector.allocated[0].released == 1 and report.connector_release == "done"
+    assert report.statements_submitted == 0
+    _assert_redacted(report.render(), ca_file)
+
+
+def test_ownership_connect_returning_none_after_allocation_is_released(ca_file):
+    connector = FakeConnector(None, allocate=True)
+    report = _ownership_report(ca_file, connector)
+    assert report.stop_reason == "connection_failed"
+    assert connector.allocated[0].released == 1 and report.connector_release == "done"
+
+
+def test_ownership_interrupt_in_connect_after_allocation_is_released_and_sanitized(ca_file):
+    connector = FakeConnector(allocate=True, connect_exc=KeyboardInterrupt(DRIVER_TEXT))
+    with pytest.raises(KeyboardInterrupt) as excinfo:
+        _ownership_report(ca_file, connector)
+    assert connector.allocated[0].released == 1
+    _assert_sanitized(excinfo.value, ca_file)
+
+
+def test_ownership_release_failure_keeps_original_stop_and_is_redacted(ca_file):
+    connector = FakeConnector(
+        CallRecorder(ca_file), allocate=True, release_exc=RuntimeError(DRIVER_TEXT)
+    )
+    report = _ownership_report(ca_file, connector)
+    assert (report.stopped_at, report.stop_reason) == ("CONNECT", "connection_not_trusted")
+    assert report.connector_release == "error" and not report.all_pass
+    text = report.render()
+    assert "preflight_connector_release=error" in text and "preflight_overall=STOP" in text
+    _assert_redacted(text, ca_file)
+
+
+def test_ownership_release_interrupt_propagates_after_stop_sanitized(ca_file):
+    connector = FakeConnector(
+        CallRecorder(ca_file), allocate=True, release_exc=KeyboardInterrupt(DRIVER_TEXT)
+    )
+    with pytest.raises(KeyboardInterrupt) as excinfo:
+        _ownership_report(ca_file, connector)
+    assert connector.release_calls == 1 and connector.allocated[0].released == 1
+    _assert_sanitized(excinfo.value, ca_file)
+
+
+def test_ownership_first_interrupt_wins_over_release_interrupt(ca_file):
+    connector = FakeConnector(
+        allocate=True, connect_exc=KeyboardInterrupt(DRIVER_TEXT), release_exc=SystemExit(7)
+    )
+    with pytest.raises(KeyboardInterrupt):
+        _ownership_report(ca_file, connector)
+    assert connector.release_calls == 1
+
+
+def test_ownership_transfer_runner_closes_and_connector_never_releases(ca_file):
+    conn = FakeConnection(_live(ca_file), _pass_results())
+    connector = FakeConnector(conn, allocate=True)
+    report = _ownership_report(ca_file, connector)
+    assert report.stopped_at == "PF-16"  # default inventory gate, after transfer
+    assert connector.release_calls == 0 and report.connector_release == "not_needed"
+    assert conn.rolled_back == 1 and conn.closed == 1  # the runner owns cleanup after transfer
+    assert "preflight_connector_release=not_needed" in report.render()
+
+
+def test_ownership_full_pass_still_requires_no_connector_release(ca_file):
+    conn = FakeConnection(_live(ca_file), _pass_results())
+    connector = FakeConnector(conn, allocate=True)
+    report = pf.run_preflight(_full_config(ca_file), connector, AcceptingInventoryPolicy())
+    assert report.all_pass and connector.release_calls == 0
+    assert "preflight_overall=ALL_PASS_OFFLINE" in report.render()
+
+
+def test_ownership_rollback_interrupt_after_transfer_still_closes_without_release(ca_file):
+    conn = FakeConnection(
+        _live(ca_file), _pass_results(), rollback_exc=KeyboardInterrupt(DRIVER_TEXT)
+    )
+    connector = FakeConnector(conn, allocate=True)
+    with pytest.raises(KeyboardInterrupt) as excinfo:
+        _ownership_report(ca_file, connector)
+    assert conn.rolled_back == 1 and conn.closed == 1
+    assert (
+        connector.release_calls == 0
+    )  # ownership had transferred; the connector is not asked again
+    _assert_sanitized(excinfo.value, ca_file)
+
+
+def test_ownership_cleanup_cannot_turn_stop_into_pass():
+    report = pf.PreflightReport()
+    report.steps = [pf.StepResult(step, "PASS", "ok") for step in pf.STEP_ORDER]
+    report.connected = report.transaction_opened = True
+    report.rollback = report.close = "done"
+    assert report.all_pass  # control: the only difference below is the connector release
+    for value in ("done", "error"):
+        report.connector_release = value
+        assert not report.all_pass
+        assert "preflight_overall=STOP" in report.render()
+    report.connector_release = "not_needed"
+    report.stopped_at, report.stop_reason = "CONNECT", "connection_not_trusted"
+    assert not report.all_pass
+
+
+def test_ownership_untrusted_connector_release_is_never_called(ca_file):
+    class Untrusted:
+        PREFLIGHT_CONNECTOR_KIND = "offline_test_double"
+
+        def __init__(self):
+            self.calls = []
+
+        def connect(self, params):
+            self.calls.append("connect")
+
+        def release_unadopted(self):
+            self.calls.append("release_unadopted")
+
+    connector = Untrusted()
+    report = _ownership_report(ca_file, connector)
+    assert report.stop_reason == "connector_not_authorized"
+    assert connector.calls == [] and report.connector_release == "not_needed"
+
+
+def test_ownership_instance_release_override_is_rejected_and_never_called(ca_file):
+    connector = FakeConnector(FakeConnection(_live(ca_file), _pass_results()), allocate=True)
+    called = []
+    connector.release_unadopted = lambda: called.append(True)
+    report = _ownership_report(ca_file, connector)
+    assert report.stop_reason == "connector_not_authorized"
+    assert called == [] and connector.params == []
+
+
+def test_ownership_connector_without_release_method_is_rejected(ca_file, monkeypatch):
+    monkeypatch.delattr(FakeConnector, "release_unadopted")
+    connector = FakeConnector(FakeConnection(_live(ca_file), _pass_results()))
+    report = _ownership_report(ca_file, connector)
+    assert report.stop_reason == "connector_not_authorized" and connector.params == []
+
+
+def test_ownership_injected_connection_is_not_released_by_connector(ca_file):
+    untrusted = CallRecorder(ca_file)
+    connector = FakeConnector(untrusted)  # no connector-owned allocation
+    report = _ownership_report(ca_file, connector)
+    assert connector.release_calls == 1 and connector.allocated == []
+    assert untrusted.calls == [] and report.connector_release == "done"

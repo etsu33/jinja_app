@@ -382,6 +382,14 @@ SR-9 only. Sections 0 to 7 above are unchanged and still describe `afd3fe974`.
 | SR-7 | `PGSSLMODE` / `PGSSLROOTCERT` of the process are always checked. `PreflightConfig.environ` can only add values; a non-mapping is UNKNOWN `tls_environment_unreadable` | `test_sr7_*`（R9） |
 | SR-9 | `close()` is attempted after any rollback outcome, including `BaseException`. Interrupts propagate after cleanup as a sanitized new instance; the first interrupt wins | `test_sr9_*`（R11, interrupt during a statement, nested interrupts, `SystemExit` status） |
 
+**Ownership addendum（same PR, later commit）.** A further gap was found during follow-up work: the original connector
+API（only `connect()`）could not release connector-owned resources when `connect()` failed after allocating, or when
+the returned connection was rejected, without touching the untrusted object.
+
+- After the owner approved the interface change, a provenance-checked `release_unadopted()` was added. The runner calls
+  it only when ownership was never transferred, and it never receives or touches the returned object.
+- Contract, verification and residual risks: readiness §15.6.
+
 **Still open after this follow-up:**
 
 - **SR-3**: in-process code can forge both connector and connection provenance, or reassign private attributes of a

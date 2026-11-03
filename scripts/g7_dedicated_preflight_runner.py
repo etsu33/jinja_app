@@ -90,7 +90,15 @@ _DB_TEST_FILE = (
     Path(__file__).resolve().parent.parent
     / "backend/tests/test_g7_dedicated_preflight_runner_db.py"
 )
-CONNECTOR_METHODS = ("connect",)
+# Ownership contract (PR #3425 follow-up):
+#   1. Until a returned connection passes `_trusted_offline_connection()` and is assigned to the runner, every
+#      resource the connector allocated stays owned by the connector.
+#   2. If ownership is never transferred (connect raised, returned None, or returned an untrusted object), the runner
+#      calls only `release_unadopted()` on the provenance-checked connector class. That method releases handles the
+#      connector allocated and recorded itself; it takes no argument, so the runner never hands it, or touches, the
+#      returned object.
+#   3. After transfer, the runner owns the connection: rollback when a transaction was opened, and always close.
+CONNECTOR_METHODS = ("connect", "release_unadopted")
 CONNECTION_METHODS = ("live_settings", "execute", "rollback", "close")
 # kind -> (file, connector class, the only connection class that connector may return).
 # SR-1 (security review 2026-11-03): both the connector and the returned connection must be these exact classes,
@@ -890,6 +898,7 @@ class PreflightReport:
     rollback: str = "not_needed"
     close: str = "not_needed"
     statements_submitted: int = 0
+    connector_release: str = "not_needed"  # done | error when ownership was never transferred
 
     @property
     def all_pass(self) -> bool:
@@ -901,6 +910,8 @@ class PreflightReport:
             and self.transaction_opened
             and self.rollback == "done"
             and self.close == "done"
+            # A connector release means ownership was never transferred.
+            and self.connector_release == "not_needed"
         )
 
     def render(self) -> str:
@@ -917,6 +928,7 @@ class PreflightReport:
             lines.append(f"preflight_stop_reason={self.stop_reason}")
         lines.append(f"preflight_transaction_rollback={self.rollback}")
         lines.append(f"preflight_connection_close={self.close}")
+        lines.append(f"preflight_connector_release={self.connector_release}")
         # A PF-16 / PF-17 PASS here is never G7-B1 / G7-B2 evidence (§14.6: G-7 needs the recorded, approved run).
         lines.append("preflight_g7_b1=UNMET")
         lines.append("preflight_g7_b2=UNMET")
@@ -1186,7 +1198,8 @@ def run_preflight(
 
     `connector` and the connection its `connect(ConnectParams)` returns must be the exact checked-in offline classes
     listed in TRUSTED_OFFLINE_CONNECTORS (provenance-checked; no instance overrides). The connection exposes
-    `live_settings()`, `execute(sql) -> QueryResult`, `rollback()` and `close()`.
+    `live_settings()`, `execute(sql) -> QueryResult`, `rollback()` and `close()`. The connector also exposes
+    `release_unadopted()`, called only when ownership was never transferred (see CONNECTOR_METHODS).
     The default (None) is the disabled Production path: STOP before connecting.
     """
     report = PreflightReport()
@@ -1200,19 +1213,35 @@ def run_preflight(
             raise _Stop("CONNECT", UNKNOWN, "production_connection_disabled")
         if not _trusted_offline_connector(connector):
             raise _Stop("CONNECT", UNKNOWN, "connector_not_authorized")
+        transferred = False
         try:
-            # Call the provenance-checked class method, never an instance attribute (SR-1 R2).
-            returned = type(connector).connect(
-                connector, ConnectParams(sslmode=config.sslmode, sslrootcert=config.sslrootcert)
-            )
-        except Exception:  # noqa: BLE001 - never echo host, user, certificate path or driver text
-            raise _Stop("CONNECT", UNKNOWN, "connection_failed") from None
-        if returned is None:
-            raise _Stop("CONNECT", UNKNOWN, "connection_failed")
-        if not _trusted_offline_connection(connector, returned):
-            # SR-1 R1: an arbitrary returned object is never used, rolled back or closed by the runner.
-            raise _Stop("CONNECT", UNKNOWN, "connection_not_trusted")
-        conn = returned
+            try:
+                # Call the provenance-checked class method, never an instance attribute (SR-1 R2).
+                returned = type(connector).connect(
+                    connector,
+                    ConnectParams(sslmode=config.sslmode, sslrootcert=config.sslrootcert),
+                )
+            # Never echo host, user, certificate path or driver text.
+            except Exception:  # noqa: BLE001
+                raise _Stop("CONNECT", UNKNOWN, "connection_failed") from None
+            if returned is None:
+                raise _Stop("CONNECT", UNKNOWN, "connection_failed")
+            if not _trusted_offline_connection(connector, returned):
+                # SR-1 R1: an arbitrary returned object is never used, rolled back or closed by the runner.
+                raise _Stop("CONNECT", UNKNOWN, "connection_not_trusted")
+            # Ownership transfer. `conn` is assigned first: an interrupt between the two lines makes both the
+            # connector release and the runner cleanup run (safe), never neither.
+            conn = returned
+            transferred = True
+        finally:
+            if not transferred:
+                released_interrupt = _release_unadopted(connector, report)
+                in_flight = sys.exc_info()[1]
+                if released_interrupt is not None and (
+                    in_flight is None or isinstance(in_flight, Exception)
+                ):
+                    # An interrupt already in flight (handled below) is earlier and wins.
+                    interrupt = interrupt or released_interrupt
         report.connected = True
         try:
             live = conn.live_settings()
@@ -1235,9 +1264,8 @@ def run_preflight(
         report.stopped_at, report.stop_reason = stop.step, stop.reason
     except Exception:  # noqa: BLE001 - unexpected internal error: fixed token only
         report.stopped_at, report.stop_reason = "INTERNAL", "internal_error"
-    except (
-        BaseException
-    ) as exc:  # noqa: BLE001 - interrupt: clean up, then propagate a sanitized copy
+    # Interrupt: clean up, then propagate a sanitized copy.
+    except BaseException as exc:  # noqa: BLE001
         report.stopped_at, report.stop_reason = "INTERRUPTED", "interrupted"
         interrupt = interrupt or exc
     finally:
@@ -1248,6 +1276,23 @@ def run_preflight(
     return report
 
 
+def _release_unadopted(connector: Any, report: PreflightReport) -> BaseException | None:
+    """Ask the provenance-checked connector to release what it allocated; never touches the returned object.
+
+    Only reached for a connector that passed `_trusted_offline_connector()` (both `connect` and `release_unadopted`
+    are checked there). Returns a non-`Exception` interrupt so the caller can propagate it after cleanup.
+    """
+    try:
+        type(connector).release_unadopted(connector)
+        report.connector_release = "done"
+    except Exception:  # noqa: BLE001 - fixed token only
+        report.connector_release = "error"
+    except BaseException as exc:  # noqa: BLE001
+        report.connector_release = "error"
+        return exc
+    return None
+
+
 def _raise_sanitized(exc: BaseException) -> None:
     """Re-raise the interrupt's type without its arguments, traceback or chained context (no driver text)."""
     if isinstance(exc, SystemExit):
@@ -1256,9 +1301,8 @@ def _raise_sanitized(exc: BaseException) -> None:
     else:
         try:
             sanitized = type(exc)()
-        except (
-            Exception
-        ):  # noqa: BLE001 - a type that needs arguments: fall back to a plain interrupt
+        # A type that needs arguments: fall back to a plain interrupt.
+        except Exception:  # noqa: BLE001
             sanitized = KeyboardInterrupt()
     raise sanitized from None
 

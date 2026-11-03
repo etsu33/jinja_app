@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -42,13 +43,30 @@ def _local_params() -> dict:
     }
 
 
+def _open_loopback_raw():
+    """A new autocommit libpq connection to the local test database over 127.0.0.1 only."""
+    import psycopg  # noqa: PLC0415 - test-only driver; the runner itself imports none
+
+    return psycopg.connect(**_local_params(), autocommit=True)
+
+
+def _is_loopback_raw(raw) -> bool:
+    import psycopg  # noqa: PLC0415
+
+    return type(raw) is psycopg.Connection and not raw.closed and raw.info.hostaddr == "127.0.0.1"
+
+
 class LocalConnection:
-    """Autocommit libpq session to the local test database. `live_settings()` reads the real conninfo."""
+    """Autocommit libpq session to the local test database. `live_settings()` reads the real conninfo.
 
-    def __init__(self, live_override=None):
-        import psycopg  # noqa: PLC0415 - test-only driver; the runner itself imports none
+    It wraps a handle the connector already allocated and recorded（ownership contract step 1）, and refuses
+    anything that is not an open psycopg connection whose actual transport address is 127.0.0.1.
+    """
 
-        self.raw = psycopg.connect(**_local_params(), autocommit=True)
+    def __init__(self, raw, live_override=None):
+        if not _is_loopback_raw(raw):
+            raise RuntimeError("local_disposable_only")
+        self.raw = raw
         self._live_override = live_override
         self.executed: list[str] = []
 
@@ -90,10 +108,26 @@ class LocalConnector:
     def __init__(self, live_override=None):
         self.live_override = live_override
         self.conn = None
+        self.allocated: list = []  # every handle this connector opened（for assertions only）
+        self.backend_pids: list[int] = (
+            []
+        )  # server-side identity of those handles（for assertions only）
+        self._unadopted: list = []
 
     def connect(self, params):
-        self.conn = LocalConnection(self.live_override)
+        raw = _open_loopback_raw()
+        self.allocated.append(raw)
+        self._unadopted.append(raw)  # recorded before anything else can fail
+        self.backend_pids.append(raw.info.backend_pid)
+        self.conn = LocalConnection(raw, self.live_override)
         return self.conn
+
+    def release_unadopted(self):
+        """Close only handles this connector opened. Never touches the object `connect()` returned."""
+        pending, self._unadopted = self._unadopted, []
+        for raw in pending:
+            if not raw.closed:
+                raw.close()
 
 
 @pytest.fixture
@@ -130,7 +164,7 @@ def test_disposable_connector_forces_loopback():
 
 
 def test_every_registry_statement_runs_alone_and_fits_its_contract():
-    conn = LocalConnection()
+    conn = LocalConnection(_open_loopback_raw())
     try:
         for stmt in (*pf.PF_STATEMENTS, pf.PF16_SHOW_ROW_SECURITY):
             conn.execute("BEGIN READ ONLY")
@@ -222,7 +256,118 @@ def test_sr1_local_connector_cannot_return_a_fake_connection(ca_file, monkeypatc
             self.calls.append("close")
 
     other = Other()
-    monkeypatch.setattr(sys.modules[__name__], "LocalConnection", lambda live_override=None: other)
+    monkeypatch.setattr(
+        sys.modules[__name__], "LocalConnection", lambda raw, live_override=None: other
+    )
     report = pf.run_preflight(_config(ca_file), LocalConnector())
     assert (report.stopped_at, report.stop_reason) == ("CONNECT", "connection_not_trusted")
     assert other.calls == []
+
+
+# --------------------------------------------------------------------------- #
+# Ownership contract on a real local session（server-side verification via pg_stat_activity）
+# --------------------------------------------------------------------------- #
+
+
+def _live_backends(pids) -> int:
+    """How many of these exact server backends still exist（robust to other sessions and parallel workers）.
+
+    Uses its own autocommit loopback session: PostgreSQL caches the `pg_stat_activity` snapshot for the rest of a
+    transaction, so querying through the Django test transaction would return stale counts.
+    """
+    observer = _open_loopback_raw()
+    try:
+        row = observer.execute(
+            "SELECT count(*) FROM pg_stat_activity WHERE pid = ANY(%s)", [list(pids)]
+        ).fetchone()
+    finally:
+        observer.close()
+    return row[0]
+
+
+def _wait_until_gone(pids, timeout: float = 5.0) -> int:
+    deadline = time.monotonic() + timeout
+    count = _live_backends(pids)
+    while count and time.monotonic() < deadline:
+        time.sleep(0.05)
+        count = _live_backends(pids)
+    return count
+
+
+def test_ownership_observer_sees_open_backends_and_their_exit():
+    """Positive control: the server-side check is not vacuous."""
+    raw = _open_loopback_raw()
+    pid = raw.info.backend_pid
+    assert _live_backends([pid]) == 1
+    raw.close()
+    assert _wait_until_gone([pid]) == 0
+
+
+def test_ownership_local_handle_is_closed_when_connection_construction_fails(ca_file, monkeypatch):
+    seen_before_failure = []
+
+    def failing_construction(raw, live_override=None):
+        # The handle really exists on the server before construction fails.
+        seen_before_failure.append(_live_backends([raw.info.backend_pid]))
+        raise RuntimeError("synthetic construction failure after allocation")
+
+    monkeypatch.setattr(sys.modules[__name__], "LocalConnection", failing_construction)
+    connector = LocalConnector()
+    report = pf.run_preflight(_config(ca_file), connector)
+    assert (report.stopped_at, report.stop_reason) == ("CONNECT", "connection_failed")
+    assert report.connector_release == "done" and report.statements_submitted == 0
+    assert seen_before_failure == [1]
+    assert len(connector.allocated) == 1 and connector.allocated[0].closed
+    assert _wait_until_gone(connector.backend_pids) == 0
+    assert "synthetic construction failure" not in report.render()
+
+
+def test_ownership_local_handle_is_closed_when_returned_connection_is_rejected(
+    ca_file, monkeypatch
+):
+    class Rejected:
+        def __init__(self, raw, live_override=None):
+            self.calls = []
+            self.backend_seen = _live_backends([raw.info.backend_pid])  # positive control
+
+        def execute(self, sql):
+            self.calls.append(sql)
+
+    made = []
+    monkeypatch.setattr(
+        sys.modules[__name__],
+        "LocalConnection",
+        lambda raw, live_override=None: made.append(Rejected(raw)) or made[-1],
+    )
+    connector = LocalConnector()
+    report = pf.run_preflight(_config(ca_file), connector)
+    assert report.stop_reason == "connection_not_trusted"
+    assert made[0].calls == [] and report.statements_submitted == 0
+    assert made[0].backend_seen == 1
+    assert report.connector_release == "done" and connector.allocated[0].closed
+    assert _wait_until_gone(connector.backend_pids) == 0
+
+
+def test_ownership_transfer_on_real_session_runner_closes(ca_file):
+    live = {
+        "sslmode": "verify-full",
+        "sslrootcert": str(ca_file),
+        "ssl_in_use": True,
+        "user": pf.AUDIT_ROLE,
+    }
+    connector = LocalConnector(live_override=live)
+    report = pf.run_preflight(_config(ca_file), connector)
+    assert (report.stopped_at, report.stop_reason) == ("PF-1", "session_identity_mismatch")
+    assert report.connector_release == "not_needed"  # ownership transferred; the runner closed it
+    assert report.rollback == "done" and report.close == "done"
+    assert connector.allocated[0].closed and connector._unadopted == [connector.allocated[0]]
+    assert _wait_until_gone(connector.backend_pids) == 0
+
+
+def test_ownership_local_connection_refuses_non_loopback_or_foreign_handles():
+    with pytest.raises(RuntimeError, match="local_disposable_only"):
+        LocalConnection(object())
+    raw = _open_loopback_raw()
+    raw.close()
+    with pytest.raises(RuntimeError, match="local_disposable_only"):
+        LocalConnection(raw)

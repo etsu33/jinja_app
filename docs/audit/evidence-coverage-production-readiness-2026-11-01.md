@@ -1230,7 +1230,7 @@ G7 = UNMET
 | Allowed SQL only（§14.6 rules） | There is no API that takes SQL. `_GuardedSession.submit()` accepts registry objects only（identity, not text）, and `validate_statement()` also refuses `;`, comments, dollar / identifier quoting, anything but SELECT / SHOW or the three fixed control statements, `SET` / `RESET` / `ROLE` / `SESSION AUTHORIZATION`, DML, DDL, GRANT / REVOKE, `INTO`, row locks and side-effecting functions such as `set_config()` |
 | PF-16 needs independent evidence（§14.6.1） | The inventory gate runs before any PF-16 SQL. Missing → `independent_inventory_missing`; malformed → `independent_inventory_malformed`. The default policy `UnresolvedInventoryAcceptance` never accepts an inventory（`PF16_INDEPENDENT_INVENTORY = UNRESOLVED`）, so PF-16 is UNKNOWN, G7-B1 UNMET, and no count SQL is submitted. A policy that claims the test kind is consulted only if it is the checked-in test class, with no instance overrides; otherwise `independent_inventory_policy_not_trusted`（SR-2） |
 | Redaction（§14.8） | Shared output is fixed tokens, booleans, counts, the approved role name and the ten approved table names. Never connection strings, passwords, hosts, project references, certificate paths, live user names, exception text, names found by PF-5 / PF-6 / PF-10 / PF-11, or PF-16 row counts（match `true` / `false` only） |
-| No Production entry point（this PR） | `run_preflight()` without a connector stops with `production_connection_disabled`. Connector kind alone is insufficient: the runner checks concrete connector class and method provenance against the two checked-in test files, calls the class method（never an instance attribute）, and accepts only the connection class paired with that connector（`FakeConnection` / `LocalConnection`）with no instance method overrides. Any other returned object is never used, rolled back or closed: `connection_not_trusted`（SR-1）. The local-disposable test adapter rejects non-loopback configuration and forces libpq `host` / `hostaddr` to `127.0.0.1`. The CLI remains STOP-only. These checks are defence in depth, not an OS-level sandbox: truly untrusted code running in the same process requires independent network isolation |
+| No Production entry point（this PR） | `run_preflight()` without a connector stops with `production_connection_disabled`. Connector kind alone is insufficient: the runner checks concrete connector class and method provenance against the two checked-in test files, calls the class method（never an instance attribute）, and accepts only the connection class paired with that connector（`FakeConnection` / `LocalConnection`）with no instance method overrides. Any other returned object is never used, rolled back or closed: `connection_not_trusted`（SR-1）. Connection ownership follows §15.6. The local-disposable test adapter rejects non-loopback configuration and forces libpq `host` / `hostaddr` to `127.0.0.1`. The CLI remains STOP-only. These checks are defence in depth, not an OS-level sandbox: truly untrusted code running in the same process requires independent network isolation |
 
 The connector interface is the runner's own: `connect(ConnectParams)` receives only the validated `sslmode` and
 `sslrootcert`; the connection exposes `live_settings()`, `execute(sql) -> QueryResult`, `rollback()` and `close()`.
@@ -1247,6 +1247,7 @@ and stops**. It does not invent an approval.
 | Wrong columns, row count, value types or unexpected text values; an evaluator error | UNKNOWN `malformed_result` / `evaluation_error` |
 | A driver exception | UNKNOWN `execution_error`（no exception text） |
 | ROLLBACK or connection close fails after otherwise PASS checks | `preflight_overall=STOP` and `session_cleanup_failed`（fixed redacted token） |
+| Ownership never transferred（connect raised, returned `None`, or returned an untrusted object） | The runner calls only `release_unadopted()` on the provenance-checked connector class（§15.6）. `preflight_connector_release=done` or `error`; either way the run stays STOP and `ALL_PASS_OFFLINE` is impossible |
 | An interrupt（`KeyboardInterrupt`, `SystemExit` or another `BaseException`）during a statement, ROLLBACK or close | ROLLBACK（if a transaction was opened）and close are still attempted, then the interrupt propagates as a new instance of the same type without arguments, traceback chain or context（`SystemExit` keeps an integer status only）（SR-9） |
 | PF-5 `other_schemas_with_usage > 0`, PF-6 `other_readable > 0`, PF-10 `> 0`, PF-11 `default_acl_to_public > 0` | UNKNOWN（the runner has no approval input） |
 | PF-6 `audited_readable > 10` | UNKNOWN `malformed_result`（impossible for the fixed set） |
@@ -1298,3 +1299,79 @@ is evaluated before the next is submitted, and the first non-PASS stops the run.
 9. After the SR-1 / SR-2 / SR-7 / SR-9 hardening（`docs/audit/g7-dedicated-preflight-runner-security-review-2026-11-03.md`
    §8）, in-process code can still forge class provenance or mutate private state of a trusted test object（SR-3）.
    SR-4, SR-5, SR-6, SR-8, SR-10 and SR-11 are not addressed. OP-6 stays **STOP**.
+
+### 15.6 Connection ownership boundary（PR #3425 follow-up; verified offline and on a local disposable database）
+
+**Contract**
+
+1. **Before transfer, the connector owns its resources.** Ownership has not transferred until the returned
+   connection passes `_trusted_offline_connection()` and is assigned to the runner.
+2. **If ownership is never transferred, the runner calls one method only:** `release_unadopted()`, through the
+   provenance-checked connector class. This happens when `connect()` raised（an `Exception` or a `BaseException`）,
+   returned `None`, or returned an untrusted object.
+   - `release_unadopted()` takes no argument. The runner never passes it the returned object and never calls a method
+     on that object.
+   - The connector releases only handles it allocated and recorded itself.
+   - `release_unadopted()` is a required connector method under the same provenance check as `connect()`. A connector
+     without it, or with an instance-level override, is `connector_not_authorized`.
+3. **After transfer, the runner owns the connection.** It rolls back when a transaction was opened and always attempts
+   close, including on a `BaseException`（§15.3）. The connector is not asked again.
+
+An untrusted connector gets neither `connect()` nor `release_unadopted()` called.
+
+**Reporting**
+
+- `preflight_connector_release` is `not_needed`（ownership transferred, or no connect was attempted）, `done` or
+  `error`. A release never changes a STOP, and `ALL_PASS_OFFLINE` requires `not_needed`.
+- An interrupt raised by the release propagates after cleanup, sanitized as in §15.3. If an interrupt was already in
+  flight, that earlier one propagates instead.
+
+**Test connectors**
+
+- `FakeConnector` records an optional connector-owned `FakeResource` before anything in `connect()` can fail. An
+  object injected through `FakeConnector(conn=...)` stays **caller-owned** and is never released by the runner or the
+  connector.
+- `LocalConnector` opens the loopback psycopg handle itself and records it before constructing `LocalConnection`.
+- `LocalConnection` now refuses anything that is not an open `psycopg.Connection` whose actual transport address
+  （`info.hostaddr`）is `127.0.0.1`.
+
+**Verified**
+
+- Unit tests:
+  - a rejected connection is released with zero SQL, and the returned object is never touched;
+  - a failure after allocation（`Exception`, `None`, `KeyboardInterrupt`）is released;
+  - a release failure is reported as a token and keeps the original STOP;
+  - a release interrupt propagates sanitized, and an earlier interrupt wins over it;
+  - after a successful transfer, the runner closes and the connector does not release;
+  - a rollback interrupt after transfer still closes;
+  - cleanup cannot turn a STOP into `ALL_PASS_OFFLINE`.
+- Local disposable database: the exact backend PIDs the connector opened are gone from `pg_stat_activity` in three
+  cases: a construction failure after allocation, a rejected returned connection, and a transferred session closed by
+  the runner.
+  - The check uses a separate autocommit observer session, because PostgreSQL caches the `pg_stat_activity` snapshot
+    for the rest of a transaction.
+  - A positive control shows the observer sees an open backend and its exit.
+  - Two leak mutants are each detected: the connector release closes nothing（2 failures）, and the runner never closes
+    after transfer（3 failures）.
+- Mutation（scratch copy）: six mutants of the contract are each detected:
+  - release never called;
+  - release also after transfer;
+  - transfer flagged before validation;
+  - `all_pass` ignoring the release;
+  - release interrupt dropped;
+  - release error recorded as done.
+
+**Residual risks**
+
+1. **Asynchronous-interrupt windows.**
+   - An interrupt delivered inside a connector between allocating a handle and recording it（one statement）leaks that
+     handle.
+   - An interrupt between `conn = returned` and the transfer flag makes both the connector release and the runner
+     close run on the same handle. That is safe for psycopg（close is idempotent）, but not guaranteed for every driver.
+2. **The guarantee holds only for connectors that implement `release_unadopted()` correctly.** It is verified only
+   for the two checked-in test connectors. A future connector needs its own review.
+3. **Caller-injected objects are never cleaned up by the runner.** That stays the caller's responsibility.
+4. **`release_unadopted()` has no timeout.** A hanging release blocks the run.
+5. **In-process forgery or private-state mutation（SR-3）still bypasses provenance**, and with it this contract.
+
+OP-6 stays **STOP**; G-6 / G-7 **UNMET**; AG-3 / AG-4 **NOT_AUTHORIZED**; `PRODUCTION_CONNECTION = STOP`.
