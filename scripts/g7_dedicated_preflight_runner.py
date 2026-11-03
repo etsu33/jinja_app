@@ -390,12 +390,16 @@ def _eval_pf12(result):
     rows = _rows(result, cols)
     if not rows:
         return Outcome(UNKNOWN, "no_row")
+    # ORDER BY follows the database collation, which may differ from Python ordering.
+    # Require exactly the approved names once each, independent of row order.
     names = tuple(row[0] for row in rows)
-    if names != APPROVED_TABLES:
+    if (len(rows) != len(APPROVED_TABLES) or len(set(names)) != len(APPROVED_TABLES)
+            or set(names) != set(APPROVED_TABLES)):
         raise _Malformed
+    rows_by_name = {row[0]: row for row in rows}
     missing = rls = null = False
     shared = []
-    for name, present, can_select, rls_enabled, rls_forced in rows:
+    for name, present, can_select, rls_enabled, rls_forced in (rows_by_name[t] for t in APPROVED_TABLES):
         for value in (present, can_select):
             if not _is_bool(value):
                 raise _Malformed
