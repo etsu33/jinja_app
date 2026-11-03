@@ -83,20 +83,37 @@ CONNECTOR_KIND_ATTR = "PREFLIGHT_CONNECTOR_KIND"
 ACCEPTED_CONNECTOR_KINDS = frozenset({"offline_test_double", "local_disposable"})
 # Offline test implementations must originate from these exact checked-in test files.
 # This is defence in depth, not a substitute for OS-level network isolation.
+_UNIT_TEST_FILE = (
+    Path(__file__).resolve().parent.parent / "backend/tests/test_g7_dedicated_preflight_runner.py"
+)
+_DB_TEST_FILE = (
+    Path(__file__).resolve().parent.parent
+    / "backend/tests/test_g7_dedicated_preflight_runner_db.py"
+)
+# Ownership contract (PR #3425 follow-up):
+#   1. Until a returned connection passes `_trusted_offline_connection()` and is assigned to the runner, every
+#      resource the connector allocated stays owned by the connector.
+#   2. If ownership is never transferred (connect raised, returned None, or returned an untrusted object), the runner
+#      calls only `release_unadopted()` on the provenance-checked connector class. That method releases handles the
+#      connector allocated and recorded itself; it takes no argument, so the runner never hands it, or touches, the
+#      returned object.
+#   3. After transfer, the runner owns the connection: rollback when a transaction was opened, and always close.
+CONNECTOR_METHODS = ("connect", "release_unadopted")
+CONNECTION_METHODS = ("live_settings", "execute", "rollback", "close")
+# kind -> (file, connector class, the only connection class that connector may return).
+# SR-1 (security review 2026-11-03): both the connector and the returned connection must be these exact classes,
+# with no instance-level method overrides; anything else is never called.
 TRUSTED_OFFLINE_CONNECTORS = {
-    "offline_test_double": (
-        Path(__file__).resolve().parent.parent
-        / "backend/tests/test_g7_dedicated_preflight_runner.py",
-        "FakeConnector",
-    ),
-    "local_disposable": (
-        Path(__file__).resolve().parent.parent
-        / "backend/tests/test_g7_dedicated_preflight_runner_db.py",
-        "LocalConnector",
-    ),
+    "offline_test_double": (_UNIT_TEST_FILE, "FakeConnector", "FakeConnection"),
+    "local_disposable": (_DB_TEST_FILE, "LocalConnector", "LocalConnection"),
 }
 INVENTORY_POLICY_KIND_ATTR = "PREFLIGHT_INVENTORY_POLICY_KIND"
 ACCEPTED_INVENTORY_POLICY_KINDS = frozenset({"offline_test_double"})
+INVENTORY_POLICY_METHODS = ("accept",)
+# kind -> (file, policy class). SR-2: a claimed kind alone is never enough.
+TRUSTED_INVENTORY_POLICIES = {"offline_test_double": (_UNIT_TEST_FILE, "AcceptingInventoryPolicy")}
+# SR-7: these process variables are always checked; a caller-supplied mapping can only add conflicts.
+TLS_ENVIRONMENT_VARIABLES = ("PGSSLMODE", "PGSSLROOTCERT")
 
 FINAL_STATE = (
     ("runner_mode", "offline_only"),
@@ -402,7 +419,9 @@ def _eval_pf12(result):
     rows_by_name = {row[0]: row for row in rows}
     missing = rls = null = False
     shared = []
-    for name, present, can_select, rls_enabled, rls_forced in (rows_by_name[t] for t in APPROVED_TABLES):
+    for name, present, can_select, rls_enabled, rls_forced in (
+        rows_by_name[t] for t in APPROVED_TABLES
+    ):
         for value in (present, can_select):
             if not _is_bool(value):
                 raise _Malformed
@@ -782,24 +801,68 @@ class PreflightConfig:
     )
 
 
-def _trusted_offline_connector(connector: Any) -> bool:
-    """Accept only the concrete checked-in test connector classes, never a claimed kind alone.
+def _trusted_instance(obj: Any, expected_path: Path, expected_name: str, methods: tuple) -> bool:
+    """True only for an instance of the exact named class defined in `expected_path`.
 
+    Every method in `methods` must be a plain function defined in that class body (not inherited) in the same file,
+    and the instance must not shadow any of them or the kind attribute (SR-1 R2). Never calls the object.
     Code inside this process is trusted; hard network isolation belongs to the test sandbox.
     """
-    kind = getattr(connector, CONNECTOR_KIND_ATTR, None)
-    if kind not in TRUSTED_OFFLINE_CONNECTORS:
-        return False
-    expected_path, expected_name = TRUSTED_OFFLINE_CONNECTORS[kind]
-    cls = type(connector)
-    if cls.__name__ != expected_name or CONNECTOR_KIND_ATTR not in cls.__dict__:
+    cls = type(obj)
+    if cls.__name__ != expected_name:
         return False
     try:
         class_path = Path(inspect.getfile(cls)).resolve(strict=True)
-        method_path = Path(inspect.getfile(cls.connect)).resolve(strict=True)
-        return class_path == expected_path.resolve(strict=True) and method_path == class_path
+        if class_path != expected_path.resolve(strict=True):
+            return False
+        for name in methods:
+            function = cls.__dict__.get(name)
+            if not inspect.isfunction(function):
+                return False
+            if Path(inspect.getfile(function)).resolve(strict=True) != class_path:
+                return False
     except (OSError, TypeError, ValueError):
         return False
+    try:
+        instance_dict = object.__getattribute__(obj, "__dict__")
+    except AttributeError:
+        instance_dict = {}
+    if type(instance_dict) is not dict:
+        return False
+    shadowed = set(methods) | {CONNECTOR_KIND_ATTR, INVENTORY_POLICY_KIND_ATTR}
+    return not shadowed & set(instance_dict)
+
+
+def _class_kind(obj: Any, attr: str) -> Any:
+    """The kind declared in the class body itself; instance or inherited values do not count."""
+    return type(obj).__dict__.get(attr)
+
+
+def _trusted_offline_connector(connector: Any) -> bool:
+    """Accept only the concrete checked-in test connector classes, never a claimed kind alone."""
+    kind = _class_kind(connector, CONNECTOR_KIND_ATTR)
+    if not isinstance(kind, str) or kind not in TRUSTED_OFFLINE_CONNECTORS:
+        return False
+    expected_path, connector_name, _ = TRUSTED_OFFLINE_CONNECTORS[kind]
+    return _trusted_instance(connector, expected_path, connector_name, CONNECTOR_METHODS)
+
+
+def _trusted_offline_connection(connector: Any, conn: Any) -> bool:
+    """SR-1 R1: the returned connection must be the one class paired with this connector kind."""
+    kind = _class_kind(connector, CONNECTOR_KIND_ATTR)
+    if not isinstance(kind, str) or kind not in TRUSTED_OFFLINE_CONNECTORS:
+        return False
+    expected_path, _, connection_name = TRUSTED_OFFLINE_CONNECTORS[kind]
+    return _trusted_instance(conn, expected_path, connection_name, CONNECTION_METHODS)
+
+
+def _trusted_inventory_policy(policy: Any) -> bool:
+    """SR-2: only the checked-in test policy class may accept an inventory, never a claimed kind alone."""
+    kind = _class_kind(policy, INVENTORY_POLICY_KIND_ATTR)
+    if not isinstance(kind, str) or kind not in TRUSTED_INVENTORY_POLICIES:
+        return False
+    expected_path, expected_name = TRUSTED_INVENTORY_POLICIES[kind]
+    return _trusted_instance(policy, expected_path, expected_name, INVENTORY_POLICY_METHODS)
 
 
 class UnresolvedInventoryAcceptance:
@@ -835,6 +898,7 @@ class PreflightReport:
     rollback: str = "not_needed"
     close: str = "not_needed"
     statements_submitted: int = 0
+    connector_release: str = "not_needed"  # done | error when ownership was never transferred
 
     @property
     def all_pass(self) -> bool:
@@ -846,6 +910,8 @@ class PreflightReport:
             and self.transaction_opened
             and self.rollback == "done"
             and self.close == "done"
+            # A connector release means ownership was never transferred.
+            and self.connector_release == "not_needed"
         )
 
     def render(self) -> str:
@@ -862,6 +928,7 @@ class PreflightReport:
             lines.append(f"preflight_stop_reason={self.stop_reason}")
         lines.append(f"preflight_transaction_rollback={self.rollback}")
         lines.append(f"preflight_connection_close={self.close}")
+        lines.append(f"preflight_connector_release={self.connector_release}")
         # A PF-16 / PF-17 PASS here is never G7-B1 / G7-B2 evidence (§14.6: G-7 needs the recorded, approved run).
         lines.append("preflight_g7_b1=UNMET")
         lines.append("preflight_g7_b2=UNMET")
@@ -905,22 +972,26 @@ def evaluate_pf0(result: Mapping[str, str] | None) -> Outcome:
 
 def evaluate_pf0b(config: PreflightConfig) -> Outcome:
     """PF-0b: OP-5 (explicit verify-full CA configuration) and OP-4 (CA SHA-256), before any connection."""
-    environ = config.environ if config.environ is not None else os.environ
-    env_mode = environ.get("PGSSLMODE")
-    env_root = environ.get("PGSSLROOTCERT")
+    # SR-7: the real process environment is always checked. `config.environ` can add values to check but can
+    # never hide a process variable (an empty mapping used to skip these checks).
+    sources = [{name: os.environ.get(name) for name in TLS_ENVIRONMENT_VARIABLES}]
+    if config.environ is not None:
+        if not isinstance(config.environ, Mapping):
+            return Outcome(UNKNOWN, "tls_environment_unreadable", (("op5_explicit_ca", False),))
+        sources.append({name: config.environ.get(name) for name in TLS_ENVIRONMENT_VARIABLES})
+    env_modes = [src["PGSSLMODE"] for src in sources if src["PGSSLMODE"] is not None]
+    env_roots = [src["PGSSLROOTCERT"] for src in sources if src["PGSSLROOTCERT"] is not None]
     if config.sslmode != REQUIRED_SSLMODE:
         return Outcome(FAIL, "configured_sslmode_not_verify_full", (("op5_explicit_ca", False),))
     root = config.sslrootcert
     if root is None or not isinstance(root, str) or not root.strip():
-        reason = "sslrootcert_implicit" if env_root else "sslrootcert_not_explicit"
+        reason = "sslrootcert_implicit" if any(env_roots) else "sslrootcert_not_explicit"
         return Outcome(FAIL, reason, (("op5_explicit_ca", False),))
     if root.strip().lower() == SYSTEM_ROOTCERT:
         return Outcome(FAIL, "sslrootcert_system_not_accepted", (("op5_explicit_ca", False),))
     if root != root.strip():
         return Outcome(FAIL, "sslrootcert_invalid", (("op5_explicit_ca", False),))
-    if (env_mode is not None and env_mode != REQUIRED_SSLMODE) or (
-        env_root is not None and env_root != root
-    ):
+    if any(mode != REQUIRED_SSLMODE for mode in env_modes) or any(r != root for r in env_roots):
         return Outcome(FAIL, "tls_environment_conflict", (("op5_explicit_ca", False),))
     path = Path(root)
     if not path.is_absolute():
@@ -1015,10 +1086,14 @@ def _inventory_gate(inventory: Any, policy: Any) -> Outcome:
         or not all(_is_count(v) for v in inventory.values())
     ):
         return Outcome(UNKNOWN, "independent_inventory_malformed")
-    if getattr(policy, INVENTORY_POLICY_KIND_ATTR, None) not in ACCEPTED_INVENTORY_POLICY_KINDS:
+    claimed = getattr(policy, INVENTORY_POLICY_KIND_ATTR, None)
+    if not isinstance(claimed, str) or claimed not in ACCEPTED_INVENTORY_POLICY_KINDS:
         return Outcome(UNKNOWN, "independent_inventory_contract_unresolved")
+    if not _trusted_inventory_policy(policy):
+        # SR-2 R4: a self-declared kind from any other class is never consulted.
+        return Outcome(UNKNOWN, "independent_inventory_policy_not_trusted")
     try:
-        accepted = policy.accept(inventory) is True
+        accepted = type(policy).accept(policy, inventory) is True
     except Exception:  # noqa: BLE001
         accepted = False
     if not accepted:
@@ -1121,13 +1196,16 @@ def run_preflight(
 ) -> PreflightReport:
     """Run PF-0 … PF-17 under SEQUENTIAL_FAIL_CLOSED. Never raises for FAIL / UNKNOWN; returns a redacted report.
 
-    `connector` must expose `PREFLIGHT_CONNECTOR_KIND` in ACCEPTED_CONNECTOR_KINDS and `connect(ConnectParams)`,
-    returning an object with `live_settings()`, `execute(sql) -> QueryResult`, `rollback()` and `close()`.
+    `connector` and the connection its `connect(ConnectParams)` returns must be the exact checked-in offline classes
+    listed in TRUSTED_OFFLINE_CONNECTORS (provenance-checked; no instance overrides). The connection exposes
+    `live_settings()`, `execute(sql) -> QueryResult`, `rollback()` and `close()`. The connector also exposes
+    `release_unadopted()`, called only when ownership was never transferred (see CONNECTOR_METHODS).
     The default (None) is the disabled Production path: STOP before connecting.
     """
     report = PreflightReport()
     policy = inventory_policy if inventory_policy is not None else UnresolvedInventoryAcceptance()
     conn = None
+    interrupt: BaseException | None = None
     try:
         _record(report, "PF-0", evaluate_pf0(config.g7_gate1_result))
         _record(report, "PF-0b", evaluate_pf0b(config))
@@ -1135,14 +1213,35 @@ def run_preflight(
             raise _Stop("CONNECT", UNKNOWN, "production_connection_disabled")
         if not _trusted_offline_connector(connector):
             raise _Stop("CONNECT", UNKNOWN, "connector_not_authorized")
+        transferred = False
         try:
-            conn = connector.connect(
-                ConnectParams(sslmode=config.sslmode, sslrootcert=config.sslrootcert)
-            )
-        except Exception:  # noqa: BLE001 - never echo host, user, certificate path or driver text
-            raise _Stop("CONNECT", UNKNOWN, "connection_failed") from None
-        if conn is None:
-            raise _Stop("CONNECT", UNKNOWN, "connection_failed")
+            try:
+                # Call the provenance-checked class method, never an instance attribute (SR-1 R2).
+                returned = type(connector).connect(
+                    connector,
+                    ConnectParams(sslmode=config.sslmode, sslrootcert=config.sslrootcert),
+                )
+            # Never echo host, user, certificate path or driver text.
+            except Exception:  # noqa: BLE001
+                raise _Stop("CONNECT", UNKNOWN, "connection_failed") from None
+            if returned is None:
+                raise _Stop("CONNECT", UNKNOWN, "connection_failed")
+            if not _trusted_offline_connection(connector, returned):
+                # SR-1 R1: an arbitrary returned object is never used, rolled back or closed by the runner.
+                raise _Stop("CONNECT", UNKNOWN, "connection_not_trusted")
+            # Ownership transfer. `conn` is assigned first: an interrupt between the two lines makes both the
+            # connector release and the runner cleanup run (safe), never neither.
+            conn = returned
+            transferred = True
+        finally:
+            if not transferred:
+                released_interrupt = _release_unadopted(connector, report)
+                in_flight = sys.exc_info()[1]
+                if released_interrupt is not None and (
+                    in_flight is None or isinstance(in_flight, Exception)
+                ):
+                    # An interrupt already in flight (handled below) is earlier and wins.
+                    interrupt = interrupt or released_interrupt
         report.connected = True
         try:
             live = conn.live_settings()
@@ -1165,28 +1264,78 @@ def run_preflight(
         report.stopped_at, report.stop_reason = stop.step, stop.reason
     except Exception:  # noqa: BLE001 - unexpected internal error: fixed token only
         report.stopped_at, report.stop_reason = "INTERNAL", "internal_error"
+    # Interrupt: clean up, then propagate a sanitized copy.
+    except BaseException as exc:  # noqa: BLE001
+        report.stopped_at, report.stop_reason = "INTERRUPTED", "interrupted"
+        interrupt = interrupt or exc
     finally:
-        _end_session(conn, report)
+        cleanup_interrupt = _end_session(conn, report)  # always runs; never short-circuited
+        interrupt = interrupt or cleanup_interrupt
+    if interrupt is not None:
+        _raise_sanitized(interrupt)
     return report
 
 
-def _end_session(conn: Any, report: PreflightReport) -> None:
+def _release_unadopted(connector: Any, report: PreflightReport) -> BaseException | None:
+    """Ask the provenance-checked connector to release what it allocated; never touches the returned object.
+
+    Only reached for a connector that passed `_trusted_offline_connector()` (both `connect` and `release_unadopted`
+    are checked there). Returns a non-`Exception` interrupt so the caller can propagate it after cleanup.
+    """
+    try:
+        type(connector).release_unadopted(connector)
+        report.connector_release = "done"
+    except Exception:  # noqa: BLE001 - fixed token only
+        report.connector_release = "error"
+    except BaseException as exc:  # noqa: BLE001
+        report.connector_release = "error"
+        return exc
+    return None
+
+
+def _raise_sanitized(exc: BaseException) -> None:
+    """Re-raise the interrupt's type without its arguments, traceback or chained context (no driver text)."""
+    if isinstance(exc, SystemExit):
+        # Keep an integer exit status (not sensitive); never let a message become a success exit.
+        sanitized: BaseException = SystemExit(exc.code if type(exc.code) is int else 1)
+    else:
+        try:
+            sanitized = type(exc)()
+        # A type that needs arguments: fall back to a plain interrupt.
+        except Exception:  # noqa: BLE001
+            sanitized = KeyboardInterrupt()
+    raise sanitized from None
+
+
+def _end_session(conn: Any, report: PreflightReport) -> BaseException | None:
+    """Roll back (when a transaction was opened) and always attempt close, even if rollback is interrupted (SR-9).
+
+    Returns the first non-`Exception` interrupt seen during cleanup so the caller can propagate it after cleanup.
+    """
     if conn is None:
-        return
+        return None
+    interrupt: BaseException | None = None
     if report.transaction_opened:
         try:
             conn.rollback()
             report.rollback = "done"
         except Exception:  # noqa: BLE001
             report.rollback = "error"
+        except BaseException as exc:  # noqa: BLE001 - e.g. KeyboardInterrupt: still close below
+            report.rollback = "error"
+            interrupt = exc
     try:
         conn.close()
         report.close = "done"
     except Exception:  # noqa: BLE001
         report.close = "error"
+    except BaseException as exc:  # noqa: BLE001
+        report.close = "error"
+        interrupt = interrupt or exc
     if report.rollback == "error" or report.close == "error":
         report.stopped_at = report.stopped_at or "CLEANUP"
         report.stop_reason = report.stop_reason or "session_cleanup_failed"
+    return interrupt
 
 
 # --------------------------------------------------------------------------- #

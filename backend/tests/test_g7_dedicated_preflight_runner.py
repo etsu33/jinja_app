@@ -16,6 +16,7 @@ import subprocess
 import sys
 from datetime import date, timedelta
 from pathlib import Path
+from types import MappingProxyType
 
 import pytest
 
@@ -47,6 +48,13 @@ def _no_network(monkeypatch):
     monkeypatch.setattr(socket, "socket", refuse)
     monkeypatch.setattr(socket, "create_connection", refuse)
     monkeypatch.setattr(socket, "getaddrinfo", refuse)
+
+
+@pytest.fixture(autouse=True)
+def _clean_tls_environment(monkeypatch):
+    # SR-7: PF-0b now always reads the real process environment, so tests start from a known state.
+    for name in pf.TLS_ENVIRONMENT_VARIABLES:
+        monkeypatch.delenv(name, raising=False)
 
 
 @pytest.fixture
@@ -137,12 +145,40 @@ INVENTORY = {t: i * 7 for i, t in enumerate(pf.APPROVED_TABLES)}
 
 
 class FakeConnection:
-    def __init__(self, live, results, raise_on=None, rollback_raises=False, close_raises=False):
-        self._live = live
-        self._results = results
+    """The only connection class the runner accepts from `FakeConnector`（SR-1）.
+
+    Inputs are plain data only, copied at construction, so no caller-supplied object（for example a mapping with a
+    custom `__getitem__`）is ever consulted while the runner submits statements.
+    """
+
+    def __init__(
+        self,
+        live,
+        results,
+        raise_on=None,
+        rollback_raises=False,
+        close_raises=False,
+        execute_exc=None,
+        rollback_exc=None,
+        close_exc=None,
+    ):
+        if type(results) is not dict or not all(type(k) is str for k in results):
+            raise TypeError("FakeConnection results must be a plain dict keyed by sub-step id")
+        if not (live is None or type(live) in (dict, str) or isinstance(live, Exception)):
+            raise TypeError("FakeConnection live settings must be plain data")
+        for exc in (execute_exc, rollback_exc, close_exc):
+            if exc is not None and not isinstance(exc, BaseException):
+                raise TypeError("FakeConnection exceptions must be exception instances")
+        if raise_on is not None and type(raise_on) is not str:
+            raise TypeError("FakeConnection raise_on must be a sub-step id")
+        self._live = dict(live) if type(live) is dict else live
+        self._results = MappingProxyType(dict(results))
         self._raise_on = raise_on
-        self._rollback_raises = rollback_raises
-        self._close_raises = close_raises
+        self._rollback_raises = bool(rollback_raises)
+        self._close_raises = bool(close_raises)
+        self._execute_exc = execute_exc
+        self._rollback_exc = rollback_exc
+        self._close_exc = close_exc
         self.executed: list[str] = []
         self.rolled_back = 0
         self.closed = 0
@@ -156,6 +192,8 @@ class FakeConnection:
         self.executed.append(sql)
         stmt = next(s for s in pf.REGISTRY if s.sql == sql)
         if self._raise_on == stmt.sub:
+            if self._execute_exc is not None:
+                raise self._execute_exc
             raise RuntimeError(DRIVER_TEXT)
         if stmt.sub in self._results:
             return self._results[stmt.sub]
@@ -168,28 +206,69 @@ class FakeConnection:
 
     def rollback(self):
         self.rolled_back += 1
+        if self._rollback_exc is not None:
+            raise self._rollback_exc
         if self._rollback_raises:
             raise RuntimeError(DRIVER_TEXT)
 
     def close(self):
         self.closed += 1
+        if self._close_exc is not None:
+            raise self._close_exc
         if self._close_raises:
             raise RuntimeError(DRIVER_TEXT)
 
 
+class FakeResource:
+    """A connector-owned handle（stands in for a socket or libpq handle the connector opened itself）."""
+
+    def __init__(self):
+        self.released = 0
+
+    def release(self):
+        self.released += 1
+
+
 class FakeConnector:
+    """Trusted offline connector. `conn` is injected by the test and stays caller-owned; with `allocate=True` the
+    connector also opens a `FakeResource` of its own, recorded before anything in `connect()` can fail.
+    """
+
     PREFLIGHT_CONNECTOR_KIND = "offline_test_double"
 
-    def __init__(self, conn=None, connect_raises=False):
+    def __init__(
+        self, conn=None, connect_raises=False, allocate=False, connect_exc=None, release_exc=None
+    ):
         self.conn = conn
         self.connect_raises = connect_raises
+        self.allocate = allocate
+        self.connect_exc = connect_exc
+        self.release_exc = release_exc
         self.params = []
+        self.allocated: list[FakeResource] = []
+        self._unadopted: list[FakeResource] = []
+        self.release_calls = 0
 
     def connect(self, params):
         self.params.append(params)
+        if self.allocate:
+            resource = FakeResource()
+            self.allocated.append(resource)
+            self._unadopted.append(resource)  # recorded before anything else can fail
+        if self.connect_exc is not None:
+            raise self.connect_exc
         if self.connect_raises:
             raise RuntimeError(DRIVER_TEXT)
         return self.conn
+
+    def release_unadopted(self):
+        """Release only handles this connector allocated; never the returned or injected object."""
+        self.release_calls += 1
+        pending, self._unadopted = self._unadopted, []
+        for resource in pending:
+            resource.release()
+        if self.release_exc is not None:
+            raise self.release_exc
 
 
 class AcceptingInventoryPolicy:
@@ -862,7 +941,9 @@ def test_cleanup_failure_turns_all_pass_into_stop(ca_file, cleanup_failure):
         pf16_inventory=INVENTORY,
         pf17_owner_confirmation=pf.OwnerConfirmation(True, date(2026, 11, 2)),
     )
-    report, conn, _ = _run(ca_file, config=config, policy=AcceptingInventoryPolicy(), **{cleanup_failure: True})
+    report, conn, _ = _run(
+        ca_file, config=config, policy=AcceptingInventoryPolicy(), **{cleanup_failure: True}
+    )
     assert all(step.status == "PASS" for step in report.steps)
     assert report.stopped_at == "CLEANUP"
     assert report.stop_reason == "session_cleanup_failed"
@@ -943,3 +1024,481 @@ def test_migration_safety_bridge_is_unchanged_and_still_not_for_preflight():
         f"postgresql://u:p@{HOST}:5432/db?sslmode=verify-full&sslrootcert=/x/ca.crt"
     )
     assert "PGSSLMODE" in out and "PGSSLROOTCERT" not in out
+
+
+# --------------------------------------------------------------------------- #
+# Security review 2026-11-03 regressions（SR-1, SR-2, SR-7, SR-9）
+# --------------------------------------------------------------------------- #
+
+
+class CallRecorder:
+    """An arbitrary, untrusted connection object（stands in for a real remote connection）."""
+
+    def __init__(self, ca_file):
+        self.calls: list[str] = []
+        self._ca_file = ca_file
+
+    def live_settings(self):
+        self.calls.append("live_settings")
+        return _live(self._ca_file)
+
+    def execute(self, sql):
+        self.calls.append("execute")
+        return Q((), ())
+
+    def rollback(self):
+        self.calls.append("rollback")
+
+    def close(self):
+        self.calls.append("close")
+
+
+def _full_config(ca_file):
+    return _config(
+        ca_file,
+        pf16_inventory=INVENTORY,
+        pf17_owner_confirmation=pf.OwnerConfirmation(True, date(2026, 11, 2)),
+    )
+
+
+def test_sr1_r1_trusted_connector_returning_arbitrary_connection_is_rejected(ca_file):
+    untrusted = CallRecorder(ca_file)
+    connector = FakeConnector(untrusted)
+    report = pf.run_preflight(_config(ca_file), connector)
+    assert (report.stopped_at, report.stop_reason) == ("CONNECT", "connection_not_trusted")
+    assert untrusted.calls == []  # never used, rolled back or closed
+    assert report.statements_submitted == 0 and not report.connected
+    assert report.rollback == "not_needed" and report.close == "not_needed"
+    _assert_redacted(report.render(), ca_file)
+
+
+def test_sr1_r1_connection_subclass_is_rejected(ca_file):
+    class FakeConnectionSubclass(FakeConnection):
+        pass
+
+    conn = FakeConnectionSubclass(_live(ca_file), _pass_results())
+    report = pf.run_preflight(_config(ca_file), FakeConnector(conn))
+    assert report.stop_reason == "connection_not_trusted"
+    assert conn.executed == [] and conn.closed == 0
+
+
+def test_sr1_r1_same_name_connection_from_another_file_is_rejected(ca_file):
+    namespace: dict = {}
+    exec("class FakeConnection:\n    def execute(self, sql): raise AssertionError\n", namespace)
+    report = pf.run_preflight(_config(ca_file), FakeConnector(namespace["FakeConnection"]()))
+    assert report.stop_reason == "connection_not_trusted"
+
+
+@pytest.mark.parametrize("method", ["live_settings", "execute", "rollback", "close"])
+def test_sr1_r1_instance_method_override_on_trusted_connection_is_rejected(ca_file, method):
+    conn = FakeConnection(_live(ca_file), _pass_results())
+    called = []
+    setattr(conn, method, lambda *a, **k: called.append(method))
+    report = pf.run_preflight(_config(ca_file), FakeConnector(conn))
+    assert report.stop_reason == "connection_not_trusted"
+    assert called == [] and conn.executed == []
+
+
+def test_sr1_r1_connection_from_the_other_kind_is_rejected(ca_file):
+    class LocalConnection:  # right name for `local_disposable`, wrong file and wrong pairing
+        def live_settings(self): ...
+        def execute(self, sql): ...
+        def rollback(self): ...
+        def close(self): ...
+
+    report = pf.run_preflight(_config(ca_file), FakeConnector(LocalConnection()))
+    assert report.stop_reason == "connection_not_trusted"
+
+
+def test_sr1_fake_connection_accepts_plain_data_only(ca_file):
+    class InterceptingResults(dict):
+        def __getitem__(self, key):
+            raise AssertionError("caller object consulted during the run")
+
+    with pytest.raises(TypeError):
+        FakeConnection(_live(ca_file), InterceptingResults(_pass_results()))
+
+    class InterceptingLive(dict):
+        pass
+
+    with pytest.raises(TypeError):
+        FakeConnection(InterceptingLive(_live(ca_file)), _pass_results())
+
+
+def test_sr1_r2_instance_connect_override_is_rejected_and_never_called(ca_file):
+    conn = FakeConnection(_live(ca_file), _pass_results())
+    connector = FakeConnector(conn)
+    called = []
+    connector.connect = lambda params: called.append(params) or CallRecorder(ca_file)
+    report = pf.run_preflight(_config(ca_file), connector)
+    assert (report.stopped_at, report.stop_reason) == ("CONNECT", "connector_not_authorized")
+    assert called == [] and connector.params == [] and conn.executed == []
+
+
+def test_sr1_r2_instance_kind_override_is_rejected(ca_file):
+    connector = FakeConnector(FakeConnection(_live(ca_file), _pass_results()))
+    connector.PREFLIGHT_CONNECTOR_KIND = "offline_test_double"  # same value, but instance-level
+    report = pf.run_preflight(_config(ca_file), connector)
+    assert report.stop_reason == "connector_not_authorized"
+    assert connector.params == []
+
+
+def test_sr1_trusted_pair_still_runs(ca_file):
+    report, conn, connector = _run(ca_file)
+    assert report.stopped_at == "PF-16"  # default inventory gate
+    assert len(connector.params) == 1 and conn.closed == 1
+
+
+class SpoofedInventoryPolicy:
+    PREFLIGHT_INVENTORY_POLICY_KIND = "offline_test_double"
+
+    def accept(self, inventory):
+        return True
+
+
+def test_sr2_r4_spoofed_policy_kind_is_rejected_before_count_sql(ca_file):
+    report, conn, _ = _run(ca_file, config=_full_config(ca_file), policy=SpoofedInventoryPolicy())
+    assert (report.stopped_at, report.stop_reason) == (
+        "PF-16",
+        "independent_inventory_policy_not_trusted",
+    )
+    assert report.steps[-1].status == "UNKNOWN"
+    assert not any(s.startswith("PF-16") for s in _submitted_subs(conn))
+    assert not any("count(*) FROM public." in sql for sql in conn.executed)
+    assert not report.all_pass
+    text = report.render()
+    assert "preflight_overall=STOP" in text and "ALL_PASS_OFFLINE" not in text
+    assert "preflight_g7_b1=UNMET" in text and "g7=UNMET" in text
+
+
+def test_sr2_r4_full_chain_cannot_produce_all_pass_offline(ca_file):
+    """R4 as reproduced: an arbitrary connection plus a spoofed policy."""
+    untrusted = CallRecorder(ca_file)
+    report = pf.run_preflight(
+        _full_config(ca_file), FakeConnector(untrusted), SpoofedInventoryPolicy()
+    )
+    assert report.stop_reason == "connection_not_trusted"
+    assert untrusted.calls == []
+    assert "ALL_PASS_OFFLINE" not in report.render()
+
+
+def test_sr2_policy_subclass_is_rejected(ca_file):
+    class PolicySubclass(AcceptingInventoryPolicy):
+        pass
+
+    report, conn, _ = _run(ca_file, config=_full_config(ca_file), policy=PolicySubclass())
+    assert report.stop_reason == "independent_inventory_policy_not_trusted"
+    assert not any(s.startswith("PF-16") for s in _submitted_subs(conn))
+
+
+def test_sr2_instance_accept_override_is_rejected(ca_file):
+    policy = pf.UnresolvedInventoryAcceptance()
+    policy.PREFLIGHT_INVENTORY_POLICY_KIND = "offline_test_double"
+    policy.accept = lambda inventory: True
+    report, conn, _ = _run(ca_file, config=_full_config(ca_file), policy=policy)
+    assert report.stop_reason == "independent_inventory_policy_not_trusted"
+    assert not any(s.startswith("PF-16") for s in _submitted_subs(conn))
+
+
+def test_sr2_default_policy_still_stops_as_unresolved(ca_file):
+    report, conn, _ = _run(ca_file, config=_full_config(ca_file))
+    assert report.stop_reason == "independent_inventory_contract_unresolved"
+    assert not any(s.startswith("PF-16") for s in _submitted_subs(conn))
+
+
+def test_sr2_trusted_test_policy_still_reaches_counts(ca_file):
+    report, conn, _ = _run(ca_file, config=_full_config(ca_file), policy=AcceptingInventoryPolicy())
+    assert report.all_pass
+    assert sum("count(*) FROM public." in sql for sql in conn.executed) == len(pf.APPROVED_TABLES)
+
+
+@pytest.mark.parametrize(
+    "env,reason",
+    [
+        ({"PGSSLROOTCERT": "/other/synthetic/ca.crt"}, "tls_environment_conflict"),
+        ({"PGSSLMODE": "prefer"}, "tls_environment_conflict"),
+        ({"PGSSLMODE": "disable"}, "tls_environment_conflict"),
+    ],
+)
+def test_sr7_r9_empty_environ_cannot_hide_process_conflicts(ca_file, monkeypatch, env, reason):
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    report = _pf0b(ca_file, environ={})
+    assert report.stop_reason == reason
+
+
+def test_sr7_r9_empty_environ_cannot_hide_implicit_ca(ca_file, monkeypatch):
+    monkeypatch.setenv("PGSSLROOTCERT", str(ca_file))
+    assert _pf0b(ca_file, sslrootcert=None, environ={}).stop_reason == "sslrootcert_implicit"
+
+
+def test_sr7_matching_process_environment_is_accepted(ca_file, monkeypatch):
+    monkeypatch.setenv("PGSSLMODE", "verify-full")
+    monkeypatch.setenv("PGSSLROOTCERT", str(ca_file))
+    assert pf.evaluate_pf0b(_config(ca_file, environ={})).status == "PASS"
+
+
+def test_sr7_supplied_environ_can_only_add_conflicts(ca_file):
+    assert (
+        _pf0b(ca_file, environ={"PGSSLMODE": "require"}).stop_reason == "tls_environment_conflict"
+    )
+
+
+def test_sr7_non_mapping_environ_is_unknown(ca_file):
+    report = _pf0b(ca_file, environ=["PGSSLMODE"])
+    assert (report.steps[-1].status, report.stop_reason) == (
+        "UNKNOWN",
+        "tls_environment_unreadable",
+    )
+
+
+def _assert_sanitized(exc, ca_file):
+    assert exc.args in ((), (2,), (1,))
+    assert exc.__cause__ is None and exc.__suppress_context__
+    for text in (str(exc), repr(exc)):
+        for secret in (DRIVER_TEXT, PASSWORD, HOST, str(ca_file)):
+            assert secret not in text
+
+
+def test_sr9_r11_keyboard_interrupt_in_rollback_still_closes(ca_file):
+    conn = FakeConnection(
+        _live(ca_file), _pass_results(), rollback_exc=KeyboardInterrupt(DRIVER_TEXT)
+    )
+    with pytest.raises(KeyboardInterrupt) as excinfo:
+        pf.run_preflight(_config(ca_file), FakeConnector(conn))
+    assert conn.rolled_back == 1 and conn.closed == 1
+    _assert_sanitized(excinfo.value, ca_file)
+
+
+def test_sr9_interrupt_during_statement_rolls_back_closes_and_propagates(ca_file):
+    conn = FakeConnection(
+        _live(ca_file), _pass_results(), raise_on="PF-6", execute_exc=KeyboardInterrupt(DRIVER_TEXT)
+    )
+    with pytest.raises(KeyboardInterrupt) as excinfo:
+        pf.run_preflight(_config(ca_file), FakeConnector(conn))
+    assert _submitted_subs(conn)[-1] == "PF-6"  # nothing after the interrupted statement
+    assert conn.rolled_back == 1 and conn.closed == 1
+    _assert_sanitized(excinfo.value, ca_file)
+
+
+def test_sr9_first_interrupt_wins_and_close_is_still_attempted(ca_file):
+    conn = FakeConnection(
+        _live(ca_file),
+        _pass_results(),
+        raise_on="PF-3",
+        execute_exc=KeyboardInterrupt(DRIVER_TEXT),
+        rollback_exc=SystemExit(DRIVER_TEXT),
+        close_exc=SystemExit(3),
+    )
+    with pytest.raises(KeyboardInterrupt):
+        pf.run_preflight(_config(ca_file), FakeConnector(conn))
+    assert conn.rolled_back == 1 and conn.closed == 1
+
+
+@pytest.mark.parametrize("code,expected", [(2, 2), (DRIVER_TEXT, 1), (None, 1)])
+def test_sr9_system_exit_keeps_only_an_integer_status(ca_file, code, expected):
+    conn = FakeConnection(_live(ca_file), _pass_results(), rollback_exc=SystemExit(code))
+    with pytest.raises(SystemExit) as excinfo:
+        pf.run_preflight(_config(ca_file), FakeConnector(conn))
+    assert excinfo.value.code == expected
+    assert conn.closed == 1
+    _assert_sanitized(excinfo.value, ca_file)
+
+
+def test_sr9_ordinary_rollback_exception_still_returns_redacted_stop(ca_file):
+    config = _full_config(ca_file)
+    conn = FakeConnection(_live(ca_file), _pass_results(), rollback_exc=RuntimeError(DRIVER_TEXT))
+    report = pf.run_preflight(config, FakeConnector(conn), AcceptingInventoryPolicy())
+    assert (report.stopped_at, report.stop_reason) == ("CLEANUP", "session_cleanup_failed")
+    assert conn.closed == 1 and not report.all_pass
+    _assert_redacted(report.render(), ca_file)
+
+
+def test_sr1_r2_connect_is_called_through_the_class_even_if_provenance_check_is_bypassed(
+    ca_file, monkeypatch
+):
+    """Second layer for R2: with the provenance check disabled, the instance override is still never called."""
+    monkeypatch.setattr(pf, "_trusted_offline_connector", lambda connector: True)
+    conn = FakeConnection(_live(ca_file), _pass_results())
+    connector = FakeConnector(conn)
+    called = []
+    connector.connect = lambda params: called.append(params) or CallRecorder(ca_file)
+    report = pf.run_preflight(_config(ca_file), connector)
+    assert called == []
+    assert (
+        len(connector.params) == 1
+    )  # the class method ran and returned the trusted FakeConnection
+    assert report.stopped_at == "PF-16"
+
+
+# --------------------------------------------------------------------------- #
+# Ownership contract（PR #3425 follow-up）: connector-owned until validated and assigned
+# --------------------------------------------------------------------------- #
+
+
+def _ownership_report(ca_file, connector, **kwargs):
+    return pf.run_preflight(_config(ca_file), connector, **kwargs)
+
+
+def test_ownership_rejected_connection_is_released_by_connector_with_zero_sql(ca_file):
+    untrusted = CallRecorder(ca_file)
+    connector = FakeConnector(untrusted, allocate=True)
+    report = _ownership_report(ca_file, connector)
+    assert (report.stopped_at, report.stop_reason) == ("CONNECT", "connection_not_trusted")
+    assert connector.release_calls == 1 and connector.allocated[0].released == 1
+    assert untrusted.calls == []  # the returned object is never touched, not even by the release
+    assert report.statements_submitted == 0 and not report.connected
+    assert (report.rollback, report.close, report.connector_release) == (
+        "not_needed",
+        "not_needed",
+        "done",
+    )
+    assert not report.all_pass
+    text = report.render()
+    assert "preflight_overall=STOP" in text and "preflight_connector_release=done" in text
+    _assert_redacted(text, ca_file)
+
+
+def test_ownership_connect_failure_after_allocation_is_released(ca_file):
+    connector = FakeConnector(allocate=True, connect_raises=True)
+    report = _ownership_report(ca_file, connector)
+    assert (report.stopped_at, report.stop_reason) == ("CONNECT", "connection_failed")
+    assert connector.allocated[0].released == 1 and report.connector_release == "done"
+    assert report.statements_submitted == 0
+    _assert_redacted(report.render(), ca_file)
+
+
+def test_ownership_connect_returning_none_after_allocation_is_released(ca_file):
+    connector = FakeConnector(None, allocate=True)
+    report = _ownership_report(ca_file, connector)
+    assert report.stop_reason == "connection_failed"
+    assert connector.allocated[0].released == 1 and report.connector_release == "done"
+
+
+def test_ownership_interrupt_in_connect_after_allocation_is_released_and_sanitized(ca_file):
+    connector = FakeConnector(allocate=True, connect_exc=KeyboardInterrupt(DRIVER_TEXT))
+    with pytest.raises(KeyboardInterrupt) as excinfo:
+        _ownership_report(ca_file, connector)
+    assert connector.allocated[0].released == 1
+    _assert_sanitized(excinfo.value, ca_file)
+
+
+def test_ownership_release_failure_keeps_original_stop_and_is_redacted(ca_file):
+    connector = FakeConnector(
+        CallRecorder(ca_file), allocate=True, release_exc=RuntimeError(DRIVER_TEXT)
+    )
+    report = _ownership_report(ca_file, connector)
+    assert (report.stopped_at, report.stop_reason) == ("CONNECT", "connection_not_trusted")
+    assert report.connector_release == "error" and not report.all_pass
+    text = report.render()
+    assert "preflight_connector_release=error" in text and "preflight_overall=STOP" in text
+    _assert_redacted(text, ca_file)
+
+
+def test_ownership_release_interrupt_propagates_after_stop_sanitized(ca_file):
+    connector = FakeConnector(
+        CallRecorder(ca_file), allocate=True, release_exc=KeyboardInterrupt(DRIVER_TEXT)
+    )
+    with pytest.raises(KeyboardInterrupt) as excinfo:
+        _ownership_report(ca_file, connector)
+    assert connector.release_calls == 1 and connector.allocated[0].released == 1
+    _assert_sanitized(excinfo.value, ca_file)
+
+
+def test_ownership_first_interrupt_wins_over_release_interrupt(ca_file):
+    connector = FakeConnector(
+        allocate=True, connect_exc=KeyboardInterrupt(DRIVER_TEXT), release_exc=SystemExit(7)
+    )
+    with pytest.raises(KeyboardInterrupt):
+        _ownership_report(ca_file, connector)
+    assert connector.release_calls == 1
+
+
+def test_ownership_transfer_runner_closes_and_connector_never_releases(ca_file):
+    conn = FakeConnection(_live(ca_file), _pass_results())
+    connector = FakeConnector(conn, allocate=True)
+    report = _ownership_report(ca_file, connector)
+    assert report.stopped_at == "PF-16"  # default inventory gate, after transfer
+    assert connector.release_calls == 0 and report.connector_release == "not_needed"
+    assert conn.rolled_back == 1 and conn.closed == 1  # the runner owns cleanup after transfer
+    assert "preflight_connector_release=not_needed" in report.render()
+
+
+def test_ownership_full_pass_still_requires_no_connector_release(ca_file):
+    conn = FakeConnection(_live(ca_file), _pass_results())
+    connector = FakeConnector(conn, allocate=True)
+    report = pf.run_preflight(_full_config(ca_file), connector, AcceptingInventoryPolicy())
+    assert report.all_pass and connector.release_calls == 0
+    assert "preflight_overall=ALL_PASS_OFFLINE" in report.render()
+
+
+def test_ownership_rollback_interrupt_after_transfer_still_closes_without_release(ca_file):
+    conn = FakeConnection(
+        _live(ca_file), _pass_results(), rollback_exc=KeyboardInterrupt(DRIVER_TEXT)
+    )
+    connector = FakeConnector(conn, allocate=True)
+    with pytest.raises(KeyboardInterrupt) as excinfo:
+        _ownership_report(ca_file, connector)
+    assert conn.rolled_back == 1 and conn.closed == 1
+    assert (
+        connector.release_calls == 0
+    )  # ownership had transferred; the connector is not asked again
+    _assert_sanitized(excinfo.value, ca_file)
+
+
+def test_ownership_cleanup_cannot_turn_stop_into_pass():
+    report = pf.PreflightReport()
+    report.steps = [pf.StepResult(step, "PASS", "ok") for step in pf.STEP_ORDER]
+    report.connected = report.transaction_opened = True
+    report.rollback = report.close = "done"
+    assert report.all_pass  # control: the only difference below is the connector release
+    for value in ("done", "error"):
+        report.connector_release = value
+        assert not report.all_pass
+        assert "preflight_overall=STOP" in report.render()
+    report.connector_release = "not_needed"
+    report.stopped_at, report.stop_reason = "CONNECT", "connection_not_trusted"
+    assert not report.all_pass
+
+
+def test_ownership_untrusted_connector_release_is_never_called(ca_file):
+    class Untrusted:
+        PREFLIGHT_CONNECTOR_KIND = "offline_test_double"
+
+        def __init__(self):
+            self.calls = []
+
+        def connect(self, params):
+            self.calls.append("connect")
+
+        def release_unadopted(self):
+            self.calls.append("release_unadopted")
+
+    connector = Untrusted()
+    report = _ownership_report(ca_file, connector)
+    assert report.stop_reason == "connector_not_authorized"
+    assert connector.calls == [] and report.connector_release == "not_needed"
+
+
+def test_ownership_instance_release_override_is_rejected_and_never_called(ca_file):
+    connector = FakeConnector(FakeConnection(_live(ca_file), _pass_results()), allocate=True)
+    called = []
+    connector.release_unadopted = lambda: called.append(True)
+    report = _ownership_report(ca_file, connector)
+    assert report.stop_reason == "connector_not_authorized"
+    assert called == [] and connector.params == []
+
+
+def test_ownership_connector_without_release_method_is_rejected(ca_file, monkeypatch):
+    monkeypatch.delattr(FakeConnector, "release_unadopted")
+    connector = FakeConnector(FakeConnection(_live(ca_file), _pass_results()))
+    report = _ownership_report(ca_file, connector)
+    assert report.stop_reason == "connector_not_authorized" and connector.params == []
+
+
+def test_ownership_injected_connection_is_not_released_by_connector(ca_file):
+    untrusted = CallRecorder(ca_file)
+    connector = FakeConnector(untrusted)  # no connector-owned allocation
+    report = _ownership_report(ca_file, connector)
+    assert connector.release_calls == 1 and connector.allocated == []
+    assert untrusted.calls == [] and report.connector_release == "done"

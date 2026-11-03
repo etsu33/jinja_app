@@ -369,3 +369,32 @@ bound in the runner. Whether the role-level `statement_timeout`（§14.3 conditi
    proposed.
 3. Optional hardening for SR-6 and SR-8.
 4. OP-6 remains **STOP** until those changes are merged and independently re-reviewed.
+
+## 8. Follow-up record（2026-11-03; offline hardening, pending independent re-review）
+
+A separate PR（branch `fix/g7-preflight-offline-safety`, base `develop` @ `16229ab46`）addresses SR-1, SR-2, SR-7 and
+SR-9 only. Sections 0 to 7 above are unchanged and still describe `afd3fe974`.
+
+| ID | Change | Regression tests |
+| --- | --- | --- |
+| SR-1 | `connect` is called through the provenance-checked class. The returned connection must be the class paired with the connector kind（`FakeConnection` / `LocalConnection`）, defined in the same checked-in test file, with no instance method overrides. Otherwise the runner stops with `connection_not_trusted` and never calls the object. `FakeConnection` accepts plain data only | `test_sr1_*`（R1, R2, subclass, same-name class from another file, instance method override, cross-kind, intercepting mapping）; DB file `test_sr1_*` |
+| SR-2 | A policy claiming `offline_test_double` is consulted only if it is the checked-in `AcceptingInventoryPolicy` with no instance overrides. Otherwise PF-16 is UNKNOWN `independent_inventory_policy_not_trusted` before any count SQL. The default policy is unchanged（`independent_inventory_contract_unresolved`） | `test_sr2_*`（R4 alone and as the full chain; no `ALL_PASS_OFFLINE`） |
+| SR-7 | `PGSSLMODE` / `PGSSLROOTCERT` of the process are always checked. `PreflightConfig.environ` can only add values; a non-mapping is UNKNOWN `tls_environment_unreadable` | `test_sr7_*`（R9） |
+| SR-9 | `close()` is attempted after any rollback outcome, including `BaseException`. Interrupts propagate after cleanup as a sanitized new instance; the first interrupt wins | `test_sr9_*`（R11, interrupt during a statement, nested interrupts, `SystemExit` status） |
+
+**Ownership addendum（same PR, later commit）.** A further gap was found during follow-up work: the original connector
+API（only `connect()`）could not release connector-owned resources when `connect()` failed after allocating, or when
+the returned connection was rejected, without touching the untrusted object.
+
+- After the owner approved the interface change, a provenance-checked `release_unadopted()` was added. The runner calls
+  it only when ownership was never transferred, and it never receives or touches the returned object.
+- Contract, verification and residual risks: readiness §15.6.
+
+**Still open after this follow-up:**
+
+- **SR-3**: in-process code can forge both connector and connection provenance, or reassign private attributes of a
+  trusted test object after construction. Both were re-verified offline after the change.
+- **SR-4, SR-5**: Production-connector blockers.
+- **SR-6, SR-8, SR-10, SR-11.**
+
+OP-6 stays **STOP**; G-6 / G-7 **UNMET**; AG-3 / AG-4 **NOT_AUTHORIZED**. This follow-up is not an approval.
