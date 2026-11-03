@@ -104,6 +104,7 @@ python manage.py evidence_coverage_audit --data-origin repository-seed-local --f
   ```bash
   python scripts/g7_gate1_identity_check.py --target <承認済み target の JSON>
   ```
+- **専用 preflight runner（OP-6）：** `scripts/g7_dedicated_preflight_runner.py` はオフライン実装だけで、Production への接続経路を持たない（CLI は固定の STOP トークンを出して終了コード 2 で終わる）。これは AG-3 / AG-4 の承認ではなく、G-6 / G-7 を満たすものでもない（readiness §15）。
 - 実行前の gate（専用ロール、権限境界、TLS、接続先の確認、credential の扱い）と STOP / GO 条件は `docs/audit/evidence-coverage-production-readiness-2026-11-01.md` を参照する。2026-11-01 時点では **STOP**。
 
 ```bash

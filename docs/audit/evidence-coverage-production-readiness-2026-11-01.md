@@ -1012,7 +1012,7 @@ needs a new approval, and the preflight must then be repeated from the start.
 | OP-3 | G7-A1–A6 PASS with `scripts/g7_gate1_identity_check.py`（§12）against an owner-approved target taken from the provider dashboard | The tool's token output（shareable） | Not run |
 | OP-4 | CA file: SHA-256 equals §8.1.1（G6-E3） | match yes / no（shareable） | Owner check |
 | OP-5 | Connection string carries `sslmode=verify-full` and an explicit `sslrootcert` that is a file path, not `system`（§11.3） | yes / no（shareable） | Not run |
-| OP-6 | **The dedicated preflight runner**（§14.5）, enforcing the explicit CA and the sequential fail-closed contract（§14.6） | Review and test record（shareable） | **UNIMPLEMENTED: STOP** until the runner is implemented in a separate PR, independently reviewed and tested |
+| OP-6 | **The dedicated preflight runner**（§14.5）, enforcing the explicit CA and the sequential fail-closed contract（§14.6） | Review and test record（shareable） | **OFFLINE IMPLEMENTATION ONLY（§15）: STOP.** No Production connector exists; independent review is pending. Not usable for AG-3 / AG-4 |
 | OP-7 | An **independent** inventory for G7-B1（table set and per-table row counts）, retained before the run | Private | **UNRESOLVED**: source, capture time and verification method（§14.6.1）. Missing → PF-16 UNKNOWN, STOP |
 
 ### 14.5 Explicit CA for the preflight connection（design decided: dedicated runner; unimplemented）
@@ -1191,3 +1191,106 @@ STOP if any of the following holds:
 6. Whether a provider restricts the catalog views or functions in PF-14.
 7. Not a provider item, but still open: the PF-16 independent inventory（source, capture time, verification
    method）is **UNRESOLVED**（§14.6.1）.
+
+## 15. Dedicated preflight runner — offline implementation（2026-11-03; code and offline tests only）
+
+> **Status: OFFLINE IMPLEMENTATION ONLY.** Baseline: `develop` @ `d95d911b`. No Production or remote database was
+> contacted. No role, GRANT / REVOKE or schema change was made, and no credential was used. **This implementation is
+> not AG-3 or AG-4 authorization**, and it does not resolve OP-6 for execution: independent review is pending, and
+> the runner has no Production connector. The TEMP decision（§11.1）, the RLS fail-closed policy（§11.2）, the explicit
+> CA policy（§11.3）, the migration-safety credential bridge（§14.5）and every §6 / §9.5 / §14.9 STOP condition are
+> unchanged.
+
+```text
+ROLE_CREATION_EXECUTION = NOT_AUTHORIZED
+GRANT_EXECUTION         = NOT_AUTHORIZED
+PRODUCTION_CONNECTION   = STOP
+G6 = UNMET
+G7 = UNMET
+```
+
+### 15.1 Files
+
+| File | Role |
+| --- | --- |
+| `scripts/g7_dedicated_preflight_runner.py` | The runner. Standard library only: no database driver, socket, Django or logging import |
+| `backend/tests/test_g7_dedicated_preflight_runner.py` | Deterministic unit tests with fake connections; sockets and name resolution fail in every test |
+| `backend/tests/test_g7_dedicated_preflight_runner_db.py` | Local disposable database checks（pytest-django test database on localhost only） |
+
+### 15.2 How the §14 requirements are implemented
+
+| Requirement（source） | Implementation |
+| --- | --- |
+| Explicit CA before connecting（§11.3, §14.4 OP-4 / OP-5, §14.5） | PF-0b `evaluate_pf0b()`: `sslmode=verify-full`; `sslrootcert` present, not `system`, an absolute path to a regular file outside the repository, with PEM certificate markers; SHA-256 equal to §8.1.1 by default. A missing `sslrootcert` with `PGSSLROOTCERT` set is `sslrootcert_implicit`; `PGSSLMODE` / `PGSSLROOTCERT` values that differ from the configured ones are `tls_environment_conflict` |
+| G-7 offline identity first（§14.6 PF-0, §12） | PF-0 `evaluate_pf0()` takes the G7-A1..A6 result of `g7_gate1_identity_check.evaluate()`. The field list is loaded from that script. All six must be PASS |
+| Live conninfo `sslrootcert` equals the configured value; login role only（§14.5） | `evaluate_live_settings()`, after connecting and before any SQL: live `sslmode=verify-full`, live `sslrootcert` equal to the configured value（not `system`, not empty）, client `ssl_in_use=true`, live user `kamimusubi_audit_ro` or `kamimusubi_audit_ro.<suffix>`（the §12 A6 pooler format）. Values are compared, never returned |
+| `SEQUENTIAL_FAIL_CLOSED`（§14.6） | `BEGIN READ ONLY`, then each registry statement is submitted alone and evaluated before the next. Only PASS continues |
+| STOP on FAIL / UNKNOWN（§14.6, §14.9） | No later statement, `rollback()` whenever `BEGIN READ ONLY` was submitted, `close()` always, fixed tokens only. No retry, fallback role or remediation |
+| §14.7 is a reference list, not a script | The registry holds each §14.7 statement as a separate string. A test checks that the PF-1 to PF-15 strings equal the §14.7 lines verbatim, in order |
+| Allowed SQL only（§14.6 rules） | There is no API that takes SQL. `_GuardedSession.submit()` accepts registry objects only（identity, not text）, and `validate_statement()` also refuses `;`, comments, dollar / identifier quoting, anything but SELECT / SHOW or the three fixed control statements, `SET` / `RESET` / `ROLE` / `SESSION AUTHORIZATION`, DML, DDL, GRANT / REVOKE, `INTO`, row locks and side-effecting functions such as `set_config()` |
+| PF-16 needs independent evidence（§14.6.1） | The inventory gate runs before any PF-16 SQL. Missing → `independent_inventory_missing`; malformed → `independent_inventory_malformed`. The default policy `UnresolvedInventoryAcceptance` never accepts an inventory（`PF16_INDEPENDENT_INVENTORY = UNRESOLVED`）, so PF-16 is UNKNOWN, G7-B1 UNMET, and no count SQL is submitted |
+| Redaction（§14.8） | Shared output is fixed tokens, booleans, counts, the approved role name and the ten approved table names. Never connection strings, passwords, hosts, project references, certificate paths, live user names, exception text, names found by PF-5 / PF-6 / PF-10 / PF-11, or PF-16 row counts（match `true` / `false` only） |
+| No Production entry point（this PR） | `run_preflight()` without a connector stops with `production_connection_disabled`. Connector kind alone is insufficient: the runner checks concrete connector class and method provenance against the two checked-in test files. The local-disposable test adapter rejects non-loopback configuration and forces libpq `host` / `hostaddr` to `127.0.0.1`. The CLI remains STOP-only. These checks are defence in depth, not an OS-level sandbox: truly untrusted code running in the same process requires independent network isolation |
+
+The connector interface is the runner's own: `connect(ConnectParams)` receives only the validated `sslmode` and
+`sslrootcert`; the connection exposes `live_settings()`, `execute(sql) -> QueryResult`, `rollback()` and `close()`.
+
+### 15.3 Result contracts where §14.6 is silent or needs an approval the runner cannot hold
+
+Where §14.6 does not define a result, or says "STOP until explained and approved", the runner returns **UNKNOWN
+and stops**. It does not invent an approval.
+
+| Case | Result |
+| --- | --- |
+| A statement returns no row（PF-1 to PF-15） | UNKNOWN `no_row` |
+| A NULL where a boolean is expected | UNKNOWN `null_value` |
+| Wrong columns, row count, value types or unexpected text values; an evaluator error | UNKNOWN `malformed_result` / `evaluation_error` |
+| A driver exception | UNKNOWN `execution_error`（no exception text） |
+| ROLLBACK or connection close fails after otherwise PASS checks | `preflight_overall=STOP` and `session_cleanup_failed`（fixed redacted token） |
+| PF-5 `other_schemas_with_usage > 0`, PF-6 `other_readable > 0`, PF-10 `> 0`, PF-11 `default_acl_to_public > 0` | UNKNOWN（the runner has no approval input） |
+| PF-6 `audited_readable > 10` | UNKNOWN `malformed_result`（impossible for the fixed set） |
+| PF-12 RLS enabled or forced | FAIL `rls_enabled_stop`（§11.2） |
+| PF-14 own `pg_stat_ssl` rows 0 / more than 1 | UNKNOWN |
+| PF-16 after `SET LOCAL row_security = off` | `SHOW row_security` must return `off`, as in `audit_rls_visibility.enforce_row_security_off()`. This adds a check and relaxes none |
+| PF-17 | An offline input: `confirmed=True` and a date not in the future, otherwise UNKNOWN |
+
+Steps with several §14.7 statements are split into sub-steps（PF-4a/b, PF-5a/b/c, PF-14a/b, PF-15a/b）. Each sub-step
+is evaluated before the next is submitted, and the first non-PASS stops the run.
+
+**An all-PASS report is not evidence.** Even when every step is PASS on a test double, the report prints
+`preflight_g7_b1=UNMET`, `preflight_g7_b2=UNMET`, `ag3_connection_approval=NOT_AUTHORIZED`,
+`ag4_preflight_approval=NOT_AUTHORIZED`, `production_connection=STOP`, `g6=UNMET` and `g7=UNMET`.
+
+### 15.4 Tests
+
+- Unit（fake connections）: PF order and PASS progression; STOP after the first FAIL or UNKNOWN with no later SQL and
+  no retry; rollback and disconnect on failure, also when rollback raises; `BEGIN` failure; malformed and unexpected
+  results; missing, `system`, relative, non-existent, non-PEM, in-repository, implicit and SHA-256-mismatched CA;
+  conflicting `PG*` TLS variables; live `sslmode`, `sslrootcert`, `ssl_in_use` and login-role mismatches; PF-16 STOP
+  before any count SQL for a missing, malformed or unaccepted inventory; count mismatch; PF-17; the statement guard;
+  connector-kind gating; the disabled CLI; redaction of synthetic secrets and driver text; the module imports no
+  driver, socket, Django or logging; the migration-safety bridge still exports no `PGSSLROOTCERT`.
+- Local disposable database（the local test superuser; values meaningless for Production）: every PF-1 to PF-15
+  statement and every PF-16 statement runs alone inside `BEGIN READ ONLY` and fits its result contract; the approved
+  table constant equals `audited_tables()`; a real libpq session without `verify-full` stops at the live check with no
+  SQL; with the live check stubbed, the real session stops at PF-1（`session_identity_mismatch`）after exactly two
+  statements and is rolled back and closed.
+
+### 15.5 Remaining UNKNOWNs and risks
+
+1. Every §14.10 item is unchanged（provider PUBLIC grants and default ACLs, `pg_stat_ssl` through the pooler, custom-role
+   login and `CONNECTION LIMIT 1` through the pooler, `ALTER ROLE … SET` on pooled connections, RLS and legacy
+   relations in Production, provider restrictions on PF-14 objects）.
+2. The PF-16 independent inventory（source, capture time, verification method and acceptance contract）is
+   **UNRESOLVED**. Until it is decided, PF-16 is always UNKNOWN in any non-test use.
+3. A Production connector does not exist. How it would read the live conninfo（for example libpq `PQconninfo`, as
+   `audit_tls_evidence` does）, and whether a pooler reports the login user with the `.<project_ref>` suffix, are
+   unverified. Adding one needs a separate PR, independent review and AG-3 / AG-4 approval.
+4. The runner does not verify the certificate chain or hostname itself; with `verify-full` that is libpq's documented
+   behaviour, and the hostname / project identity is PF-0（G7-A）. §8.1.2 evidence requirements 3 and 5 stay open.
+5. `expected_ca_sha256` defaults to the §8.1.1 digest but is a constructor argument so tests can use a synthetic CA. A
+   future Production path must pin it.
+6. The CA file's permission mode is not checked; OP-4 / OP-5 require the SHA-256 and the explicit path only.
+7. The statement guard is lexical defence in depth. The primary control is the fixed registry and object-identity check.
+8. `APPROVED_TABLES` is the `audited_tables()` set of this SHA. It must be regenerated on the approved SHA（§14.7）; the
+   database test fails if they diverge.
