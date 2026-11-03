@@ -84,8 +84,16 @@ ACCEPTED_CONNECTOR_KINDS = frozenset({"offline_test_double", "local_disposable"}
 # Offline test implementations must originate from these exact checked-in test files.
 # This is defence in depth, not a substitute for OS-level network isolation.
 TRUSTED_OFFLINE_CONNECTORS = {
-    "offline_test_double": (Path(__file__).resolve().parent.parent / "backend/tests/test_g7_dedicated_preflight_runner.py", "FakeConnector"),
-    "local_disposable": (Path(__file__).resolve().parent.parent / "backend/tests/test_g7_dedicated_preflight_runner_db.py", "LocalConnector"),
+    "offline_test_double": (
+        Path(__file__).resolve().parent.parent
+        / "backend/tests/test_g7_dedicated_preflight_runner.py",
+        "FakeConnector",
+    ),
+    "local_disposable": (
+        Path(__file__).resolve().parent.parent
+        / "backend/tests/test_g7_dedicated_preflight_runner_db.py",
+        "LocalConnector",
+    ),
 }
 INVENTORY_POLICY_KIND_ATTR = "PREFLIGHT_INVENTORY_POLICY_KIND"
 ACCEPTED_INVENTORY_POLICY_KINDS = frozenset({"offline_test_double"})
