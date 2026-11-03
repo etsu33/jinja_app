@@ -390,6 +390,12 @@ the returned connection was rejected, without touching the untrusted object.
   it only when ownership was never transferred, and it never receives or touches the returned object.
 - Contract, verification and residual risks: readiness §15.6.
 
+**Issue #3426 PR-A（later PR）.** The R1 / R2 interrupt windows recorded in readiness §15.6 are now **bounded, not
+eliminated**, for signal-originated interrupts: a single ownership marker plus a section that defers Python-level
+signal handlers（a `pthread_sigmask` design was rejected because it fails in multi-threaded processes）.
+The guarantees, the limits that cannot be removed in Python, and the mutation evidence are in readiness §15.7.
+R3 and R4 are unchanged.
+
 **Still open after this follow-up:**
 
 - **SR-3**: in-process code can forge both connector and connection provenance, or reassign private attributes of a
