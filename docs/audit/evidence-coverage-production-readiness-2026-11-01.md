@@ -1230,7 +1230,7 @@ G7 = UNMET
 | Allowed SQL only（§14.6 rules） | There is no API that takes SQL. `_GuardedSession.submit()` accepts registry objects only（identity, not text）, and `validate_statement()` also refuses `;`, comments, dollar / identifier quoting, anything but SELECT / SHOW or the three fixed control statements, `SET` / `RESET` / `ROLE` / `SESSION AUTHORIZATION`, DML, DDL, GRANT / REVOKE, `INTO`, row locks and side-effecting functions such as `set_config()` |
 | PF-16 needs independent evidence（§14.6.1） | The inventory gate runs before any PF-16 SQL. Missing → `independent_inventory_missing`; malformed → `independent_inventory_malformed`. The default policy `UnresolvedInventoryAcceptance` never accepts an inventory（`PF16_INDEPENDENT_INVENTORY = UNRESOLVED`）, so PF-16 is UNKNOWN, G7-B1 UNMET, and no count SQL is submitted |
 | Redaction（§14.8） | Shared output is fixed tokens, booleans, counts, the approved role name and the ten approved table names. Never connection strings, passwords, hosts, project references, certificate paths, live user names, exception text, names found by PF-5 / PF-6 / PF-10 / PF-11, or PF-16 row counts（match `true` / `false` only） |
-| No Production entry point（this PR） | `run_preflight()` without a connector stops with `production_connection_disabled`. A connector is called only if its `PREFLIGHT_CONNECTOR_KIND` is `offline_test_double` or `local_disposable`; there is no Production kind. The command-line entry point reads no argument, environment or file, prints fixed STOP tokens and exits 2 |
+| No Production entry point（this PR） | `run_preflight()` without a connector stops with `production_connection_disabled`. Connector kind alone is insufficient: the runner checks concrete connector class and method provenance against the two checked-in test files. The local-disposable test adapter rejects non-loopback configuration and forces libpq `host` / `hostaddr` to `127.0.0.1`. The CLI remains STOP-only. These checks are defence in depth, not an OS-level sandbox: truly untrusted code running in the same process requires independent network isolation |
 
 The connector interface is the runner's own: `connect(ConnectParams)` receives only the validated `sslmode` and
 `sslrootcert`; the connection exposes `live_settings()`, `execute(sql) -> QueryResult`, `rollback()` and `close()`.
@@ -1246,6 +1246,7 @@ and stops**. It does not invent an approval.
 | A NULL where a boolean is expected | UNKNOWN `null_value` |
 | Wrong columns, row count, value types or unexpected text values; an evaluator error | UNKNOWN `malformed_result` / `evaluation_error` |
 | A driver exception | UNKNOWN `execution_error`（no exception text） |
+| ROLLBACK or connection close fails after otherwise PASS checks | `preflight_overall=STOP` and `session_cleanup_failed`（fixed redacted token） |
 | PF-5 `other_schemas_with_usage > 0`, PF-6 `other_readable > 0`, PF-10 `> 0`, PF-11 `default_acl_to_public > 0` | UNKNOWN（the runner has no approval input） |
 | PF-6 `audited_readable > 10` | UNKNOWN `malformed_result`（impossible for the fixed set） |
 | PF-12 RLS enabled or forced | FAIL `rls_enabled_stop`（§11.2） |
