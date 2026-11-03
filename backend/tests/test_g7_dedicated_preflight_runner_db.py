@@ -30,9 +30,11 @@ def _local_params() -> dict:
     settings = connection.settings_dict
     host = settings.get("HOST") or "localhost"
     if host not in LOCAL_HOSTS or connection.vendor != "postgresql":
-        pytest.skip("local disposable PostgreSQL only")
+        raise RuntimeError("local_disposable_only")
+    # Force the actual libpq transport to loopback; never trust a hostname alias.
     return {
-        "host": host,
+        "host": "127.0.0.1",
+        "hostaddr": "127.0.0.1",
         "port": settings.get("PORT") or 5432,
         "user": settings.get("USER"),
         "password": settings.get("PASSWORD") or None,
@@ -113,6 +115,18 @@ def _config(ca_file):
         expected_ca_sha256=hashlib.sha256(ca_file.read_bytes()).hexdigest(),
         environ={},
     )
+
+
+def test_disposable_connector_rejects_remote_config(monkeypatch):
+    settings = connection.settings_dict
+    monkeypatch.setitem(settings, "HOST", "remote.example.invalid")
+    with pytest.raises(RuntimeError, match="local_disposable_only"):
+        _local_params()
+
+
+def test_disposable_connector_forces_loopback():
+    params = _local_params()
+    assert params["host"] == params["hostaddr"] == "127.0.0.1"
 
 
 def test_every_registry_statement_runs_alone_and_fits_its_contract():
