@@ -931,3 +931,263 @@ No INSERT, UPDATE, DELETE, TRUNCATE, DDL, `COPY`, `LOCK`, temporary object or se
   - any of the 10 tables has RLS enabled;
   - the role can bypass RLS;
   - TLS or target identity is not established（G-6 / G-7 **UNMET**）.
+
+## 14. Production privilege preflight procedure（design only; 2026-11-02）
+
+> **Status: DESIGN ONLY.** Nothing in this section has been run against Production or any remote database. No role,
+> GRANT, REVOKE or database change was made. G-6 **UNMET**, G-7 **UNMET**, Production connection **STOP**. The TEMP
+> decision（§11.1）, the RLS fail-closed policy（§11.2）, the explicit CA policy（§11.3）and every §6 / §9.5 STOP
+> condition stay as they are. This section adds checks and relaxes none.
+
+### 14.1 Mother Ship decisions recorded（2026-11-02）
+
+| Decision | Value |
+| --- | --- |
+| `ROLE_CREATION_CONDITIONS` | `CONDITIONAL_APPROVAL` |
+| `PRODUCTION_PRIVILEGE_PREFLIGHT` | `DESIGN_ONLY` |
+| `ROLE_CREATION_EXECUTION` | `NOT_AUTHORIZED` |
+| `GRANT_EXECUTION` | `NOT_AUTHORIZED` |
+| `PRODUCTION_CONNECTION` | `STOP` |
+| G-6 / G-7 | `UNMET` / `UNMET` |
+
+**Final design decisions（2026-11-02, later the same day）:**
+
+| Decision | Value | Recorded in |
+| --- | --- | --- |
+| `ROLE_CREATION_CONDITIONS_DETAIL` | `ACCEPT_14_3_WITH_PROVIDER_VERIFICATION` | §14.3 |
+| `PREFLIGHT_CA_TRANSPORT` | `DEDICATED_RUNNER` | §14.4 OP-6, §14.5 |
+| `PF16_INDEPENDENT_INVENTORY` | `UNRESOLVED` | §14.6.1 |
+| `RUNNER_EXECUTION_CONTRACT` | `SEQUENTIAL_FAIL_CLOSED` | §14.6 |
+| `ROLE_CREATION_EXECUTION` / `GRANT_EXECUTION` | `NOT_AUTHORIZED` / `NOT_AUTHORIZED` | §14.2 |
+| `PRODUCTION_CONNECTION` | `STOP` | §14.2 |
+| G-6 / G-7 | `UNMET` / `UNMET` | — |
+
+These decisions settle the **design**. None of them authorizes `CREATE ROLE`, GRANT, REVOKE, a Production
+connection, the preflight or the audit run.
+
+### 14.2 Independent approval gates
+
+Each gate needs its own explicit approval. An approval of one gate never implies another. **AG-1 to AG-5 all remain
+separately gated, and none is authorized for Production execution.**
+
+| Gate | What it authorizes | Current state | Depends on |
+| --- | --- | --- | --- |
+| AG-1 Role creation | The owner runs `CREATE ROLE kamimusubi_audit_ro …` exactly as approved（§5.2, §14.3）. No grant | **NOT AUTHORIZED**（the §14.3 conditions are accepted as design requirements; provider verification pending） | — |
+| AG-2 Privilege grants | The owner runs the approved CONNECT / USAGE / SELECT grants for the 10 tables of the approved SHA | **NOT AUTHORIZED** | AG-1 executed |
+| AG-3 Connection approval | One audit-role login to the approved endpoint from the approved owner host, inside a named window | **STOP** | AG-1, AG-2; §14.4 prerequisites |
+| AG-4 Read-only preflight approval | Running the §14.6 catalog SQL（and the PF-16 aggregate counts）in that session, through the dedicated runner only | **DESIGN ONLY; NOT AUTHORIZED** | AG-3; OP-6 |
+| AG-5 Audit run approval | `evidence_coverage_audit --data-origin production-readonly` | **STOP**（§6, §9.5） | AG-4 all PASS; G-6 and G-7 evidence |
+
+Remediation of any finding（a REVOKE, a changed grant, a role attribute change）is **not** part of any gate above. It
+needs a new approval, and the preflight must then be repeated from the start.
+
+### 14.3 Role creation conditions（approved design requirements; provider verification required before execution）
+
+> **Mother Ship: `ROLE_CREATION_CONDITIONS_DETAIL = ACCEPT_14_3_WITH_PROVIDER_VERIFICATION`.** The five items below
+> are **approved design requirements** for the role. Before any execution, each must be verified against
+> provider-specific behaviour. The provider-dependent requirements still marked UNKNOWN in §14.10
+> are condition 1（`CONNECTION LIMIT 1`; §14.10 item 3）and condition 3（`ALTER ROLE … SET`; §14.10 item 4）.
+> Both require provider-specific verification before any execution approval.
+>
+> This approval of requirements does **not** authorize executing `CREATE ROLE`, GRANT or REVOKE. Execution still
+> needs AG-1 and AG-2 respectively（§14.2）, and both are NOT AUTHORIZED.
+
+1. Exactly the attributes in §5.2 / §13.4: LOGIN, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS,
+   NOINHERIT, `CONNECTION LIMIT 1`, a short `VALID UNTIL`, no memberships.
+2. The password is set interactively and never written to a file in the repository, shell history or any AI
+   session.
+3. Role-level defaults: `default_transaction_read_only = on` and a `statement_timeout`（defence in depth only;
+   §10.2 F-C）.
+4. Grants limited to CONNECT, USAGE on `public` and SELECT on the 10 tables regenerated from `audited_tables()` on
+   the approved SHA. No PUBLIC or default-privilege change（§5.2）. TEMPORARY only through the default PUBLIC grant
+   （§11.1）.
+5. After the run: NOLOGIN, or revoke the grants and drop the role.
+
+### 14.4 Operator prerequisites（before AG-3）
+
+| ID | Prerequisite | Evidence to keep（private unless stated） | Status |
+| --- | --- | --- | --- |
+| OP-1 | Owner host and a clean checkout of the approved `develop` SHA | SHA recorded in the shared document | Not approved（P-6） |
+| OP-2 | Credential file outside the repository, mode 600, loaded as environment variables only | `check_credential_presence.sh` booleans | Not adopted（P-7） |
+| OP-3 | G7-A1–A6 PASS with `scripts/g7_gate1_identity_check.py`（§12）against an owner-approved target taken from the provider dashboard | The tool's token output（shareable） | Not run |
+| OP-4 | CA file: SHA-256 equals §8.1.1（G6-E3） | match yes / no（shareable） | Owner check |
+| OP-5 | Connection string carries `sslmode=verify-full` and an explicit `sslrootcert` that is a file path, not `system`（§11.3） | yes / no（shareable） | Not run |
+| OP-6 | **The dedicated preflight runner**（§14.5）, enforcing the explicit CA and the sequential fail-closed contract（§14.6） | Review and test record（shareable） | **UNIMPLEMENTED: STOP** until the runner is implemented in a separate PR, independently reviewed and tested |
+| OP-7 | An **independent** inventory for G7-B1（table set and per-table row counts）, retained before the run | Private | **UNRESOLVED**: source, capture time and verification method（§14.6.1）. Missing → PF-16 UNKNOWN, STOP |
+
+### 14.5 Explicit CA for the preflight connection（design decided: dedicated runner; unimplemented）
+
+- The audit command enforces the explicit CA itself（§11.3）. **The preflight SQL is not run by the audit command**, so
+  that enforcement does not cover it.
+- The existing credential bridge（`scripts/migration_safety/guard.py` `pg_env_exports()`, used by
+  `readonly_query.sh`）exports `PGSSLMODE` but **not** `PGSSLROOTCERT`. With `verify-full`, libpq would then use its
+  default root file instead of the approved CA, or fail. **It must not be used for this preflight as it is.**
+- **Decision（Mother Ship: `PREFLIGHT_CA_TRANSPORT = DEDICATED_RUNNER`）: the preflight uses a dedicated preflight
+  runner.** Changing the shared credential bridge was not chosen. The bridge stays as it is and must not be used for
+  this preflight.
+- **The runner must, at minimum:**
+  - apply the §11.3 rules before connecting: `sslmode=verify-full`, and an explicit `sslrootcert` that is a file path,
+    not `system`;
+  - confirm after connecting that the live conninfo `sslrootcert` equals the explicitly configured value;
+  - connect as the login role only;
+  - follow the `SEQUENTIAL_FAIL_CLOSED` contract（§14.6）;
+  - apply the redaction rules（§14.8）.
+- **The runner is not implemented in this PR.** OP-6 is **UNIMPLEMENTED**. AG-3 and AG-4 stay **STOP** until the
+  runner is implemented in a separate PR, independently reviewed and tested.
+- The preflight session must also be the login role itself. `SET ROLE` hides the session's own `pg_stat_ssl` row
+  （§9.8）and is not allowed.
+
+### 14.6 Preflight sequence
+
+**Execution contract（Mother Ship: `RUNNER_EXECUTION_CONTRACT = SEQUENTIAL_FAIL_CLOSED`）:**
+- The dedicated runner submits the PF checks **one at a time, in order**. It evaluates each result against its
+  expected value before submitting the next check.
+- **The SQL in §14.7 is never submitted as a single batch.** That includes `psql -f`, a multi-statement string and a
+  script that keeps going after an error.
+- On the first FAIL or UNKNOWN, the runner submits nothing further, issues `ROLLBACK`, disconnects and records only
+  the results so far.
+
+**Rules for every step:**
+- Run as `kamimusubi_audit_ro`（the login role）, inside `BEGIN READ ONLY` … `ROLLBACK`.
+- Allowed SQL categories: catalog / statistics `SELECT`, `SHOW` and privilege-inquiry functions.
+  - The only exception is PF-16: aggregate `count(*)` on the 10 audited tables, under `row_security = off`.
+- No DDL, DML, GRANT / REVOKE, `SET ROLE` or temporary objects.
+- **If any step from PF-0 to PF-17 is FAIL or UNKNOWN, STOP immediately: run no further SQL, end the session
+  （`ROLLBACK` and disconnect）and record only the result so far.** There are no retries, no fallback role and no
+  remediation in the same session. A new attempt needs fresh approval and starts again from PF-0.
+
+| Step | Gate | Check | Expected | PASS / FAIL / UNKNOWN | Shared output |
+| --- | --- | --- | --- | --- | --- |
+| PF-0 | G-7 | OP-3 offline identity（G7-A1–A6） | all PASS | the tool's overall result; anything else STOP | tokens |
+| PF-0b | G-6 | OP-4 / OP-5 offline CA checks | yes, yes | no or unknown → STOP | yes / no |
+| PF-1 | G-2 | session identity | `role_is_audit_role=t`, `login_role_is_session_role=t`, `txn_read_only=on` | any other value FAIL; no row UNKNOWN | booleans |
+| PF-2 | G-3 | role attributes | `rolsuper`, `rolcreatedb`, `rolcreaterole`, `rolreplication`, `rolbypassrls`, `rolinherit` all `f`; `rolcanlogin=t`; `connlimit_is_1=t`; `valid_until_future=t` | any mismatch FAIL | booleans |
+| PF-3 | G-3 | memberships | `member_of_count=0` | > 0 FAIL | count |
+| PF-4 | G-4 / §11.1 | database privileges | `db_connect=t`, `db_create=f`; `db_temp_effective` may be `t` **only** with `explicit_db_create_or_temp_for_role=0`（TEMP from PUBLIC only） | an explicit CREATE / TEMP grant to the role, or `db_create=t` → FAIL | booleans, count |
+| PF-5 | G-4 | schema privileges | `public_usage=t`, `public_create=f`, `schemas_with_create=0`; `other_schemas_with_usage` recorded | CREATE anywhere → FAIL; `other_schemas_with_usage > 0` → UNKNOWN（STOP until explained and approved） | booleans, counts |
+| PF-6 | G-4 / §13.3 | readable relations in every non-system schema, table- **or column-level** SELECT | `audited_readable=10`, `other_readable=0` | `audited_readable < 10` FAIL; `other_readable > 0` STOP until each one is explained and approved | counts（relation names go to the private record only） |
+| PF-7 | G-4 | write-class privileges, table or column level | `write_class_relations=0` | > 0 FAIL | count |
+| PF-8 | G-4 | sequences | `usable_sequences=0` | > 0 FAIL | count |
+| PF-9 | G-4 | ownership | relations, schemas and functions owned by the role are all 0 | > 0 FAIL（an owner bypasses RLS and grants） | counts |
+| PF-10 | G-4 | executable `SECURITY DEFINER` functions outside system schemas | 0, or each one explained and approved | > 0 UNKNOWN → STOP | count |
+| PF-11 | G-4 | default ACLs | `default_acl_to_role=0`; `default_acl_to_public` recorded | to the role > 0 FAIL; to PUBLIC > 0 → UNKNOWN until explained | counts |
+| PF-12 | §13.2 / §11.2 | the 10 audited tables | each `present=t`, `can_select=t`, `rls_enabled=f`, `rls_forced=f` | missing or no SELECT → FAIL; RLS enabled → **STOP**（§11.2）; NULL → UNKNOWN | per-table booleans（approved names only） |
+| PF-13 | §13.3 | legacy relation | `legacy_readable=f`（`legacy_present` recorded） | readable → FAIL | booleans |
+| PF-14 | §13.2 | catalog visibility and function EXECUTE used by the command; own `pg_stat_ssl` row | all `t`; `own_pg_stat_ssl_rows=1`, `own_ssl=t` | any `f` → FAIL（the command would fail closed）; 0 rows → UNKNOWN | booleans, count |
+| PF-15 | G-5 | session defaults | `default_transaction_read_only=on`, `statement_timeout_set=t` | mismatch FAIL（defence in depth; never a substitute for PF-2 to PF-13） | booleans |
+| PF-16 | G7-B1 | aggregate row counts of the 10 tables, compared privately with OP-7（`SET LOCAL row_security = off` first, so an RLS effect errors instead of returning fewer rows） | every count matches the owner-held inventory | any difference FAIL; an error, or no independent inventory（§14.6.1）→ UNKNOWN | match yes / no |
+| PF-17 | G7-B2 | owner confirmation that the matched target is the intended one | explicit, dated | absent → UNKNOWN | yes / no, date |
+
+- **PF-6 to PF-11 widen §5.3.** They cover every non-system schema rather than `public` only, add column-level
+  grants, sequences, ownership, `SECURITY DEFINER` functions and default ACLs, and make TEMP conditional on PUBLIC
+  only.
+- **Even if PF-0 to PF-17 all PASS, G-6 and G-7 are not met.** G-6 also needs the audit command's own TLS
+  evidence（§9.8, §11.3）and the CA / hostname evidence decision（§9.7 item 1）. G-7 needs PF-0 together with
+  PF-16 and PF-17, recorded as G7-A, G7-B1 and G7-B2.
+
+#### 14.6.1 Independent inventory for PF-16（UNRESOLVED）
+
+- **UNRESOLVED（Mother Ship: `PF16_INDEPENDENT_INVENTORY = UNRESOLVED`）:** the inventory's **source**, its
+  **capture time** relative to the run, and **how it can be verified**. An inventory taken from the same Production database through the same path would compare the target
+  with itself and prove nothing.
+- **Rule: if no independent inventory exists, PF-16 is UNKNOWN and G7-B1 is UNMET. That is a STOP**（§14.6）, and
+  no PF-16 count query is submitted.
+- Defining the inventory source is a separate decision. This document does not choose one.
+
+### 14.7 Preflight SQL（design; validated only offline and on a local disposable database）
+
+```sql
+BEGIN READ ONLY;
+-- PF-1 session identity
+SELECT current_user = 'kamimusubi_audit_ro' AS role_is_audit_role, current_user = session_user AS login_role_is_session_role, current_setting('transaction_read_only') AS txn_read_only;
+-- PF-2 role attributes
+SELECT rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls, rolinherit, rolcanlogin, rolconnlimit = 1 AS connlimit_is_1, (rolvaliduntil IS NOT NULL AND rolvaliduntil > now()) AS valid_until_future FROM pg_roles WHERE rolname = current_user;
+-- PF-3 memberships
+SELECT count(*) AS member_of_count FROM pg_auth_members WHERE member = (SELECT oid FROM pg_roles WHERE rolname = current_user);
+-- PF-4 database privileges
+SELECT has_database_privilege(current_database(), 'CONNECT') AS db_connect, has_database_privilege(current_database(), 'CREATE') AS db_create, has_database_privilege(current_database(), 'TEMP') AS db_temp_effective;
+SELECT count(*) AS explicit_db_create_or_temp_for_role FROM pg_database d, aclexplode(d.datacl) a WHERE d.datname = current_database() AND a.grantee = (SELECT oid FROM pg_roles WHERE rolname = current_user) AND a.privilege_type IN ('CREATE', 'TEMPORARY');
+-- PF-5 schema privileges
+SELECT has_schema_privilege('public', 'USAGE') AS public_usage, has_schema_privilege('public', 'CREATE') AS public_create;
+SELECT count(*) AS other_schemas_with_usage FROM pg_namespace n WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'public') AND n.nspname NOT LIKE 'pg\_toast%' AND n.nspname NOT LIKE 'pg\_temp\_%' AND has_schema_privilege(n.oid, 'USAGE');
+SELECT count(*) AS schemas_with_create FROM pg_namespace n WHERE n.nspname NOT LIKE 'pg\_temp\_%' AND n.nspname NOT LIKE 'pg\_toast\_temp\_%' AND has_schema_privilege(n.oid, 'CREATE');
+-- PF-6 relation breadth (table- or column-level SELECT), all non-system schemas
+SELECT count(*) FILTER (WHERE in_set) AS audited_readable, count(*) FILTER (WHERE NOT in_set) AS other_readable FROM (SELECT (n.nspname = 'public' AND c.relname = ANY (ARRAY['temples_goriyakutag', 'temples_shrine', 'temples_shrine_goriyaku_tags', 'temples_shrinedeity', 'temples_shrinedeity_sources', 'temples_shrinehistory', 'temples_shrinehistory_sources', 'temples_shrineknowledgesource', 'temples_shrinesourcefact', 'temples_shrinesourcefact_sources'])) AS in_set FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg\_toast%' AND c.relkind IN ('r', 'p', 'v', 'm', 'f') AND (has_table_privilege(c.oid, 'SELECT') OR has_any_column_privilege(c.oid, 'SELECT'))) s;
+-- PF-7 write-class privileges anywhere (table or column level)
+SELECT count(*) AS write_class_relations FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg\_toast%' AND c.relkind IN ('r', 'p', 'v', 'm', 'f') AND (has_table_privilege(c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') OR has_any_column_privilege(c.oid, 'INSERT,UPDATE,REFERENCES'));
+-- PF-8 sequences
+SELECT count(*) AS usable_sequences FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind = 'S' AND n.nspname NOT IN ('pg_catalog', 'information_schema') AND CASE WHEN c.relkind = 'S' THEN has_sequence_privilege(c.oid, 'USAGE,SELECT,UPDATE') ELSE false END;
+-- PF-9 ownership
+SELECT (SELECT count(*) FROM pg_class WHERE relowner = r.oid) AS owned_relations, (SELECT count(*) FROM pg_namespace WHERE nspowner = r.oid) AS owned_schemas, (SELECT count(*) FROM pg_proc WHERE proowner = r.oid) AS owned_functions FROM pg_roles r WHERE r.rolname = current_user;
+-- PF-10 executable SECURITY DEFINER functions outside system schemas
+SELECT count(*) AS executable_security_definer FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE p.prosecdef AND n.nspname NOT IN ('pg_catalog', 'information_schema') AND has_schema_privilege(n.oid, 'USAGE') AND has_function_privilege(p.oid, 'EXECUTE');
+-- PF-11 default ACLs
+SELECT count(*) FILTER (WHERE a.grantee = 0) AS default_acl_to_public, count(*) FILTER (WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = current_user)) AS default_acl_to_role FROM pg_default_acl d, aclexplode(d.defaclacl) a;
+-- PF-12 the audited tables
+SELECT t.name, c.oid IS NOT NULL AS present, coalesce(has_table_privilege(c.oid, 'SELECT'), false) AS can_select, c.relrowsecurity AS rls_enabled, c.relforcerowsecurity AS rls_forced FROM unnest(ARRAY['temples_goriyakutag', 'temples_shrine', 'temples_shrine_goriyaku_tags', 'temples_shrinedeity', 'temples_shrinedeity_sources', 'temples_shrinehistory', 'temples_shrinehistory_sources', 'temples_shrineknowledgesource', 'temples_shrinesourcefact', 'temples_shrinesourcefact_sources']::text[]) AS t(name) LEFT JOIN pg_class c ON c.oid = to_regclass('public.' || t.name) ORDER BY t.name;
+-- PF-13 legacy relation
+SELECT to_regclass('public.temples_shrine_deities') IS NOT NULL AS legacy_present, coalesce(has_table_privilege(to_regclass('public.temples_shrine_deities'), 'SELECT'), false) AS legacy_readable;
+-- PF-14 catalog visibility and function EXECUTE used by the command
+SELECT has_table_privilege('pg_catalog.pg_roles', 'SELECT') AS pg_roles, has_table_privilege('pg_catalog.pg_class', 'SELECT') AS pg_class, has_table_privilege('pg_catalog.pg_type', 'SELECT') AS pg_type, has_table_privilege('pg_catalog.pg_stat_ssl', 'SELECT') AS pg_stat_ssl, has_function_privilege('pg_catalog.has_table_privilege(name, text, text)', 'EXECUTE') AS fn_has_table_privilege, has_function_privilege('pg_catalog.to_regclass(text)', 'EXECUTE') AS fn_to_regclass, has_function_privilege('pg_catalog.unnest(anyarray)', 'EXECUTE') AS fn_unnest, has_function_privilege('pg_catalog.pg_backend_pid()', 'EXECUTE') AS fn_pg_backend_pid;
+SELECT count(*) AS own_pg_stat_ssl_rows, bool_and(ssl) AS own_ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid();
+-- PF-15 session defaults (defence in depth)
+SHOW default_transaction_read_only;
+SELECT current_setting('statement_timeout') <> '0' AS statement_timeout_set;
+-- PF-16 (separate approval; aggregate only):
+-- SET LOCAL row_security = off;
+-- SELECT '<table>' AS t, count(*) FROM public.<table>;   -- one per audited table; compare privately with OP-7
+ROLLBACK;
+```
+
+- **This block lists the checks in order. It is not a script to run.** The dedicated runner submits each statement
+  separately under `SEQUENTIAL_FAIL_CLOSED`（§14.6）. Never submit the block as a single batch.
+- The 10 table names are those of `audited_tables()` on the baseline. **Regenerate them on the approved SHA** before
+  use.
+- **Validation done（2026-11-02; no Production）:**
+  - `guard.is_readonly_sql()` returns `(True, 'ok')` for PF-1 to PF-15.
+  - The whole block ran without error inside `BEGIN READ ONLY` on a local disposable PostgreSQL 16 database, as the
+    local test superuser. That local run checked syntax and semantics only, and it ran the block as one batch.
+    **The values are meaningless for Production, and batch submission is not permitted there**（§14.6）.
+  - One defect was found and fixed: `has_sequence_privilege()` must be wrapped in `CASE WHEN relkind = 'S'`,
+    because the planner may evaluate it on non-sequence relations.
+
+### 14.8 Redaction and record
+
+- **May be shared:**
+  - the tokens, booleans and counts listed above;
+  - the 10 approved table names and the approved role name;
+  - the approved SHA and dates.
+- **Never record or share:**
+  - connection strings, passwords, hosts and project / tenant references;
+  - backend PIDs and `client_addr`;
+  - certificate paths;
+  - the names of relations, schemas or functions found by PF-5, PF-6, PF-10 or PF-11（they go to the owner's
+    private record only）;
+  - exception text.
+- Raw `psql` output stays outside the repository. The shared document receives only the summary（G-11）.
+
+### 14.9 STOP criteria（additions; every earlier STOP stands）
+
+STOP if any of the following holds:
+
+- Any of AG-1 to AG-4 is not explicitly approved.
+- OP-6 is unresolved, or the preflight session is not `verify-full` with the approved, explicit CA.
+- Any PF step is FAIL or UNKNOWN; no later SQL is submitted, and the session is rolled back and disconnected（§14.6）.
+- The SQL would be submitted as a single batch, or by any client other than the dedicated runner（§14.5, §14.6）.
+- No independent inventory exists for PF-16（PF-16 UNKNOWN, G7-B1 UNMET; §14.6.1）.
+- The dedicated runner（OP-6）is not implemented, independently reviewed and tested.
+- Any §14.3 condition has not been verified against provider-specific behaviour.
+- An unexplained readable relation, schema `USAGE`, `SECURITY DEFINER` function or PUBLIC default ACL is found.
+- The session is reached through `SET ROLE`, or uses any role other than `kamimusubi_audit_ro`.
+
+### 14.10 Remaining UNKNOWNs（provider behaviour, unverified）
+
+1. Provider-default PUBLIC grants and default ACLs in Production（PF-5, PF-6, PF-10, PF-11）.
+2. Whether `pg_stat_ssl` shows the role's own backend through the pooler（PF-14; §10.5）.
+3. Custom-role login through the pooler, including `CONNECTION LIMIT 1` behaviour with pooled server connections
+   （§10.5）.
+4. Whether `ALTER ROLE … SET` defaults apply on pooled connections（PF-15）.
+5. The RLS state and the existence of legacy relations in Production（PF-12, PF-13）.
+6. Whether a provider restricts the catalog views or functions in PF-14.
+7. Not a provider item, but still open: the PF-16 independent inventory（source, capture time, verification
+   method）is **UNRESOLVED**（§14.6.1）.
