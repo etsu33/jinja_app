@@ -15,6 +15,21 @@ describe("Expo Router structure", () => {
     expect(visibleScreens).toEqual(["index", "concierge/index", "records/index", "mypage/index"]);
   });
 
+  it("login / signup を非表示routeとして登録し、相互に導線を持つ", () => {
+    expect(layoutSource).toMatch(/<Tabs\.Screen name="login" options=\{\{ href: null \}\} \/>/);
+    expect(layoutSource).toMatch(/<Tabs\.Screen name="signup" options=\{\{ href: null \}\} \/>/);
+
+    const loginSource = readFileSync(resolve(mobileRoot, "app/login.tsx"), "utf8");
+    const signupSource = readFileSync(resolve(mobileRoot, "app/signup.tsx"), "utf8");
+    const authPromptSource = readFileSync(resolve(mobileRoot, "components/common/AuthPrompt.tsx"), "utf8");
+
+    expect(loginSource).toContain('router.replace("/signup")');
+    expect(loginSource).toContain("新規登録はこちら");
+    expect(signupSource).toContain('router.replace("/login")');
+    expect(signupSource).toContain("ログインはこちら");
+    expect(authPromptSource).toContain('router.push("/signup")');
+  });
+
   it("designをrouteとして登録せず、app配下にもdesignファイルを置かない", () => {
     expect(layoutSource).not.toContain('name="design/');
     expect(layoutSource).not.toContain('name="theme"');

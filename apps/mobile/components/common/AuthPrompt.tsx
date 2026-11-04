@@ -29,6 +29,11 @@ export function AuthPrompt({
     router.push("/login");
   };
 
+  const handleSignup = () => {
+    onClose();
+    router.push("/signup");
+  };
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
@@ -43,6 +48,10 @@ export function AuthPrompt({
             accessibilityLabel="ログインする"
             style={styles.loginButtonSpacing}
           />
+
+          <Pressable onPress={handleSignup} style={styles.signupButton} accessibilityRole="link">
+            <Text style={styles.signupButtonText}>アカウントをお持ちでない方は 新規登録はこちら</Text>
+          </Pressable>
 
           <Pressable onPress={onClose} style={styles.closeButton} accessibilityRole="button">
             <Text style={styles.closeButtonText}>{closeLabel}</Text>
@@ -80,6 +89,16 @@ const styles = StyleSheet.create({
     color: theme.text,
     fontSize: 14,
     lineHeight: 21,
+  },
+  signupButton: {
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  signupButtonText: {
+    color: theme.gold,
+    fontSize: 14,
+    fontWeight: "700",
   },
   closeButton: {
     minHeight: 44,
