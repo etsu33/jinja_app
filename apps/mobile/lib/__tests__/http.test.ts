@@ -12,7 +12,7 @@ vi.mock("../authTokens", () => ({
   setAccessToken: (...args: unknown[]) => setAccessTokenMock(...args),
 }));
 
-import { HttpError, UnauthenticatedError, get, getAuth, isHttpError, isUnauthenticatedError } from "../http";
+import { HttpError, UnauthenticatedError, deleteAuth, get, getAuth, isHttpError, isUnauthenticatedError } from "../http";
 
 describe("http", () => {
   beforeEach(() => {
@@ -163,5 +163,54 @@ describe("http", () => {
       await expect(getAuth("/concierge-threads/999/")).rejects.toMatchObject({ name: "HttpError", status: 404 });
       fetchSpy.mockRestore();
     });
+  });
+});
+
+describe("deleteAuth", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getAccessTokenMock.mockResolvedValue("access-token");
+    isExpiringSoonMock.mockReturnValue(false);
+  });
+
+  it("204のときjson()を呼ばずundefinedを返す", async () => {
+    const jsonMock = vi.fn();
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      status: 204,
+      json: jsonMock,
+    } as unknown as Response);
+
+    await expect(deleteAuth("/users/me/")).resolves.toBeUndefined();
+    expect(fetchSpy.mock.calls[0][1]?.method).toBe("DELETE");
+    expect(jsonMock).not.toHaveBeenCalled();
+  });
+
+  it("401のときトークンをリフレッシュして再試行する", async () => {
+    getRefreshTokenMock.mockResolvedValue("refresh-token");
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce({ ok: false, status: 401, text: async () => "" } as Response)
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ access: "new-access" }) } as Response)
+      .mockResolvedValueOnce({ ok: true, status: 204 } as Response);
+
+    await expect(deleteAuth("/users/me/")).resolves.toBeUndefined();
+
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
+    expect(String(fetchSpy.mock.calls[1][0])).toMatch(/\/auth\/jwt\/refresh\/$/);
+    expect(fetchSpy.mock.calls[2][1]?.method).toBe("DELETE");
+    expect((fetchSpy.mock.calls[2][1]?.headers as Record<string, string>).Authorization).toBe("Bearer new-access");
+    expect(setAccessTokenMock).toHaveBeenCalledWith("new-access");
+  });
+
+  it("503のときstatus=503のHttpErrorを投げる", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: false,
+      status: 503,
+      statusText: "Service Unavailable",
+      text: async () => "",
+    } as Response);
+
+    await expect(deleteAuth("/users/me/")).rejects.toMatchObject({ name: "HttpError", status: 503 });
   });
 });
