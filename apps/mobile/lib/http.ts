@@ -85,6 +85,12 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+// 204 No Content は本文が無いため res.json() を呼ばずに undefined を返す。
+async function readAuthBody<T>(res: Response): Promise<T> {
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
 async function requestAuth<T>(path: string, init: RequestInit): Promise<T> {
   const access = await getValidAccessToken();
   const headers = mergeHeaders(
@@ -105,7 +111,7 @@ async function requestAuth<T>(path: string, init: RequestInit): Promise<T> {
       const text = await first.text().catch(() => "");
       throw new HttpError(first.status, `HTTP ${first.status}: ${text || first.statusText}`);
     }
-    return (await first.json()) as T;
+    return readAuthBody<T>(first);
   }
 
   const refreshed = await refreshAccessToken();
@@ -131,7 +137,7 @@ async function requestAuth<T>(path: string, init: RequestInit): Promise<T> {
     throw new HttpError(retry.status, `HTTP ${retry.status}: ${text || retry.statusText}`);
   }
 
-  return (await retry.json()) as T;
+  return readAuthBody<T>(retry);
 }
 
 export async function get<T>(path: string, init?: RequestInit): Promise<T> {
@@ -162,6 +168,14 @@ export async function postAuth<T>(path: string, body: unknown, init?: RequestIni
     ...init,
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+// 204(本文なし)の場合は undefined を返す。
+export async function deleteAuth<T = void>(path: string, init?: RequestInit): Promise<T> {
+  return requestAuth<T>(path, {
+    ...init,
+    method: "DELETE",
   });
 }
 

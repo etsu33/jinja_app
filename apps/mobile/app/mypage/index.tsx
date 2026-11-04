@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 import { kamimusubiDark as theme } from "../../design/theme";
@@ -8,6 +8,8 @@ import { getCounts } from "../../lib/storage";
 import { getAuthenticatedBillingStatus, isPremiumStatus, type BillingStatus } from "../../lib/billing";
 import { isUnauthenticatedError } from "../../lib/http";
 import { trackConsultationHistoryEntryClicked } from "../../lib/consultationHistoryAnalytics";
+import { isLoggedIn } from "../../lib/authTokens";
+import { ACCOUNT_DELETION_MESSAGES, deleteAccount } from "../../lib/accountDeletion";
 
 // ---- お問い合わせ (Mother Ship承認済みの契約) ----
 // 宛先と件名は可読な定数として保持する。
@@ -100,6 +102,66 @@ export default function MyPageScreen() {
   const [recentCount, setRecentCount] = React.useState<number | null>(null);
   const [visitCount, setVisitCount] = React.useState<number | null>(null);
   const [premiumMeta, setPremiumMeta] = React.useState<PremiumMetaState>({ kind: "loading" });
+  const [loggedIn, setLoggedIn] = React.useState(false);
+  const [deletingAccount, setDeletingAccount] = React.useState(false);
+  const deletingAccountRef = React.useRef(false);
+
+  React.useEffect(() => {
+    let mounted = true;
+    isLoggedIn()
+      .then((value) => {
+        if (mounted) setLoggedIn(value);
+      })
+      .catch(() => {
+        if (mounted) setLoggedIn(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const runAccountDeletion = React.useCallback(async () => {
+    if (deletingAccountRef.current) return;
+    deletingAccountRef.current = true;
+    setDeletingAccount(true);
+
+    try {
+      const result = await deleteAccount();
+      if (result.ok) {
+        router.replace("/");
+        Alert.alert(ACCOUNT_DELETION_MESSAGES.done);
+        return;
+      }
+      Alert.alert(ACCOUNT_DELETION_MESSAGES.failed);
+    } finally {
+      deletingAccountRef.current = false;
+      setDeletingAccount(false);
+    }
+  }, [router]);
+
+  // 確認ダイアログは2段階（取り消せない旨 → Premium購読も停止される旨）。
+  const confirmAccountDeletion = React.useCallback(() => {
+    if (deletingAccountRef.current) return;
+    Alert.alert(ACCOUNT_DELETION_MESSAGES.confirmTitle, ACCOUNT_DELETION_MESSAGES.confirmBody, [
+      { text: "キャンセル", style: "cancel" },
+      {
+        text: "次へ",
+        style: "destructive",
+        onPress: () => {
+          Alert.alert(ACCOUNT_DELETION_MESSAGES.finalConfirmTitle, ACCOUNT_DELETION_MESSAGES.finalConfirmBody, [
+            { text: "キャンセル", style: "cancel" },
+            {
+              text: "退会する",
+              style: "destructive",
+              onPress: () => {
+                void runAccountDeletion();
+              },
+            },
+          ]);
+        },
+      },
+    ]);
+  }, [runAccountDeletion]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -238,6 +300,16 @@ export default function MyPageScreen() {
           iconText="設"
           actionLabel="開く"
         />
+        {loggedIn ? (
+          <MyPageCard
+            title="退会する"
+            description="アカウントと記録を削除します。この操作は取り消せません。"
+            meta={deletingAccount ? "退会処理中..." : "Premiumをご利用中の場合、購読も停止されます。"}
+            iconText="退"
+            actionLabel="退会"
+            onPress={deletingAccount ? undefined : confirmAccountDeletion}
+          />
+        ) : null}
         <MyPageCard
           title="利用規約"
           description="アプリの利用条件を確認できます。"
