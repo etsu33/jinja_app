@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   AppState,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +20,7 @@ import {
   type BillingStatus,
 } from "../../lib/billing";
 import { isUnauthenticatedError } from "../../lib/http";
+import { PREMIUM_COPY, canShowPurchaseUi } from "../../lib/purchasePolicy";
 import {
   trackPremiumActive,
   trackPremiumCheckoutFailed,
@@ -52,6 +54,9 @@ const CHECKOUT_ORIGIN = resolveCheckoutOrigin();
 const CHECKOUT_SUCCESS_URL = `${CHECKOUT_ORIGIN}/billing/success`;
 const CHECKOUT_CANCEL_URL = `${CHECKOUT_ORIGIN}/billing/cancel`;
 
+// iOS v1 では購入につながる要素(購入ボタン・外部決済ページへの遷移・購入を促す文言)を出さない。
+const PURCHASE_UI_ENABLED = canShowPurchaseUi(Platform.OS);
+
 type StatusState =
   | { kind: "loading" }
   | { kind: "unauthenticated" }
@@ -77,7 +82,7 @@ function describeStatus(status: BillingStatus): { label: string; helper: string 
 
   return {
     label: "現在はFreeプラン",
-    helper: "前回比較、深い振り返り、保存した相談の整理などのPremium機能を利用できます。",
+    helper: PURCHASE_UI_ENABLED ? PREMIUM_COPY.freeHelperWithPurchase : PREMIUM_COPY.freeHelperWithoutPurchase,
   };
 }
 
@@ -161,6 +166,8 @@ export default function PremiumScreen() {
   const onStartCheckout = React.useCallback(async () => {
     // Checkout開始中の二重送信防止: refで即時ガードし、setState反映前の連打も弾く
     // このガードを通過した1回分だけ upgrade_click / checkout_started を計測する(二重計測防止)
+    // 念のため、購入要素を出さない環境では外部決済ページを開かない。
+    if (!PURCHASE_UI_ENABLED) return;
     if (checkoutInFlightRef.current) return;
     checkoutInFlightRef.current = true;
     setCheckoutLoading(true);
@@ -225,7 +232,7 @@ export default function PremiumScreen() {
             <Text style={styles.backText}>← マイページへ戻る</Text>
           </Pressable>
           <Text style={styles.title}>Premium</Text>
-          <Text style={styles.subtitle}>前回比較、深い振り返り、保存した相談の整理などをPremiumで利用できます。</Text>
+          <Text style={styles.subtitle}>{PREMIUM_COPY.screenSubtitle}</Text>
         </View>
 
         {state.kind === "loading" ? (
@@ -257,7 +264,7 @@ export default function PremiumScreen() {
             <Text style={styles.statusLabel}>{describeStatus(state.status).label}</Text>
             <Text style={styles.statusHelper}>{describeStatus(state.status).helper}</Text>
 
-            {isPremiumStatus(state.status) ? null : (
+            {!PURCHASE_UI_ENABLED || isPremiumStatus(state.status) ? null : (
               <View style={styles.checkoutSection}>
                 <Button
                   title="Premiumに登録する"

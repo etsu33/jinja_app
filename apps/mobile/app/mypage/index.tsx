@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 import { kamimusubiDark as theme } from "../../design/theme";
@@ -10,6 +10,7 @@ import { isUnauthenticatedError } from "../../lib/http";
 import { trackConsultationHistoryEntryClicked } from "../../lib/consultationHistoryAnalytics";
 import { isLoggedIn } from "../../lib/authTokens";
 import { ACCOUNT_DELETION_MESSAGES, deleteAccount } from "../../lib/accountDeletion";
+import { PREMIUM_COPY, canShowPurchaseUi } from "../../lib/purchasePolicy";
 
 // ---- お問い合わせ (Mother Ship承認済みの契約) ----
 // 宛先と件名は可読な定数として保持する。
@@ -283,7 +284,11 @@ export default function MyPageScreen() {
         <Text style={styles.sectionTitle}>Premium</Text>
         <MyPageCard
           title="Premium"
-          description="前回比較、深い振り返り、保存した相談の整理を使えるようにします。"
+          description={
+            canShowPurchaseUi(Platform.OS)
+              ? PREMIUM_COPY.mypageDescriptionWithPurchase
+              : PREMIUM_COPY.mypageDescriptionWithoutPurchase
+          }
           meta={describePremiumMeta(premiumMeta)}
           iconText="P"
           actionLabel="確認"
