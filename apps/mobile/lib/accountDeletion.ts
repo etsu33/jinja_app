@@ -1,3 +1,4 @@
+import { resetAnalyticsIdentity, track } from "./analytics";
 import { clearTokens } from "./authTokens";
 import { deleteAuth } from "./http";
 import { clearLocalUserData } from "./localUserData";
@@ -16,7 +17,7 @@ export type AccountDeletionResult = { ok: true } | { ok: false; message: string 
 
 /**
  * DELETE /users/me/ を呼ぶ。
- * - 204: トークンと端末内の利用者データを消去して ok を返す
+ * - 204: account_deleted を送り、解析用IDを作り直してから、トークンと端末内の利用者データを消去して ok を返す
  * - 503 / その他のエラー / ネットワークエラー: ログイン状態を維持したまま失敗を返す
  */
 export async function deleteAccount(): Promise<AccountDeletionResult> {
@@ -27,6 +28,11 @@ export async function deleteAccount(): Promise<AccountDeletionResult> {
   }
 
   // サーバー側の削除は確定しているため、端末側の消去に失敗しても退会完了として扱う。
+  // 退会の印は、作り直す前の解析用IDのまま届くよう reset より先に送る。
+  // payload にアカウントID・メールは入れない(退会前の利用履歴を匿名のまま残すため)。
+  track("account_deleted", { platform: "mobile" });
+  await resetAnalyticsIdentity();
+
   try {
     await clearTokens();
   } catch {
