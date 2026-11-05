@@ -99,6 +99,14 @@ describe("PrivacyPolicyPage", () => {
     expect(text).not.toContain("完全に削除します");
   });
 
+  it("PostHogイベントの1年保持とIPアドレス非保存を記載する", () => {
+    const { container } = render(<PrivacyPolicyPage />);
+    const text = container.textContent ?? "";
+
+    expect(text).toContain("送信から1年を経過したものを順次削除します");
+    expect(text).toContain("2026年11月5日以降、PostHogではIPアドレスを保存していません");
+  });
+
   it("現行実装で確認できる取得情報と外部サービスを記載する", () => {
     const { container } = render(<PrivacyPolicyPage />);
     const text = container.textContent ?? "";
