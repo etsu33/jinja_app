@@ -1,5 +1,5 @@
 import * as React from "react";
-import { View } from "react-native";
+import { View, type ColorValue } from "react-native";
 import { Tabs } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { kamimusubiDark as theme } from "../design/theme";
@@ -14,6 +14,13 @@ const bottomNavigationSizes = {
   featuredIconContainer: 54,
   featuredIconOffsetTop: -18,
 } as const;
+
+// タブの色(ColorValue)はアイコンの color が受け付けない null / number も型上は含むため、
+// アイコンに渡せる値だけに絞る(実際の色は theme の文字列で、見た目は変わらない)。
+function toIconColor(color: ColorValue): string | Exclude<ColorValue, string | number | null> | undefined {
+  if (color === null || typeof color === "number") return undefined;
+  return color;
+}
 
 export default function Root() {
   // Analytics Provider初期化: アプリ起動中に一度だけ行う(initAnalyticsProvider内部で多重呼び出しをガード)
@@ -45,7 +52,7 @@ export default function Root() {
         name="index"
         options={{
           title: "ホーム",
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="home" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="home" size={size} color={toIconColor(color)} />,
         }}
       />
       <Tabs.Screen
@@ -77,14 +84,14 @@ export default function Root() {
         name="records/index"
         options={{
           title: "記録",
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="book" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="book" size={size} color={toIconColor(color)} />,
         }}
       />
       <Tabs.Screen
         name="mypage/index"
         options={{
           title: "マイページ",
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="person" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="person" size={size} color={toIconColor(color)} />,
         }}
       />
       <Tabs.Screen name="journey/index" options={{ href: null }} />

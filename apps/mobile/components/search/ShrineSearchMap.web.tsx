@@ -1,6 +1,6 @@
 // apps/mobile/components/search/ShrineSearchMap.web.tsx
 import * as React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, type ViewInstance } from "react-native";
 import { MapLibreMap, Marker, type ErrorEvent } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -62,7 +62,7 @@ function createMarkerElement(
 }
 
 export function ShrineSearchMap({ points, selectedId, onSelect }: ShrineSearchMapProps) {
-  const containerRef = React.useRef<View>(null);
+  const containerRef = React.useRef<ViewInstance>(null);
   const mapRef = React.useRef<MapLibreMap | null>(null);
   const markersRef = React.useRef<Map<string, Marker>>(new Map());
   const onSelectRef = React.useRef(onSelect);
