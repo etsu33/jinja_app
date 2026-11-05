@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 import { kamimusubiDark as theme } from "../../design/theme";
 import { getFavoriteShrines, getRecentViewed } from "../../lib/shrineStorage";
@@ -106,19 +106,23 @@ export default function MyPageScreen() {
   const [deletingAccount, setDeletingAccount] = React.useState(false);
   const deletingAccountRef = React.useRef(false);
 
-  React.useEffect(() => {
-    let mounted = true;
-    isLoggedIn()
-      .then((value) => {
-        if (mounted) setLoggedIn(value);
-      })
-      .catch(() => {
-        if (mounted) setLoggedIn(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  // タブ画面は表示中も破棄されないため、ログイン・新規登録から戻ったときに
+  // ログイン状態を取り直せるよう、画面が表示されるたびに確認する。
+  useFocusEffect(
+    React.useCallback(() => {
+      let mounted = true;
+      isLoggedIn()
+        .then((value) => {
+          if (mounted) setLoggedIn(value);
+        })
+        .catch(() => {
+          if (mounted) setLoggedIn(false);
+        });
+      return () => {
+        mounted = false;
+      };
+    }, []),
+  );
 
   const runAccountDeletion = React.useCallback(async () => {
     if (deletingAccountRef.current) return;
@@ -226,6 +230,26 @@ export default function MyPageScreen() {
           プロフィール、Premium、設定をここから確認できます。
         </Text>
       </View>
+
+      {loggedIn ? null : (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>アカウント</Text>
+          <MyPageCard
+            title="ログイン"
+            description="記録や相談履歴を保存して、あとから見返せます。"
+            iconText="入"
+            actionLabel="ログイン"
+            onPress={() => router.push("/login")}
+          />
+          <MyPageCard
+            title="新規登録"
+            description="アカウントをお持ちでない方はこちらから作成できます。"
+            iconText="新"
+            actionLabel="登録"
+            onPress={() => router.push("/signup")}
+          />
+        </View>
+      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>プロフィール</Text>
