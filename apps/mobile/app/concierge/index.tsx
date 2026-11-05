@@ -547,7 +547,7 @@ function ResultCard({
         <View style={styles.reasonFactsCard}>
           <Text style={styles.reasonFactsLabel}>根拠として見ている情報</Text>
           {reasonFactItems.slice(0, 3).map((item) => (
-            <View key={`${item.label}-${item.value}`} style={styles.reasonFactItem}>
+            <View key={item.key} style={styles.reasonFactItem}>
               <Text style={styles.reasonFactLabel}>{item.label}</Text>
               <Text style={styles.reasonFactText}>{item.value}</Text>
             </View>
