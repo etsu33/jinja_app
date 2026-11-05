@@ -86,6 +86,9 @@ export default function PremiumScreen() {
   const [state, setState] = React.useState<StatusState>({ kind: "loading" });
   const [checkoutLoading, setCheckoutLoading] = React.useState(false);
   const [checkoutError, setCheckoutError] = React.useState<string | null>(null);
+  // 「あとで」等で閉じたログイン案内を、未ログインのままでも再表示しないための状態。
+  // 表示条件を state.kind だけにすると、閉じる操作をしても案内が残り続けるため。
+  const [authPromptDismissed, setAuthPromptDismissed] = React.useState(false);
   const checkoutInFlightRef = React.useRef(false);
   const hasTrackedScreenViewRef = React.useRef(false);
   const lastTrackedStatusKeyRef = React.useRef<string | null>(null);
@@ -276,8 +279,11 @@ export default function PremiumScreen() {
       </ScrollView>
 
       <AuthPrompt
-        visible={state.kind === "unauthenticated"}
-        onClose={() => router.replace("/mypage")}
+        visible={state.kind === "unauthenticated" && !authPromptDismissed}
+        onClose={() => {
+          setAuthPromptDismissed(true);
+          router.replace("/mypage");
+        }}
         description="Premiumの登録状況を見るには、ログインが必要です。"
       />
     </>
