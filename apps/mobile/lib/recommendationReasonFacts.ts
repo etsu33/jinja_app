@@ -72,7 +72,8 @@ export type ReasonFactItem = {
   // React の key 用。「表示名＋label（英語の内部名）」で一意。
   key: string;
   label: string;
-  value: string;
+  // 表示名と同じ文字列になるときは null（同じ語を2回並べないため、画面では値を出さない）。
+  value: string | null;
 };
 
 /**
@@ -84,6 +85,7 @@ export type ReasonFactItem = {
  * - 比較には label（英語の内部名）を使う。日本語名は表記揺れでまとまらない可能性があるため
  * - is_primary: true の根拠があればそちらを残す（行の位置は最初に現れた位置のまま）
  * - 値は label_ja（日本語名）を表示し、無ければ label を表示する
+ * - 値が表示名とまったく同じ文字列になるときは value を null にする（例: element の「生年月日との相性」）
  * - 件数の絞り込み(slice)は呼び出し側で、まとめた後に行う
  *
  * まとめる処理はこの関数の中だけで行う。findPrimaryReasonFact やイベント送信は生データのまま扱う。
@@ -108,7 +110,8 @@ export function buildReasonFactItems(facts: ConciergeReasonFacts | null | undefi
 
   return order.map((key) => {
     const { displayLabel, fact } = chosen.get(key)!;
-    return { key, label: displayLabel, value: fact.label_ja ?? fact.label };
+    const value = fact.label_ja ?? fact.label;
+    return { key, label: displayLabel, value: value === displayLabel ? null : value };
   });
 }
 

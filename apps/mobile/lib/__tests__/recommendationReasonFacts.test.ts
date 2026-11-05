@@ -169,6 +169,26 @@ describe("buildReasonFactItems: 表示名と値が同じ根拠をまとめる", 
     expect(buildReasonFactItems(facts).map((item) => item.value)).toEqual(["再出発", "money"]);
   });
 
+  it("値が表示名とまったく同じになるときは値を出さない（nullにする）", () => {
+    const facts = normalizeRecommendationReasonFacts([
+      { type: "element", label: "element", label_ja: "生年月日との相性", evidence: [], score: 1 },
+    ]);
+
+    expect(buildReasonFactItems(facts)).toEqual([
+      { key: "生年月日との相性-element", label: "生年月日との相性", value: null },
+    ]);
+  });
+
+  it("値と表示名が違う語なら、意味が近くても値を出す（visit_style）", () => {
+    const facts = normalizeRecommendationReasonFacts([
+      { type: "visit_style", label: "visit_style", label_ja: "参拝スタイル", evidence: [], score: 1 },
+    ]);
+
+    expect(buildReasonFactItems(facts)).toEqual([
+      { key: "参拝との相性-visit_style", label: "参拝との相性", value: "参拝スタイル" },
+    ]);
+  });
+
   it("生データはまとめない: 正規化結果とPrimaryの判定はBackendの返り値どおり", () => {
     const normalized = normalizeRecommendationReasonFacts([goriyakuMoney, textHintMoney]);
 

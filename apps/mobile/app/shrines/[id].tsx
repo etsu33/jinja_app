@@ -739,7 +739,7 @@ export default function ShrineDetail() {
             {reasonFactItems.map((item) => (
               <View key={item.key} style={styles.reasonFactItem}>
                 <Text style={styles.reasonFactLabel}>{item.label}</Text>
-                <Text style={styles.reasonFactText}>{item.value}</Text>
+                {item.value ? <Text style={styles.reasonFactText}>{item.value}</Text> : null}
               </View>
             ))}
           </View>
