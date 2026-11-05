@@ -47,7 +47,9 @@ import importlib.util
 import inspect
 import os
 import re
+import signal
 import sys
+import threading
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import date
@@ -1204,8 +1206,13 @@ def run_preflight(
     """
     report = PreflightReport()
     policy = inventory_policy if inventory_policy is not None else UnresolvedInventoryAcceptance()
-    conn = None
+    owner = (
+        _Ownership()
+    )  # the single ownership marker (see _Ownership); created before any resource exists
     interrupt: BaseException | None = None
+    cleanup_interrupt: BaseException | None = (
+        None  # bound before the try so the finally starts with `try`
+    )
     try:
         _record(report, "PF-0", evaluate_pf0(config.g7_gate1_result))
         _record(report, "PF-0b", evaluate_pf0b(config))
@@ -1213,35 +1220,16 @@ def run_preflight(
             raise _Stop("CONNECT", UNKNOWN, "production_connection_disabled")
         if not _trusted_offline_connector(connector):
             raise _Stop("CONNECT", UNKNOWN, "connector_not_authorized")
-        transferred = False
-        try:
-            try:
-                # Call the provenance-checked class method, never an instance attribute (SR-1 R2).
-                returned = type(connector).connect(
-                    connector,
-                    ConnectParams(sslmode=config.sslmode, sslrootcert=config.sslrootcert),
-                )
-            # Never echo host, user, certificate path or driver text.
-            except Exception:  # noqa: BLE001
-                raise _Stop("CONNECT", UNKNOWN, "connection_failed") from None
-            if returned is None:
-                raise _Stop("CONNECT", UNKNOWN, "connection_failed")
-            if not _trusted_offline_connection(connector, returned):
-                # SR-1 R1: an arbitrary returned object is never used, rolled back or closed by the runner.
-                raise _Stop("CONNECT", UNKNOWN, "connection_not_trusted")
-            # Ownership transfer. `conn` is assigned first: an interrupt between the two lines makes both the
-            # connector release and the runner cleanup run (safe), never neither.
-            conn = returned
-            transferred = True
-        finally:
-            if not transferred:
-                released_interrupt = _release_unadopted(connector, report)
-                in_flight = sys.exc_info()[1]
-                if released_interrupt is not None and (
-                    in_flight is None or isinstance(in_flight, Exception)
-                ):
-                    # An interrupt already in flight (handled below) is earlier and wins.
-                    interrupt = interrupt or released_interrupt
+        if not interrupt_deferral_supported():
+            # Without signal deferral the R1 / R2 windows cannot be bounded: fail closed before connecting.
+            raise _Stop("CONNECT", UNKNOWN, "interrupt_deferral_unavailable")
+        _handoff(
+            owner,
+            connector,
+            ConnectParams(sslmode=config.sslmode, sslrootcert=config.sslrootcert),
+            report,
+        )
+        conn = owner.conn
         report.connected = True
         try:
             live = conn.live_settings()
@@ -1269,19 +1257,190 @@ def run_preflight(
         report.stopped_at, report.stop_reason = "INTERRUPTED", "interrupted"
         interrupt = interrupt or exc
     finally:
-        cleanup_interrupt = _end_session(conn, report)  # always runs; never short-circuited
+        # Runner-owned cleanup inside a deferral section. If a signal is handled before the section takes effect
+        # (or at its exit), cleanup is retried once; `_end_session` is idempotent, so nothing is released twice.
+        # A second signal arriving inside that retry window is the documented multi-signal limit (readiness §15.7).
+        try:
+            with _InterruptDeferral():
+                cleanup_interrupt = _end_session(owner.conn, report)
+        except BaseException as exc:  # noqa: BLE001
+            cleanup_interrupt = exc
+            with _InterruptDeferral():
+                cleanup_interrupt = _end_session(owner.conn, report) or cleanup_interrupt
         interrupt = interrupt or cleanup_interrupt
     if interrupt is not None:
         _raise_sanitized(interrupt)
     return report
 
 
+class _Ownership:
+    """The single, unambiguous ownership boundary (Issue #3426 R2).
+
+    `conn is None`  -> any resource belongs to the connector (`release_unadopted()` is responsible);
+    `conn` is set   -> the runner owns the connection (`_end_session()` is responsible).
+
+    The transfer is one attribute store executed inside a signal-deferral section, so there is no intermediate
+    state in which both parties, or neither, are responsible.
+    """
+
+    __slots__ = ("conn",)
+
+    def __init__(self) -> None:
+        self.conn: Any = None
+
+
+def interrupt_deferral_supported() -> bool:
+    """True where Python-level signal handlers can be inspected and replaced."""
+    return all(
+        callable(getattr(signal, name, None)) for name in ("signal", "getsignal", "valid_signals")
+    )
+
+
+def _python_handled_signals() -> list:
+    """Signals whose current handler is Python code, i.e. the ones that can raise inside this process.
+
+    Signals left at SIG_DFL (for example SIGTERM) or SIG_IGN raise nothing: their default action terminates the
+    process without Python unwinding, after which only the operating system can release sockets.
+    """
+    handled = []
+    for signum in sorted(signal.valid_signals()):
+        try:
+            handler = signal.getsignal(signum)
+        except (OSError, ValueError):
+            continue
+        if callable(handler):
+            handled.append(signum)
+    return handled
+
+
+class _InterruptDeferral:
+    """Critical section: signal-originated interrupts are recorded, then delivered when the section ends.
+
+    Mechanism (Issue #3426 R1 / R2): while the section is active, every Python-level signal handler is replaced by
+    a recorder; on exit the original handlers are restored first, then each recorded signal is re-dispatched to
+    its original handler (an interrupting handler raises there, after ownership is consistent).
+
+    Why handlers, not `pthread_sigmask`: a thread's signal mask does not defer a process-directed signal in a
+    multi-threaded process. The kernel delivers it to another thread, and CPython still runs the Python handler in
+    the main thread (reproduced under pytest-xdist and in a scratch probe). Python-level handlers always run in the
+    main thread and are looked up when dispatched (verified on CPython 3.11 and 3.13), so replacing them defers the
+    interrupt however many threads exist.
+
+    Outside the main thread the section does nothing: Python signal handlers never run there, so no
+    signal-originated exception can occur in that thread. Not covered: `PyThreadState_SetAsyncExc`, process
+    termination, and blocking calls inside the section, which delay delivery until they return.
+    """
+
+    __slots__ = ("_saved", "_pending")
+
+    def __init__(self) -> None:
+        self._saved: dict = {}
+        self._pending: list = []
+
+    def _record(self, signum: int, frame: Any) -> None:  # noqa: ARG002
+        self._pending.append(signum)
+
+    def __enter__(self) -> _InterruptDeferral:
+        if (
+            not interrupt_deferral_supported()
+            or threading.current_thread() is not threading.main_thread()
+        ):
+            # Unsupported: a no-op, so cleanup still runs (the runner refuses to connect in that case).
+            return self
+        try:
+            for signum in _python_handled_signals():
+                previous = signal.getsignal(signum)
+                self._saved[signum] = (
+                    previous  # recorded before the swap: a restore never loses a handler
+                )
+                signal.signal(signum, self._record)
+        except BaseException:
+            self._restore()
+            raise
+        return self
+
+    def _restore(self) -> dict:
+        """Put every original handler back, even if an interrupt arrives part-way (the rest are still restored)."""
+        saved, self._saved = self._saved, {}
+        remaining = list(saved.items())
+        try:
+            while remaining:
+                signum, previous = remaining[0]
+                signal.signal(signum, previous)
+                remaining.pop(0)
+        finally:
+            for signum, previous in remaining:
+                try:
+                    signal.signal(signum, previous)
+                except (OSError, ValueError):
+                    pass
+        return saved
+
+    def __exit__(self, *exc_info: Any) -> bool:
+        saved = self._restore()
+        pending, self._pending = self._pending, []
+        for signum in pending:
+            handler = saved.get(signum)
+            if callable(handler):
+                # Deferred delivery: may raise, now that the section is complete.
+                handler(signum, None)
+        return False
+
+
+def _handoff(
+    owner: _Ownership, connector: Any, params: ConnectParams, report: PreflightReport
+) -> None:
+    """Connect, validate and either adopt or release, as one signal-deferral section.
+
+    Inside the section a signal cannot interrupt the connector between acquiring and recording a handle (R1),
+    nor the runner between validation and adoption (R2). The returned object is adopted by the single store
+    `owner.conn = returned` only if it is the trusted connection class; otherwise only `release_unadopted()` is
+    called on the provenance-checked connector class and the returned object is never touched.
+    """
+    stop: str | None = None
+    pending: BaseException | None = None
+    with _InterruptDeferral():
+        try:
+            try:
+                # Call the provenance-checked class method, never an instance attribute (SR-1 R2).
+                returned = type(connector).connect(connector, params)
+            # Never echo host, user, certificate path or driver text.
+            except Exception:  # noqa: BLE001
+                returned, stop = None, "connection_failed"
+            if stop is None and returned is None:
+                stop = "connection_failed"
+            if stop is None and not _trusted_offline_connection(connector, returned):
+                # SR-1 R1: an arbitrary returned object is never used, rolled back or closed by the runner.
+                stop = "connection_not_trusted"
+            if stop is None:
+                owner.conn = returned  # THE ownership transfer: a single store
+        except Exception:  # noqa: BLE001 - an unexpected validation error: never adopt
+            stop = stop or "connection_not_trusted"
+        except BaseException as exc:  # noqa: BLE001 - raised synchronously by the connector itself
+            pending = exc
+        finally:
+            if owner.conn is None:
+                # Always called, never short-circuited; an interrupt already pending from connect() wins.
+                released_interrupt = _release_unadopted(connector, report)
+                pending = pending or released_interrupt
+    if pending is not None:
+        raise pending
+    if stop is not None:
+        raise _Stop("CONNECT", UNKNOWN, stop)
+
+
 def _release_unadopted(connector: Any, report: PreflightReport) -> BaseException | None:
     """Ask the provenance-checked connector to release what it allocated; never touches the returned object.
 
     Only reached for a connector that passed `_trusted_offline_connector()` (both `connect` and `release_unadopted`
-    are checked there). Returns a non-`Exception` interrupt so the caller can propagate it after cleanup.
+    are checked there). At most once per run. Returns a non-`Exception` interrupt so the caller can propagate it
+    after cleanup.
     """
+    if report.connector_release != "not_needed":
+        return None
+    report.connector_release = (
+        "error"  # provisional: marks the attempt before the call (at most once)
+    )
     try:
         type(connector).release_unadopted(connector)
         report.connector_release = "done"
@@ -1310,12 +1469,15 @@ def _raise_sanitized(exc: BaseException) -> None:
 def _end_session(conn: Any, report: PreflightReport) -> BaseException | None:
     """Roll back (when a transaction was opened) and always attempt close, even if rollback is interrupted (SR-9).
 
-    Returns the first non-`Exception` interrupt seen during cleanup so the caller can propagate it after cleanup.
+    Idempotent: each of rollback and close is attempted at most once per run (the report records the attempt
+    before the call), so the cleanup retry in `run_preflight()` can never release twice. Returns the first
+    non-`Exception` interrupt seen during cleanup so the caller can propagate it after cleanup.
     """
     if conn is None:
         return None
     interrupt: BaseException | None = None
-    if report.transaction_opened:
+    if report.transaction_opened and report.rollback == "not_needed":
+        report.rollback = "error"  # provisional: marks the attempt before the call
         try:
             conn.rollback()
             report.rollback = "done"
@@ -1324,14 +1486,16 @@ def _end_session(conn: Any, report: PreflightReport) -> BaseException | None:
         except BaseException as exc:  # noqa: BLE001 - e.g. KeyboardInterrupt: still close below
             report.rollback = "error"
             interrupt = exc
-    try:
-        conn.close()
-        report.close = "done"
-    except Exception:  # noqa: BLE001
-        report.close = "error"
-    except BaseException as exc:  # noqa: BLE001
-        report.close = "error"
-        interrupt = interrupt or exc
+    if report.close == "not_needed":
+        report.close = "error"  # provisional: marks the attempt before the call
+        try:
+            conn.close()
+            report.close = "done"
+        except Exception:  # noqa: BLE001
+            report.close = "error"
+        except BaseException as exc:  # noqa: BLE001
+            report.close = "error"
+            interrupt = interrupt or exc
     if report.rollback == "error" or report.close == "error":
         report.stopped_at = report.stopped_at or "CLEANUP"
         report.stop_reason = report.stop_reason or "session_cleanup_failed"
