@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// __DEV__ は Metro/React Native が注入するグローバルで、vitest実行環境には存在しないため定義する。
+(globalThis as unknown as { __DEV__: boolean }).__DEV__ = false;
 
 const getAccessTokenMock = vi.fn();
 const getRefreshTokenMock = vi.fn();
@@ -20,6 +23,24 @@ vi.mock("../localUserData", () => ({
 }));
 
 import { ACCOUNT_DELETION_MESSAGES, deleteAccount } from "../accountDeletion";
+import { setAnalyticsProvider, type AnalyticsPayload, type AnalyticsProvider } from "../analytics";
+
+// 呼び出し順を1本の配列に記録し、「退会の印 → 解析用IDの作り直し → 端末データ消去」の順序を検証する
+const callOrder: string[] = [];
+const trackedEvents: Array<{ eventName: string; payload: AnalyticsPayload }> = [];
+const resetIdentityMock = vi.fn(async () => {
+  callOrder.push("resetIdentity");
+});
+
+class RecordingAnalyticsProvider implements AnalyticsProvider {
+  track(eventName: string, payload: AnalyticsPayload): void {
+    callOrder.push(`track:${eventName}`);
+    trackedEvents.push({ eventName, payload });
+  }
+  resetIdentity(): Promise<void> {
+    return resetIdentityMock();
+  }
+}
 
 function response(status: number, body = ""): Response {
   return {
@@ -38,6 +59,70 @@ describe("deleteAccount", () => {
     vi.clearAllMocks();
     getAccessTokenMock.mockResolvedValue("access-token");
     isExpiringSoonMock.mockReturnValue(false);
+    callOrder.length = 0;
+    trackedEvents.length = 0;
+    resetIdentityMock.mockImplementation(async () => {
+      callOrder.push("resetIdentity");
+    });
+    clearTokensMock.mockImplementation(async () => {
+      callOrder.push("clearTokens");
+    });
+    clearLocalUserDataMock.mockImplementation(async () => {
+      callOrder.push("clearLocalUserData");
+    });
+    setAnalyticsProvider(new RecordingAnalyticsProvider());
+  });
+
+  afterEach(() => {
+    setAnalyticsProvider(null);
+  });
+
+  it("204: account_deletedを送ってから解析用IDを作り直し、その後に端末データを消去する", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValueOnce(response(204));
+
+    await expect(deleteAccount()).resolves.toEqual({ ok: true });
+
+    expect(callOrder).toEqual([
+      "track:account_deleted",
+      "resetIdentity",
+      "clearTokens",
+      "clearLocalUserData",
+    ]);
+  });
+
+  it("204: account_deletedのpayloadにアカウントを特定できる値を含めない", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValueOnce(response(204));
+
+    await deleteAccount();
+
+    expect(trackedEvents).toEqual([{ eventName: "account_deleted", payload: { platform: "mobile" } }]);
+  });
+
+  it("204: 解析用IDの作り直しに失敗しても退会完了として扱い、端末データは消去する", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValueOnce(response(204));
+    resetIdentityMock.mockRejectedValueOnce(new Error("posthog failure"));
+
+    await expect(deleteAccount()).resolves.toEqual({ ok: true });
+    expect(clearTokensMock).toHaveBeenCalledTimes(1);
+    expect(clearLocalUserDataMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("503: account_deletedを送らず、解析用IDも作り直さない", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValueOnce(response(503, "unavailable"));
+
+    await deleteAccount();
+
+    expect(trackedEvents).toEqual([]);
+    expect(resetIdentityMock).not.toHaveBeenCalled();
+  });
+
+  it("ネットワークエラー: account_deletedを送らず、解析用IDも作り直さない", async () => {
+    vi.spyOn(global, "fetch").mockRejectedValueOnce(new TypeError("Network request failed"));
+
+    await deleteAccount();
+
+    expect(trackedEvents).toEqual([]);
+    expect(resetIdentityMock).not.toHaveBeenCalled();
   });
 
   it("204: DELETE /users/me/ を呼び、トークンと端末内データを消去してokを返す", async () => {

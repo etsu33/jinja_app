@@ -2,7 +2,7 @@
 // production かつ EXPO_PUBLIC_POSTHOG_KEY 設定時のみ実際にPostHogへイベントを送信する。
 // developmentまたはkey未設定時はConsoleAnalyticsProvider(analytics.tsの既定Provider)のまま動作する。
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import PostHog from "posthog-react-native";
+import PostHog, { PostHogPersistedProperty } from "posthog-react-native";
 
 import { setAnalyticsProvider, type AnalyticsPayload, type AnalyticsProvider } from "./analytics";
 
@@ -24,6 +24,18 @@ export class PostHogAnalyticsProvider implements AnalyticsProvider {
 
   track(eventName: string, payload: AnalyticsPayload): void {
     this.client.capture(eventName, payload);
+  }
+
+  // 退会時に呼ぶ。送信待ちのイベントを送り切ってから、匿名ID・端末IDを作り直す。
+  // reset() の引数を省略すると端末IDが残るため、残す項目を明示して渡す。
+  // アプリのバージョン記録だけは残す。消すと次回起動時に
+  // 「Application Installed」が再送され、インストール数が水増しされるため。
+  async resetIdentity(): Promise<void> {
+    await this.client.flush();
+    this.client.reset([
+      PostHogPersistedProperty.InstalledAppVersion,
+      PostHogPersistedProperty.InstalledAppBuild,
+    ]);
   }
 }
 

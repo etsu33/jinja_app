@@ -9,14 +9,26 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
 
 const captureMock = vi.fn();
 const postHogConstructorMock = vi.fn();
+const flushMock = vi.fn();
+const resetMock = vi.fn();
 
 vi.mock("posthog-react-native", () => ({
+  PostHogPersistedProperty: {
+    InstalledAppVersion: "installed_app_version",
+    InstalledAppBuild: "installed_app_build",
+  },
   default: class MockPostHog {
     constructor(apiKey: string, options: unknown) {
       postHogConstructorMock(apiKey, options);
     }
     capture(eventName: string, properties: unknown): void {
       captureMock(eventName, properties);
+    }
+    flush(): Promise<void> {
+      return flushMock();
+    }
+    reset(propertiesToKeep?: unknown): void {
+      resetMock(propertiesToKeep);
     }
   },
 }));
@@ -28,6 +40,25 @@ describe("PostHogAnalyticsProvider", () => {
   afterEach(() => {
     captureMock.mockClear();
     postHogConstructorMock.mockClear();
+    flushMock.mockReset();
+    resetMock.mockReset();
+  });
+
+  it("resetIdentity()はflush()を待ってからreset()を呼び、アプリのバージョン記録だけを残す", async () => {
+    const calls: string[] = [];
+    flushMock.mockImplementation(async () => {
+      calls.push("flush");
+    });
+    resetMock.mockImplementation(() => {
+      calls.push("reset");
+    });
+    const provider = new PostHogAnalyticsProvider("phc_test_key", undefined);
+
+    await provider.resetIdentity();
+
+    expect(calls).toEqual(["flush", "reset"]);
+    // 引数なしのreset()は端末IDを残すため、必ず残す項目を明示して渡す
+    expect(resetMock).toHaveBeenCalledWith(["installed_app_version", "installed_app_build"]);
   });
 
   it("track()はeventNameとpayloadをそのままcapture()へ渡す", () => {
