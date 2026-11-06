@@ -22,6 +22,15 @@ function toIconColor(color: ColorValue): string | Exclude<ColorValue, string | n
   return color;
 }
 
+// タブバーにボタンを出さない画面の options。
+// expo-router 58 から `href: null` は `hidden: true` に変換され、その画面を開くと最初のタブ(ホーム)へ
+// 移されるようになった。SDK 57 までの `href: null` と同じく「ボタンだけを見えなくする」書き方で、
+// 画面そのものは開けるようにする(タブの中にスタックを入れる構成へ移すまでの暫定対応)。
+const hiddenTabOptions = {
+  tabBarItemStyle: { display: "none" },
+  tabBarButton: () => null,
+} as const;
+
 export default function Root() {
   // Analytics Provider初期化: アプリ起動中に一度だけ行う(initAnalyticsProvider内部で多重呼び出しをガード)
   React.useEffect(() => {
@@ -94,22 +103,22 @@ export default function Root() {
           tabBarIcon: ({ color, size }) => <MaterialIcons name="person" size={size} color={toIconColor(color)} />,
         }}
       />
-      <Tabs.Screen name="journey/index" options={{ href: null }} />
-      <Tabs.Screen name="premium/index" options={{ href: null }} />
-      <Tabs.Screen name="favorites/index" options={{ href: null }} />
-      <Tabs.Screen name="goshuin/index" options={{ href: null }} />
-      <Tabs.Screen name="goshuin/upload" options={{ href: null }} />
-      <Tabs.Screen name="visit-history/index" options={{ href: null }} />
-      <Tabs.Screen name="reflection-history/index" options={{ href: null }} />
-      <Tabs.Screen name="consultation-history/index" options={{ href: null }} />
-      <Tabs.Screen name="consultation-history/[id]" options={{ href: null }} />
-      <Tabs.Screen name="recently-viewed/index" options={{ href: null }} />
-      <Tabs.Screen name="profile/index" options={{ href: null }} />
-      <Tabs.Screen name="search/index" options={{ href: null }} />
-      <Tabs.Screen name="shrines/[id]" options={{ href: null }} />
-      <Tabs.Screen name="ranking/index" options={{ href: null }} />
-      <Tabs.Screen name="login" options={{ href: null }} />
-      <Tabs.Screen name="signup" options={{ href: null }} />
+      <Tabs.Screen name="journey/index" options={hiddenTabOptions} />
+      <Tabs.Screen name="premium/index" options={hiddenTabOptions} />
+      <Tabs.Screen name="favorites/index" options={hiddenTabOptions} />
+      <Tabs.Screen name="goshuin/index" options={hiddenTabOptions} />
+      <Tabs.Screen name="goshuin/upload" options={hiddenTabOptions} />
+      <Tabs.Screen name="visit-history/index" options={hiddenTabOptions} />
+      <Tabs.Screen name="reflection-history/index" options={hiddenTabOptions} />
+      <Tabs.Screen name="consultation-history/index" options={hiddenTabOptions} />
+      <Tabs.Screen name="consultation-history/[id]" options={hiddenTabOptions} />
+      <Tabs.Screen name="recently-viewed/index" options={hiddenTabOptions} />
+      <Tabs.Screen name="profile/index" options={hiddenTabOptions} />
+      <Tabs.Screen name="search/index" options={hiddenTabOptions} />
+      <Tabs.Screen name="shrines/[id]" options={hiddenTabOptions} />
+      <Tabs.Screen name="ranking/index" options={hiddenTabOptions} />
+      <Tabs.Screen name="login" options={hiddenTabOptions} />
+      <Tabs.Screen name="signup" options={hiddenTabOptions} />
     </Tabs>
   );
 }
