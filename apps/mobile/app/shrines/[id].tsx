@@ -737,9 +737,9 @@ export default function ShrineDetail() {
           <View style={styles.reasonFactsCard}>
             <Text style={styles.reasonFactsLabel}>選定のポイント</Text>
             {reasonFactItems.map((item) => (
-              <View key={`${item.label}-${item.value}`} style={styles.reasonFactItem}>
+              <View key={item.key} style={styles.reasonFactItem}>
                 <Text style={styles.reasonFactLabel}>{item.label}</Text>
-                <Text style={styles.reasonFactText}>{item.value}</Text>
+                {item.value ? <Text style={styles.reasonFactText}>{item.value}</Text> : null}
               </View>
             ))}
           </View>
