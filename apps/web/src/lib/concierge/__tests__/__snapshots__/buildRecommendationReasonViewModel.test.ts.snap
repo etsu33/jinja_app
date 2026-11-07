@@ -24,7 +24,7 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
     },
     "inputType": "birthdate",
     "list": {
-      "primaryPhrase": "生年月日から見た「water」の要素との相性が強く重なるため、この神社が候補に入っています。",
+      "primaryPhrase": "生年月日との相性を軸に選びやすい候補です",
       "secondaryPhrase": "気質とのなじみも補助的に見られます。",
       "summary": "生年月日との相性の重なりを主軸に、この神社が選ばれています。",
     },

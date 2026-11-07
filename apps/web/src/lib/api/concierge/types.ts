@@ -163,6 +163,8 @@ export type RecommendationReasonV4Detail = {
 export type ConciergeReasonFact = {
   type: string;
   label: string;
+  /** Backend が返す日本語の表示名。表示にだけ使い、比較や判定には label を使う。 */
+  label_ja?: string;
   evidence: string[];
   score: number;
   is_primary?: boolean;

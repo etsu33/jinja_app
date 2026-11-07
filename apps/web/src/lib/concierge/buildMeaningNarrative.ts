@@ -296,7 +296,8 @@ function buildMeaningCore(args: {
   })();
 
   const shrineFact = (() => {
-    const feature = clean(args.shrine.feature);
+    // 表示用の名前を使う。内部名だけ・名前を入れない種類のときは、下の名前を使わない文へ進む。
+    const feature = clean(args.shrine.featureDisplay);
     if (feature) return `「${feature}」という意味・特徴を持つ場所で`;
 
     const place = (() => {

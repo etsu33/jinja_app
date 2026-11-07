@@ -18,12 +18,15 @@ import {
   formatDistance,
   resolveInputType,
   getPrimaryElement,
+  hasElementSignal,
   buildNeedTagMeaningSlots,
   buildShrineMeaningSlots,
   buildRecommendationMatchModel,
 } from "./buildRecommendationReasonViewModel";
 import type { BuildParams, ReasonKey, Candidate } from "./buildRecommendationReasonViewModel";
 import { toNeedTagLabel } from "./needTagLabelMap";
+import { toDisplayLabel } from "./displayLabel";
+import { NAME_FREE_PRIMARY_FACT_TYPES } from "./adaptReasonFactsForViewModel";
 
 export type ReasonNarrative = {
   hero: {
@@ -187,6 +190,18 @@ function buildVisitStyleLabel(tag: string): string | null {
   return null;
 }
 
+const ELEMENT_DEFAULT_PRIMARY_TEXT = "生年月日との相性を軸に選びやすい候補です";
+const VISIT_STYLE_DEFAULT_PRIMARY_TEXT = "選んだ参拝の好みに合うため、この神社が候補に入っています。";
+
+/** 名前入りの文(下の switch)から、名前だけを外した文。表示名が無いときに使う。 */
+const NAME_FREE_TEXT_BY_TYPE: Readonly<Record<string, Candidate>> = {
+  need_tag: { key: "need_match", text: "相談内容と一致するため、この神社が候補に入っています。" },
+  user_selected_tag: { key: "need_match", text: "選んだ条件と一致するため、この神社が候補に入っています。" },
+  goriyaku_tag: { key: "need_match", text: "ご利益が相談に重なるため、この神社が候補に入っています。" },
+  history_theme: { key: "text_match", text: "意味・特徴が相談に重なるため、この神社が候補に入っています。" },
+  text_hint: { key: "text_match", text: "意味・特徴が相談に重なるため、この神社が候補に入っています。" },
+};
+
 function buildVisitStylePrimaryText(rec: BuildParams["rec"]): string | null {
   const tag = getMatchedVisitStyleTags(rec)[0];
   const label = tag ? buildVisitStyleLabel(tag) : null;
@@ -261,8 +276,8 @@ function buildQueryCandidates(params: BuildParams): Candidate[] {
 
   const primary = buildIntersectionPrimaryText({
     need: consultation.needPrimary,
-    benefit: shrine.benefitPrimary,
-    feature: shrine.feature,
+    benefit: shrine.benefitPrimaryDisplay ?? null,
+    feature: shrine.featureDisplay ?? null,
     tone: shrine.tone,
   });
 
@@ -281,9 +296,15 @@ function buildQueryCandidates(params: BuildParams): Candidate[] {
   if (consultation.needSecondary) {
     out.push({ key: "text_match", text: buildSecondaryNeedText(consultation.needSecondary) });
   } else if (shrine.benefitPrimary && primary) {
-    out.push({ key: "need_match", text: buildBenefitSupportText(shrine.benefitPrimary, shrine.tone) });
+    // 判定は benefitPrimary のまま。表示名が無い(内部名だけの)ときは補足文を出さない。
+    if (shrine.benefitPrimaryDisplay) {
+      out.push({ key: "need_match", text: buildBenefitSupportText(shrine.benefitPrimaryDisplay, shrine.tone) });
+    }
   } else if (shrine.feature) {
-    out.push({ key: "text_match", text: buildFeatureSupportText(shrine.feature, shrine.tone) });
+    // 判定は feature のまま。表示名が無いときは補足文を出さない。
+    if (shrine.featureDisplay) {
+      out.push({ key: "text_match", text: buildFeatureSupportText(shrine.featureDisplay, shrine.tone) });
+    }
   }
 
   const visitStyleText = buildVisitStylePrimaryText(rec);
@@ -317,6 +338,9 @@ function buildBirthdateCandidates(params: BuildParams): Candidate[] {
       key: "element_match",
       text: `生年月日から見た「${element}」の要素との相性が強く重なるため、この神社が候補に入っています。`,
     });
+  } else if (hasElementSignal(rec)) {
+    // 五行はあるが表示名が無い(内部名だけの)ときは、名前を入れない element の既定の文にする。
+    out.push({ key: "element_match", text: ELEMENT_DEFAULT_PRIMARY_TEXT });
   }
 
   if (typeof rec.astro_priority === "number" && rec.astro_priority > 0) {
@@ -371,22 +395,37 @@ function buildFactsCandidates(params: BuildParams, inputType: ReturnType<typeof 
   });
   const rec = params.rec;
   const out: Candidate[] = [];
-  const element = clean(rec.reason_facts?.matched_element) || getPrimaryElement(rec);
+  const element = getPrimaryElement(rec);
   const distance = formatDistance(rec.distance_m);
   const distanceLabel = clean(rec.reason_facts?.distance_label) || distance;
   const primaryFactType = clean(rec.reason_facts?.primary_fact_type);
-  const primaryFactLabel = clean(rec.reason_facts?.primary_fact_label);
+  // 表示用の名前(label_ja、無ければ label)。内部名だけのときや、名前を入れない種類
+  // (element / visit_style / fallback)のときは null になり、下の名前を使わない文へ進む。
+  const primaryFactLabel = primaryFactType && NAME_FREE_PRIMARY_FACT_TYPES.has(primaryFactType)
+    ? null
+    : toDisplayLabel(rec.reason_facts?.primary_fact_display_label ?? rec.reason_facts?.primary_fact_label);
 
-  if (primaryFactLabel) {
+  // 名前を入れない種類は、その種類の既定の文にする(近さで選んだ候補の文には流さない)。
+  // fallback だけは、下の match.primaryReasonType による既存の文に任せる。
+  if (primaryFactType === "element") {
+    out.push({
+      key: "element_match",
+      text: element
+        ? `生年月日から見た「${element}」の要素との相性が強く重なるため、この神社が候補に入っています。`
+        : ELEMENT_DEFAULT_PRIMARY_TEXT,
+    });
+  } else if (primaryFactType === "visit_style") {
+    out.push({ key: "text_match", text: buildVisitStylePrimaryText(rec) ?? VISIT_STYLE_DEFAULT_PRIMARY_TEXT });
+  } else if (!primaryFactLabel && primaryFactType && NAME_FREE_TEXT_BY_TYPE[primaryFactType]) {
+    // 表示名が無い(内部名だけの)ときは、同じ種類の文から名前だけを外した文にする。
+    out.push({ ...NAME_FREE_TEXT_BY_TYPE[primaryFactType] });
+  } else if (primaryFactLabel) {
     switch (primaryFactType) {
-      case "element":
-        out.push({ key: "element_match", text: `生年月日から見た「${primaryFactLabel}」の要素との相性が強く重なるため、この神社が候補に入っています。` });
-        break;
       case "need_tag":
         out.push({ key: "need_match", text: `相談内容の「${primaryFactLabel}」と一致するため、この神社が候補に入っています。` });
         break;
       case "user_selected_tag":
-        out.push({ key: "need_match", text: `明示的に指定した「${primaryFactLabel}」と一致するため、この神社が候補に入っています。` });
+        out.push({ key: "need_match", text: `選んだ「${primaryFactLabel}」と一致するため、この神社が候補に入っています。` });
         break;
       case "goriyaku_tag":
         out.push({ key: "need_match", text: `「${primaryFactLabel}」のご利益が相談に重なるため、この神社が候補に入っています。` });
@@ -395,12 +434,6 @@ function buildFactsCandidates(params: BuildParams, inputType: ReturnType<typeof 
       case "text_hint":
         out.push({ key: "text_match", text: `「${primaryFactLabel}」という意味・特徴が相談に重なるため、この神社が候補に入っています。` });
         break;
-      case "visit_style":
-        out.push({ key: "text_match", text: `参拝Preferenceの「${primaryFactLabel}」に合うため、この神社が候補に入っています。` });
-        break;
-      case "fallback":
-        out.push({ key: "distance", text: primaryFactLabel });
-        break;
     }
   }
 
@@ -408,7 +441,7 @@ function buildFactsCandidates(params: BuildParams, inputType: ReturnType<typeof 
     case "need_benefit_match": {
       const text = buildIntersectionPrimaryText({
         need: consultation.needPrimary,
-        benefit: shrine.benefitPrimary,
+        benefit: shrine.benefitPrimaryDisplay ?? null,
         feature: null,
         tone: shrine.tone,
       });
@@ -429,7 +462,7 @@ function buildFactsCandidates(params: BuildParams, inputType: ReturnType<typeof 
       const text = buildIntersectionPrimaryText({
         need: consultation.needPrimary,
         benefit: null,
-        feature: shrine.feature,
+        feature: shrine.featureDisplay ?? null,
         tone: shrine.tone,
       });
       if (text) out.push({ key: "text_match", text });
@@ -441,6 +474,9 @@ function buildFactsCandidates(params: BuildParams, inputType: ReturnType<typeof 
           key: "element_match",
           text: `生年月日から見た「${element}」の要素との相性が強く重なるため、この神社が候補に入っています。`,
         });
+      } else if (hasElementSignal(rec)) {
+        // 五行はあるが表示名が無い(内部名だけの)ときは、名前を入れない element の既定の文にする。
+        out.push({ key: "element_match", text: ELEMENT_DEFAULT_PRIMARY_TEXT });
       }
       break;
     }
@@ -483,13 +519,15 @@ function buildFactsCandidates(params: BuildParams, inputType: ReturnType<typeof 
         }
         break;
       case "benefit_support":
-        if (shrine.benefitPrimary) {
-          out.push({ key: "need_match", text: buildBenefitSupportText(shrine.benefitPrimary, shrine.tone) });
+        // benefit_support の判定は benefitPrimary(:450)。表示名が無いときは補足文を出さない。
+        if (shrine.benefitPrimaryDisplay) {
+          out.push({ key: "need_match", text: buildBenefitSupportText(shrine.benefitPrimaryDisplay, shrine.tone) });
         }
         break;
       case "feature_support":
-        if (shrine.feature) {
-          out.push({ key: "text_match", text: buildFeatureSupportText(shrine.feature, shrine.tone) });
+        // feature_support の判定は feature(:465)。表示名が無いときは補足文を出さない。
+        if (shrine.featureDisplay) {
+          out.push({ key: "text_match", text: buildFeatureSupportText(shrine.featureDisplay, shrine.tone) });
         }
         break;
       case "sign_support":
@@ -682,7 +720,7 @@ export function buildReasonNarrative(params: BuildParams): ReasonNarrative {
       key: inputType === "birthdate" ? "element_match" : inputType === "fallback" ? "distance" : "need_match",
       text:
         inputType === "birthdate"
-          ? "生年月日との相性を軸に選びやすい候補です"
+          ? ELEMENT_DEFAULT_PRIMARY_TEXT
           : inputType === "fallback"
             ? "まずは動きやすさを優先して見られる候補です"
             : "今の気持ちに沿って選びやすい候補です",

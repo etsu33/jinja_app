@@ -954,15 +954,18 @@ export default function ConciergeSectionsRenderer({
                         // 新たな一致判定は行わない(Concierge Evidence Explanation PR、
                         // docs/product/recommendation-signal-authority.md §10)。
                         const adaptedReasonFacts = adaptReasonFactsForViewModel(heroItem.reasonFacts ?? null);
-                        const runtimeMatchGoriyakuLabel =
-                          adaptedReasonFacts?.primary_fact_type === "goriyaku_tag"
-                            ? (adaptedReasonFacts.shrine_benefit ?? null)
-                            : heroReasonV4.factSource === "goriyaku"
-                              ? heroReasonV4.factText
-                              : null;
+                        // 表示には日本語名(shrine_benefit_display_label = label_ja、無ければ label)を使う。
+                        // 内部名だけのときは null になり、名前を入れない文に切り替わる。
+                        const runtimeMatchGoriyakuMatched = adaptedReasonFacts?.primary_fact_type === "goriyaku_tag";
+                        const runtimeMatchGoriyakuLabel = runtimeMatchGoriyakuMatched
+                          ? (adaptedReasonFacts?.shrine_benefit_display_label ?? null)
+                          : heroReasonV4.factSource === "goriyaku"
+                            ? heroReasonV4.factText
+                            : null;
                         const runtimeMatchLines = buildRuntimeMatchLines({
                           needTags: effectiveNeedTags,
                           goriyakuLabel: runtimeMatchGoriyakuLabel,
+                          goriyakuMatched: runtimeMatchGoriyakuMatched,
                         });
 
                         return (
