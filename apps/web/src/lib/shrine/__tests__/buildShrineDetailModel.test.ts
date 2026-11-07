@@ -495,6 +495,9 @@ describe("buildShrineDetailModel", () => {
   });
 
   describe("recommendationReasonV4Detail(Fact/Interpretation/Action)", () => {
+    // 主な根拠(is_primary)が意味の一致を表す種類(推薦の根拠になる)。
+    const AUTHORITY_REASON_FACTS = [{ type: "need_tag", label: "love", evidence: [], score: 1, is_primary: true }];
+
     it("structured Factありの場合、旧reasonSection/meaningSection/actionSectionを重複させずV4のsectionに置き換える", () => {
       const result = buildShrineDetailModel({
         shrine: shrineStub,
@@ -515,6 +518,7 @@ describe("buildShrineDetailModel", () => {
           interpretation: { text: "今回の相談との意味(V4)" },
           action: { text: "参拝するときの視点(V4)" },
         },
+        recommendationReasonFacts: AUTHORITY_REASON_FACTS,
       });
 
       const premiumSections = result.premiumDisplaySections.map((item: { section: any }) => item.section);
@@ -542,7 +546,7 @@ describe("buildShrineDetailModel", () => {
     // Knowledge Fact(Rank/Eligibilityに一切寄与しない)であり、「② 選ばれた背景」
     // (Recommendation reason)へ混入させてはならない。既存fixtureで実際に再現していた
     // (deityが勝ちfactになりそのまま「② 選ばれた背景」へ表示されていた)ケース。
-    it("Bug-1: Explanation-only Fact(deity)は「② 選ばれた背景」に混入せず「参考情報」へ分離される", () => {
+    it("Bug-1: Explanation-only Fact(deity)は「② 選ばれた背景」に混入せず「この神社について」へ分離される", () => {
       const result = buildShrineDetailModel({
         shrine: shrineStub,
         publicGoshuins: publicGoshuinsStub,
@@ -556,6 +560,8 @@ describe("buildShrineDetailModel", () => {
           interpretation: { text: "今回の相談との意味(V4)" },
           action: { text: "参拝するときの視点(V4)" },
         },
+        // 主な根拠が意味の一致でも、御祭神は推薦の根拠ではない。
+        recommendationReasonFacts: AUTHORITY_REASON_FACTS,
       });
 
       const premiumSections = result.premiumDisplaySections.map((item: { section: any }) => item.section);
@@ -565,12 +571,14 @@ describe("buildShrineDetailModel", () => {
       const reasonSections = premiumSections.filter((section: any) => section.kind === "reason");
       expect(reasonSections.every((section: any) => section.heading !== "② 選ばれた背景")).toBe(true);
 
-      // 「武神」自体は表示価値を保つが、Recommendation reasonではなく「参考情報」として分離される。
+      // 「武神」自体は表示価値を保つが、Recommendation reasonではなく「この神社について」として分離される。
       const explanationOnlySection = premiumSections.find(
-        (section: any) => section.kind === "reason" && section.heading === "参考情報",
+        (section: any) => section.kind === "reason" && section.heading === "この神社について",
       );
       expect(explanationOnlySection).toBeDefined();
+      expect(explanationOnlySection.groups[0].title).toBe("神社の由緒・御祭神");
       expect(explanationOnlySection.groups[0].items).toEqual(["武神"]);
+      expect(premiumSections.some((section: any) => section.heading === "参考情報")).toBe(false);
 
       // interpretation/actionはV4のまま正しく表示される(factTextがnullでも他は独立して機能する)。
       const meaningSection = premiumSections.find((section: any) => section.kind === "meaning");
@@ -579,7 +587,7 @@ describe("buildShrineDetailModel", () => {
       expect(actionSection.items[0].body).toBe("参拝するときの視点(V4)");
     });
 
-    it("Bug-1: Ranking Evidence(goriyaku)のみの場合は従来どおり「② 選ばれた背景」に残り、「参考情報」は生成されない", () => {
+    it("Bug-1: Ranking Evidence(goriyaku)のみで主な根拠が意味の一致の場合は「② 選ばれた背景」に残り、「この神社について」は生成されない", () => {
       const result = buildShrineDetailModel({
         shrine: shrineStub,
         publicGoshuins: publicGoshuinsStub,
@@ -593,13 +601,69 @@ describe("buildShrineDetailModel", () => {
           interpretation: { text: "" },
           action: { text: "" },
         },
+        recommendationReasonFacts: AUTHORITY_REASON_FACTS,
       });
 
       const premiumSections = result.premiumDisplaySections.map((item: { section: any }) => item.section);
       const reasonSection = premiumSections.find((section: any) => section.kind === "reason");
       expect(reasonSection.heading).toBe("② 選ばれた背景");
       expect(reasonSection.groups[0].items).toEqual(["縁結び"]);
+      expect(premiumSections.some((section: any) => section.heading === "この神社について")).toBe(false);
       expect(premiumSections.some((section: any) => section.heading === "参考情報")).toBe(false);
+    });
+
+    it.each([
+      ["主な根拠が意味の一致でない(element)", [{ type: "element", label: "element", evidence: [], score: 1, is_primary: true }]],
+      ["reason_factsが無い(根拠が分からない)", null],
+      ["is_primaryが無い(根拠が分からない)", [{ type: "need_tag", label: "love", evidence: [], score: 1 }]],
+    ])("%s場合、goriyakuは「② 選ばれた背景」に出さず「この神社について」に出す", (_case, reasonFacts) => {
+      const result = buildShrineDetailModel({
+        shrine: shrineStub,
+        publicGoshuins: publicGoshuinsStub,
+        conciergeBreakdown: conciergeBreakdownStub,
+        conciergeMode: "need",
+        ctx: "concierge",
+        tid: "thread-1",
+        recommendationReasonV4Detail: {
+          reason_text: "reason_text",
+          fact: { deity: null, shrine_history: null, place_context: null, goriyaku: "縁結び", history_theme: null },
+          interpretation: { text: "今回の相談との意味(V4)" },
+          action: { text: "" },
+        },
+        recommendationReasonFacts: reasonFacts,
+      });
+
+      const premiumSections = result.premiumDisplaySections.map((item: { section: any }) => item.section);
+      const headings = premiumSections.map((section: any) => section.heading);
+      expect(headings).not.toContain("② 選ばれた背景");
+      expect(headings).not.toContain("参考情報");
+      const aboutSection = premiumSections.find((section: any) => section.heading === "この神社について");
+      expect(aboutSection.groups[0].title).toBe("ご利益");
+      expect(aboutSection.groups[0].items).toEqual(["縁結び"]);
+    });
+
+    it("主な根拠が意味の一致でないとき、history_themeも「この神社について」に出す", () => {
+      const result = buildShrineDetailModel({
+        shrine: shrineStub,
+        publicGoshuins: publicGoshuinsStub,
+        conciergeBreakdown: conciergeBreakdownStub,
+        conciergeMode: "need",
+        ctx: "concierge",
+        tid: "thread-1",
+        recommendationReasonV4Detail: {
+          reason_text: "reason_text",
+          fact: { deity: null, shrine_history: null, place_context: null, goriyaku: null, history_theme: "再出発" },
+          interpretation: { text: "" },
+          action: { text: "" },
+        },
+        recommendationReasonFacts: [{ type: "visit_style", label: "visit_style", evidence: [], score: 1, is_primary: true }],
+      });
+
+      const premiumSections = result.premiumDisplaySections.map((item: { section: any }) => item.section);
+      expect(premiumSections.map((section: any) => section.heading)).not.toContain("② 選ばれた背景");
+      const aboutSection = premiumSections.find((section: any) => section.heading === "この神社について");
+      expect(aboutSection.groups[0].title).toBe("歴史のテーマ");
+      expect(aboutSection.groups[0].items).toEqual(["再出発"]);
     });
 
     it("Bug-1: Ranking Evidence(goriyaku)とExplanation-only Fact(deity)が両方存在する場合は混ざらない(deityは勝ちfactにならない)", () => {
@@ -616,6 +680,7 @@ describe("buildShrineDetailModel", () => {
           interpretation: { text: "" },
           action: { text: "" },
         },
+        recommendationReasonFacts: AUTHORITY_REASON_FACTS,
       });
 
       // 優先順位はreasonV4FactPriority.ts(deity > shrine_history > goriyaku > history_theme)の
@@ -627,8 +692,9 @@ describe("buildShrineDetailModel", () => {
         .filter((section: any) => section.kind === "reason")
         .map((section: any) => section.heading);
       expect(reasonHeadings).not.toContain("② 選ばれた背景");
-      expect(reasonHeadings).toContain("参考情報");
-      const explanationOnlySection = premiumSections.find((section: any) => section.heading === "参考情報");
+      expect(reasonHeadings).toContain("この神社について");
+      expect(reasonHeadings).not.toContain("参考情報");
+      const explanationOnlySection = premiumSections.find((section: any) => section.heading === "この神社について");
       expect(explanationOnlySection.groups[0].items).toEqual(["武神"]);
     });
 

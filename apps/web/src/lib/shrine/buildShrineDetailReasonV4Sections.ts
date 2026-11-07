@@ -7,7 +7,8 @@
 // Hero(要約向け)とDetail(詳細向け)は表示量・画面構造が異なるため、
 // 画面用のAdapter自体は別ファイルとして分離する。
 import { buildRecommendationReasonDisplay } from "../../../../../packages/shared/recommendationReasonDisplay";
-import { isExplanationOnlyFactSource, pickReasonV4Fact } from "@/features/concierge/reasonV4FactPriority";
+import { isRecommendationReasonFact } from "../../../../../packages/shared/recommendationReasonAuthority";
+import { pickReasonV4Fact, type ReasonV4FactSource } from "@/features/concierge/reasonV4FactPriority";
 
 export type RecommendationReasonV4DetailFact = {
   label?: string | null;
@@ -28,15 +29,14 @@ export type RecommendationReasonV4DetailShape = {
 };
 
 export type ShrineDetailReasonV4Sections = {
-  // Ranking-related fact only (goriyaku/history_theme won the pick) -- same meaning as
-  // buildHeroReasonV4Sections.ts's factText.
+  // 推薦の根拠になっている事実だけ(「② 選ばれた背景」に出す)。判定は
+  // packages/shared/recommendationReasonAuthority.ts の isRecommendationReasonFact:
+  // 表示する項目がご利益/歴史のテーマ、かつ主な根拠(reason_facts の is_primary)が意味の一致を表す種類。
   factText: string | null;
-  // Explanation-only Knowledge fact only (deity/shrine_history won the pick) -- Signal
-  // Authority正本§8: Rank/Eligibilityに一切寄与しないKnowledge fact。「② 選ばれた背景」
-  // (Recommendation reason)へは混ぜず、呼び出し元で「参考情報」等の従属的な別枠として
-  // 表示する(buildHeroReasonV4Sections.tsと同じ境界、App-wide Evidence & Dark UI
-  // Regression Audit Bug-1)。
-  explanationOnlyFactText: string | null;
+  // 推薦の根拠になっていない神社の事実(「この神社について」に出す)。御祭神・由緒は常にこちら。
+  // ご利益・歴史のテーマも、主な根拠が意味の一致でない(または分からない)ときはこちら。
+  aboutShrineFactText: string | null;
+  aboutShrineFactSource: ReasonV4FactSource | null;
   interpretationText: string | null;
   actionText: string | null;
   hasStructured: boolean;
@@ -96,22 +96,27 @@ export function normalizeRecommendationReasonV4Detail(raw: unknown): Recommendat
  * Shrine Detail画面表示用のFact/Interpretation/Actionセクションを組み立てる。
  *
  * place_context(住所)とlabelはFact本文の候補にしない(優先順位の実体はreasonV4FactPriority.ts)。
- * いずれか1つ以上のセクションが表示できる場合にhasStructured=trueとする(explanationOnlyFactText
- * は含めない -- buildHeroReasonV4Sections.tsと同じFallback Contract。Explanation-onlyの情報
+ * いずれか1つ以上のセクションが表示できる場合にhasStructured=trueとする(aboutShrineFactText
+ * は含めない -- buildHeroReasonV4Sections.tsと同じFallback Contract。根拠でない情報
  * だけでRecommendationが相談に意味的一致したかのように見せない)。
+ *
+ * reasonFacts は、同じ推薦の reason_facts(Backend wire)。無いときは根拠が分からないため、
+ * 事実はすべて aboutShrineFactText へ入る。
  */
 export function buildShrineDetailReasonV4Sections(
   detail: RecommendationReasonV4DetailShape | null | undefined,
+  reasonFacts?: unknown,
 ): ShrineDetailReasonV4Sections {
   // 優先順位の実体はreasonV4FactPriority.tsに集約する(Hero/Shrine Detailで共通)。
   const pickedFact = detail ? pickReasonV4Fact(detail.fact) : null;
-  const isPickedFactExplanationOnly = pickedFact ? isExplanationOnlyFactSource(pickedFact.source) : false;
-  const factText = safeText(!isPickedFactExplanationOnly ? (pickedFact?.text ?? null) : null);
-  const explanationOnlyFactText = safeText(isPickedFactExplanationOnly ? (pickedFact?.text ?? null) : null);
+  const isReasonFact = pickedFact ? isRecommendationReasonFact(pickedFact.source, reasonFacts) : false;
+  const factText = safeText(isReasonFact ? (pickedFact?.text ?? null) : null);
+  const aboutShrineFactText = safeText(pickedFact && !isReasonFact ? pickedFact.text : null);
+  const aboutShrineFactSource = aboutShrineFactText && pickedFact ? pickedFact.source : null;
   const interpretationText = safeText(detail ? clean(detail.interpretation?.text) : null);
   const actionText = safeText(detail ? clean(detail.action?.text) : null);
 
   const hasStructured = Boolean(factText || interpretationText || actionText);
 
-  return { factText, explanationOnlyFactText, interpretationText, actionText, hasStructured };
+  return { factText, aboutShrineFactText, aboutShrineFactSource, interpretationText, actionText, hasStructured };
 }

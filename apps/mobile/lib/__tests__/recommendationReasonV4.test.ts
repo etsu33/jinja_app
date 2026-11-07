@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildReasonV4Sections,
+  buildShrineDetailFactSections,
   normalizeRecommendationReasonV4Detail,
   serializeReasonV4Detail,
   type RecommendationReasonV4Detail,
@@ -246,7 +247,8 @@ describe("buildReasonV4Sections", () => {
     const result = buildReasonV4Sections({ detail: makeDetail(), fallbackReason: null });
     expect(result).not.toHaveProperty("actionSource");
     expect(result).not.toHaveProperty("source");
-    expect(Object.keys(result)).toEqual(["factText", "interpretationText", "actionText", "hasStructured", "fallbackText"]);
+    // factSource は表示した事実の項目名(deity など)で、action.source ではない。
+    expect(Object.keys(result)).toEqual(["factText", "factSource", "interpretationText", "actionText", "hasStructured", "fallbackText"]);
   });
 
   it("構造化表示が可能な場合、fallbackTextと重複しない(fallbackTextはnull)", () => {
@@ -279,5 +281,87 @@ describe("serializeReasonV4Detail", () => {
 
   it("detailがundefinedの場合は空文字を返す", () => {
     expect(serializeReasonV4Detail(undefined)).toBe("");
+  });
+});
+
+describe("神社詳細の「② 選ばれた背景」と「この神社について」の出し分け", () => {
+  const primary = (type: string) => [{ type, label: "x", evidence: [], score: 1, is_primary: true }];
+  const detailWith = (fact: Partial<RecommendationReasonV4Detail["fact"]>) =>
+    buildReasonV4Sections({
+      detail: makeDetail({
+        fact: { deity: null, shrine_history: null, goriyaku: null, history_theme: null, ...fact },
+      }),
+    });
+
+  it("factSource に表示した項目が入る", () => {
+    expect(detailWith({ deity: "武神", goriyaku: "縁結び" }).factSource).toBe("deity");
+    expect(detailWith({ goriyaku: "縁結び" }).factSource).toBe("goriyaku");
+  });
+
+  it.each(["history_theme", "need_tag", "text_hint", "goriyaku_tag"])(
+    "ご利益で、主な根拠が %s のときは「② 選ばれた背景」",
+    (type) => {
+      expect(buildShrineDetailFactSections(detailWith({ goriyaku: "縁結び" }), primary(type))).toEqual({
+        reasonFactText: "縁結び",
+        aboutShrineFactText: null,
+        aboutShrineFactTitle: null,
+      });
+    },
+  );
+
+  it("歴史のテーマで、主な根拠が意味の一致のときは「② 選ばれた背景」", () => {
+    expect(buildShrineDetailFactSections(detailWith({ history_theme: "再出発" }), primary("need_tag")).reasonFactText).toBe(
+      "再出発",
+    );
+  });
+
+  it.each([
+    ["deity", { deity: "武神" }, "神社の由緒・御祭神"],
+    ["shrine_history", { shrine_history: "由緒あり" }, "神社の由緒・御祭神"],
+  ] as const)("%s は主な根拠が意味の一致でも「この神社について」", (_source, fact, title) => {
+    const result = buildShrineDetailFactSections(detailWith(fact), primary("need_tag"));
+    expect(result.reasonFactText).toBeNull();
+    expect(result.aboutShrineFactText).toBe(Object.values(fact)[0]);
+    expect(result.aboutShrineFactTitle).toBe(title);
+  });
+
+  it.each(["element", "visit_style", "fallback", "user_selected_tag"])(
+    "主な根拠が %s のときは、ご利益も「この神社について」",
+    (type) => {
+      expect(buildShrineDetailFactSections(detailWith({ goriyaku: "縁結び" }), primary(type))).toEqual({
+        reasonFactText: null,
+        aboutShrineFactText: "縁結び",
+        aboutShrineFactTitle: "ご利益",
+      });
+    },
+  );
+
+  it.each([
+    ["reason_factsが無い", undefined],
+    ["reason_factsが空", []],
+    ["is_primaryが無い", [{ type: "need_tag", label: "love", evidence: [], score: 1 }]],
+  ])("%sときは根拠が分からないため「この神社について」", (_case, reasonFacts) => {
+    const result = buildShrineDetailFactSections(detailWith({ history_theme: "再出発" }), reasonFacts);
+    expect(result.reasonFactText).toBeNull();
+    expect(result.aboutShrineFactText).toBe("再出発");
+    expect(result.aboutShrineFactTitle).toBe("歴史のテーマ");
+  });
+
+  it("出し分けは reason_text(補助情報の文の有無)では判定しない", () => {
+    const sections = buildReasonV4Sections({
+      detail: makeDetail({
+        reason_text: "縁結び。この情報は神社を説明する補助情報であり、今回の順位根拠ではありません。",
+        fact: { deity: null, shrine_history: null, goriyaku: "縁結び", history_theme: null },
+      }),
+    });
+    expect(buildShrineDetailFactSections(sections, primary("need_tag")).reasonFactText).toBe("縁結び");
+  });
+
+  it("事実が無いときはどちらにも出さない", () => {
+    expect(buildShrineDetailFactSections(detailWith({}), primary("need_tag"))).toEqual({
+      reasonFactText: null,
+      aboutShrineFactText: null,
+      aboutShrineFactTitle: null,
+    });
   });
 });
