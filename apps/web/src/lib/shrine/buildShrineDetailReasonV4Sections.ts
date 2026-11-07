@@ -7,7 +7,11 @@
 // Hero(要約向け)とDetail(詳細向け)は表示量・画面構造が異なるため、
 // 画面用のAdapter自体は別ファイルとして分離する。
 import { buildRecommendationReasonDisplay } from "../../../../../packages/shared/recommendationReasonDisplay";
-import { isRecommendationReasonFact } from "../../../../../packages/shared/recommendationReasonAuthority";
+import {
+  isCoveredByConfirmedShrineKnowledge,
+  isRecommendationReasonFact,
+  type ConfirmedShrineKnowledge,
+} from "../../../../../packages/shared/recommendationReasonAuthority";
 import { pickReasonV4Fact, type ReasonV4FactSource } from "@/features/concierge/reasonV4FactPriority";
 
 export type RecommendationReasonV4DetailFact = {
@@ -29,12 +33,14 @@ export type RecommendationReasonV4DetailShape = {
 };
 
 export type ShrineDetailReasonV4Sections = {
-  // 推薦の根拠になっている事実だけ(「② 選ばれた背景」に出す)。判定は
+  // 推薦の根拠になっている事実だけ(「選ばれた背景」に出す)。判定は
   // packages/shared/recommendationReasonAuthority.ts の isRecommendationReasonFact:
   // 表示する項目がご利益/歴史のテーマ、かつ主な根拠(reason_facts の is_primary)が意味の一致を表す種類。
   factText: string | null;
-  // 推薦の根拠になっていない神社の事実(「この神社について」に出す)。御祭神・由緒は常にこちら。
-  // ご利益・歴史のテーマも、主な根拠が意味の一致でない(または分からない)ときはこちら。
+  // 推薦の根拠になっていない神社の事実(「この神社について」に出す)。
+  // ご利益・歴史のテーマは、主な根拠が意味の一致でない(または分からない)ときにこちら。
+  // 御祭神・由緒は、確認済みのデータがあれば前からある「神社について」に出ているため出さない
+  // (重ねて出さない)。確認済みのデータが無いときだけ、古い項目から来た値をこちらに出す。
   aboutShrineFactText: string | null;
   aboutShrineFactSource: ReasonV4FactSource | null;
   interpretationText: string | null;
@@ -101,17 +107,23 @@ export function normalizeRecommendationReasonV4Detail(raw: unknown): Recommendat
  * だけでRecommendationが相談に意味的一致したかのように見せない)。
  *
  * reasonFacts は、同じ推薦の reason_facts(Backend wire)。無いときは根拠が分からないため、
- * 事実はすべて aboutShrineFactText へ入る。
+ * ご利益・歴史のテーマも aboutShrineFactText へ入る。
+ * confirmedKnowledge は、神社の確認済みの御祭神・由緒のデータの有無。御祭神・由緒は、
+ * 確認済みのデータがあれば aboutShrineFactText に入れない。
+ * 事実を選ぶ順番(御祭神 > 由緒 > ご利益 > 歴史のテーマで1つ)は変えない。外したあとに
+ * 次の事実へ選び直すことはしない。
  */
 export function buildShrineDetailReasonV4Sections(
   detail: RecommendationReasonV4DetailShape | null | undefined,
   reasonFacts?: unknown,
+  confirmedKnowledge?: ConfirmedShrineKnowledge | null,
 ): ShrineDetailReasonV4Sections {
   // 優先順位の実体はreasonV4FactPriority.tsに集約する(Hero/Shrine Detailで共通)。
   const pickedFact = detail ? pickReasonV4Fact(detail.fact) : null;
   const isReasonFact = pickedFact ? isRecommendationReasonFact(pickedFact.source, reasonFacts) : false;
   const factText = safeText(isReasonFact ? (pickedFact?.text ?? null) : null);
-  const aboutShrineFactText = safeText(pickedFact && !isReasonFact ? pickedFact.text : null);
+  const isCovered = pickedFact ? isCoveredByConfirmedShrineKnowledge(pickedFact.source, confirmedKnowledge) : false;
+  const aboutShrineFactText = safeText(pickedFact && !isReasonFact && !isCovered ? pickedFact.text : null);
   const aboutShrineFactSource = aboutShrineFactText && pickedFact ? pickedFact.source : null;
   const interpretationText = safeText(detail ? clean(detail.interpretation?.text) : null);
   const actionText = safeText(detail ? clean(detail.action?.text) : null);

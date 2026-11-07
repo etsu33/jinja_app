@@ -46,7 +46,12 @@ import {
 } from "../../../../packages/shared/recommendationAnalyticsProvenance";
 import {
   ABOUT_SHRINE_HEADING,
+  CONSULTATION_MEANING_HEADING,
+  CONSULTATION_SUMMARY_HEADING,
+  LEGACY_RECOMMENDATION_REASON_HEADING,
   RECOMMENDATION_REASON_FACT_HEADING,
+  SHRINE_MEANING_HEADING,
+  VISIT_PERSPECTIVE_HEADING,
 } from "../../../../packages/shared/recommendationReasonAuthority";
 
 
@@ -363,12 +368,18 @@ export default function ShrineDetail() {
     fallbackReason: recommendationReason ?? null,
   });
   const hasStructuredReasonV4 = reasonV4Sections.hasStructured;
-  // 「② 選ばれた背景」に出すのは、推薦の根拠になっている事実だけ(Web の神社詳細と同じ基準)。
+  // 「選ばれた背景」に出すのは、推薦の根拠になっている事実だけ(Web の神社詳細と同じ基準)。
   // 判定には、同じ推薦から渡された reason_facts(contextReasonFacts)だけを使う。無ければ根拠が
   // 分からないため「この神社について」に出す。
+  // 前からある「祭神・由緒」(ShrineKnowledgeFactSection)は確認済みのデータだけを出す。
+  // 確認済みのデータがある御祭神・由緒は「この神社について」に重ねて出さない。
   const { reasonFactText, aboutShrineFactText, aboutShrineFactTitle } = buildShrineDetailFactSections(
     reasonV4Sections,
     contextReasonFacts,
+    {
+      hasDeities: (shrine?.deities?.length ?? 0) > 0,
+      hasHistories: (shrine?.histories?.length ?? 0) > 0,
+    },
   );
   const hideReasonFactsCard = Boolean(reasonV4Sections.factText);
 
@@ -723,7 +734,7 @@ export default function ShrineDetail() {
 
         {hasConsultationSummary ? (
           <View style={styles.contextCard}>
-            <Text style={styles.cardTitle}>① 今回の相談の整理</Text>
+            <Text style={styles.cardTitle}>{CONSULTATION_SUMMARY_HEADING}</Text>
             {contextRecommendationReasonDetail?.consultationSummary ? (
               <Text style={styles.cardBody}>{contextRecommendationReasonDetail.consultationSummary}</Text>
             ) : null}
@@ -740,7 +751,7 @@ export default function ShrineDetail() {
           ) : null
         ) : (
           <View style={styles.recommendationCard}>
-            <Text style={styles.cardTitle}>② 選ばれた理由</Text>
+            <Text style={styles.cardTitle}>{LEGACY_RECOMMENDATION_REASON_HEADING}</Text>
             <Text style={styles.cardBody}>{recommendationReason}</Text>
           </View>
         )}
@@ -760,13 +771,13 @@ export default function ShrineDetail() {
         {hasStructuredReasonV4 ? (
           reasonV4Sections.interpretationText ? (
             <View style={styles.meaningCard}>
-              <Text style={styles.cardTitle}>③ 今回の相談との意味</Text>
+              <Text style={styles.cardTitle}>{CONSULTATION_MEANING_HEADING}</Text>
               <Text style={styles.cardBody}>{reasonV4Sections.interpretationText}</Text>
             </View>
           ) : null
         ) : hasShrineMeaning ? (
           <View style={styles.meaningCard}>
-            <Text style={styles.cardTitle}>③ この神社で受け取る意味</Text>
+            <Text style={styles.cardTitle}>{SHRINE_MEANING_HEADING}</Text>
             <Text style={styles.cardBody}>{contextRecommendationReasonDetail?.shrineMeaning}</Text>
           </View>
         ) : null}
@@ -774,13 +785,13 @@ export default function ShrineDetail() {
         {hasStructuredReasonV4 ? (
           reasonV4Sections.actionText ? (
             <View style={styles.actionCard}>
-              <Text style={styles.cardTitle}>④ 参拝するときの視点</Text>
+              <Text style={styles.cardTitle}>{VISIT_PERSPECTIVE_HEADING}</Text>
               <Text style={styles.cardBody}>{reasonV4Sections.actionText}</Text>
             </View>
           ) : null
         ) : hasActionMeaning ? (
           <View style={styles.actionCard}>
-            <Text style={styles.cardTitle}>④ 参拝するときの視点</Text>
+            <Text style={styles.cardTitle}>{VISIT_PERSPECTIVE_HEADING}</Text>
             <Text style={styles.cardBody}>{contextRecommendationReasonDetail?.actionMeaning}</Text>
           </View>
         ) : null}
