@@ -953,6 +953,8 @@ def test_build_reason_facts_generates_user_selected_tag_reason():
         "evidence": ["requested_goriyaku_tag_ids"],
         "score": 3.0,
         "is_primary": False,
+        # user_selected_tag は goriyaku_tag / text_hint 以外なので空の一覧。
+        "matched_benefit_names": [],
     }
 
 
