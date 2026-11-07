@@ -45,14 +45,27 @@ export function hasRecommendationAuthority(reasonFacts: unknown): boolean {
   return type !== null && RECOMMENDATION_AUTHORITY_PRIMARY_TYPES.has(type);
 }
 
-/** 表示する事実を「② 選ばれた背景」(推薦の根拠)に出してよいか。 */
+/** 表示する事実を「選ばれた背景」(推薦の根拠)に出してよいか。 */
 export function isRecommendationReasonFact(factSource: string | null | undefined, reasonFacts: unknown): boolean {
   if (!factSource || !RANKING_RELATED_FACT_SOURCES.has(factSource)) return false;
   return hasRecommendationAuthority(reasonFacts);
 }
 
-/** 推薦の根拠になっている事実の見出し(Web / モバイルの神社詳細で共通)。 */
-export const RECOMMENDATION_REASON_FACT_HEADING = "② 選ばれた背景";
+// ---- 神社詳細の見出し(Web / モバイルで共通) ----
+// 出る欄が神社によって変わるため、丸数字(①〜④)は付けない(固定の番号は飛んで見える)。
+
+/** 推薦の根拠になっている事実の見出し。 */
+export const RECOMMENDATION_REASON_FACT_HEADING = "選ばれた背景";
+/** 相談の整理の見出し。 */
+export const CONSULTATION_SUMMARY_HEADING = "今回の相談の整理";
+/** 構造化された説明が無いときの、古い理由の文の見出し(モバイルで直接開いたときなど)。 */
+export const LEGACY_RECOMMENDATION_REASON_HEADING = "選ばれた理由";
+/** 相談の読み取りの見出し。 */
+export const CONSULTATION_MEANING_HEADING = "今回の相談との意味";
+/** 構造化された説明が無いときの、神社の意味の見出し。 */
+export const SHRINE_MEANING_HEADING = "この神社で受け取る意味";
+/** 参拝の視点の見出し。 */
+export const VISIT_PERSPECTIVE_HEADING = "参拝するときの視点";
 /** 推薦の根拠になっていない神社の事実の見出し。選ばれた理由ではなく神社の紹介だと伝える。 */
 export const ABOUT_SHRINE_HEADING = "この神社について";
 /** 「この神社について」の下の小見出し(表示する項目ごと)。 */
@@ -62,3 +75,28 @@ export const ABOUT_SHRINE_GROUP_TITLE_BY_SOURCE: Readonly<Record<string, string>
   goriyaku: "ご利益",
   history_theme: "歴史のテーマ",
 };
+
+/** 神社の確認済みの御祭神・由緒のデータ(Shrine Detail API の deities / histories)があるか。 */
+export type ConfirmedShrineKnowledge = {
+  hasDeities: boolean;
+  hasHistories: boolean;
+};
+
+/**
+ * 「この神社について」に出そうとしている事実が、前からある欄(Web「神社について」、
+ * モバイル「祭神・由緒」)にすでに出ているか。
+ *
+ * 前からある欄は確認済みのデータ(deities / histories)だけを出す。Reason V4 の fact.deity /
+ * fact.shrine_history は、確認済みのデータが無いときに古い項目(sajin / description)から来る。
+ * そのため、確認済みのデータがあるときだけ重なっているとみなし、御祭神と由緒は別々に見分ける。
+ * ご利益・歴史のテーマは前からある欄に出ないため、常に false。
+ */
+export function isCoveredByConfirmedShrineKnowledge(
+  factSource: string | null | undefined,
+  knowledge: ConfirmedShrineKnowledge | null | undefined,
+): boolean {
+  if (!knowledge) return false;
+  if (factSource === "deity") return knowledge.hasDeities;
+  if (factSource === "shrine_history") return knowledge.hasHistories;
+  return false;
+}

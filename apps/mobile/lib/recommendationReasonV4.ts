@@ -1,6 +1,8 @@
 import {
   ABOUT_SHRINE_GROUP_TITLE_BY_SOURCE,
+  isCoveredByConfirmedShrineKnowledge,
   isRecommendationReasonFact,
+  type ConfirmedShrineKnowledge,
 } from "../../../packages/shared/recommendationReasonAuthority";
 
 // apps/mobile/lib/recommendationReasonV4.ts
@@ -40,7 +42,7 @@ export type ReasonV4FactSource = "deity" | "shrine_history" | "goriyaku" | "hist
 
 export type ReasonV4Sections = {
   factText: string | null;
-  /** factText に使った項目。「② 選ばれた背景」と「この神社について」の出し分けに使う。 */
+  /** factText に使った項目。「選ばれた背景」と「この神社について」の出し分けに使う。 */
   factSource: ReasonV4FactSource | null;
   interpretationText: string | null;
   actionText: string | null;
@@ -168,7 +170,7 @@ export function serializeReasonV4Detail(detail: RecommendationReasonV4Detail | n
 }
 
 export type ShrineDetailFactSections = {
-  /** 「② 選ばれた背景」に出す、推薦の根拠になっている事実。 */
+  /** 「選ばれた背景」に出す、推薦の根拠になっている事実。 */
   reasonFactText: string | null;
   /** 「この神社について」に出す、推薦の根拠になっていない神社の事実。 */
   aboutShrineFactText: string | null;
@@ -177,18 +179,23 @@ export type ShrineDetailFactSections = {
 };
 
 /**
- * 神社詳細で、事実を「② 選ばれた背景」と「この神社について」に出し分ける(Web の神社詳細と同じ基準)。
+ * 神社詳細で、事実を「選ばれた背景」と「この神社について」に出し分ける(Web の神社詳細と同じ基準)。
  * reasonFacts は、同じ推薦から渡された reason_facts。無ければ根拠が分からないため「この神社について」。
  * reason_text(補助情報の文の有無)では判定しない。
  */
 export function buildShrineDetailFactSections(
   sections: Pick<ReasonV4Sections, "factText" | "factSource">,
   reasonFacts: unknown,
+  confirmedKnowledge?: ConfirmedShrineKnowledge | null,
 ): ShrineDetailFactSections {
-  if (!sections.factText) return { reasonFactText: null, aboutShrineFactText: null, aboutShrineFactTitle: null };
+  const none = { reasonFactText: null, aboutShrineFactText: null, aboutShrineFactTitle: null };
+  if (!sections.factText) return none;
   if (isRecommendationReasonFact(sections.factSource, reasonFacts)) {
     return { reasonFactText: sections.factText, aboutShrineFactText: null, aboutShrineFactTitle: null };
   }
+  // 確認済みの御祭神・由緒のデータがあれば、前からある「祭神・由緒」に出ているので重ねて出さない。
+  // 次の事実へ選び直すことはしない(選ぶ順番は変えない)。
+  if (isCoveredByConfirmedShrineKnowledge(sections.factSource, confirmedKnowledge)) return none;
   return {
     reasonFactText: null,
     aboutShrineFactText: sections.factText,
