@@ -10,6 +10,7 @@ import { isUnauthenticatedError } from "../../lib/http";
 import { trackConsultationHistoryEntryClicked } from "../../lib/consultationHistoryAnalytics";
 import { isLoggedIn } from "../../lib/authTokens";
 import { ACCOUNT_DELETION_MESSAGES, deleteAccount } from "../../lib/accountDeletion";
+import { LOGOUT_MESSAGES, confirmLogout, fetchAccountUsername, logout } from "../../lib/logout";
 
 // ---- お問い合わせ (Mother Ship承認済みの契約) ----
 // 宛先と件名は可読な定数として保持する。
@@ -103,6 +104,7 @@ export default function MyPageScreen() {
   const [visitCount, setVisitCount] = React.useState<number | null>(null);
   const [premiumMeta, setPremiumMeta] = React.useState<PremiumMetaState>({ kind: "loading" });
   const [loggedIn, setLoggedIn] = React.useState(false);
+  const [accountUsername, setAccountUsername] = React.useState<string | null>(null);
   const [deletingAccount, setDeletingAccount] = React.useState(false);
   const deletingAccountRef = React.useRef(false);
 
@@ -113,7 +115,16 @@ export default function MyPageScreen() {
       let mounted = true;
       isLoggedIn()
         .then((value) => {
-          if (mounted) setLoggedIn(value);
+          if (!mounted) return;
+          setLoggedIn(value);
+          if (!value) {
+            setAccountUsername(null);
+            return;
+          }
+          // ログイン中だけ、アカウントの欄に出すユーザー名を取りにいく(取れなければ「ログイン中」)。
+          void fetchAccountUsername().then((username) => {
+            if (mounted) setAccountUsername(username);
+          });
         })
         .catch(() => {
           if (mounted) setLoggedIn(false);
@@ -123,6 +134,20 @@ export default function MyPageScreen() {
       };
     }, []),
   );
+
+  // ログアウトでは画面を移らないため、useFocusEffect の確かめ直しは動かない。
+  // ログインの印を消したら、その場で表示を「ログイン」「新規登録」に切り替える。
+  const runLogout = React.useCallback(async () => {
+    await logout();
+    setLoggedIn(false);
+    setAccountUsername(null);
+  }, []);
+
+  const confirmAndLogout = React.useCallback(() => {
+    confirmLogout(Alert.alert, () => {
+      void runLogout();
+    });
+  }, [runLogout]);
 
   const runAccountDeletion = React.useCallback(async () => {
     if (deletingAccountRef.current) return;
@@ -231,7 +256,18 @@ export default function MyPageScreen() {
         </Text>
       </View>
 
-      {loggedIn ? null : (
+      {loggedIn ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>アカウント</Text>
+          <MyPageCard
+            title={accountUsername ?? LOGOUT_MESSAGES.signedInFallbackName}
+            description="ログイン中です。別のアカウントに入り直すときは、ログアウトしてください。"
+            iconText="人"
+            actionLabel="ログアウト"
+            onPress={confirmAndLogout}
+          />
+        </View>
+      ) : (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>アカウント</Text>
           <MyPageCard

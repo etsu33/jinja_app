@@ -9,8 +9,37 @@ const source = readFileSync(resolve(mobileRoot, "app/mypage/index.tsx"), "utf8")
 const body = source.slice(source.indexOf("export default function MyPageScreen"));
 
 describe("MyPage ログイン・新規登録の入口", () => {
-  it("未ログインのときだけ「アカウント」セクションを出す", () => {
-    expect(body).toMatch(/\{loggedIn \? null : \(\s*<View style=\{styles\.section\}>\s*<Text style=\{styles\.sectionTitle\}>アカウント<\/Text>/);
+  it("「アカウント」セクションを、ログイン中も未ログインのときも出す", () => {
+    expect(body).toMatch(/\{loggedIn \? \(\s*<View style=\{styles\.section\}>\s*<Text style=\{styles\.sectionTitle\}>アカウント<\/Text>/);
+    expect(body).toMatch(/\) : \(\s*<View style=\{styles\.section\}>\s*<Text style=\{styles\.sectionTitle\}>アカウント<\/Text>/);
+  });
+
+  it("ログイン中は、ユーザー名(取れなければ「ログイン中」)と「ログアウト」を出し、ログイン・新規登録は出さない", () => {
+    const loggedInBranch = body.slice(body.indexOf("{loggedIn ? ("), body.indexOf(") : (", body.indexOf("{loggedIn ? (")));
+
+    expect(loggedInBranch).toContain("title={accountUsername ?? LOGOUT_MESSAGES.signedInFallbackName}");
+    expect(loggedInBranch).toContain('actionLabel="ログアウト"');
+    expect(loggedInBranch).toContain("onPress={confirmAndLogout}");
+    expect(loggedInBranch).not.toContain('title="ログイン"');
+    expect(loggedInBranch).not.toContain('title="新規登録"');
+  });
+
+  it("未ログインのときは「ログイン」「新規登録」を出し、ログアウトは出さない", () => {
+    const start = body.indexOf(") : (", body.indexOf("{loggedIn ? ("));
+    const notLoggedInBranch = body.slice(start, body.indexOf(">プロフィール<"));
+
+    expect(notLoggedInBranch).toContain('title="ログイン"');
+    expect(notLoggedInBranch).toContain('title="新規登録"');
+    expect(notLoggedInBranch).not.toContain("ログアウト");
+  });
+
+  it("「ログアウト」は確認を出してから処理し、終わったらその場で表示を切り替える", () => {
+    expect(source).toMatch(/confirmLogout\(Alert\.alert, \(\) => \{\s*void runLogout\(\);/);
+    expect(source).toMatch(/await logout\(\);\s*setLoggedIn\(false\);\s*setAccountUsername\(null\);/);
+  });
+
+  it("ログイン中だけユーザー名を取りにいく", () => {
+    expect(source).toMatch(/if \(!value\) \{\s*setAccountUsername\(null\);\s*return;\s*\}[\s\S]*fetchAccountUsername\(\)/);
   });
 
   it("「アカウント」セクションを、プロフィールより上(マイページのいちばん上)に置く", () => {
