@@ -352,8 +352,9 @@ def _build_interpretation(
     if state_copy:
         if primary_need and not shrine_context_need and not consultation_axis_copy:
             parts.append(f"{primary_need}相談として受け取れます")
-        state_suffix = "要素が強めに出ています" if emotion_intensity == "high" else "要素があります"
-        parts.append(f"{state_copy}を中心に、{state_suffix}")
+        # 利用者の状態を言い切らず、「相談の言葉から読み取ったこと」として伝える。
+        state_degree = "強く感じられます" if emotion_intensity == "high" else "感じられます"
+        parts.append(f"相談の言葉からは、{state_copy}が{state_degree}")
     else:
         primary_decision = _copy_for_key(
             DECISION_COPY,
