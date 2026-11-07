@@ -1,3 +1,8 @@
+import {
+  ABOUT_SHRINE_GROUP_TITLE_BY_SOURCE,
+  isRecommendationReasonFact,
+} from "../../../packages/shared/recommendationReasonAuthority";
+
 // apps/mobile/lib/recommendationReasonV4.ts
 import { buildRecommendationReasonDisplay } from "../../../packages/shared/recommendationReasonDisplay";
 
@@ -31,8 +36,12 @@ export type RecommendationReasonV4Detail = {
   action: RecommendationReasonV4Action;
 };
 
+export type ReasonV4FactSource = "deity" | "shrine_history" | "goriyaku" | "history_theme";
+
 export type ReasonV4Sections = {
   factText: string | null;
+  /** factText に使った項目。「② 選ばれた背景」と「この神社について」の出し分けに使う。 */
+  factSource: ReasonV4FactSource | null;
   interpretationText: string | null;
   actionText: string | null;
   hasStructured: boolean;
@@ -116,6 +125,16 @@ export function normalizeRecommendationReasonV4Detail(raw: unknown): Recommendat
  * fallbackReasonには、呼び出し側で既に解決済みの理由文字列(3〜6段階を内包する値)を渡す。
  * 構造化セクションが1つ以上表示できる場合はfallbackTextを返さない(重複表示防止)。
  */
+// deity > shrine_history > goriyaku > history_theme の順で最初に値がある項目を選ぶ。
+function pickFact(fact: RecommendationReasonV4Fact): { text: string; source: ReasonV4FactSource } | null {
+  const order: ReasonV4FactSource[] = ["deity", "shrine_history", "goriyaku", "history_theme"];
+  for (const source of order) {
+    const text = clean(fact[source]);
+    if (text) return { text, source };
+  }
+  return null;
+}
+
 export function buildReasonV4Sections(params: {
   detail?: RecommendationReasonV4Detail | null;
   fallbackReason?: string | null;
@@ -125,16 +144,9 @@ export function buildReasonV4Sections(params: {
   // 優先順位はBackend側のFact種別分岐(deity > shrine_history > goriyaku > history_theme)に合わせる。
   // place_context(住所)とlabel(place_contextへ落ちうる互換fieldのため除外)はFact本文の候補にしない。
   // 住所を「選ばれた背景」として表示すると、神社固有の意味がないまま具体性があるように見えてしまう。
-  const factText = safeText(
-    detail
-      ? pickFirst(
-          detail.fact.deity,
-          detail.fact.shrine_history,
-          detail.fact.goriyaku,
-          detail.fact.history_theme,
-        )
-      : null,
-  );
+  const pickedFact = detail ? pickFact(detail.fact) : null;
+  const factText = safeText(pickedFact?.text ?? null);
+  const factSource = factText ? (pickedFact?.source ?? null) : null;
   const interpretationText = safeText(detail ? clean(detail.interpretation.text) : null);
   const actionText = safeText(detail ? clean(detail.action.text) : null);
 
@@ -144,7 +156,7 @@ export function buildReasonV4Sections(params: {
     ? null
     : safeText(pickFirst(detail?.reason_text, params.fallbackReason));
 
-  return { factText, interpretationText, actionText, hasStructured, fallbackText };
+  return { factText, factSource, interpretationText, actionText, hasStructured, fallbackText };
 }
 
 /**
@@ -153,4 +165,33 @@ export function buildReasonV4Sections(params: {
  */
 export function serializeReasonV4Detail(detail: RecommendationReasonV4Detail | null | undefined): string {
   return detail ? JSON.stringify(detail) : "";
+}
+
+export type ShrineDetailFactSections = {
+  /** 「② 選ばれた背景」に出す、推薦の根拠になっている事実。 */
+  reasonFactText: string | null;
+  /** 「この神社について」に出す、推薦の根拠になっていない神社の事実。 */
+  aboutShrineFactText: string | null;
+  /** 「この神社について」の下の小見出し。 */
+  aboutShrineFactTitle: string | null;
+};
+
+/**
+ * 神社詳細で、事実を「② 選ばれた背景」と「この神社について」に出し分ける(Web の神社詳細と同じ基準)。
+ * reasonFacts は、同じ推薦から渡された reason_facts。無ければ根拠が分からないため「この神社について」。
+ * reason_text(補助情報の文の有無)では判定しない。
+ */
+export function buildShrineDetailFactSections(
+  sections: Pick<ReasonV4Sections, "factText" | "factSource">,
+  reasonFacts: unknown,
+): ShrineDetailFactSections {
+  if (!sections.factText) return { reasonFactText: null, aboutShrineFactText: null, aboutShrineFactTitle: null };
+  if (isRecommendationReasonFact(sections.factSource, reasonFacts)) {
+    return { reasonFactText: sections.factText, aboutShrineFactText: null, aboutShrineFactTitle: null };
+  }
+  return {
+    reasonFactText: null,
+    aboutShrineFactText: sections.factText,
+    aboutShrineFactTitle: sections.factSource ? (ABOUT_SHRINE_GROUP_TITLE_BY_SOURCE[sections.factSource] ?? null) : null,
+  };
 }

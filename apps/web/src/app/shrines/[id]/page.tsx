@@ -514,6 +514,8 @@ async function ShrineDetailContent({ params, searchParams }: Props) {
     conciergeMode,
     recommendationReasonDetail,
     recommendationReasonV4Detail,
+    // 同じ推薦(selectedRecommendation)の reason_facts。「② 選ばれた背景」と「この神社について」の出し分けに使う。
+    recommendationReasonFacts: selectedRecommendation?.reason_facts ?? null,
     recommendationRankExplanation,
     recommendationRankComparison,
     actionState,

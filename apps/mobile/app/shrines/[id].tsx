@@ -27,6 +27,7 @@ import Button from "../../components/ui/Button";
 import { ShrineKnowledgeFactSection } from "../../components/shrine/ShrineKnowledgeFactSection";
 import {
   buildReasonV4Sections,
+  buildShrineDetailFactSections,
   normalizeRecommendationReasonV4Detail,
   type RecommendationReasonV4Detail,
 } from "../../lib/recommendationReasonV4";
@@ -43,6 +44,10 @@ import {
   recommendationAnalyticsProperties,
   recommendationAnalyticsProvenance,
 } from "../../../../packages/shared/recommendationAnalyticsProvenance";
+import {
+  ABOUT_SHRINE_HEADING,
+  RECOMMENDATION_REASON_FACT_HEADING,
+} from "../../../../packages/shared/recommendationReasonAuthority";
 
 
 
@@ -358,6 +363,13 @@ export default function ShrineDetail() {
     fallbackReason: recommendationReason ?? null,
   });
   const hasStructuredReasonV4 = reasonV4Sections.hasStructured;
+  // 「② 選ばれた背景」に出すのは、推薦の根拠になっている事実だけ(Web の神社詳細と同じ基準)。
+  // 判定には、同じ推薦から渡された reason_facts(contextReasonFacts)だけを使う。無ければ根拠が
+  // 分からないため「この神社について」に出す。
+  const { reasonFactText, aboutShrineFactText, aboutShrineFactTitle } = buildShrineDetailFactSections(
+    reasonV4Sections,
+    contextReasonFacts,
+  );
   const hideReasonFactsCard = Boolean(reasonV4Sections.factText);
 
   const explanation = React.useMemo(() => {
@@ -720,10 +732,10 @@ export default function ShrineDetail() {
 
         {/* 推薦理由(構造化Reason V4がある場合はfactを、無ければ旧recommendationReasonを表示) */}
         {hasStructuredReasonV4 ? (
-          reasonV4Sections.factText ? (
+          reasonFactText ? (
             <View style={styles.recommendationCard}>
-              <Text style={styles.cardTitle}>② 選ばれた背景</Text>
-              <Text style={styles.cardBody}>{reasonV4Sections.factText}</Text>
+              <Text style={styles.cardTitle}>{RECOMMENDATION_REASON_FACT_HEADING}</Text>
+              <Text style={styles.cardBody}>{reasonFactText}</Text>
             </View>
           ) : null
         ) : (
@@ -770,6 +782,15 @@ export default function ShrineDetail() {
           <View style={styles.actionCard}>
             <Text style={styles.cardTitle}>④ 参拝するときの視点</Text>
             <Text style={styles.cardBody}>{contextRecommendationReasonDetail?.actionMeaning}</Text>
+          </View>
+        ) : null}
+
+        {/* 推薦の根拠になっていない神社の事実(御祭神・由緒、根拠でないご利益・歴史のテーマ) */}
+        {aboutShrineFactText ? (
+          <View style={styles.recommendationCard}>
+            <Text style={styles.cardTitle}>{ABOUT_SHRINE_HEADING}</Text>
+            {aboutShrineFactTitle ? <Text style={styles.reasonFactLabel}>{aboutShrineFactTitle}</Text> : null}
+            <Text style={styles.cardBody}>{aboutShrineFactText}</Text>
           </View>
         ) : null}
 
