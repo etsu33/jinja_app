@@ -193,10 +193,10 @@ export default function Home() {
 
       {/* Search入口(補助CTA) */}
       <Button
-        title="神社を地図・一覧から探す"
+        title="神社を探す"
         variant="outline"
         onPress={openSearch}
-        accessibilityLabel="神社を地図・一覧から探す"
+        accessibilityLabel="神社を探す"
         style={styles.searchEntryCta}
       />
 
