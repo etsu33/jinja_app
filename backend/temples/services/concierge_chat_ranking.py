@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import logging
+import re
 from typing import Any, Dict, List, Optional, TypedDict
 from temples.domain.shrine_identity import resolve_shrine_id
 from temples.domain.need_to_goriyaku_tag_ids import need_tags_to_goriyaku_ids
@@ -610,6 +611,7 @@ def _make_reason_fact(
     label: str,
     evidence: List[str],
     score: float,
+    matched_benefit_names: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     return {
         "type": type_,
@@ -618,7 +620,90 @@ def _make_reason_fact(
         "evidence": [str(x).strip() for x in evidence if isinstance(x, str) and str(x).strip()],
         "score": float(score),
         "is_primary": False,
+        # 相談と一致した神社のご利益の名前(記録して返すだけ。順位・点数には使わない)。
+        # goriyaku_tag / text_hint 以外は空の一覧。_collect_matched_benefit_names を参照。
+        "matched_benefit_names": list(matched_benefit_names or []),
     }
+
+
+# Shrine.goriyaku(自由記述)を1つずつのご利益に区切る記号。
+_GORIYAKU_SEGMENT_SEPARATORS = re.compile(r"[・、,，/／\s　]+")
+
+
+def _dedupe_keep_order(values: List[str]) -> List[str]:
+    out: List[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if value and value not in seen:
+            seen.add(value)
+            out.append(value)
+    return out
+
+
+def _goriyaku_tag_name_pairs(rec: Dict[str, Any]) -> List[tuple[int, str]]:
+    """候補のご利益タグの (番号, 名前) をタグの並び順で返す。
+
+    goriyaku_tag_ids と goriyaku_tag_names(concierge_chat_candidates が同じ順で載せる)が
+    そろっていないときは、名前を推測せず空を返す。
+    """
+    ids = rec.get("goriyaku_tag_ids") or []
+    names = rec.get("goriyaku_tag_names") or []
+    if not isinstance(ids, list) or not isinstance(names, list) or len(ids) != len(names):
+        return []
+    pairs: List[tuple[int, str]] = []
+    for gid, name in zip(ids, names, strict=True):
+        try:
+            gid_int = int(gid)
+        except (TypeError, ValueError):
+            continue
+        if isinstance(name, str) and name.strip():
+            pairs.append((gid_int, name.strip()))
+    return pairs
+
+
+def _collect_matched_benefit_names(
+    *,
+    rec: Dict[str, Any],
+    goriyaku_text: str,
+    matched_by_gid: List[str],
+    text_hints_by_tag: Dict[str, List[str]],
+) -> Dict[str, Dict[str, List[str]]]:
+    """相談と一致したご利益の名前を、一致の手がかりごとに集める(順位・点数は変えない)。
+
+    - goriyaku_tag: 神社のご利益タグのうち、その相談の種類の番号の一覧
+      (need_to_goriyaku_tag_ids)に入っているタグの名前(タグの並び順)。
+    - text_hint: 一致した言葉がご利益の文字列(Shrine.goriyaku)の中にあるときだけ返す。
+      説明文(description)の中だけにあるときは、タグの名前に同じ言葉があっても返さない。
+      言葉を含むタグがあればタグの名前だけ(タグの並び順)、無いときだけご利益の文字列を
+      区切った1つずつから言葉を含むもの(文字列の中の順)。
+    """
+    tag_pairs = _goriyaku_tag_name_pairs(rec)
+    tag_names = [name for _, name in tag_pairs]
+    segments = _dedupe_keep_order(
+        [seg.strip() for seg in _GORIYAKU_SEGMENT_SEPARATORS.split(goriyaku_text or "") if seg.strip()]
+    )
+
+    by_gid: Dict[str, List[str]] = {}
+    for tag in matched_by_gid:
+        expected = need_tags_to_goriyaku_ids([tag])
+        by_gid[tag] = _dedupe_keep_order([name for gid, name in tag_pairs if gid in expected])
+
+    by_text: Dict[str, List[str]] = {}
+    for tag, hints in text_hints_by_tag.items():
+        hints_in_goriyaku = [hint for hint in hints if hint and hint in (goriyaku_text or "")]
+        matched_tags: set[str] = set()
+        matched_segments: set[str] = set()
+        for hint in hints_in_goriyaku:
+            containing_tags = [name for name in tag_names if hint in name]
+            if containing_tags:
+                matched_tags.update(containing_tags)
+            else:
+                matched_segments.update(seg for seg in segments if hint in seg)
+        ordered = [name for name in tag_names if name in matched_tags]
+        ordered += [seg for seg in segments if seg in matched_segments]
+        by_text[tag] = _dedupe_keep_order(ordered)
+
+    return {"goriyaku_tag": by_gid, "text_hint": by_text}
 
 
 NEED_TAG_LABELS_JA = {
@@ -659,8 +744,10 @@ def _build_reason_facts(
     shrine_meaning_profile: Optional[Dict[str, Any]] = None,
     matched_visit_style_tags: Optional[List[str]] = None,
     history_theme_candidate_boost: float = 0.0,
+    matched_benefit_names_by_type: Optional[Dict[str, Dict[str, List[str]]]] = None,
 ) -> List[Dict[str, Any]]:
     facts: List[Dict[str, Any]] = []
+    benefit_names = matched_benefit_names_by_type or {}
     profile = shrine_meaning_profile or {}
     profile_matched_need_tags = [
         str(tag).strip()
@@ -728,6 +815,7 @@ def _build_reason_facts(
                 label=tag,
                 evidence=["goriyaku_tag_ids"],
                 score=2.0,
+                matched_benefit_names=(benefit_names.get("goriyaku_tag") or {}).get(tag),
             )
         )
 
@@ -738,6 +826,7 @@ def _build_reason_facts(
                 label=tag,
                 evidence=[f"text_score:{text_score_by_tag.get(tag, 0)}"],
                 score=float(text_score_by_tag.get(tag, 0)),
+                matched_benefit_names=(benefit_names.get("text_hint") or {}).get(tag),
             )
         )
 
@@ -789,6 +878,7 @@ def _resolve_primary_reason(
             "evidence": [],
             "score": 0.0,
             "is_primary": True,
+            "matched_benefit_names": [],
         }
 
     ordered = sorted(
@@ -1145,18 +1235,23 @@ def _attach_breakdown(
 
     matched_by_text: List[str] = []
     text_score_by_tag: Dict[str, int] = {}
+    # どの言葉で一致したかを記録する(点数の数え方は変えない)。
+    text_hints_by_tag: Dict[str, List[str]] = {}
 
     for tag in need_tags_clean:
         text_weights = NEED_TEXT_WEIGHTS.get(tag, {})
         score = 0
+        hints: List[str] = []
 
         for hint, weight in text_weights.items():
             if hint in material:
                 score += int(weight)
+                hints.append(hint)
 
         if score > 0:
             text_score_by_tag[tag] = score
             matched_by_text.append(tag)
+            text_hints_by_tag[tag] = hints
 
     candidate_gid_set = {
         int(x)
@@ -1601,6 +1696,12 @@ def _attach_breakdown(
     )
     rec["score_v2"] = score_v2_result.as_dict()
 
+    matched_benefit_names_by_type = _collect_matched_benefit_names(
+        rec=rec,
+        goriyaku_text=str(rec.get("goriyaku") or ""),
+        matched_by_gid=matched_by_gid,
+        text_hints_by_tag=text_hints_by_tag,
+    )
     reason_facts = _build_reason_facts(
         matched_by_tag=matched_by_tag,
         matched_by_gid=matched_by_gid,
@@ -1613,6 +1714,7 @@ def _attach_breakdown(
         shrine_meaning_profile=shrine_meaning_profile,
         matched_visit_style_tags=matched_visit_style_tags,
         history_theme_candidate_boost=history_theme_candidate_boost,
+        matched_benefit_names_by_type=matched_benefit_names_by_type,
     )
     primary_reason = _resolve_primary_reason(reason_facts)
 
@@ -2187,7 +2289,7 @@ def _to_rank_explanation(
 
     if top_contributors:
         tail = "・".join(c["axis_ja"] for c in top_contributors)
-        summary_parts.append(f"特に {tail} が順位を押し上げています")
+        summary_parts.append(f"特に{tail}が順位を押し上げています")
 
     return {
         "version": 1,

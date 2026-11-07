@@ -413,6 +413,11 @@ def build_chat_candidates_with_eligibility(
                 "goriyaku_tag_ids": [tag.id for tag in s.goriyaku_tags.all()]
                 if hasattr(s, "goriyaku_tags")
                 else [],
+                # goriyaku_tag_ids と同じ順のタグの名前(prefetch 済みのため追加の問い合わせは無い)。
+                # reason_facts の matched_benefit_names を作るときに使う(順位・点数には使わない)。
+                "goriyaku_tag_names": [tag.name for tag in s.goriyaku_tags.all()]
+                if hasattr(s, "goriyaku_tags")
+                else [],
                 "popular_score": getattr(s, "popular_score", None),
                 "trust_metadata": asdict(trust_metadata) if trust_metadata else None,
                 "history_context": generated_meaning.get("historyContext"),

@@ -347,6 +347,21 @@ Contractは`reason_facts`全体ではなく、**Primary Reason帰属**に対し�
 説明素材」の両方を含んでよく、両者の区別は`is_primary`と
 `PRIMARY_TIER_REASON_TYPES`で表現される。
 
+- 各`reason_fact`は`matched_benefit_names`（文字列の一覧）を持つ。
+  相談と一致した神社のご利益の名前を記録して返すだけで、Candidate/Rank・
+  点数・Primary Reasonの選択には使わない（`concierge_chat_ranking.py`
+  `_collect_matched_benefit_names`）。
+  - `goriyaku_tag`：神社のご利益タグのうち、その相談の種類の番号の一覧
+    （`need_to_goriyaku_tag_ids.py`）に入っているタグの名前（タグの並び順）。
+  - `text_hint`：一致した言葉がご利益の文字列（`Shrine.goriyaku`）の中に
+    あるときだけ。言葉を含むタグがあればタグの名前だけ（タグの並び順）、
+    無いときだけご利益の文字列を区切った1つずつ（文字列の中の順）。
+    説明文（`description`）の中だけで一致したときは空。
+  - それ以外（`need_tag` / `user_selected_tag` / `element` / `visit_style` /
+    `fallback`など）：空の一覧。
+  - 同じ名前は1回だけ。保存済みの古い結果（相談履歴など）にはこの項目が無い。
+  - Compassの公開API（`CompassReasonFactSerializer`）には出さない。
+
 - **Primary Reason帰属**（`_primary_reason_source`/
   `_primary_reason_label`、`rank_explanation`/
   `_explanation_payload.primary_reason`の元データ）は、実際に
