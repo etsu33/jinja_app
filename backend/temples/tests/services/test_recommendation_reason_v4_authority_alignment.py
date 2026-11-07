@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from temples.models import GoriyakuTag
 from temples.services.concierge_chat import build_chat_recommendations
 
 
@@ -110,8 +111,38 @@ def test_explicit_constraint_is_not_described_as_ranking_meaning_match():
     )
 
     assert rec["_primary_reason_source"] == "user_selected_tag"
-    assert "指定された条件を満たす候補" in detail["interpretation"]["text"]
-    assert "順位への意味的一致を示すものではありません" in detail["reason_text"]
+    # タグ501はDBに無いため条件名は引けず、条件名なしの文になる。
+    expected = "選んだ条件にゆかりのある神社です。今の相談内容との結びつきは、詳細ページで確かめられます。"
+    assert expected in detail["interpretation"]["text"]
+    assert expected in detail["reason_text"]
+    assert "goriyaku_tag:" not in detail["interpretation"]["text"]
+    _assert_no_consultation_match_claim(detail)
+
+
+@pytest.mark.django_db
+def test_explicit_constraint_names_the_selected_condition_without_match_claim():
+    tag = GoriyakuTag.objects.create(name="仕事運・出世")
+    rec, detail = _run(
+        _shrine(11, "指定神社", goriyaku_tag_ids=[tag.id]),
+        query="条件に合う神社",
+        goriyaku_tag_ids=[tag.id],
+    )
+
+    assert rec["_primary_reason_source"] == "user_selected_tag"
+    expected = (
+        "選んだ条件「仕事運・出世」にゆかりのある神社です。"
+        "今の相談内容との結びつきは、詳細ページで確かめられます。"
+    )
+    assert expected in detail["interpretation"]["text"]
+    assert expected in detail["reason_text"]
+    _assert_no_consultation_match_claim(detail)
+
+
+def _assert_no_consultation_match_claim(detail):
+    """条件だけを根拠に「相談に最適」「相談に合っている」と読める言い方をしない。"""
+    for text in (detail["interpretation"]["text"], detail["reason_text"]):
+        assert "最適" not in text
+        assert "合っている" not in text
 
 
 @pytest.mark.django_db
