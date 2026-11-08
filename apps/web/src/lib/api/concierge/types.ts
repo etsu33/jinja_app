@@ -166,6 +166,8 @@ export type ConciergeReasonFact = {
   /** Backend が返す日本語の表示名。表示にだけ使い、比較や判定には label を使う。 */
   label_ja?: string;
   evidence: string[];
+  /** 相談と一致した神社のご利益の名前(#3451)。古い結果には無い。 */
+  matched_benefit_names?: string[];
   score: number;
   is_primary?: boolean;
 };

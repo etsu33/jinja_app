@@ -44,6 +44,7 @@ import {
   CONSULTATION_MEANING_HEADING,
   CONSULTATION_SUMMARY_HEADING,
   LEGACY_RECOMMENDATION_REASON_HEADING,
+  MATCHED_BENEFITS_SUBHEADING,
   RECOMMENDATION_REASON_FACT_HEADING,
   SHRINE_MEANING_HEADING,
   VISIT_PERSPECTIVE_HEADING,
@@ -1643,7 +1644,7 @@ export function buildShrineDetailModel({
         hasHistories: Array.isArray(shrine.histories) && shrine.histories.length > 0,
       })
     : {
-        factText: null,
+        reasonBenefitNames: [],
         aboutShrineFactText: null,
         aboutShrineFactSource: null,
         interpretationText: null,
@@ -1657,7 +1658,7 @@ export function buildShrineDetailModel({
           ...premiumDisplaySectionsBeforeReasonV4.filter(
             (item) => item.section.kind !== "reason" && item.section.kind !== "meaning" && item.section.kind !== "action",
           ),
-          ...(reasonV4.factText
+          ...(reasonV4.reasonBenefitNames.length > 0
             ? [
                 {
                   tier: "premium" as const,
@@ -1665,7 +1666,7 @@ export function buildShrineDetailModel({
                   section: {
                     kind: "reason" as const,
                     heading: RECOMMENDATION_REASON_FACT_HEADING,
-                    groups: [{ title: "神社の背景", items: [reasonV4.factText] }],
+                    groups: [{ title: MATCHED_BENEFITS_SUBHEADING, items: reasonV4.reasonBenefitNames }],
                   },
                 },
               ]
