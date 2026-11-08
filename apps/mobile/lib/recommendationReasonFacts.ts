@@ -6,6 +6,8 @@ export type ConciergeReasonFact = {
   evidence: string[];
   score: number;
   is_primary?: boolean;
+  // 相談と一致した神社のご利益の名前(#3451)。古いデータでは無いことがある。
+  matched_benefit_names?: string[];
 };
 
 export type ConciergeReasonFacts = ConciergeReasonFact[];
@@ -46,6 +48,13 @@ export function normalizeRecommendationReasonFacts(raw: unknown): ConciergeReaso
       score,
       ...(typeof value.is_primary === "boolean"
         ? { is_primary: value.is_primary }
+        : {}),
+      ...(Array.isArray(value.matched_benefit_names)
+        ? {
+            matched_benefit_names: value.matched_benefit_names
+              .map(trimmedString)
+              .filter((name): name is string => name !== null),
+          }
         : {}),
     }];
   });

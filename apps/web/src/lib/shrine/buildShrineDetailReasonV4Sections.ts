@@ -8,6 +8,7 @@
 // 画面用のAdapter自体は別ファイルとして分離する。
 import { buildRecommendationReasonDisplay } from "../../../../../packages/shared/recommendationReasonDisplay";
 import {
+  collectMatchedBenefitNames,
   isCoveredByConfirmedShrineKnowledge,
   isRecommendationReasonFact,
   type ConfirmedShrineKnowledge,
@@ -33,10 +34,11 @@ export type RecommendationReasonV4DetailShape = {
 };
 
 export type ShrineDetailReasonV4Sections = {
-  // 推薦の根拠になっている事実だけ(「選ばれた背景」に出す)。判定は
-  // packages/shared/recommendationReasonAuthority.ts の isRecommendationReasonFact:
-  // 表示する項目がご利益/歴史のテーマ、かつ主な根拠(reason_facts の is_primary)が意味の一致を表す種類。
-  factText: string | null;
+  // 「選ばれた背景」に並べる、相談と一致したご利益の名前(reason_facts の matched_benefit_names)。
+  // packages/shared/recommendationReasonAuthority.ts の collectMatchedBenefitNames:
+  // 主な根拠が意味の一致を表す種類のときだけ、主な根拠の項目を先に、同じ名前は1回だけ。
+  // 事実を1つだけ選ぶ処理(fact.deity / fact.goriyaku など)とは切り離している。
+  reasonBenefitNames: string[];
   // 推薦の根拠になっていない神社の事実(「この神社について」に出す)。
   // ご利益・歴史のテーマは、主な根拠が意味の一致でない(または分からない)ときにこちら。
   // 御祭神・由緒は、確認済みのデータがあれば前からある「神社について」に出ているため出さない
@@ -120,15 +122,29 @@ export function buildShrineDetailReasonV4Sections(
 ): ShrineDetailReasonV4Sections {
   // 優先順位の実体はreasonV4FactPriority.tsに集約する(Hero/Shrine Detailで共通)。
   const pickedFact = detail ? pickReasonV4Fact(detail.fact) : null;
+  // 「この神社について」の判定(#3450 の動きのまま)。根拠になるご利益・歴史のテーマは
+  // 「この神社について」に出さない。「選ばれた背景」の中身は reasonBenefitNames で別に作る。
   const isReasonFact = pickedFact ? isRecommendationReasonFact(pickedFact.source, reasonFacts) : false;
-  const factText = safeText(isReasonFact ? (pickedFact?.text ?? null) : null);
+  const reasonBenefitNames = detail
+    ? collectMatchedBenefitNames(reasonFacts).flatMap((name) => {
+        const shown = safeText(name);
+        return shown ? [shown] : [];
+      })
+    : [];
   const isCovered = pickedFact ? isCoveredByConfirmedShrineKnowledge(pickedFact.source, confirmedKnowledge) : false;
   const aboutShrineFactText = safeText(pickedFact && !isReasonFact && !isCovered ? pickedFact.text : null);
   const aboutShrineFactSource = aboutShrineFactText && pickedFact ? pickedFact.source : null;
   const interpretationText = safeText(detail ? clean(detail.interpretation?.text) : null);
   const actionText = safeText(detail ? clean(detail.action?.text) : null);
 
-  const hasStructured = Boolean(factText || interpretationText || actionText);
+  const hasStructured = Boolean(reasonBenefitNames.length > 0 || interpretationText || actionText);
 
-  return { factText, aboutShrineFactText, aboutShrineFactSource, interpretationText, actionText, hasStructured };
+  return {
+    reasonBenefitNames,
+    aboutShrineFactText,
+    aboutShrineFactSource,
+    interpretationText,
+    actionText,
+    hasStructured,
+  };
 }

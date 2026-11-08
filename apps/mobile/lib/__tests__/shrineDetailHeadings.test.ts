@@ -20,6 +20,7 @@ describe("神社詳細の見出し", () => {
       shared.SHRINE_MEANING_HEADING,
       shared.VISIT_PERSPECTIVE_HEADING,
       shared.ABOUT_SHRINE_HEADING,
+      shared.MATCHED_BENEFITS_SUBHEADING,
     ];
     expect(headings).toEqual([
       "今回の相談の整理",
@@ -29,6 +30,7 @@ describe("神社詳細の見出し", () => {
       "この神社で受け取る意味",
       "参拝するときの視点",
       "この神社について",
+      "相談と重なったご利益",
     ]);
     for (const heading of headings) {
       expect(heading).not.toMatch(CIRCLED_NUMBER);
@@ -52,6 +54,7 @@ describe("神社詳細の見出し", () => {
       "SHRINE_MEANING_HEADING",
       "VISIT_PERSPECTIVE_HEADING",
       "ABOUT_SHRINE_HEADING",
+      "MATCHED_BENEFITS_SUBHEADING",
     ]) {
       expect(source).toContain(`{${name}}`);
     }

@@ -56,6 +56,8 @@ export function isRecommendationReasonFact(factSource: string | null | undefined
 
 /** 推薦の根拠になっている事実の見出し。 */
 export const RECOMMENDATION_REASON_FACT_HEADING = "選ばれた背景";
+/** 「選ばれた背景」の下の小見出し。相談と一致したご利益の名前を並べる。 */
+export const MATCHED_BENEFITS_SUBHEADING = "相談と重なったご利益";
 /** 相談の整理の見出し。 */
 export const CONSULTATION_SUMMARY_HEADING = "今回の相談の整理";
 /** 構造化された説明が無いときの、古い理由の文の見出し(モバイルで直接開いたときなど)。 */
@@ -99,4 +101,41 @@ export function isCoveredByConfirmedShrineKnowledge(
   if (factSource === "deity") return knowledge.hasDeities;
   if (factSource === "shrine_history") return knowledge.hasHistories;
   return false;
+}
+
+function readMatchedBenefitNames(fact: Record<string, unknown>): string[] {
+  const raw = fact.matched_benefit_names;
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((name) => (typeof name === "string" && name.trim() ? [name.trim()] : []));
+}
+
+/**
+ * 「選ばれた背景」に出す、相談と一致したご利益の名前(Backend の reason_facts の matched_benefit_names)。
+ *
+ * - 主な根拠(is_primary)の type が根拠になる4種類のどれかでなければ、何も出さない(空)。
+ * - 主な根拠の項目を先に、ほかの根拠になる種類の項目を後に並べ、同じ名前は1回だけ。
+ * - matched_benefit_names が無い古い結果や、一致したご利益が無いときは空(「選ばれた背景」を出さない)。
+ * - 事実を1つだけ選ぶ処理(fact.deity / fact.goriyaku など)とは切り離す。
+ */
+export function collectMatchedBenefitNames(reasonFacts: unknown): string[] {
+  if (!hasRecommendationAuthority(reasonFacts) || !Array.isArray(reasonFacts)) return [];
+
+  const facts = reasonFacts.filter(
+    (fact): fact is Record<string, unknown> => Boolean(fact) && typeof fact === "object" && !Array.isArray(fact),
+  );
+  const primary = facts.find((fact) => fact.is_primary === true);
+  const others = facts.filter(
+    (fact) =>
+      fact !== primary &&
+      typeof fact.type === "string" &&
+      RECOMMENDATION_AUTHORITY_PRIMARY_TYPES.has(fact.type.trim()),
+  );
+
+  const names: string[] = [];
+  for (const fact of [...(primary ? [primary] : []), ...others]) {
+    for (const name of readMatchedBenefitNames(fact)) {
+      if (!names.includes(name)) names.push(name);
+    }
+  }
+  return names;
 }

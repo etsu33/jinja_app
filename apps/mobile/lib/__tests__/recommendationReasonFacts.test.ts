@@ -197,3 +197,17 @@ describe("buildReasonFactItems: 表示名と値が同じ根拠をまとめる", 
     expect(findPrimaryReasonFact(normalized)?.type).toBe("text_hint");
   });
 });
+
+describe("normalizeRecommendationReasonFacts: matched_benefit_names", () => {
+  it("相談と一致したご利益の名前を残す(神社詳細の「選ばれた背景」に使うため)", () => {
+    const [fact] = normalizeRecommendationReasonFacts([
+      { type: "text_hint", label: "mental", evidence: [], score: 2, is_primary: true, matched_benefit_names: [" 厄除け ", "", 3] },
+    ]);
+    expect(fact.matched_benefit_names).toEqual(["厄除け"]);
+  });
+
+  it("項目が無い古い結果では、項目を足さない", () => {
+    const [fact] = normalizeRecommendationReasonFacts([{ type: "need_tag", label: "rest", evidence: [], score: 1 }]);
+    expect(fact).not.toHaveProperty("matched_benefit_names");
+  });
+});

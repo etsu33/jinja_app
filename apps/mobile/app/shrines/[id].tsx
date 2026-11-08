@@ -49,6 +49,7 @@ import {
   CONSULTATION_MEANING_HEADING,
   CONSULTATION_SUMMARY_HEADING,
   LEGACY_RECOMMENDATION_REASON_HEADING,
+  MATCHED_BENEFITS_SUBHEADING,
   RECOMMENDATION_REASON_FACT_HEADING,
   SHRINE_MEANING_HEADING,
   VISIT_PERSPECTIVE_HEADING,
@@ -373,7 +374,7 @@ export default function ShrineDetail() {
   // 分からないため「この神社について」に出す。
   // 前からある「祭神・由緒」(ShrineKnowledgeFactSection)は確認済みのデータだけを出す。
   // 確認済みのデータがある御祭神・由緒は「この神社について」に重ねて出さない。
-  const { reasonFactText, aboutShrineFactText, aboutShrineFactTitle } = buildShrineDetailFactSections(
+  const { reasonBenefitNames, aboutShrineFactText, aboutShrineFactTitle } = buildShrineDetailFactSections(
     reasonV4Sections,
     contextReasonFacts,
     {
@@ -741,12 +742,20 @@ export default function ShrineDetail() {
           </View>
         ) : null}
 
-        {/* 推薦理由(構造化Reason V4がある場合はfactを、無ければ旧recommendationReasonを表示) */}
+        {/* 推薦理由(構造化Reason V4がある場合は相談と一致したご利益の名前を、無ければ旧recommendationReasonを表示)。
+            名前は文にせず、小見出しの下に並べる(日本語の文は backend だけが持つ)。 */}
         {hasStructuredReasonV4 ? (
-          reasonFactText ? (
+          reasonBenefitNames.length > 0 ? (
             <View style={styles.recommendationCard}>
               <Text style={styles.cardTitle}>{RECOMMENDATION_REASON_FACT_HEADING}</Text>
-              <Text style={styles.cardBody}>{reasonFactText}</Text>
+              <Text style={styles.reasonFactLabel}>{MATCHED_BENEFITS_SUBHEADING}</Text>
+              <View style={styles.tagRow}>
+                {reasonBenefitNames.map((name) => (
+                  <View key={name} style={styles.tagPill}>
+                    <Text style={styles.tagText}>{name}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           ) : null
         ) : (

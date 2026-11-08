@@ -1,5 +1,6 @@
 import {
   ABOUT_SHRINE_GROUP_TITLE_BY_SOURCE,
+  collectMatchedBenefitNames,
   isCoveredByConfirmedShrineKnowledge,
   isRecommendationReasonFact,
   type ConfirmedShrineKnowledge,
@@ -170,8 +171,11 @@ export function serializeReasonV4Detail(detail: RecommendationReasonV4Detail | n
 }
 
 export type ShrineDetailFactSections = {
-  /** 「選ばれた背景」に出す、推薦の根拠になっている事実。 */
-  reasonFactText: string | null;
+  /**
+   * 「選ばれた背景」に並べる、相談と一致したご利益の名前(reason_facts の matched_benefit_names)。
+   * 主な根拠が意味の一致を表す種類のときだけ。空なら「選ばれた背景」を出さない。
+   */
+  reasonBenefitNames: string[];
   /** 「この神社について」に出す、推薦の根拠になっていない神社の事実。 */
   aboutShrineFactText: string | null;
   /** 「この神社について」の下の小見出し。 */
@@ -188,16 +192,17 @@ export function buildShrineDetailFactSections(
   reasonFacts: unknown,
   confirmedKnowledge?: ConfirmedShrineKnowledge | null,
 ): ShrineDetailFactSections {
-  const none = { reasonFactText: null, aboutShrineFactText: null, aboutShrineFactTitle: null };
-  if (!sections.factText) return none;
-  if (isRecommendationReasonFact(sections.factSource, reasonFacts)) {
-    return { reasonFactText: sections.factText, aboutShrineFactText: null, aboutShrineFactTitle: null };
-  }
+  // 「選ばれた背景」は、事実を1つだけ選ぶ処理とは切り離し、一致したご利益の名前から作る。
+  const reasonBenefitNames = collectMatchedBenefitNames(reasonFacts);
+  const noAbout = { reasonBenefitNames, aboutShrineFactText: null, aboutShrineFactTitle: null };
+  if (!sections.factText) return noAbout;
+  // 以下は「この神社について」の判定(#3450 の動きのまま)。根拠になるご利益・歴史のテーマは出さない。
+  if (isRecommendationReasonFact(sections.factSource, reasonFacts)) return noAbout;
   // 確認済みの御祭神・由緒のデータがあれば、前からある「祭神・由緒」に出ているので重ねて出さない。
   // 次の事実へ選び直すことはしない(選ぶ順番は変えない)。
-  if (isCoveredByConfirmedShrineKnowledge(sections.factSource, confirmedKnowledge)) return none;
+  if (isCoveredByConfirmedShrineKnowledge(sections.factSource, confirmedKnowledge)) return noAbout;
   return {
-    reasonFactText: null,
+    reasonBenefitNames,
     aboutShrineFactText: sections.factText,
     aboutShrineFactTitle: sections.factSource ? (ABOUT_SHRINE_GROUP_TITLE_BY_SOURCE[sections.factSource] ?? null) : null,
   };

@@ -496,7 +496,10 @@ describe("buildShrineDetailModel", () => {
 
   describe("recommendationReasonV4Detail(Fact/Interpretation/Action)", () => {
     // 主な根拠(is_primary)が意味の一致を表す種類(推薦の根拠になる)。
-    const AUTHORITY_REASON_FACTS = [{ type: "need_tag", label: "love", evidence: [], score: 1, is_primary: true }];
+    // 主な根拠が意味の一致で、相談と一致したご利益は「縁結び」。
+    const AUTHORITY_REASON_FACTS = [
+      { type: "need_tag", label: "love", evidence: [], score: 1, is_primary: true, matched_benefit_names: ["縁結び"] },
+    ];
 
     it("structured Factありの場合、旧reasonSection/meaningSection/actionSectionを重複させずV4のsectionに置き換える", () => {
       const result = buildShrineDetailModel({
@@ -566,10 +569,13 @@ describe("buildShrineDetailModel", () => {
 
       const premiumSections = result.premiumDisplaySections.map((item: { section: any }) => item.section);
 
-      // Explanation-onlyのみでは「選ばれた背景」を生成しない -- Ranking理由として
-      // 表示すべきfactTextはnullのため、reason kindは旧factText経路からは出てこない。
+      // 御祭神(Explanation-only)は「選ばれた背景」に入れない。「選ばれた背景」は、御祭神の有無に
+      // 関係なく、相談と一致したご利益(matched_benefit_names)だけで作る。
       const reasonSections = premiumSections.filter((section: any) => section.kind === "reason");
-      expect(reasonSections.every((section: any) => section.heading !== "選ばれた背景")).toBe(true);
+      const backgroundSection = reasonSections.find((section: any) => section.heading === "選ばれた背景");
+      expect(backgroundSection.groups[0].title).toBe("相談と重なったご利益");
+      expect(backgroundSection.groups[0].items).toEqual(["縁結び"]);
+      expect(JSON.stringify(backgroundSection)).not.toContain("武神");
 
       // 「武神」自体は表示価値を保つが、Recommendation reasonではなく「この神社について」として分離される。
       const explanationOnlySection = premiumSections.find(
@@ -691,7 +697,10 @@ describe("buildShrineDetailModel", () => {
       const reasonHeadings = premiumSections
         .filter((section: any) => section.kind === "reason")
         .map((section: any) => section.heading);
-      expect(reasonHeadings).not.toContain("選ばれた背景");
+      // 「選ばれた背景」は一致したご利益だけ。御祭神は入らない。
+      const backgroundSection = premiumSections.find((section: any) => section.heading === "選ばれた背景");
+      expect(backgroundSection.groups[0].items).toEqual(["縁結び"]);
+      expect(JSON.stringify(backgroundSection)).not.toContain("武神");
       expect(reasonHeadings).toContain("この神社について");
       expect(reasonHeadings).not.toContain("参考情報");
       const explanationOnlySection = premiumSections.find((section: any) => section.heading === "この神社について");
@@ -728,7 +737,10 @@ describe("buildShrineDetailModel", () => {
 
         const headings = result.sections.map((section: any) => section.heading);
         expect(headings).not.toContain("この神社について");
-        expect(headings).not.toContain("選ばれた背景");
+        // 御祭神がある神社でも、一致したご利益があれば「選ばれた背景」を出す(御祭神は入らない)。
+        const backgroundSection = result.sections.find((section: any) => section.heading === "選ばれた背景") as any;
+        expect(backgroundSection.groups[0].items).toEqual(["縁結び"]);
+        expect(JSON.stringify(backgroundSection)).not.toContain("八幡大神");
         // 前からある「神社について」(確認済みのデータ)は sections とは別の factSection で返る。
         expect(result.factSection?.heading).toBe("神社について");
         expect(JSON.stringify(result.factSection)).toContain("八幡大神");
@@ -747,6 +759,30 @@ describe("buildShrineDetailModel", () => {
         // 確認済みのデータが無いので、前からある「神社について」は出ない(御祭神は1か所だけ)。
         expect(result.factSection).toBeNull();
       });
+    });
+
+    it("「選ばれた背景」には相談と一致したご利益だけを出し、fact.goriyaku の全部は出さない", () => {
+      const result = buildShrineDetailModel({
+        shrine: shrineStub,
+        publicGoshuins: publicGoshuinsStub,
+        conciergeBreakdown: conciergeBreakdownStub,
+        conciergeMode: "need",
+        ctx: "concierge",
+        tid: "thread-1",
+        recommendationReasonV4Detail: {
+          reason_text: "reason_text",
+          fact: { deity: null, shrine_history: null, place_context: null, goriyaku: "勝運・厄除け・家内安全", history_theme: null },
+          interpretation: { text: "今回の相談との意味(V4)" },
+          action: { text: "" },
+        },
+        recommendationReasonFacts: [
+          { type: "text_hint", label: "mental", evidence: [], score: 2, is_primary: true, matched_benefit_names: ["厄除け"] },
+        ],
+      });
+
+      const backgroundSection = result.sections.find((section: any) => section.heading === "選ばれた背景") as any;
+      expect(backgroundSection.groups).toEqual([{ title: "相談と重なったご利益", items: ["厄除け"] }]);
+      expect(JSON.stringify(backgroundSection)).not.toContain("勝運");
     });
 
     it("神社詳細の見出しに丸数字(①〜④)を入れない", () => {
