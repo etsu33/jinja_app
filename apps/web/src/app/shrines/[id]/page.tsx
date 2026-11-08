@@ -49,6 +49,7 @@ import {
 } from "@/features/concierge/copy/needDisplayCopy";
 
 import { fetchShrineMeaningPayloadV2Server } from "@/lib/api/shrineMeaning.server";
+import { collectMatchedBenefitNames } from "../../../../../../packages/shared/recommendationReasonAuthority";
 
 import { buildPreviousConsultationSummary } from "@/lib/concierge/buildPreviousConsultationSummary";
 import { compareState } from "@/lib/concierge/compareState";
@@ -299,9 +300,6 @@ async function ShrineDetailContent({ params, searchParams }: Props) {
 
   const s = shrine;
   const pageTitle = (s.name_jp ?? "").trim() || `神社 #${numericId}`;
-  const shrineMeaningPayloadV2 = await fetchShrineMeaningPayloadV2Server(numericId);
-  const historyThemeForAnalytics = shrineMeaningPayloadV2?.source?.historyTheme ?? null;
-
   // destination座標の有効判定は destinationContract.ts の共通契約へ寄せる
   // （number / finite / WGS84値域）。APIがstringで返す場合があるためNumber()で
   // 数値化してから渡す。座標が無効ならCTAを出さない（住所や名前へは落とさない）。
@@ -476,6 +474,16 @@ async function ShrineDetailContent({ params, searchParams }: Props) {
     recommendationReasonDetail = builtReasonDetail.recommendationReasonDetail;
     conciergeDeepReason = builtReasonDetail.conciergeDeepReason;
   }
+
+  // 相談から開いたときだけ、相談と一致したご利益の名前(「選ばれた背景」と同じ集め方)を意味の窓口へ渡す。
+  // Backend は、神社が持っているご利益に入る最初の1つで「この場所が合う理由」などの文を作る。
+  // 直接開いたとき・一致したご利益が無いときは渡さない(今までどおりの文)。
+  const matchedBenefitNamesForMeaning =
+    ctx === "concierge" ? collectMatchedBenefitNames(selectedRecommendation?.reason_facts) : [];
+  const shrineMeaningPayloadV2 = await fetchShrineMeaningPayloadV2Server(numericId, {
+    matchedBenefitNames: matchedBenefitNamesForMeaning,
+  });
+  const historyThemeForAnalytics = shrineMeaningPayloadV2?.source?.historyTheme ?? null;
 
   // recommendation_reason_v4_detailはURL queryへ載せず、tidから再取得したselectedRecommendation
   // (Backend Runtime Snapshotに永続化済み)からそのまま読む。旧Threadにはfieldが存在しないため、
