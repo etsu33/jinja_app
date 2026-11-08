@@ -251,3 +251,41 @@ describe("response handling（unchanged）", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("相談と一致したご利益の名前（引数 benefits）", () => {
+  const NAMES = ["厄除け", "家内安全"];
+  const QUERY = "benefits=%E5%8E%84%E9%99%A4%E3%81%91&benefits=%E5%AE%B6%E5%86%85%E5%AE%89%E5%85%A8";
+
+  it("渡した名前を、ログインしていない人の経路（Backend を直接）で引数に付ける", async () => {
+    await fetchShrineMeaningPayloadV2Server(7, { matchedBenefitNames: NAMES });
+
+    const url = new URL(lastFetch()[0]);
+    expect(`${url.origin}${url.pathname}`).toBe(`${BACKEND}${PATH}`);
+    expect(url.searchParams.getAll("benefits")).toEqual(NAMES);
+    expect(url.search).toBe(`?${QUERY}`);
+    // 署名は道（パス）だけで作る（Backend も request.path で確かめる）。引数を付けても変わらない。
+    expect(sentHeaders().get("X-KM-Client-Sig")).toBe(signClientIdentity(SECRET, TS, "GET", PATH, CLIENT));
+  });
+
+  it("渡した名前を、ログインしている人の経路（BFF）でも引数に付ける", async () => {
+    page({}, { access_token: "a" });
+
+    await fetchShrineMeaningPayloadV2Server(7, { matchedBenefitNames: NAMES });
+
+    expect(lastFetch()[0]).toBe(`${WEB}${PATH}?${QUERY}`);
+  });
+
+  it.each([
+    ["未指定", undefined],
+    ["null", null],
+    ["空の一覧", []],
+    ["空白だけの名前", ["", "  "]],
+  ])("名前が無いとき（%s）は引数を付けない", async (_label, names) => {
+    await fetchShrineMeaningPayloadV2Server(7, { matchedBenefitNames: names as string[] | null | undefined });
+    expect(lastFetch()[0]).toBe(`${BACKEND}${PATH}`);
+
+    page({}, { access_token: "a" });
+    await fetchShrineMeaningPayloadV2Server(7, { matchedBenefitNames: names as string[] | null | undefined });
+    expect(lastFetch()[0]).toBe(`${WEB}${PATH}`);
+  });
+});
