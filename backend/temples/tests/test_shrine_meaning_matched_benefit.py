@@ -120,6 +120,39 @@ def test_the_same_matched_name_is_used_when_the_history_theme_drives_the_action(
         assert "勝運" not in generated[field], field
 
 
+# --- ご利益の受け取り方のテーマ ---------------------------------------------------
+
+WINNING_THEMES = ("決断", "主導権", "停滞打破", "勝負前の整理")
+
+
+def test_benefit_action_uses_only_the_themes_of_the_matched_benefit():
+    generated = _generated(_source(), ["厄除け"])
+
+    # 厄除けのテーマ(BENEFIT_STATE_THEME_MAP の先頭から3つ)を使う。
+    assert generated["benefitActionContext"] == (
+        "「厄除け」は結果を急ぐためではなく、不安整理・境界線・守りを見直すための手がかりとして扱います。"
+    )
+    for theme in WINNING_THEMES:
+        assert theme not in generated["benefitActionContext"], theme
+
+
+def test_benefit_action_without_registered_themes_moves_to_the_next_form():
+    # タグの名前「厄除け・方除け」にはテーマの登録が無い。勝運のテーマには戻らず、次の文の形へ進む。
+    generated = _generated(_source(), ["厄除け・方除け"])
+
+    assert generated["benefitActionContext"] == (
+        "「厄除け・方除け」は願望成就の断定ではなく、今の行動テーマを整える補助軸として扱います。"
+    )
+    for theme in WINNING_THEMES:
+        assert theme not in generated["benefitActionContext"], theme
+
+
+def test_benefit_action_themes_are_unchanged_without_names():
+    assert _generated(_source())["benefitActionContext"] == (
+        "「勝運」は結果を急ぐためではなく、決断・主導権・停滞打破を見直すための手がかりとして扱います。"
+    )
+
+
 # --- 使える名前が無いとき ---------------------------------------------------------
 
 

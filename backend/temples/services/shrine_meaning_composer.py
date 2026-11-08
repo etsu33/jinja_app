@@ -530,7 +530,14 @@ def _benefit_state_themes(input_: ShrineMeaningInput) -> tuple[str, ...]:
     themes: list[str] = []
     seen: set[str] = set()
 
-    for label in _benefit_labels(input_):
+    # 相談と一致したご利益の名前が渡されたときは、「使うご利益」1つのテーマだけを使う
+    # (ほかのご利益、たとえばタグの先頭のテーマを混ぜない)。渡されていないときは今までどおり。
+    if input_.benefit_from_matched_names:
+        labels: tuple[str, ...] = (input_.matched_benefit,) if input_.matched_benefit else ()
+    else:
+        labels = _benefit_labels(input_)
+
+    for label in labels:
         for theme in BENEFIT_STATE_THEME_MAP.get(label, ()):
             if theme in seen:
                 continue
