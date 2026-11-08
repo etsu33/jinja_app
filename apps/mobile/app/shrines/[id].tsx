@@ -87,26 +87,13 @@ type ActionSuggestionV4Preview = {
   source_keys?: string[];
 };
 
-type RecommendationExplanation =
-  | string
-  | {
-      summary?: string | null;
-      reasons?: Array<{
-        text?: string | null;
-        label?: string | null;
-      }> | null;
-    }
-  | null;
-
 type Shrine = {
   id: string | number;
   name: string;
   prefecture?: string;
-  description?: string;
   recommendationReason?: string;
   recommendationReasonV4?: string;
   reasonFacts?: ConciergeReasonFacts | null;
-  explanation?: RecommendationExplanation;
   actionSuggestion?: string;
   actionSuggestionV4Preview?: ActionSuggestionV4Preview | null;
   imageUrl?: string;
@@ -125,14 +112,12 @@ type ShrineApiResponse = {
   name_jp?: string;
   address?: string;
   prefecture?: string;
-  description?: string | null;
   recommendation_reason?: string | null;
   recommendationReason?: string | null;
   recommendation_reason_v4?: string | null;
   recommendationReasonV4?: string | null;
   reason_facts?: unknown;
   reasonFacts?: unknown;
-  explanation?: RecommendationExplanation;
   action_suggestion?: string | null;
   actionSuggestion?: string | null;
   action_suggestion_v4_preview?: ActionSuggestionV4Preview | null;
@@ -159,29 +144,6 @@ function asTrimmedString(value: unknown): string | null {
   return trimmed.length ? trimmed : null;
 }
 
-function resolveExplanationText(
-  explanation: RecommendationExplanation | undefined,
-  fallback?: string,
-): string | undefined {
-  if (typeof explanation === "string") {
-    const value = asTrimmedString(explanation);
-    if (value) return value;
-  }
-
-  if (explanation && typeof explanation === "object") {
-    const summary = asTrimmedString(explanation.summary);
-    if (summary) return summary;
-
-    const reasonText = explanation.reasons
-      ?.map((reason) => asTrimmedString(reason?.text))
-      .find((text): text is string => Boolean(text));
-
-    if (reasonText) return reasonText;
-  }
-
-  return fallback;
-}
-
 function resolveRecommendationReason(shrine: Shrine) {
   const v4Reason = asTrimmedString(shrine.recommendationReasonV4);
   if (v4Reason) return v4Reason;
@@ -201,11 +163,9 @@ function toShrine(api: ShrineApiResponse): Shrine {
     id: api.id,
     name: api.name_jp ?? api.name ?? "名称未設定の神社",
     prefecture: api.prefecture ?? api.address,
-    description: api.description ?? api.goriyaku ?? undefined,
     recommendationReason: api.recommendationReason ?? api.recommendation_reason ?? undefined,
     recommendationReasonV4: api.recommendationReasonV4 ?? api.recommendation_reason_v4 ?? undefined,
     reasonFacts: normalizeRecommendationReasonFacts(api.reasonFacts ?? api.reason_facts),
-    explanation: api.explanation ?? undefined,
     actionSuggestion: api.actionSuggestion ?? api.action_suggestion ?? undefined,
     actionSuggestionV4Preview: api.actionSuggestionV4Preview ?? api.action_suggestion_v4_preview ?? null,
     imageUrl: api.imageUrl ?? api.image_url,
@@ -383,14 +343,6 @@ export default function ShrineDetail() {
     },
   );
   const hideReasonFactsCard = Boolean(reasonV4Sections.factText);
-
-  const explanation = React.useMemo(() => {
-    if (!shrine) return undefined;
-    return resolveExplanationText(
-      shrine.explanation,
-      shrine.description ?? `${shrine.name}の由緒やご利益を確認しながら、今の自分に必要な意味を探しやすい神社です。`,
-    );
-  }, [shrine]);
 
   const actionSuggestion = React.useMemo(() => {
     if (!shrine) return undefined;
@@ -814,12 +766,6 @@ export default function ShrineDetail() {
           </View>
         ) : null}
 
-        {/* explanation */}
-        <View style={styles.explanationCard}>
-          <Text style={styles.cardTitle}>神社の意味を知る</Text>
-          <Text style={styles.cardBody}>{explanation}</Text>
-        </View>
-
         {/* action suggestion */}
         {shouldShowActionSuggestionV4 ? (
           <View style={styles.actionCard}>
@@ -855,18 +801,11 @@ export default function ShrineDetail() {
           </View>
         )}
 
-        {/* 祭神・由緒（Knowledge Fact）。Legacy「神社について」とは独立した表示責務。
+        {/* 祭神・由緒（Knowledge Fact）。
             Knowledge未登録（deities/historiesとも空）時の非表示判定はcomponent内部で行う。
-            Legacy Fieldの表示・非表示には一切影響しない。 */}
+            神社の説明文の欄は置かない。神社詳細の窓口(GET /shrines/<id>/)は説明文を返さず、
+            ご利益は上部の札で示しているため。 */}
         <ShrineKnowledgeFactSection factViewModel={factViewModel} />
-
-        {/* 説明文 */}
-        <View style={styles.descCard}>
-          <Text style={styles.descLabel}>神社について</Text>
-          <Text style={styles.descText}>
-            {shrine.description ?? "ご利益や混雑、アクセス、御朱印情報などをここに表示します。"}
-          </Text>
-        </View>
 
         {errorMessage ? (
           <View style={styles.noticeCard}>
@@ -1077,16 +1016,6 @@ const styles = StyleSheet.create({
     padding: cardSizes.cardPaddingLg,
     gap: spacing.smGap,
   },
-  explanationCard: {
-    marginHorizontal: spacing.screenX,
-    marginTop: spacing.sectionTop,
-    backgroundColor: theme.surface,
-    borderRadius: radius.xl,
-    borderWidth: cardSizes.borderWidth,
-    borderColor: theme.border,
-    padding: cardSizes.cardPaddingLg,
-    gap: spacing.smGap,
-  },
   actionCard: {
     marginHorizontal: spacing.screenX,
     marginTop: spacing.sectionTop,
@@ -1187,30 +1116,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     fontWeight: "600",
-  },
-
-  // 説明文カード
-  descCard: {
-    marginHorizontal: spacing.screenX,
-    marginTop: spacing.sectionTop,
-    backgroundColor: theme.surface,
-    borderRadius: radius.xl,
-    borderWidth: cardSizes.borderWidth,
-    borderColor: theme.border,
-    padding: cardSizes.cardPaddingLg,
-    gap: spacing.smGap,
-  },
-  descLabel: {
-    color: theme.mutedSoft,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 2,
-  },
-  descText: {
-    color: theme.text,
-    fontSize: 15,
-    lineHeight: 25,
-    fontWeight: "500",
   },
 
   noticeCard: {
