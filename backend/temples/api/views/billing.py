@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from temples.services.billing_checkout import create_checkout_session
+from temples.services.billing_checkout import CheckoutProviderError, create_checkout_session
 from temples.services.billing_state import get_billing_status
 from users.services.premium_pass import PASS_DEFINITIONS
 from users.services.stripe_webhook import (
@@ -110,6 +110,9 @@ class BillingCheckoutView(APIView):
                 success_url=req.validated_data["success_url"],
                 cancel_url=req.validated_data["cancel_url"],
             )
+        except CheckoutProviderError as exc:
+            # Stripe 側の失敗（例：値段の環境変数に prod_ の ID が入っている）。理由は返さない。
+            raise CheckoutUnavailable() from exc
         except RuntimeError as exc:
             raise CheckoutUnavailable(str(exc)) from exc
 
