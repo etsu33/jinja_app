@@ -174,9 +174,13 @@ function BillingUpgradeContent() {
           <Link href="/terms" className="mx-1 underline underline-offset-2 hover:text-[var(--kt-color-text-secondary)]">
             利用規約
           </Link>
-          と
+          、
           <Link href="/privacy" className="mx-1 underline underline-offset-2 hover:text-[var(--kt-color-text-secondary)]">
             プライバシーポリシー
+          </Link>
+          と
+          <Link href="/tokushoho" className="mx-1 underline underline-offset-2 hover:text-[var(--kt-color-text-secondary)]">
+            特定商取引法に基づく表記
           </Link>
           をご確認ください。
         </p>

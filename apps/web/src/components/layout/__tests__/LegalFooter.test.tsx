@@ -20,6 +20,14 @@ describe("LegalFooter", () => {
     );
   });
 
+  it("特定商取引法に基づく表記へのリンクを、プライバシーポリシーとお問い合わせの間に持つ", () => {
+    render(<LegalFooter />);
+
+    expect(screen.getByRole("link", { name: "特定商取引法に基づく表記" })).toHaveAttribute("href", "/tokushoho");
+    const names = screen.getAllByRole("link").map((link) => link.textContent);
+    expect(names).toEqual(["利用規約", "プライバシーポリシー", "特定商取引法に基づく表記", "お問い合わせ"]);
+  });
+
   it("お問い合わせの承認済みmailto契約を共有する", () => {
     render(<LegalFooter />);
 

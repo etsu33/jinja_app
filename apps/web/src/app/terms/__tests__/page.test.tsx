@@ -59,6 +59,10 @@ describe("TermsOfServicePage", () => {
     expect(text).toContain("残りの有効期限にそのパスの日数を足します");
     expect(text).toContain("クレジットカードによるお支払いのみ");
     expect(text).toContain("返金したパスの日数分、有効期限を短くします");
+    expect(text).toContain("購入後の返品・返金は、原則としてお受けしません");
+    expect(text).toContain(
+      "決済が重複した場合、および本サービスの不具合によりパスを利用できなかった場合は、お問い合わせのうえ返金します",
+    );
     expect(text).toContain("日割りによる返金は行いません");
     // 税区分は未確定。税込であると断定しない。
     expect(text).not.toContain("税込");
