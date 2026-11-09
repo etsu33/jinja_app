@@ -11,7 +11,7 @@ let billingState = {
   status: {
     plan: "free",
     is_active: false,
-  },
+  } as { plan: string; is_active: boolean; current_period_end?: string | null },
   refresh: refreshMock,
 };
 
@@ -50,7 +50,7 @@ describe("BillingSuccessPage", () => {
     render(<BillingSuccessPage />);
 
     expect(screen.getByRole("heading", { name: "決済セッションを確認できません" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "プレミアム登録へ戻る" })).toHaveAttribute("href", "/billing/upgrade");
+    expect(screen.getByRole("link", { name: "パスの購入へ戻る" })).toHaveAttribute("href", "/billing/upgrade");
   });
 
   it("premium activeなら有効化済み表示をする", () => {
@@ -66,9 +66,26 @@ describe("BillingSuccessPage", () => {
 
     render(<BillingSuccessPage />);
 
-    expect(screen.getByRole("heading", { name: "プレミアムが有効になりました" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "パスが有効になりました" })).toBeInTheDocument();
     expect(screen.getByText("現在のプランに反映されています。")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "プラン状況を見る" })).toHaveAttribute("href", "/billing");
+  });
+
+  it("premium activeで期限が分かれば、日本時間の有効期限を出す", () => {
+    billingState = {
+      loading: false,
+      error: null,
+      status: {
+        plan: "premium",
+        is_active: true,
+        current_period_end: "2026-11-10T06:30:00Z",
+      },
+      refresh: refreshMock,
+    };
+
+    render(<BillingSuccessPage />);
+
+    expect(screen.getByText(/有効期限：2026年11月10日 15:30/)).toBeInTheDocument();
   });
 
   it("premium未反映なら反映待ち表示をする", () => {
@@ -76,7 +93,7 @@ describe("BillingSuccessPage", () => {
 
     expect(screen.getByRole("heading", { name: "決済結果を確認しています" })).toBeInTheDocument();
     expect(screen.getByText("決済完了後の反映待ちです。少し時間をおいてからプラン状況を再確認してください。")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "もう一度登録を開始する" })).toHaveAttribute("href", "/billing/upgrade");
+    expect(screen.getByRole("link", { name: "もう一度購入する" })).toHaveAttribute("href", "/billing/upgrade");
   });
 
   it("upgrade entry contextをanalytics payloadのsource / funnelStep / cardIdへ戻す", () => {

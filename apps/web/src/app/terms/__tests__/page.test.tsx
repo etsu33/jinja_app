@@ -8,7 +8,7 @@ const REQUIRED_SECTIONS = [
   "2. サービス内容",
   "3. アカウント",
   "4. AI・推薦情報の性質",
-  "5. Premium",
+  "5. Premium（旅行パス）",
   "6. 解約・返金",
   "7. ユーザー投稿",
   "8. 禁止事項",
@@ -48,20 +48,26 @@ describe("TermsOfServicePage", () => {
     );
   });
 
-  it("Premiumの課金条件を母艦確定事項どおりに記載する", () => {
+  it("Premiumを買い切りの旅行パス（自動更新なし）として記載する", () => {
     const { container } = render(<TermsOfServicePage />);
     const text = container.textContent ?? "";
 
-    expect(text).toContain("月額780円");
-    // 税区分は未確定。780円が税込であると断定しない。
+    expect(text).toContain("1日パス：2.99米ドル（購入した時点から24時間）");
+    expect(text).toContain("7日パス：7.99米ドル（購入した時点から7日間）");
+    expect(text).toContain("14日パス：11.99米ドル（購入した時点から14日間）");
+    expect(text).toContain("自動更新はありません");
+    expect(text).toContain("残りの有効期限にそのパスの日数を足します");
+    expect(text).toContain("クレジットカードによるお支払いのみ");
+    expect(text).toContain("返金したパスの日数分、有効期限を短くします");
+    expect(text).toContain("日割りによる返金は行いません");
+    // 税区分は未確定。税込であると断定しない。
     expect(text).not.toContain("税込");
     expect(text).not.toContain("税抜");
     expect(text).not.toContain("税別");
-    expect(text).toContain("契約開始日を基準として毎月自動更新");
-    expect(text).toContain("全利用者に共通の締め日はありません");
-    expect(text).toContain("解約後も、現在の契約期間が終了するまではPremiumを利用できます");
-    expect(text).toContain("次回更新日以降の課金は行われません");
-    expect(text).toContain("日割りによる返金は行いません");
+    // 月額の自動更新の文言は残さない。
+    for (const banned of ["月額", "780円", "毎月自動更新", "Customer Portal", "次回更新日"]) {
+      expect(text).not.toContain(banned);
+    }
   });
 
   it("事業者の氏名・住所・電話番号を推測して記載しない", () => {
