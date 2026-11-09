@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
 import { startBillingCheckout } from "@/lib/api/billing";
+import { BILLING_PASSES, type BillingPassType } from "@/lib/billing/passes";
 import {
   parseBillingFunnelSource,
   parseBillingFunnelStep,
@@ -48,7 +49,8 @@ function BillingUpgradeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const auth = useAuth();
-  const [submitting, setSubmitting] = useState(false);
+  const [submittingPass, setSubmittingPass] = useState<BillingPassType | null>(null);
+  const submitting = submittingPass !== null;
   const [error, setError] = useState<string | null>(null);
   const upgradeClickTrackedRef = useRef(false);
   const checkoutStartedTrackedRef = useRef(false);
@@ -57,8 +59,8 @@ function BillingUpgradeContent() {
   const cardId = searchParams.get("cardId");
   const historyTheme = searchParams.get("historyTheme");
 
-  const startCheckout = async () => {
-    if (auth.loading) return;
+  const startCheckout = async (passType: BillingPassType) => {
+    if (auth.loading || submitting) return;
 
     const entryContext = {
       entryPoint: source,
@@ -72,6 +74,7 @@ function BillingUpgradeContent() {
     if (!upgradeClickTrackedRef.current) {
       upgradeClickTrackedRef.current = true;
       trackBillingEvent("upgrade_click", {
+        passType,
         source,
         funnelStep,
         cardId,
@@ -86,13 +89,14 @@ function BillingUpgradeContent() {
     }
 
     try {
-      setSubmitting(true);
+      setSubmittingPass(passType);
       setError(null);
-      const session = await startBillingCheckout();
+      const session = await startBillingCheckout(passType);
       if (!checkoutStartedTrackedRef.current) {
         checkoutStartedTrackedRef.current = true;
         trackBillingEvent("checkout_started", {
           checkoutSessionId: session.session_id,
+          passType,
           source,
           funnelStep,
           cardId,
@@ -102,7 +106,7 @@ function BillingUpgradeContent() {
       window.location.assign(session.checkout_url);
     } catch {
       setError("決済画面を開始できませんでした。時間をおいて再度お試しください。");
-      setSubmitting(false);
+      setSubmittingPass(null);
     }
   };
 
@@ -130,11 +134,29 @@ function BillingUpgradeContent() {
       </section>
 
       <section className="mt-4 rounded-2xl border bg-[var(--kt-color-surface-default)] p-4 shadow-sm">
-        <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--kt-color-premium-accent)]">
-          β Early User価格
+        <h2 className="text-sm font-semibold text-[var(--kt-color-text-primary)]">旅行パス</h2>
+        <p className="mt-1 text-xs leading-5 text-[var(--kt-color-text-secondary)]">
+          買い切りのパスです。自動更新はありません。期限が来ると、無料プランに戻ります。
+          期限が残っているうちに買い足すと、残りの期限に日数が足されます。
         </p>
-        <p className="mt-1 text-2xl font-semibold text-[var(--kt-color-text-primary)]">780円 / 月</p>
-        <p className="mt-1 text-xs leading-5 text-[var(--kt-color-text-secondary)]">β期間中の初期ユーザー向け価格です。</p>
+        <ul className="mt-3 space-y-2">
+          {BILLING_PASSES.map((pass) => (
+            <li key={pass.type}>
+              <button
+                type="button"
+                onClick={() => void startCheckout(pass.type)}
+                disabled={auth.loading || submitting}
+                className="flex w-full items-center justify-between rounded-md bg-[var(--kt-color-surface-emphasis)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-primary)]"
+              >
+                <span>{pass.label}</span>
+                <span>{submittingPass === pass.type ? "決済画面を準備中…" : pass.priceLabel}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 text-[11px] leading-5 text-[var(--kt-color-text-muted)]">
+          お支払いはクレジットカードのみです。価格は米ドルです。
+        </p>
       </section>
 
       {error ? (
@@ -144,22 +166,11 @@ function BillingUpgradeContent() {
       ) : null}
 
       <div className="mt-6 flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={startCheckout}
-          disabled={auth.loading || submitting}
-          className="inline-flex items-center justify-center rounded-md bg-[var(--kt-color-surface-emphasis)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-primary)]"
-        >
-          {submitting ? "決済画面を準備中…" : "Premiumを始める"}
-        </button>
-        <p className="text-xs leading-5 text-[var(--kt-color-text-secondary)]">
-          プランはStripeの管理画面から変更・解約できます。
-        </p>
         {/* Legal導線はCTAより必ず弱く見せる（面を持たせず、文字も一段落とす）。
             サイト全体の正本は RootLayout の LegalFooter で、ここは購入直前に
             条件を確認できるようにするための最小の再掲に留める。 */}
         <p className="text-[11px] leading-5 text-[var(--kt-color-text-muted)]">
-          お申し込みの前に
+          ご購入の前に
           <Link href="/terms" className="mx-1 underline underline-offset-2 hover:text-[var(--kt-color-text-secondary)]">
             利用規約
           </Link>
@@ -185,7 +196,7 @@ export default function BillingUpgradePage() {
     <Suspense
       fallback={
         <main className="mx-auto w-full max-w-md px-4 py-6">
-          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">プレミアム登録画面を準備しています...</p>
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">購入画面を準備しています...</p>
         </main>
       }
     >
