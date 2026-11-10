@@ -6,6 +6,7 @@ import re
 from typing import Any, Dict, List, Optional, TypedDict
 from temples.domain.shrine_identity import resolve_shrine_id
 from temples.domain.need_to_goriyaku_concepts import matching_tag_names
+from temples.domain.visit_preference import IMPLIED_VISIT_STYLE_MAX_MATCHES
 from temples.services.channel_b_typed_need_match import (
     CHANNEL_B_TYPED_NEED_MATCHES_KEY,
     TypedNeedMatch,
@@ -1167,6 +1168,7 @@ def _attach_breakdown(
     visit_style_tags: set[str] | None = None,
     query: Optional[str] = None,
     requested_goriyaku_tag_ids: Optional[List[int]] = None,
+    implied_visit_style_tags: set[str] | None = None,
     goriyaku_tag_label_by_id: Optional[Dict[int, str]] = None,
     user_origin: Optional[Dict[str, Any]] = None,
     user=None,
@@ -1396,6 +1398,17 @@ def _attach_breakdown(
     matched_visit_style_tags = sorted(user_visit_style_tag_set & shrine_visit_style_tag_set)
     score_visit_style = len(matched_visit_style_tags)
 
+    # 相談の種類から自動で足した参拝の好み（visit_preference.implied_visit_style_tags_for_needs）。
+    # 点数にだけ使う: matched_visit_style_tags・score_visit_style・context_profile・reason_facts・
+    # 説明の文には入れない。利用者の好みと同じものは数えず、何個一致しても上限までにする。
+    implied_visit_style_tag_set = {
+        str(t).strip()
+        for t in (implied_visit_style_tags or set())
+        if isinstance(t, str) and str(t).strip()
+    } - user_visit_style_tag_set
+    matched_implied_visit_style_tags = sorted(implied_visit_style_tag_set & shrine_visit_style_tag_set)
+    score_implied_visit_style = min(len(matched_implied_visit_style_tags), IMPLIED_VISIT_STYLE_MAX_MATCHES)
+
     context_profile = _build_context_profile(
         distance_m=distance_m,
         score_distance=score_distance,
@@ -1451,6 +1464,7 @@ def _attach_breakdown(
         + score_popular * w3
         + score_distance * w4
         + score_visit_style * w5
+        + score_implied_visit_style * w5
         + astro_bonus
     )
     # 行動の影響を相談内容に対して最大30％または0.5に制限
@@ -1603,6 +1617,15 @@ def _attach_breakdown(
                 "weight": float(w5),
                 "matched_tags": matched_visit_style_tags,
                 "contribution": float(score_visit_style * w5),
+            },
+            # 自動で足した好みの点（説明・主な根拠には使わない）。
+            "implied_visit_style": {
+                "raw": int(score_implied_visit_style),
+                "weight": float(w5),
+                "max_matches": int(IMPLIED_VISIT_STYLE_MAX_MATCHES),
+                "requested_tags": sorted(implied_visit_style_tag_set),
+                "matched_tags": matched_implied_visit_style_tags,
+                "contribution": float(score_implied_visit_style * w5),
             },
             "behavior": {
                 "raw": float(behavior_signal),
