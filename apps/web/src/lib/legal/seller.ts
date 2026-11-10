@@ -5,4 +5,4 @@
 // 仮の文字のまま develop にマージすると、そのまま本番に公開される。
 
 /** 販売事業者名（仮）。本名に置き換えるまで、この仮の文字のまま表示される。 */
-export const SELLER_NAME = "（販売事業者名）";
+export const SELLER_NAME = "森川悦子";
