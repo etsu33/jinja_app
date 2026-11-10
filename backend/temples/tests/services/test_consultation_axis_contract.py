@@ -307,6 +307,7 @@ def test_marriage_consultation_activates_same_history_theme_candidate_boost(sett
             {
                 "name": "つながりの杜神社",
                 "goriyaku_tag_ids": [1],
+                "goriyaku_tag_names": ["縁結び"],
                 "history_theme": "縁",
                 "popular_score": 1.0,
             }
@@ -338,6 +339,7 @@ def test_marriage_consultation_axis_sharing_does_not_reintroduce_love_reason(set
             {
                 "name": "つながりの杜神社",
                 "goriyaku_tag_ids": [1],
+                "goriyaku_tag_names": ["縁結び"],
                 "history_theme": "縁",
                 "goriyaku": "心願成就",
                 "popular_score": 1.0,

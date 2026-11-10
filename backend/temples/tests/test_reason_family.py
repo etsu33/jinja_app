@@ -25,6 +25,7 @@ import pytest
 
 from temples.models import GoriyakuTag
 from temples.services.concierge_chat import build_chat_recommendations
+from temples.tests.fixtures.goriyaku_canonical import canonical_tag_names
 
 _GENERIC = "今の願いを願う参拝先として"
 _FAMILY_INTENT = "子宝や安産を願う参拝先として適しています。"
@@ -42,6 +43,7 @@ def _candidate(name, goriyaku_tag_ids, **overrides):
         "popular_score": 5.0,
     }
     base.update(overrides)
+    base.setdefault("goriyaku_tag_names", canonical_tag_names(base.get("goriyaku_tag_ids") or []))
     return base
 
 
@@ -117,11 +119,11 @@ def test_former_family_gids_do_not_yield_family_reason(former_gid):
 
 
 def test_m1_mappings_unchanged():
-    from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
+    from temples.domain.need_to_goriyaku_concepts import NEED_TO_GORIYAKU_CONCEPTS
 
-    assert NEED_TO_GORIYAKU_IDS["family"] == {16, 35}
-    assert NEED_TO_GORIYAKU_IDS["mental"] == {11, 26, 28, 38}
-    assert 2 in NEED_TO_GORIYAKU_IDS["protection"]
+    assert NEED_TO_GORIYAKU_CONCEPTS["family"] == {"safe_childbirth", "fertility"}
+    assert NEED_TO_GORIYAKU_CONCEPTS["mental"] == frozenset()
+    assert "misfortune_warding" in NEED_TO_GORIYAKU_CONCEPTS["protection"]
 
 
 def test_family_has_no_text_evidence_entry():
@@ -197,7 +199,7 @@ def test_family_top3_composition_unchanged_by_reason_copy():
         ("いい出会いがほしい", "縁結び神社", [1], "恋愛や良縁を願う参拝先として適しています。"),
         ("結婚したい", "夫婦円満神社", [18], "良縁や夫婦円満を願う参拝先として適しています。"),
         ("転職を考えている", "導き神社", [21], "仕事や転機を願う参拝先として適しています。"),
-        ("健康でいたい", "健康神社", [7], "健康や体調の安定を願う参拝先として適しています。"),
+        ("健康でいたい", "健康神社", [24], "健康や体調の安定を願う参拝先として適しています。"),
         ("集中力を高めたい", "集中神社", [9], "集中や習慣づくりを願う参拝先として適しています。"),
     ],
 )

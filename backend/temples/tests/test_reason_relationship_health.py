@@ -23,6 +23,7 @@ import pytest
 
 from temples.models import GoriyakuTag
 from temples.services.concierge_chat import build_chat_recommendations
+from temples.tests.fixtures.goriyaku_canonical import canonical_tag_names
 
 
 def _candidate(name, goriyaku_tag_ids, **overrides):
@@ -37,6 +38,7 @@ def _candidate(name, goriyaku_tag_ids, **overrides):
         "popular_score": 5.0,
     }
     base.update(overrides)
+    base.setdefault("goriyaku_tag_names", canonical_tag_names(base.get("goriyaku_tag_ids") or []))
     return base
 
 
@@ -62,7 +64,7 @@ def test_health_reason_no_longer_uses_generic_fallback():
     recs = build_chat_recommendations(
         query="健康でいたい",
         language="ja",
-        candidates=[_candidate("健康神社", [7])],
+        candidates=[_candidate("健康神社", [24])],
         public_mode="need",
         flow="A",
     )
@@ -103,7 +105,7 @@ def test_relationship_copy_compatible_with_multiple_sub_intents(
 @pytest.mark.parametrize(
     ("query", "candidate_name", "goriyaku_tag_ids"),
     [
-        ("健康でいたい", "健康神社", [7]),
+        ("健康でいたい", "健康神社", [24]),
         ("病気が治りますように", "病気平癒神社", [33]),
         ("体力をつけたい", "足腰健康神社", [38]),
     ],
@@ -143,15 +145,15 @@ def test_health_need_extraction_unchanged():
 
 
 def test_relationship_gid_mapping_unchanged():
-    from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
+    from temples.domain.need_to_goriyaku_concepts import NEED_TO_GORIYAKU_CONCEPTS
 
-    assert NEED_TO_GORIYAKU_IDS["relationship"] == {1}
+    assert NEED_TO_GORIYAKU_CONCEPTS["relationship"] == {"relationship_bonding"}
 
 
 def test_health_gid_mapping_unchanged():
-    from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
+    from temples.domain.need_to_goriyaku_concepts import NEED_TO_GORIYAKU_CONCEPTS
 
-    assert NEED_TO_GORIYAKU_IDS["health"] == {7, 8, 24, 33, 38}
+    assert NEED_TO_GORIYAKU_CONCEPTS["health"] == {"illness_recovery", "longevity", "leg_lower_back_health"}
 
 
 def test_relationship_axis_unchanged():
@@ -173,11 +175,10 @@ def test_health_axis_still_falls_back_to_other():
 
 
 @pytest.mark.django_db
-def test_health_lead_may_cite_household_flavored_evidence_known_limitation():
-    """Documents the SEMANTIC_SAFE_WITH_LIMITATION note verbatim: health's
-    GID set includes id=7 (家内安全, household safety) -- Lead may cite
-    non-personal-health-flavored evidence even though the Reason's
-    user_intent clause is correct. This is expected, not a regression."""
+def test_health_no_longer_matches_household_safety():
+    """以前は health の番号の一覧に 7（家内安全）が入っていて、Lead が家内安全を
+    挙げていた（SEMANTIC_SAFE_WITH_LIMITATION）。概念で結ぶ今は、家内安全
+    （household_safety）はどの相談の種類にも結ばないため、health に一致しない。"""
     GoriyakuTag.objects.create(id=7, name="家内安全", category="ご利益")
     recs = build_chat_recommendations(
         query="健康でいたい",
@@ -186,9 +187,9 @@ def test_health_lead_may_cite_household_flavored_evidence_known_limitation():
         public_mode="need",
         flow="A",
     )
-    reason = recs["recommendations"][0]["reason"]
-    assert reason.startswith("家内安全のご利益で知られる")
-    assert "健康や体調の安定を願う参拝先として適しています。" in reason
+    top1 = recs["recommendations"][0]
+    assert "health" not in top1["breakdown"]["matched_need_tags"]
+    assert "家内安全" not in top1["reason"]
 
 
 def test_health_gid_winner_flow_correct():
@@ -252,7 +253,8 @@ def test_mental_reason_unchanged():
     recs = build_chat_recommendations(
         query="不安な気持ちを落ち着けたい",
         language="ja",
-        candidates=[_candidate("厄除け神社", [11])],
+        # mental は札では結ばない（概念は空）。ご利益の文字列の言葉で一致させる。
+        candidates=[_candidate("厄除け神社", [], goriyaku="厄除け")],
         public_mode="need",
         flow="A",
     )
@@ -264,7 +266,8 @@ def test_rest_reason_unchanged():
     recs = build_chat_recommendations(
         query="少し休みたい",
         language="ja",
-        candidates=[_candidate("休息神社", [7])],
+        # rest は札では結ばない（概念は空）。説明文の言葉で一致させる。
+        candidates=[_candidate("休息神社", [], description="静かで癒しの杜")],
         public_mode="need",
         flow="A",
     )

@@ -11,7 +11,7 @@
 - 札（`GoriyakuTag`）の名前：神社の初期データの文字列を区切って自動で作る。
 - 札の番号：作った順に自動で振る。環境によって変わる。
 - 承認済みの識別子（18件、`goriyaku_taxonomy_v1.py`）と別名（`goriyaku_alias_v1.py`）。
-- 相談の種類との対応表（`need_to_goriyaku_tag_ids.py`）：札の番号で書かれている。
+- 相談の種類との対応表（以前の `need_to_goriyaku_tag_ids.py`）：札の番号で書かれていた。今は `need_to_goriyaku_concepts.py`（概念の識別子で書く）に置き換えた。
 
 札の番号が環境によって変わるため、対応表が本番の札とずれ、意味の合わない結びつき
 （休息 → 家内安全 など）が起きた。ご利益を言語に依存しない「概念の識別子」で決め、
@@ -58,6 +58,8 @@
 ## 6. 相談の種類との対応
 
 - 相談の種類との対応表には、概念の識別子だけを書く。札の番号・札の名前は書かない。
+- 札が相談の種類に一致するかは、札の名前 → 概念（`concept_keys_for_tag_name`）→ 対応表、の順で決める。札の番号は使わない。
+- 対応表の正本は `backend/temples/domain/need_to_goriyaku_concepts.py`。下の「相談の種類との対応（v1）」はその写しである。
 
 ## 7. 追加・変更の手続き
 
@@ -116,8 +118,39 @@
 
 「勝運・必勝祈願」は、勝運と必勝祈願がどちらも勝負運の概念に入るため、分けた先は1つになる。
 
+## 相談の種類との対応（v1）
+
+正本は `backend/temples/domain/need_to_goriyaku_concepts.py`。空の行は「札では結ばない」（言葉の一覧や場の性質で選ぶ）。
+
+| 相談の種類 | 概念 |
+|---|---|
+| love | love_fulfillment、relationship_bonding |
+| relationship | relationship_bonding |
+| marriage | relationship_bonding、marital_harmony |
+| communication | （なし） |
+| career | work_fortune、career_advancement、guidance |
+| money | financial_fortune、business_prosperity |
+| study | academic_success、exam_success |
+| focus | skill_improvement、academic_success |
+| health | illness_recovery、longevity、leg_lower_back_health |
+| mental | （なし） |
+| protection | misfortune_warding、all_direction_warding、strong_fortune_warding |
+| courage | good_fortune、victory_fortune |
+| rest | （なし） |
+| family | safe_childbirth、fertility |
+| travel_safe | traffic_safety、maritime_safety |
+
+- family は安産・子宝だけにする（2026-08 の「family は狭く」の決定を保つ）。家内安全（household_safety）は、どの相談の種類にも結ばない。
+- communication・mental・rest は、意味の合う概念が今の一覧に無いため、札では結ばない。
+- courage に good_fortune（開運）を入れると、半数近くの神社が一致する。承知のうえで入れ、点数の重みの見直しで扱う。
+
+### 決定の記録
+
+- 無病息災（識別子 `illness_prevention`）を概念に足し、health に結ぶことは、えつこの確認を通した。
+  ただし、根拠の神社（大神神社）の出典の本文を確かめるまでは、概念の一覧にも対応表にも足さない（ルール7）。
+
 ## まだ決めていないこと
 
-- 相談の種類（15）と概念の対応表の中身（次の作業で決める）。
-- 休息・不安など、意味の合う概念が今の一覧に無い相談の種類の扱い。
+- 無病息災（`illness_prevention`）を足す時期（大神神社の出典の確認待ち）。
+- 言葉の一覧（`NEED_TEXT_WEIGHTS`）の money にある「福徳」と、概念の一覧で 福徳 を good_fortune の別名にしたこととの食い違い。
 - 承認済みの別名の表（`goriyaku_alias_v1.py`、今は「八方除け」の1件だけ）に、この一覧の別名を足すかどうか（Mother Ship の確認事項）。

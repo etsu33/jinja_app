@@ -7,7 +7,7 @@
 - 札（GoriyakuTag）の名前は、概念の表示名・別名・組み合わせの札・未分類のどれか。
 - 承認済みの18件（goriyaku_taxonomy_v1.GORIYAKU_V1_CANONICAL_KEYS）の識別子はそのまま使う。
 
-pure / DB 不要。この一覧はまだ推薦・相談の対応表から使われていない（次の作業でつなぐ）。
+pure / DB 不要。相談の種類との対応表（need_to_goriyaku_concepts.py）がこの一覧を参照する。
 """
 
 from __future__ import annotations

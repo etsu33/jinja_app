@@ -1,6 +1,6 @@
 """reason_facts の matched_benefit_names(相談と一致したご利益の名前)の契約。
 
-- goriyaku_tag: 神社のタグのうち、その相談の種類の番号の一覧に入っているタグの名前。
+- goriyaku_tag: 神社のタグのうち、名前がその相談の種類の概念に入るタグの名前（番号は使わない）。
 - text_hint: 一致した言葉がご利益の文字列(Shrine.goriyaku)の中にあるときだけ。
   言葉を含むタグがあればタグの名前だけ、無いときだけご利益の文字列を区切った1つずつ。
   説明文の中だけで一致したときは空。
@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import pytest
 
-from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
 from temples.services.concierge_chat_ranking import (
     _attach_breakdown,
     _build_reason_facts,
@@ -20,9 +19,10 @@ from temples.services.concierge_chat_ranking import (
     _to_rank_explanation,
 )
 
-REST_GID = sorted(NEED_TO_GORIYAKU_IDS["rest"])[0]
-MENTAL_GID = sorted(NEED_TO_GORIYAKU_IDS["mental"])[0]
-UNRELATED_GID = max(gid for ids in NEED_TO_GORIYAKU_IDS.values() for gid in ids) + 1000
+# 札の番号は一致に使わない。番号は名前と一緒に持たせるだけの任意の値。
+SOME_GID = 2
+OTHER_GID = 7
+UNRELATED_GID = 9999
 
 
 def _rec(**overrides):
@@ -53,21 +53,21 @@ def _facts_of(rec, need_tags):
 
 def test_goriyaku_tag_returns_only_the_matched_tag_names():
     rec = _rec(
-        goriyaku_tag_ids=[UNRELATED_GID, REST_GID],
-        goriyaku_tag_names=["関係ないご利益", "健康長寿"],
+        goriyaku_tag_ids=[OTHER_GID, SOME_GID],
+        goriyaku_tag_names=["家内安全", "厄除け"],
     )
 
-    facts = _facts_of(rec, ["rest"])
+    facts = _facts_of(rec, ["protection"])
 
-    assert facts[("goriyaku_tag", "rest")]["matched_benefit_names"] == ["健康長寿"]
+    assert facts[("goriyaku_tag", "protection")]["matched_benefit_names"] == ["厄除け"]
 
 
-def test_goriyaku_tag_without_tag_names_returns_empty_instead_of_guessing():
-    rec = _rec(goriyaku_tag_ids=[REST_GID], goriyaku_tag_names=[])
+def test_goriyaku_tag_without_tag_names_does_not_match_by_id():
+    rec = _rec(goriyaku_tag_ids=[SOME_GID], goriyaku_tag_names=[])
 
-    facts = _facts_of(rec, ["rest"])
+    facts = _facts_of(rec, ["protection"])
 
-    assert facts[("goriyaku_tag", "rest")]["matched_benefit_names"] == []
+    assert ("goriyaku_tag", "protection") not in facts
 
 
 # --- text_hint ----------------------------------------------------------------
@@ -130,11 +130,11 @@ def test_every_reason_fact_has_matched_benefit_names_list():
     rec = _rec(
         goriyaku="勝運・厄除け",
         astro_tags=["rest"],
-        goriyaku_tag_ids=[REST_GID],
-        goriyaku_tag_names=["健康長寿"],
+        goriyaku_tag_ids=[SOME_GID],
+        goriyaku_tag_names=["厄除け"],
     )
 
-    _attach_breakdown(rec, birthdate=None, need_tags=["rest", "mental"], weights={}, astro_bonus_enabled=False)
+    _attach_breakdown(rec, birthdate=None, need_tags=["rest", "mental", "protection"], weights={}, astro_bonus_enabled=False)
 
     assert rec["reason_facts"]
     for fact in rec["reason_facts"]:
@@ -166,7 +166,7 @@ def test_names_are_deduped_and_ordered_the_same_every_time():
 def test_tag_names_follow_the_tag_order():
     pairs = {
         "rec": _rec(
-            goriyaku_tag_ids=[MENTAL_GID, UNRELATED_GID],
+            goriyaku_tag_ids=[OTHER_GID, UNRELATED_GID],
             goriyaku_tag_names=["厄除け・方除け", "心願成就"],
         ),
         "goriyaku_text": "心願・厄除",
@@ -217,20 +217,20 @@ def test_existing_reason_fact_fields_are_unchanged():
     assert by_type["need_tag"]["matched_benefit_names"] == []
 
 
-def test_scores_and_primary_reason_do_not_depend_on_tag_names():
-    base = dict(goriyaku="勝運・厄除け・家内安全", goriyaku_tag_ids=[REST_GID])
-    with_names = _rec(**base, goriyaku_tag_names=["健康長寿"])
-    without_names = _rec(**base, goriyaku_tag_names=[])
+def test_scores_and_primary_reason_do_not_depend_on_tag_ids():
+    # 一致は札の名前で決まる。同じ名前なら、番号が違っても点数・主な理由・根拠は同じ。
+    base = dict(goriyaku="勝運・厄除け・家内安全", goriyaku_tag_names=["厄除け"])
+    rec_a = _rec(**base, goriyaku_tag_ids=[SOME_GID])
+    rec_b = _rec(**base, goriyaku_tag_ids=[UNRELATED_GID])
 
-    for rec in (with_names, without_names):
-        _attach_breakdown(rec, birthdate=None, need_tags=["rest", "mental"], weights={}, astro_bonus_enabled=False)
+    for rec in (rec_a, rec_b):
+        _attach_breakdown(rec, birthdate=None, need_tags=["protection", "mental"], weights={}, astro_bonus_enabled=False)
 
-    assert with_names["breakdown"] == without_names["breakdown"]
-    assert with_names["_score_total"] == without_names["_score_total"]
-    assert with_names["_primary_reason_source"] == without_names["_primary_reason_source"]
-    assert with_names["_primary_reason_label"] == without_names["_primary_reason_label"]
-    strip = lambda facts: [{k: v for k, v in f.items() if k != "matched_benefit_names"} for f in facts]  # noqa: E731
-    assert strip(with_names["reason_facts"]) == strip(without_names["reason_facts"])
+    assert rec_a["breakdown"] == rec_b["breakdown"]
+    assert rec_a["_score_total"] == rec_b["_score_total"]
+    assert rec_a["_primary_reason_source"] == rec_b["_primary_reason_source"]
+    assert rec_a["_primary_reason_label"] == rec_b["_primary_reason_label"]
+    assert rec_a["reason_facts"] == rec_b["reason_facts"]
 
 
 # --- 「この神社が1位の理由」の空白 ----------------------------------------------

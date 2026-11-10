@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 from django.core.management import call_command
 
-from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
+from temples.domain.need_to_goriyaku_concepts import needs_for_tag_name
 from temples.domain.source_fact_mapping_registry_v1 import (
     REGISTRY_VERSION,
     SOURCE_FACT_MAPPING_RECORDS,
@@ -100,8 +100,8 @@ def _pr_d_wording_by_key() -> dict[str, str]:
 
 
 def _need_reachable(concept_name: str) -> bool:
-    tag_id = CANONICAL_ID_BY_NAME[concept_name]
-    return any(tag_id in ids for ids in NEED_TO_GORIYAKU_IDS.values())
+    assert concept_name in CANONICAL_ID_BY_NAME
+    return bool(needs_for_tag_name(concept_name))
 
 
 # ---------- registry の内容（1〜8 / 10）----------
@@ -173,11 +173,20 @@ def test_10_hoyoke_maps_to_hoyoke_canonical_concept():
     assert record == SourceFactMappingRecord(HOYOKE_KEY, "方除け", "SAFE_NORMALIZATION")
 
 
-def test_11_hoyoke_has_no_need_and_15_mappings_are_need_reachable():
-    assert not _need_reachable("方除け")
+# 概念で結ぶ対応表で、どの相談の種類にも届かない2件（家内安全・心願成就の概念は対応表に無い）。
+NO_NEED_KEYS = {
+    "osaki_hachimangu__prayer__kanai_anzen",
+    "osaki_hachimangu__prayer__shingan_joju",
+}
+
+
+def test_11_hoyoke_reaches_a_need_and_14_mappings_are_need_reachable():
+    # 方除け は八方除（all_direction_warding）の別名になり、protection に届く。
+    assert _need_reachable("方除け")
     reachable = [k for k, concept, _cls in _records() if _need_reachable(concept)]
-    assert len(reachable) == 15
-    assert HOYOKE_KEY not in reachable
+    assert len(reachable) == 14
+    assert HOYOKE_KEY in reachable
+    assert {k for k, _c, _cls in _records()} - set(reachable) == NO_NEED_KEYS
 
 
 # ---------- DB（4 / 9 / 11 / 12 / 13）----------
@@ -233,15 +242,16 @@ def test_9_safe_normalization_keeps_source_fact_wording():
 
 
 @pytest.mark.django_db
-def test_11_hoyoke_resolves_but_produces_no_need_match():
+def test_11_hoyoke_resolves_and_produces_a_protection_match():
     _tags()
     shrines = _shrines()
     _import()
     matches = fetch_typed_need_matches([s.id for s in shrines.values()])
     keys_with_need = {m.source_fact_key for ms in matches.values() for m in ms}
-    assert HOYOKE_KEY not in keys_with_need
+    assert HOYOKE_KEY in keys_with_need
     assert keys_with_need == {k for k, c, _cls in FROZEN_RECORDS if _need_reachable(c)}
-    assert len(keys_with_need) == 15
+    assert len(keys_with_need) == 14
+    assert not keys_with_need & NO_NEED_KEYS
     assert not keys_with_need & set(FROZEN_AMBIGUOUS)
 
 

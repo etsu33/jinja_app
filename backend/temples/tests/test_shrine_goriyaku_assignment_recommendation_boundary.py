@@ -26,7 +26,7 @@ _RECOMMENDATION_RELATED_FILES = [
     "services/concierge_explanation_payload.py",
     "services/action_suggestions.py",
     "domain/consultation_axis.py",
-    "domain/need_to_goriyaku_tag_ids.py",
+    "domain/need_to_goriyaku_concepts.py",
     "management/commands/backfill_goriyaku_tags.py",
 ]
 

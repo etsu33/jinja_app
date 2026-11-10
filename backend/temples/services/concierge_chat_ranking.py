@@ -5,7 +5,7 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, TypedDict
 from temples.domain.shrine_identity import resolve_shrine_id
-from temples.domain.need_to_goriyaku_tag_ids import need_tags_to_goriyaku_ids
+from temples.domain.need_to_goriyaku_concepts import matching_tag_names
 from temples.services.channel_b_typed_need_match import (
     CHANNEL_B_TYPED_NEED_MATCHES_KEY,
     TypedNeedMatch,
@@ -640,25 +640,16 @@ def _dedupe_keep_order(values: List[str]) -> List[str]:
     return out
 
 
-def _goriyaku_tag_name_pairs(rec: Dict[str, Any]) -> List[tuple[int, str]]:
-    """候補のご利益タグの (番号, 名前) をタグの並び順で返す。
+def _goriyaku_tag_names(rec: Dict[str, Any]) -> List[str]:
+    """候補のご利益の札の名前（concierge_chat_candidates が載せる goriyaku_tag_names）。
 
-    goriyaku_tag_ids と goriyaku_tag_names(concierge_chat_candidates が同じ順で載せる)が
-    そろっていないときは、名前を推測せず空を返す。
+    相談の種類との一致は、札の番号ではなく札の名前から概念を引いて決める
+    （temples.domain.need_to_goriyaku_concepts）。名前が無い候補は一致しない。
     """
-    ids = rec.get("goriyaku_tag_ids") or []
     names = rec.get("goriyaku_tag_names") or []
-    if not isinstance(ids, list) or not isinstance(names, list) or len(ids) != len(names):
+    if not isinstance(names, list):
         return []
-    pairs: List[tuple[int, str]] = []
-    for gid, name in zip(ids, names, strict=True):
-        try:
-            gid_int = int(gid)
-        except (TypeError, ValueError):
-            continue
-        if isinstance(name, str) and name.strip():
-            pairs.append((gid_int, name.strip()))
-    return pairs
+    return _dedupe_keep_order([name.strip() for name in names if isinstance(name, str) and name.strip()])
 
 
 def _collect_matched_benefit_names(
@@ -670,23 +661,21 @@ def _collect_matched_benefit_names(
 ) -> Dict[str, Dict[str, List[str]]]:
     """相談と一致したご利益の名前を、一致の手がかりごとに集める(順位・点数は変えない)。
 
-    - goriyaku_tag: 神社のご利益タグのうち、その相談の種類の番号の一覧
-      (need_to_goriyaku_tag_ids)に入っているタグの名前(タグの並び順)。
+    - goriyaku_tag: 神社のご利益の札のうち、札の名前から引いた概念が、その相談の種類の
+      概念(need_to_goriyaku_concepts)に入っている札の名前(札の並び順)。
     - text_hint: 一致した言葉がご利益の文字列(Shrine.goriyaku)の中にあるときだけ返す。
       説明文(description)の中だけにあるときは、タグの名前に同じ言葉があっても返さない。
       言葉を含むタグがあればタグの名前だけ(タグの並び順)、無いときだけご利益の文字列を
       区切った1つずつから言葉を含むもの(文字列の中の順)。
     """
-    tag_pairs = _goriyaku_tag_name_pairs(rec)
-    tag_names = [name for _, name in tag_pairs]
+    tag_names = _goriyaku_tag_names(rec)
     segments = _dedupe_keep_order(
         [seg.strip() for seg in _GORIYAKU_SEGMENT_SEPARATORS.split(goriyaku_text or "") if seg.strip()]
     )
 
     by_gid: Dict[str, List[str]] = {}
     for tag in matched_by_gid:
-        expected = need_tags_to_goriyaku_ids([tag])
-        by_gid[tag] = _dedupe_keep_order([name for gid, name in tag_pairs if gid in expected])
+        by_gid[tag] = matching_tag_names(tag_names, tag)
 
     by_text: Dict[str, List[str]] = {}
     for tag, hints in text_hints_by_tag.items():
@@ -1266,10 +1255,12 @@ def _attach_breakdown(
     }
     matched_by_user_selected_gid = sorted(candidate_gid_set & requested_gid_set)
 
+    # 札と相談の種類の一致（名前のある札だけ。番号では結ばない）。変数名は既存の
+    # 項目名（matched_by_gid など）に合わせて残している。
+    candidate_tag_names = _goriyaku_tag_names(rec)
     matched_by_gid: List[str] = []
     for tag in need_tags_clean:
-        expected_gids = need_tags_to_goriyaku_ids([tag])
-        if expected_gids and (candidate_gid_set & expected_gids):
+        if matching_tag_names(candidate_tag_names, tag):
             matched_by_gid.append(tag)
 
     is_study_need = "study" in need_tags_clean
@@ -1791,11 +1782,7 @@ def _prefilter_candidates_for_need(
             str(t).strip() for t in astro_tags if isinstance(t, str) and str(t).strip()
         }
 
-        candidate_gid_set = {
-            int(x)
-            for x in (c.get("goriyaku_tag_ids") or [])
-            if isinstance(x, int) or (isinstance(x, str) and str(x).strip().isdigit())
-        }
+        candidate_tag_names = _goriyaku_tag_names(c)
 
         material = f"{c.get('goriyaku') or ''} {c.get('description') or ''}".replace("　", " ")
 
@@ -1814,8 +1801,7 @@ def _prefilter_candidates_for_need(
                 matched.append(f"{tag}:astro")
                 channel_a_matched = True
 
-            expected_gids = need_tags_to_goriyaku_ids([tag])
-            if expected_gids and (candidate_gid_set & expected_gids):
+            if matching_tag_names(candidate_tag_names, tag):
                 score += 2
                 matched.append(f"{tag}:gid")
                 matched_gid_tags.append(tag)
@@ -1992,7 +1978,6 @@ def _resolve_flow_from_mode(
 def _resolve_matched_lead_evidence(
     rec: Dict[str, Any],
     tag: str,
-    need_gid_label_by_id: Optional[Dict[int, str]],
 ) -> tuple[Optional[str], Optional[str]]:
     """Resolve Lead evidence for `tag` from data `_prefilter_candidates_for_need`/
     `_attach_breakdown` already attached to `rec` -- no per-candidate DB query
@@ -2009,17 +1994,9 @@ def _resolve_matched_lead_evidence(
     without going through `_attach_breakdown`), this falls back to the
     pre-C1 GID-first order.
     """
-    matched_gid_label: Optional[str] = None
-    if need_gid_label_by_id:
-        candidate_gid_set = {
-            int(x)
-            for x in (rec.get("goriyaku_tag_ids") or [])
-            if isinstance(x, int) or (isinstance(x, str) and str(x).strip().isdigit())
-        }
-        expected_gids = need_tags_to_goriyaku_ids([tag])
-        matched_gids = sorted(candidate_gid_set & expected_gids & set(need_gid_label_by_id.keys()))
-        if matched_gids:
-            matched_gid_label = need_gid_label_by_id.get(matched_gids[0])
+    # 札の一致（札の名前から概念を引く）のうち、札の並び順で最初の名前を Lead に使う。
+    matched_names = matching_tag_names(_goriyaku_tag_names(rec), tag)
+    matched_gid_label: Optional[str] = matched_names[0] if matched_names else None
 
     winner = ((rec.get("breakdown") or {}).get("need_evidence_winner_by_tag") or {}).get(tag)
 
@@ -2044,7 +2021,6 @@ def build_recommendation_reason(
     public_mode: PublicMode,
     birthdate: Optional[str],
     need_tags: List[str],
-    need_gid_label_by_id: Optional[Dict[int, str]] = None,
 ) -> str:
     # MS-5 provenance は、この呼び出しで Channel B の理由文を返すときにだけ付け直す。
     rec.pop(CHANNEL_B_REASON_PROVENANCE_KEY, None)
@@ -2107,9 +2083,7 @@ def build_recommendation_reason(
     goriyaku = str(rec.get("goriyaku") or "").strip()
 
     if primary_label:
-        matched_gid_label, matched_text_hint = _resolve_matched_lead_evidence(
-            rec, primary_label, need_gid_label_by_id
-        )
+        matched_gid_label, matched_text_hint = _resolve_matched_lead_evidence(rec, primary_label)
         return _build_need_reason_text(
             primary_label,
             name=name,
@@ -2119,9 +2093,7 @@ def build_recommendation_reason(
         )
 
     if matched_tags:
-        matched_gid_label, matched_text_hint = _resolve_matched_lead_evidence(
-            rec, matched_tags[0], need_gid_label_by_id
-        )
+        matched_gid_label, matched_text_hint = _resolve_matched_lead_evidence(rec, matched_tags[0])
         return _build_need_reason_text(
             matched_tags[0],
             name=name,
@@ -2173,7 +2145,7 @@ def _build_need_lead(
         "career": "仕事運",
         "money": "金運",
         "courage": "開運",
-        # NEED_TO_GORIYAKU_IDS["protection"]の主要な一致先である実在
+        # need_to_goriyaku_concepts["protection"]の主要な一致先である実在
         # GoriyakuTag「厄除け」(id=2) をそのまま短いlead語として使う。
         "protection": "厄除け",
     }

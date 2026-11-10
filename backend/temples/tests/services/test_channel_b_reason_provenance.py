@@ -22,6 +22,7 @@ from temples.services.channel_b_typed_need_match import (
 )
 from temples.services.concierge_chat import build_chat_recommendations
 from temples.services.concierge_chat_ranking import build_recommendation_reason
+from temples.tests.fixtures.goriyaku_canonical import canonical_tag_names
 
 PRAYER = "official_prayer_supported"
 GENERIC = "試験神社は、今の悩みや願いに合わせて参拝先の候補に入れています。"
@@ -55,6 +56,7 @@ def _rec(*matches: TypedNeedMatch, **overrides) -> dict:
         CHANNEL_B_TYPED_NEED_MATCHES_KEY: tuple(matches),
     }
     rec.update(overrides)
+    rec.setdefault("goriyaku_tag_names", canonical_tag_names(rec.get("goriyaku_tag_ids") or []))
     return rec
 
 
@@ -220,6 +222,7 @@ def _candidate(name: str, **overrides) -> dict:
         "popular_score": 0.0,
     }
     row.update(overrides)
+    row.setdefault("goriyaku_tag_names", canonical_tag_names(row.get("goriyaku_tag_ids") or []))
     return row
 
 
