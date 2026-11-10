@@ -11,9 +11,9 @@ import importlib
 
 import pytest
 
-from temples.domain.need_to_goriyaku_tag_ids import (
-    NEED_TO_GORIYAKU_IDS,
-    need_tags_to_goriyaku_ids,
+from temples.domain.need_to_goriyaku_concepts import (
+    NEED_TO_GORIYAKU_CONCEPTS,
+    matching_tag_names,
 )
 from temples.models import GoriyakuTag, Shrine, ShrineDeity, ShrineHistory, ShrineKnowledgeSource
 
@@ -229,10 +229,10 @@ def test_no_goriyaku_tag_master_change(targets):
 # 13 — Need mapping unchanged
 @pytest.mark.django_db
 def test_need_mapping_unchanged(targets):
-    before = {k: set(v) for k, v in NEED_TO_GORIYAKU_IDS.items()}
+    before = dict(NEED_TO_GORIYAKU_CONCEPTS)
     forward(APPS, None)
-    assert {k: set(v) for k, v in NEED_TO_GORIYAKU_IDS.items()} == before
-    assert NEED_TO_GORIYAKU_IDS["travel_safe"] == {3, 13, 14}
+    assert dict(NEED_TO_GORIYAKU_CONCEPTS) == before
+    assert NEED_TO_GORIYAKU_CONCEPTS["travel_safe"] == {"traffic_safety", "maritime_safety"}
 
 
 # 14 / 15 — Knowledge Facts and Sources unchanged (id22)
@@ -334,29 +334,30 @@ def test_pk_drift_name_based_matching(db):
 # 20 — id21 Recommendation `money` match disappears (M2M-derived)
 @pytest.mark.django_db
 def test_id21_money_match_disappears(targets):
-    money_gids = need_tags_to_goriyaku_ids(["money"])
-    before = set(targets["s21"].goriyaku_tags.values_list("id", flat=True)) & money_gids
-    assert before  # currently matches money via 商売繁盛(4) / 五穀豊穣(5)
+    before = matching_tag_names(_tag_names(targets["s21"]), "money")
+    assert before == ["商売繁盛"]  # 商売繁盛 は money の概念（business_prosperity）。五穀豊穣 は harvest で money ではない
 
     forward(APPS, None)
 
     targets["s21"].refresh_from_db()
-    after = set(targets["s21"].goriyaku_tags.values_list("id", flat=True)) & money_gids
-    assert after == set()
+    assert matching_tag_names(_tag_names(targets["s21"]), "money") == []
 
 
 # 21 — id22 Recommendation `health` / `rest` M2M match disappears
 @pytest.mark.django_db
 def test_id22_health_rest_match_disappears(targets):
-    hr_gids = need_tags_to_goriyaku_ids(["health"]) | need_tags_to_goriyaku_ids(["rest"])
-    before = set(targets["s22"].goriyaku_tags.values_list("id", flat=True)) & hr_gids
-    assert before  # currently matches via 家内安全(7)
+    # 以前は番号で結んでいたため 家内安全(7) が health / rest に一致していた。
+    # 概念で結ぶ今は、家内安全（household_safety）はどの相談の種類にも結ばない。
+    assert _tag_names(targets["s22"]) == ["家内安全"]
+    for need in ("health", "rest"):
+        assert matching_tag_names(_tag_names(targets["s22"]), need) == []
 
     forward(APPS, None)
 
     targets["s22"].refresh_from_db()
-    after = set(targets["s22"].goriyaku_tags.values_list("id", flat=True)) & hr_gids
-    assert after == set()
+    assert _tag_names(targets["s22"]) == []
+    for need in ("health", "rest"):
+        assert matching_tag_names(_tag_names(targets["s22"]), need) == []
 
 
 # 22 — an unrelated shrine's Recommendation-relevant M2M is stable

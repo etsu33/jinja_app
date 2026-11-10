@@ -239,15 +239,15 @@ def test_reverse_leaves_a_later_edit_alone():
 # 9 / 10 — Evidence Gate and Need mapping are import-time constants, untouched here.
 @pytest.mark.django_db
 def test_need_mapping_and_evidence_gate_untouched_by_this_migration():
-    from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
+    from temples.domain.need_to_goriyaku_concepts import NEED_TO_GORIYAKU_CONCEPTS
     from temples.services import evidence_gate
 
     _mk_targets()
-    before_map = {k: set(v) for k, v in NEED_TO_GORIYAKU_IDS.items()}
+    before_map = dict(NEED_TO_GORIYAKU_CONCEPTS)
     before_gate = evidence_gate.FACT_READY_VERIFICATION_STATUSES
 
     activate(APPS, None)
 
-    assert {k: set(v) for k, v in NEED_TO_GORIYAKU_IDS.items()} == before_map
-    assert NEED_TO_GORIYAKU_IDS["travel_safe"] == {3, 13, 14}
+    assert dict(NEED_TO_GORIYAKU_CONCEPTS) == before_map
+    assert NEED_TO_GORIYAKU_CONCEPTS["travel_safe"] == {"traffic_safety", "maritime_safety"}
     assert evidence_gate.FACT_READY_VERIFICATION_STATUSES == before_gate

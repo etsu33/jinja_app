@@ -20,6 +20,7 @@ import pytest
 
 from temples.models import GoriyakuTag
 from temples.services.concierge_chat import build_chat_recommendations
+from temples.tests.fixtures.goriyaku_canonical import canonical_tag_names
 
 
 def _candidate(name, goriyaku_tag_ids, **overrides):
@@ -34,6 +35,7 @@ def _candidate(name, goriyaku_tag_ids, **overrides):
         "popular_score": 5.0,
     }
     base.update(overrides)
+    base.setdefault("goriyaku_tag_names", canonical_tag_names(base.get("goriyaku_tag_ids") or []))
     return base
 
 
@@ -82,7 +84,7 @@ def test_travel_safe_reason_no_longer_uses_generic_fallback():
     ("need", "query", "candidate_name", "goriyaku_tag_ids", "expected_lead", "expected_intent"),
     [
         ("focus", "集中力を高めたい", "学業成就神社", [9], "学業成就", "集中や習慣づくり"),
-        ("focus", "習慣を身につけたい", "合格祈願神社", [10], "合格祈願", "集中や習慣づくり"),
+        ("focus", "習慣を身につけたい", "技芸上達神社", [31], "技芸上達", "集中や習慣づくり"),
         ("travel_safe", "交通安全を祈願したい", "交通安全神社", [3], "交通安全", "移動や旅の安全"),
         ("travel_safe", "出張が多いので安全を願いたい", "航海安全神社", [13], "航海安全", "移動や旅の安全"),
     ],

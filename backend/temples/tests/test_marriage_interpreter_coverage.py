@@ -109,6 +109,7 @@ def test_marriage_and_mental_rest_coexist_as_real_matches_in_recommendations():
             {
                 "name": "縁結び神社",
                 "goriyaku_tag_ids": [1],
+                "goriyaku_tag_names": ["縁結び"],
                 "goriyaku": "",
                 "description": "",
                 "astro_tags": [],

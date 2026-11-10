@@ -5,9 +5,9 @@
 #         -> exactly the canonical 39-row master, ids 1..39
 #
 # This is deliberately *not* a "does the expected list contain 39 names" test.
-# The Recommendation runtime addresses ご利益 by numeric `GoriyakuTag.id`
-# (`temples.domain.need_to_goriyaku_tag_ids.NEED_TO_GORIYAKU_IDS`, pinned by
-# `test_need_to_goriyaku_tag_ids.py`), so the id->name assignment produced by a
+# Recommendation now matches ご利益 by tag name through concepts
+# (`temples.domain.need_to_goriyaku_concepts`), but test fixtures and audits still
+# rely on the canonical id->name assignment, so the assignment produced by a
 # fresh Production bootstrap is itself a contract. The test therefore drives the
 # real Production entrypoint — `bootstrap_production_data`, which runs a Base-only
 # `import_shrines_seed`, then `backfill_goriyaku_tags --force`, then a second

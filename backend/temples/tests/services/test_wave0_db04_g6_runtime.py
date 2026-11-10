@@ -44,7 +44,10 @@ EXECUTION_SHRINE_NAMES = {
 }
 ELIGIBILITY_TARGET_NAMES = {"大阪天満宮", "大崎八幡宮"}
 # PR-D / PR-E の data から決まる Channel B typed match の件数（SP3 の修正で変わらない）。
-EXPECTED_TYPED_MATCH_COUNTS = {"大阪天満宮": 7, "大崎八幡宮": 14}
+# 相談の種類の対応を概念で結ぶようにして、大阪天満宮 7 → 6、大崎八幡宮 14 → 10。
+# 番号で結んでいたときのずれ（家内安全→health/rest、勝運→mental/protection、心願成就→money、
+# 合格祈願→focus）が消え、方除け→protection、勝運→courage が加わった。
+EXPECTED_TYPED_MATCH_COUNTS = {"大阪天満宮": 6, "大崎八幡宮": 10}
 # 根拠のない神社固有の御利益の断定（SP3）。
 UNSUPPORTED_BENEFIT_CLAIMS = ("ご利益で知られる", "のご利益がある")
 # MS-5: request の Need（study）に Channel B だけが一致するときに選ばれる Source Fact と理由文。

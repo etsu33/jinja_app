@@ -38,6 +38,7 @@ from temples.services.concierge_chat_ranking import (
 )
 from temples.tests.support.recommendation_eligibility import attach_usable_deity_fact
 from temples.tests.test_bootstrap_goriyaku_master_exact39_contract import CANONICAL_MASTER
+from temples.tests.fixtures.goriyaku_canonical import canonical_tag_names
 
 PRAYER = "official_prayer_supported"
 GUIDANCE = "official_current_guidance_supported"
@@ -67,6 +68,7 @@ def _candidate(*matches, **fields) -> dict:
         "popular_score": 0.0,
     }
     row.update(fields)
+    row.setdefault("goriyaku_tag_names", canonical_tag_names(row.get("goriyaku_tag_ids") or []))
     if matches:
         row[CHANNEL_B_TYPED_NEED_MATCHES_KEY] = tuple(matches)
     return row

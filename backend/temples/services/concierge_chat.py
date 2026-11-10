@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional
 from django.conf import settings as dj_settings
 from temples.domain.consultation_axis import resolve_consultation_axis
 from temples.domain.shrine_identity import resolve_shrine_id, resolve_shrine_identity
-from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
 from temples.models import GoriyakuTag
 
 from temples.services.concierge_candidate_utils import _normalize_candidate_fields
@@ -197,7 +196,6 @@ def _attach_chat_rec_enrichment(
     user=None,
     profile_context: Optional[Dict[str, Any]] = None,
     consultation_axis: Optional[str] = None,
-    need_gid_label_by_id: Optional[Dict[int, str]] = None,
     batch_history: bool = True,
 ) -> Dict[str, Any]:
     # B-1: 認証済み user の履歴を候補ぶんまとめて読む（table ごとに 1 クエリ、候補数に依存しない）。
@@ -242,7 +240,6 @@ def _attach_chat_rec_enrichment(
             public_mode=public_mode,  # type: ignore[arg-type]
             birthdate=birthdate,
             need_tags=need_tags,
-            need_gid_label_by_id=need_gid_label_by_id,
         )
         _attach_reason_source(
             rec,
@@ -882,16 +879,8 @@ def build_chat_recommendations(
 
     goriyaku_tag_label_by_id = _build_goriyaku_tag_label_by_id(goriyaku_tag_ids)
 
-    # Lead Purpose Alignment (docs/audit/compass-need-lead-purpose-alignment.md
-    # Option C): batch-fetch labels for each requested need tag's own expected
-    # GoriyakuTag ids -- one query for the whole request (not per-candidate),
-    # independent of goriyaku_tag_label_by_id above, which is scoped to
-    # user-selected search filter ids and is empty for Compass's purpose-only
-    # calls.
-    need_expected_gid_ids: set[int] = set()
-    for tag in need_tags or []:
-        need_expected_gid_ids |= NEED_TO_GORIYAKU_IDS.get(str(tag).strip(), set())
-    need_gid_label_by_id = _build_goriyaku_tag_label_by_id(sorted(need_expected_gid_ids))
+    # Lead Purpose Alignment: 一致した札の名前は、各候補の goriyaku_tag_names から
+    # need_to_goriyaku_concepts で引く（札の番号は使わない。データベースへの問い合わせも無い）。
 
     recs = _attach_chat_rec_enrichment(
         recs,
@@ -909,7 +898,6 @@ def build_chat_recommendations(
         user=user,
         profile_context=profile_context,
         consultation_axis=consultation_axis_value,
-        need_gid_label_by_id=need_gid_label_by_id,
     )
     recs["consultation_axis"] = consultation_axis_value
     for rec in recs.get("recommendations") or []:

@@ -18,7 +18,7 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from temples.domain import source_fact_mapping_registry_v1 as registry_module
-from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
+from temples.domain.need_to_goriyaku_concepts import NEED_TO_GORIYAKU_CONCEPTS, needs_for_tag_name
 from temples.domain.source_fact_mapping_registry_v1 import (
     SourceFactMappingRecord,
     SourceFactMappingRegistryError,
@@ -281,11 +281,21 @@ def test_confidence_does_not_gate_readability(install_registry):
 
 
 def test_t10_r10_concept_without_need_mapping_yields_no_match(install_registry):
+    # 家内安全（household_safety）は、どの相談の種類にも結ばない。
+    _tag("家内安全")
+    shrine = _shrine()
+    _fact(shrine, wording="家内安全")
+    install_registry(_record("synthetic-channel-b-0001", "家内安全"))
+    assert _matches(shrine) == ()
+
+
+def test_hoyoke_reaches_protection_through_the_all_direction_warding_concept(install_registry):
+    # 方除け は八方除（all_direction_warding）の別名。protection の概念に入る。
     _tag("方除け")
     shrine = _shrine()
     _fact(shrine, wording="方除")
     install_registry(_record("synthetic-channel-b-0001", "方除け", "SAFE_NORMALIZATION"))
-    assert _matches(shrine) == ()
+    assert [m.need for m in _matches(shrine)] == ["protection"]
 
 
 def test_t11_multi_need_concept_yields_one_match_per_need(install_registry):
@@ -294,7 +304,7 @@ def test_t11_multi_need_concept_yields_one_match_per_need(install_registry):
     _fact(shrine, wording="金運")
     install_registry(_record("synthetic-channel-b-0001", "金運"))
     matches = _matches(shrine)
-    assert [m.need for m in matches] == ["mental", "money"]
+    assert [m.need for m in matches] == ["money"]
     assert {(m.source_fact_key, m.canonical_concept_name, m.signal_type) for m in matches} == {
         ("synthetic-channel-b-0001", "金運", PRAYER)
     }
@@ -317,19 +327,20 @@ def test_t12_multiple_facts_same_need_keep_separate_provenance(install_registry)
 
 
 def test_t13_multiple_concepts_same_need_keep_separate_provenance(install_registry):
+    # 五穀豊穣（harvest）は money の概念に入らないため、金運（financial_fortune）で確かめる。
     _tag("商売繁盛")
-    _tag("五穀豊穣")
+    _tag("金運")
     shrine = _shrine()
     _fact(shrine, key="synthetic-channel-b-0001")
-    _fact(shrine, key="synthetic-channel-b-0002", wording="五穀豊穣")
+    _fact(shrine, key="synthetic-channel-b-0002", wording="金運")
     install_registry(
         _record("synthetic-channel-b-0001", "商売繁盛"),
-        _record("synthetic-channel-b-0002", "五穀豊穣"),
+        _record("synthetic-channel-b-0002", "金運"),
     )
     matches = _matches(shrine)
     assert [(m.need, m.canonical_concept_name) for m in matches] == [
         ("money", "商売繁盛"),
-        ("money", "五穀豊穣"),
+        ("money", "金運"),
     ]
 
 
@@ -339,9 +350,9 @@ def test_t14_t15_need_keys_are_the_shared_keys_without_alias_normalization(insta
     _fact(shrine, wording="縁結び")
     install_registry(_record("synthetic-channel-b-0001", "縁結び"))
     needs = [m.need for m in _matches(shrine)]
-    expected = sorted(k for k, ids in NEED_TO_GORIYAKU_IDS.items() if 1 in ids)
+    expected = list(needs_for_tag_name("縁結び"))
     assert needs == expected == ["love", "marriage", "relationship"]
-    assert set(needs) <= set(NEED_TO_GORIYAKU_IDS)
+    assert set(needs) <= set(NEED_TO_GORIYAKU_CONCEPTS)
 
 
 def test_needs_for_concept_does_not_call_alias_normalizer(monkeypatch):
@@ -350,7 +361,7 @@ def test_needs_for_concept_does_not_call_alias_normalizer(monkeypatch):
 
     monkeypatch.setattr("temples.services.concierge_chat_ranking._normalize_need_tag", _boom)
     monkeypatch.setattr("temples.services.concierge_chat_need.normalize_need_tag", _boom)
-    assert channel_b.needs_for_concept_id(28) == ("mental", "money")
+    assert channel_b.needs_for_concept_name("金運") == ("money",)
 
 
 # ---------- fail-closed（R3 / R4 / R5 / R6 / R7, T37 / T38） ----------

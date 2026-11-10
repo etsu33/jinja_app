@@ -41,6 +41,7 @@ from temples.services.concierge_chat_ranking import (
 from temples.services.concierge_explanation_payload import (
     NEED_LABELS_JA as EXPLANATION_NEED_LABELS_JA,
 )
+from temples.tests.fixtures.goriyaku_canonical import canonical_tag_names
 
 ACTIVE_NEED_LABEL_DICTS = {
     "concierge_chat_ranking.NEED_LABELS_JA": RANKING_NEED_LABELS_JA,
@@ -140,6 +141,7 @@ def _candidate(name, goriyaku_tag_ids, **overrides):
         "popular_score": 5.0,
     }
     base.update(overrides)
+    base.setdefault("goriyaku_tag_names", canonical_tag_names(base.get("goriyaku_tag_ids") or []))
     return base
 
 
@@ -157,7 +159,7 @@ def _candidate(name, goriyaku_tag_ids, **overrides):
     [
         ("marriage", "結婚したい", "夫婦円満神社", [18]),
         ("relationship", "職場の人間関係を改善したい", "縁結び神社", [1]),
-        ("health", "健康でいたい", "健康神社", [7]),
+        ("health", "健康でいたい", "健康神社", [24]),
         # family GID mapping narrowed to {16, 35} under Track M1 (Mother Ship
         # 2026-08-29, Family = NARROW / DROP_ALL); id 16 (安産) is now family
         # evidence, id 2 (厄除け, formerly family, now protection-only) is not.
