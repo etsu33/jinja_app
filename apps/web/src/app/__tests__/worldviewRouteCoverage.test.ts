@@ -48,6 +48,7 @@ const ROUTE_MATRIX: Record<string, Category> = {
   "/shrines/[id]/goshuins": "USER_FACING_WORLDVIEW",
   "/shrines/new": "USER_FACING_WORLDVIEW",
   "/terms": "USER_FACING_WORLDVIEW",
+  "/tokushoho": "USER_FACING_WORLDVIEW",
   "/users/[username]": "USER_FACING_WORLDVIEW",
   "/debug/concierge": "INTERNAL_DEBUG",
   "/debug/concierge-fixture": "INTERNAL_DEBUG",

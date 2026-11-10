@@ -99,6 +99,7 @@ describe("BillingUpgradePage", () => {
       "href",
       "/privacy",
     );
+    expect(screen.getByRole("link", { name: "特定商取引法に基づく表記" })).toHaveAttribute("href", "/tokushoho");
   });
 
   it("LegalリンクはCTAより視覚的に弱い", () => {

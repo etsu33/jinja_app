@@ -33,6 +33,9 @@ export function LegalFooter() {
         <Link href="/privacy" className={LINK_CLASS}>
           プライバシーポリシー
         </Link>
+        <Link href="/tokushoho" className={LINK_CLASS}>
+          特定商取引法に基づく表記
+        </Link>
         <a href={CONTACT_MAILTO_HREF} className={LINK_CLASS}>
           お問い合わせ
         </a>
