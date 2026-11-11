@@ -72,8 +72,37 @@ def normalize_visit_preferences(values: Iterable[object] | None) -> List[str]:
     return out
 
 
+# 相談の種類から自動で足す参拝の好み。休息・不安の相談では、ご利益・歴史のテーマなどの
+# 手がかりが少ないため、場の性質（静か・自然・人が少なめ）を順位にだけ効かせる。
+# - 自動で足した好みは点数にだけ使い、主な根拠・説明の文には使わない
+#   （concierge_chat_ranking._attach_breakdown の implied_visit_style_tags）。
+# - 利用者が選んだ好み・相談文の言葉から拾った好みと同じものは足さない（重ねて数えない）。
+# - 何個一致しても、点数は IMPLIED_VISIT_STYLE_MAX_MATCHES 個分まで。
+NEED_IMPLIED_VISIT_STYLE_TAGS: dict[str, FrozenSet[str]] = {
+    "rest": frozenset({"quiet", "nature", "less_crowded"}),
+    "mental": frozenset({"quiet", "nature", "less_crowded"}),
+}
+IMPLIED_VISIT_STYLE_MAX_MATCHES = 1
+
+
+def implied_visit_style_tags_for_needs(
+    need_tags: Iterable[object] | None,
+    *,
+    explicit_tags: Iterable[object] | None = None,
+) -> FrozenSet[str]:
+    """相談の種類から自動で足す参拝の好み（explicit_tags にあるものは除く）。"""
+    implied: set[str] = set()
+    for need in need_tags or []:
+        implied |= NEED_IMPLIED_VISIT_STYLE_TAGS.get(str(need or "").strip(), frozenset())
+    explicit = {str(tag or "").strip() for tag in (explicit_tags or [])}
+    return frozenset(implied - explicit)
+
+
 __all__ = [
     "VISIT_PREFERENCE_TAGS",
     "MAX_VISIT_PREFERENCES",
+    "NEED_IMPLIED_VISIT_STYLE_TAGS",
+    "IMPLIED_VISIT_STYLE_MAX_MATCHES",
+    "implied_visit_style_tags_for_needs",
     "normalize_visit_preferences",
 ]

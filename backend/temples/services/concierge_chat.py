@@ -29,6 +29,7 @@ from temples.services.concierge_chat_extra_condition import (
     resolve_extra_condition_tags,
     resolve_visit_preference_tags,
 )
+from temples.domain.visit_preference import implied_visit_style_tags_for_needs
 from temples.services.concierge_chat_llm_route import (
     resolve_llm_route,
 )
@@ -192,6 +193,7 @@ def _attach_chat_rec_enrichment(
     visit_style_tags: set[str],
     goriyaku_tag_ids: Optional[List[int]],
     goriyaku_tag_label_by_id: Dict[int, str],
+    implied_visit_style_tags: Optional[set[str]] = None,
     user_origin: Optional[Dict[str, Any]] = None,
     user=None,
     profile_context: Optional[Dict[str, Any]] = None,
@@ -223,6 +225,7 @@ def _attach_chat_rec_enrichment(
             weights=weights,
             astro_bonus_enabled=astro_bonus_enabled,
             visit_style_tags=visit_style_tags,
+            implied_visit_style_tags=implied_visit_style_tags,
             requested_goriyaku_tag_ids=goriyaku_tag_ids,
             goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
             user_origin=user_origin,
@@ -787,6 +790,11 @@ def build_chat_recommendations(
         structured=visit_preferences,
         legacy_visit_style_tags=extra_tags["visit_style_tags"],
     )
+    # 休息・不安の相談では、参拝の好み（静か・自然・人が少なめ）を自動で足す。点数にだけ使い、
+    # 主な根拠・説明の文には使わないため、visit_style_tags とは別に渡す。
+    implied_visit_style_tags = set(
+        implied_visit_style_tags_for_needs(need_tags, explicit_tags=visit_style_tags)
+    )
 
     log.info(
         "[dbg] extra_tags resolved sort=%r soft=%r visit_style=%r has_query=%s has_extra=%s has_visit_preferences=%s",
@@ -818,6 +826,7 @@ def build_chat_recommendations(
             "sort_tags": sorted(sort_tags),
             "hard_filter_tags": sorted(hard_filter_tags),
             "visit_style_tags": sorted(visit_style_tags),
+            "implied_visit_style_tags": sorted(implied_visit_style_tags),
         },
     )
 
@@ -894,6 +903,7 @@ def build_chat_recommendations(
         visit_style_tags=visit_style_tags,
         goriyaku_tag_ids=goriyaku_tag_ids,
         goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
+        implied_visit_style_tags=implied_visit_style_tags,
         user_origin=bias,
         user=user,
         profile_context=profile_context,
