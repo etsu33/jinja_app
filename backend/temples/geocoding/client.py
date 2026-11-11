@@ -119,6 +119,105 @@ def geocode_google_point(
         )
         return None
 
+GOOGLE_GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
+
+# Google の Geocoding API（v3）の status → 呼び出し側で見分けるための結果の名前。
+_GOOGLE_STATUS_OUTCOMES = {
+    "OK": "ok",
+    "ZERO_RESULTS": "zero_results",
+    "OVER_QUERY_LIMIT": "quota_exceeded",
+    "OVER_DAILY_LIMIT": "quota_exceeded",
+    "REQUEST_DENIED": "request_denied",
+    "INVALID_REQUEST": "invalid_request",
+    "UNKNOWN_ERROR": "unknown_error",
+}
+
+
+@dataclass(frozen=True)
+class GoogleGeocodeResponse:
+    """Google の地名検索の結果。
+
+    outcome: ok / zero_results / quota_exceeded / request_denied / invalid_request /
+             unknown_error / missing_key / http_error / timeout / network_error / bad_response
+    """
+
+    outcome: str
+    results: list
+    http_status: int | None = None
+
+
+def google_geocode_search(
+    address: str,
+    *,
+    language: str,
+    region: str = "jp",
+    timeout: float = 6.0,
+) -> GoogleGeocodeResponse:
+    """Geocoding API（v3）で地名・住所の候補を引く。例外は投げない。
+
+    - region は優先する国の指定（その国に限る指定ではない）。
+    - ログには鍵の値・相談の言葉・Google のエラーの説明文を出さない（結果の名前・HTTP の状態・
+      件数・言葉の文字数だけ）。通信の例外は、文に URL（鍵入り）が入るので種類だけ出す。
+    """
+    address = (address or "").strip()
+    key = _google_maps_api_key()
+    if not key:
+        logger.error("[google_geocode] outcome=missing_key query_length=%d", len(address))
+        return GoogleGeocodeResponse(outcome="missing_key", results=[])
+
+    try:
+        r = requests.get(
+            GOOGLE_GEOCODE_URL,
+            params={"key": key, "address": address, "language": language, "region": region},
+            timeout=timeout,
+        )
+    except requests.Timeout as e:
+        logger.warning("[google_geocode] outcome=timeout type=%s query_length=%d", type(e).__name__, len(address))
+        return GoogleGeocodeResponse(outcome="timeout", results=[])
+    except Exception as e:
+        logger.warning(
+            "[google_geocode] outcome=network_error type=%s query_length=%d", type(e).__name__, len(address)
+        )
+        return GoogleGeocodeResponse(outcome="network_error", results=[])
+
+    http_status = getattr(r, "status_code", None)
+    if http_status != 200:
+        outcome = {403: "request_denied", 429: "quota_exceeded"}.get(http_status, "http_error")
+        logger.warning(
+            "[google_geocode] outcome=%s http_status=%s query_length=%d", outcome, http_status, len(address)
+        )
+        return GoogleGeocodeResponse(outcome=outcome, results=[], http_status=http_status)
+
+    try:
+        payload = r.json()
+        status = str(payload.get("status") or "")
+        results = payload.get("results") or []
+        if not isinstance(results, list):
+            raise ValueError("results is not a list")
+    except Exception as e:
+        logger.warning(
+            "[google_geocode] outcome=bad_response type=%s query_length=%d", type(e).__name__, len(address)
+        )
+        return GoogleGeocodeResponse(outcome="bad_response", results=[], http_status=http_status)
+
+    outcome = _GOOGLE_STATUS_OUTCOMES.get(status, "unknown_error")
+    log = logger.info if outcome in {"ok", "zero_results"} else logger.warning
+    if outcome == "request_denied":
+        log = logger.error
+    log(
+        "[google_geocode] outcome=%s google_status=%s result_count=%d query_length=%d",
+        outcome,
+        status or "-",
+        len(results),
+        len(address),
+    )
+    return GoogleGeocodeResponse(
+        outcome=outcome,
+        results=results if outcome == "ok" else [],
+        http_status=http_status,
+    )
+
+
 class GeocodingClient:
     def __init__(self, session: t.Optional[requests.Session] = None):
         self.session = session or requests.Session()
