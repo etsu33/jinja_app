@@ -291,7 +291,8 @@ FEATURE_WORDS: Tuple[FeatureWord, ...] = (
         "Story",
         "Shinto-Buddhist blend",
         "神仏習合の名残",
-        ("buddhist", "buddhism", "temple", "syncretism", "shinto and buddhist"),
+        # temple は入れない（お寺は対象外。2026-11-12 決定）
+        ("buddhist", "buddhism", "syncretism", "shinto and buddhist"),
     ),
     FeatureWord(
         "ST_MOUNTAIN_WORSHIP",

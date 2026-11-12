@@ -67,6 +67,13 @@ def test_no_match_and_empty_input():
         assert result.matched is False
 
 
+def test_temple_is_not_in_the_dictionary():
+    # お寺は対象外（2026-11-12 決定）。temple と書かれた相談はどの語にも当たらず、取りこぼしとして記録される
+    assert extract_feature_words("I want to visit a temple").ids == []
+    assert extract_feature_words("old temples in Tokyo").ids == []
+    assert extract_feature_words("Shinto and Buddhist mix").ids == ["ST_SYNCRETISM"]
+
+
 def test_payload_shape():
     payload = extract_feature_words("quiet forest").as_payload()
     assert set(payload) == {"version", "ids", "hits", "matched"}
