@@ -79,3 +79,33 @@ def test_feature_words_do_not_change_recommendations(client, stub_pipeline):
 
 def _names(body):
     return [r.get("name") for r in body["data"]["recommendations"]]
+
+
+@pytest.mark.django_db
+def test_english_request_records_overlap_with_recommended_shrines(client, monkeypatch):
+    from temples.models import Shrine
+
+    akasaka = Shrine.objects.create(
+        name_jp="赤坂氷川神社", kind="shrine", address="東京都港区赤坂6-10-12"
+    )
+    monkeypatch.setattr("temples.api_views_concierge.build_chat_candidates", lambda **kwargs: [])
+    monkeypatch.setattr(
+        "temples.api_views_concierge.build_chat_recommendations",
+        lambda **kwargs: {
+            "recommendations": [{"name": "赤坂氷川神社", "reason": "ok", "shrine_id": akasaka.pk}]
+        },
+    )
+
+    r = _post(
+        client,
+        {"query": "Somewhere quiet with old trees", "language": "en", "lat": 35.0, "lng": 139.0},
+    )
+    assert r.status_code == 200
+
+    shrine_matches = r.json()["feature_words_en"]["shrine_matches"]
+    assert shrine_matches["matches"][0]["covered"] is True
+    assert shrine_matches["matches"][0]["overlap_ids"] == ["S_FOREST", "F_QUIET"]
+
+    log_row = ConciergeRecommendationLog.objects.latest("created_at")
+    logged = log_row.result_state["feature_words_en"]["shrine_matches"]
+    assert logged["matches"][0]["overlap_count"] == 2
