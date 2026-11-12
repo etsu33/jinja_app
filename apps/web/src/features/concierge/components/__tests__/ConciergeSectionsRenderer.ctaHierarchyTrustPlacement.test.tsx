@@ -259,7 +259,13 @@ describe("Recommendation Result CTA Hierarchy & Trust Placement", () => {
   it("8. 推薦理由ナラティブの各セクション見出しが <h2> で、bordered card ではない", () => {
     authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
     const payload = buildTestPayload([
-      heroRec({ trust_metadata: trustFixture, history_theme: "再出発", breakdown: { matched_need_tags: ["career"] } }),
+      heroRec({
+        trust_metadata: trustFixture,
+        history_theme: "再出発",
+        breakdown: { matched_need_tags: ["career"] },
+        // need tag が一致したとき、バックエンドは primary_reason_source=need_tag を返す
+        primary_reason_source: "need_tag",
+      }),
     ]);
     render(<ConciergeSectionsRenderer payload={payload} threadId={500} isPremiumActive={true} />);
 
@@ -367,7 +373,9 @@ describe("Recommendation Result CTA Hierarchy & Trust Placement", () => {
 
   it("G2-5. seam は Hero / FREE reason 層のあとに現れる(いきなり Premium 誘導しない)", () => {
     authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
-    const payload = buildTestPayload([heroRec({ breakdown: { matched_need_tags: ["career"] } })]);
+    const payload = buildTestPayload([
+      heroRec({ breakdown: { matched_need_tags: ["career"] }, primary_reason_source: "need_tag" }),
+    ]);
     render(<ConciergeSectionsRenderer payload={payload} threadId={500} isPremiumActive={false} />);
 
     const primaryCta = strongCtaElements()[0];
