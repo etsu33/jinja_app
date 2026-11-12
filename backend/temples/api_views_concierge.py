@@ -59,6 +59,7 @@ from temples.services.concierge_plan import build_plan_response
 from temples.services.consultation_interpreter import interpret_consultation
 from temples.services.consultation_meaning import extract_consultation_meaning
 from temples.services.billing_state import is_premium_for_user  # test monkeypatch compatibility
+from temples.services.shrine_features_en import build_shrine_feature_matches
 
 
 
@@ -281,6 +282,31 @@ def _resolve_request_location_inputs(
         if pt:
             lat, lng = pt
     return lat, lng
+
+def _attach_shrine_matches(
+    feature_words_en: Optional[Dict[str, Any]],
+    recs: Dict[str, Any],
+    rid: str,
+) -> Optional[Dict[str, Any]]:
+    """英語の相談のとき、推薦された神社ごとに「相談の語と神社の語の重なり」を足す。
+
+    記録用で、並び順には使わない（temples/services/shrine_features_en.py）。
+    失敗しても応答は止めない。
+    """
+    if feature_words_en is None:
+        return None
+    try:
+        return {
+            **feature_words_en,
+            "shrine_matches": build_shrine_feature_matches(
+                recs.get("recommendations") or [],
+                feature_words_en.get("ids") or [],
+            ),
+        }
+    except Exception:
+        log.exception("[concierge/feature_words_en] shrine_matches failed rid=%s", rid)
+        return feature_words_en
+
 
 def _build_chat_response(
     intent: Dict[str, Any],
@@ -960,6 +986,8 @@ class ConciergeChatView(APIView):
             t0 = time.perf_counter()
 
             from temples.services.concierge_observability import save_concierge_recommendation_log
+
+            feature_words_en = _attach_shrine_matches(feature_words_en, recs, rid)
 
             signals = recs.get("_signals") or {}
             llm_meta = signals.get("llm") or {}

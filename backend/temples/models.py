@@ -12,6 +12,7 @@ from .models_places_seeds import PlacesSeed, PlacesSeedState  # noqa
 from .models_concierge_analytics import ConciergeRecommendationLog
 from .models_usage import FeatureUsage  # noqa
 from .models_weekly_presentation import WeeklyPresentationSnapshot  # noqa
+from .models_feature_words_en import ShrineFeatureWordEn  # noqa
 from .models_canonical_anchor import (  # noqa
     ShrineCanonicalAnchor,
     ShrineCanonicalAnchorComponent,

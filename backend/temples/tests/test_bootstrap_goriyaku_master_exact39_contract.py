@@ -196,6 +196,12 @@ def test_fresh_bootstrap_runs_the_declared_production_steps_in_order(monkeypatch
             "import_shrines_seed",
             (),
         ),
+        # 英語の特徴語（travel モードの検証用）。ご利益の master には触らない
+        (
+            "import_feature_words_en",
+            "import_feature_words_en",
+            (),
+        ),
     ]
 
     _reset_to_fresh_bootstrap_state()
@@ -209,6 +215,7 @@ def test_fresh_bootstrap_runs_the_declared_production_steps_in_order(monkeypatch
         ("import_shrines_seed_base", ProductionDataBootstrapRun.Status.SUCCESS),
         ("backfill_goriyaku_tags", ProductionDataBootstrapRun.Status.SUCCESS),
         ("sync_explicit_goriyaku_tags", ProductionDataBootstrapRun.Status.SUCCESS),
+        ("import_feature_words_en", ProductionDataBootstrapRun.Status.SUCCESS),
     ]
     assert _master_rows() == list(CANONICAL_MASTER)
 
