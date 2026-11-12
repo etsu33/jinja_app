@@ -8,6 +8,7 @@
 """
 
 import json
+from io import StringIO
 
 import pytest
 
@@ -101,9 +102,12 @@ def test_travel_mode_does_not_change_recommendations(client, stub_pipeline):
 def test_travel_mode_records_overlap_with_recommended_shrines(client, monkeypatch):
     from temples.models import Shrine
 
+    from django.core.management import call_command
+
     akasaka = Shrine.objects.create(
         name_jp="赤坂氷川神社", kind="shrine", address="東京都港区赤坂6-10-12"
     )
+    call_command("import_feature_words_en", stdout=StringIO(), stderr=StringIO())
     monkeypatch.setattr("temples.api_views_concierge.build_chat_candidates", lambda **kwargs: [])
     monkeypatch.setattr(
         "temples.api_views_concierge.build_chat_recommendations",

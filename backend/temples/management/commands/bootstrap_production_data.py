@@ -40,6 +40,12 @@ BOOTSTRAP_STEPS: tuple[BootstrapStep, ...] = (
         version="2026-09-10-explicit-goriyaku-tags-v1",
         command="import_shrines_seed",
     ),
+    # 英語の特徴語（travel モードの検証用）。シードJSONを直したら version を上げて取り込み直す。
+    BootstrapStep(
+        step="import_feature_words_en",
+        version="2026-11-12-v1",
+        command="import_feature_words_en",
+    ),
 )
 
 
@@ -193,6 +199,10 @@ class Command(BaseCommand):
         self.stdout.write(
             f"[bootstrap_production_data] Shrine with goriyaku_tags: {shrine_with_goriyaku_tags}"
         )
-        self.stdout.write(f"[bootstrap_production_data] PlaceCache total: {self._safe_count(PlaceCache)}")
-        self.stdout.write(f"[bootstrap_production_data] PlacesSeed total: {self._safe_count(PlacesSeed)}")
+        self.stdout.write(
+            f"[bootstrap_production_data] PlaceCache total: {self._safe_count(PlaceCache)}"
+        )
+        self.stdout.write(
+            f"[bootstrap_production_data] PlacesSeed total: {self._safe_count(PlacesSeed)}"
+        )
         self.stdout.write("[bootstrap_production_data] concierge_candidate_counts done")
