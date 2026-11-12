@@ -389,7 +389,7 @@ def strip_concierge_birthdate_inputs(
     profile_context: Optional[Dict[str, Any]],
     mode: Any,
     rid: str = "",
-) -> tuple[Optional[Dict[str, Any]], Optional[str]]:
+) -> Optional[Dict[str, Any]]:
     """相談の API の入り口で、生年月日に関わる入力を外す。
 
     - 本文・filters・日付だけの相談文から来た birthdate は使わない（呼び出し側は birthdate=None にする）
@@ -397,11 +397,11 @@ def strip_concierge_birthdate_inputs(
     - mode="compat"（相性モード）は使わない（None にして、相談の内容からモードを決める）
 
     外した入力は件数だけログに出す（値は出さない）。
-    返り値: (外したあとの profile_context, モードの指定)
+    返り値: 外したあとの profile_context。モードの指定は resolve_concierge_requested_mode() で決める
+    （モードは生年月日のデータではないため、この関数の戻り値から取らない）。
     """
     cleaned, profile_counts = strip_concierge_profile_context_birthdate(profile_context)
-    requested_mode = str(mode or "").strip().lower() or None
-    mode_compat = requested_mode == "compat"
+    mode_compat = str(mode or "").strip().lower() == "compat"
     from_body_or_filters = bool(sources.get("body") or sources.get("filters"))
     counts = {
         "body": int(bool(sources.get("body"))),
@@ -416,4 +416,10 @@ def strip_concierge_birthdate_inputs(
             rid,
             " ".join(f"{key}={value}" for key, value in counts.items()),
         )
-    return cleaned, (None if mode_compat else requested_mode)
+    return cleaned
+
+
+def resolve_concierge_requested_mode(mode: Any) -> Optional[str]:
+    """コンシェルジュのモードの指定。相性モード（compat）は使わない（None にして、相談の内容から決める）。"""
+    requested = str(mode or "").strip().lower() or None
+    return None if requested == "compat" else requested

@@ -34,6 +34,7 @@ from temples.services.anonymous_id import attach_anonymous_cookie, build_anonymo
 from temples.services.concierge_input_contract import (
     normalize_concierge_request,
     concierge_birthdate_request_sources,
+    resolve_concierge_requested_mode,
     resolve_profile_context_birthdate,
     strip_concierge_birthdate_inputs,
     build_concierge_recommendation_context,
@@ -531,7 +532,8 @@ class ConciergeChatView(APIView):
             )
 
             raw_profile_context_value = data.get("profile_context")
-            raw_profile_context, requested_mode = strip_concierge_birthdate_inputs(
+            requested_mode = resolve_concierge_requested_mode(data.get("mode"))
+            raw_profile_context = strip_concierge_birthdate_inputs(
                 sources=birthdate_sources,
                 canonical_birthdate=canonical_input.birthdate,
                 profile_context=dict(raw_profile_context_value) if isinstance(raw_profile_context_value, dict) else None,
