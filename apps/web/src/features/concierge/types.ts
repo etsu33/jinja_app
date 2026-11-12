@@ -10,13 +10,11 @@ export type PendingAction =
 export type ConciergeSessionState = {
   mode: ConciergeMode;
   sessionNickname: string | null;
-  temporaryBirthdate: string | null;
   pendingAction: PendingAction;
 };
 
 export const initialConciergeSessionState: ConciergeSessionState = {
   mode: "need",
   sessionNickname: null,
-  temporaryBirthdate: null,
   pendingAction: { type: "none" },
 };

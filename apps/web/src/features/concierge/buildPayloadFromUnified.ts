@@ -374,7 +374,8 @@ export function buildPayloadFromUnified(
   const analyticsContext: DetailAnalyticsContext = {
     mode: analyticsMode,
     flow: analyticsFlow,
-    hasBirthdate: Boolean(filterState.birthdate?.trim()),
+    // コンシェルジュでは生年月日を使わない。
+    hasBirthdate: false,
     recommendationCount: Array.isArray(recs) ? recs.length : undefined,
     consultationAxis,
   };

@@ -33,7 +33,9 @@ from temples.services.quota_service import check_quota, consume_quota
 from temples.services.anonymous_id import attach_anonymous_cookie, build_anonymous_cookie_value
 from temples.services.concierge_input_contract import (
     normalize_concierge_request,
+    concierge_birthdate_request_sources,
     resolve_profile_context_birthdate,
+    strip_concierge_birthdate_inputs,
     build_concierge_recommendation_context,
 )
 
@@ -507,6 +509,8 @@ class ConciergeChatView(APIView):
             phase = "resolve_inputs"
             t0 = time.perf_counter()
 
+            # 入力を読み取ると本文・filters・日付だけの相談文が birthdate にまとめられるため、先に出どころを見る。
+            birthdate_sources = concierge_birthdate_request_sources(data)
             canonical_input = normalize_concierge_request(data)
             query = canonical_input.query
             message = canonical_input.message
@@ -516,7 +520,9 @@ class ConciergeChatView(APIView):
             extra_condition = canonical_input.extra_condition
             visit_preferences = canonical_input.visit_preferences
 
-            birthdate = (canonical_input.birthdate or "").strip() or None
+            # コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）。
+            # Web・モバイルから送られても、順位付け・説明の文・見出しに使わない。
+            birthdate = None
 
             log.info(
                 "[concierge/perf] step=resolve_inputs rid=%s elapsed=%.3f",
@@ -525,7 +531,13 @@ class ConciergeChatView(APIView):
             )
 
             raw_profile_context_value = data.get("profile_context")
-            raw_profile_context = dict(raw_profile_context_value) if isinstance(raw_profile_context_value, dict) else None
+            raw_profile_context, requested_mode = strip_concierge_birthdate_inputs(
+                sources=birthdate_sources,
+                canonical_birthdate=canonical_input.birthdate,
+                profile_context=dict(raw_profile_context_value) if isinstance(raw_profile_context_value, dict) else None,
+                mode=data.get("mode"),
+                rid=rid,
+            )
             # Level 3-A Personal Profile (direction-calc precedence chain --
             # separate from canonical_input.birthdate, see
             # resolve_profile_context_birthdate() docstring).
@@ -563,7 +575,7 @@ class ConciergeChatView(APIView):
 
 
             public_mode = _resolve_public_mode(
-                mode=str(data.get("mode") or "").strip().lower() or None,
+                mode=requested_mode,
                 birthdate=birthdate,
                 query=query,
             )

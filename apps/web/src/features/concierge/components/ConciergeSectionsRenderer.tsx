@@ -720,14 +720,7 @@ export default function ConciergeSectionsRenderer({
                   }}
                   canApply={canApply}
                   applyLabel={isEntryRoute ? "この条件で提案を見る" : "この条件で提案を更新"}
-                  birthdate={state.birthdate}
-                  onBirthdateChange={(v: string) => onAction?.({ type: "filter_set_birthdate", birthdate: v })}
-                  // 認証判定の入口はここ1箇所。auth解決前は false 扱いにして、
-                  // 未確定の状態で保存説明を出さない（accessLevel と同じ条件）。
-                  isLoggedIn={!authLoading && isLoggedIn}
-                  element4={state.element4}
                   goriyakuTags={state.goriyakuTags}
-                  suggestedTags={state.suggestedTags}
                   selectedTagIds={state.selectedTagIds}
                   onToggleTag={(tagId: number) => onAction?.({ type: "filter_toggle_tag", tagId })}
                   tagsLoading={state.tagsLoading}
@@ -887,7 +880,6 @@ export default function ConciergeSectionsRenderer({
                           reasonFacts: heroItem.reasonFacts ?? null,
                           index: 0,
                           mode: normalizedMode,
-                          birthdate: filterState?.birthdate ?? null,
                           needTags: effectiveNeedTags,
                         });
                         const reasonDisplay = buildRecommendationReasonDisplay({
@@ -1204,8 +1196,7 @@ export default function ConciergeSectionsRenderer({
                                 reasonFacts: item.reasonFacts ?? null,
                                 index: compactIdx + 1,
                                 mode: normalizedMode,
-                                birthdate: filterState?.birthdate ?? null,
-                                needTags: item.breakdown?.matched_need_tags ?? [],
+                                      needTags: item.breakdown?.matched_need_tags ?? [],
                               });
                               const compactReasonDisplay = buildRecommendationReasonDisplay({
                                 matchReason: compactReasonVm.list.primaryPhrase,

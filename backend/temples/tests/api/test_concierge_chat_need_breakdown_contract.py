@@ -145,7 +145,7 @@ def test_concierge_chat_need_and_breakdown_contract(client, monkeypatch, setting
     assert isinstance(recs, list)
     assert len(recs) == 3
 
-    # 先頭(A)は pri=2 になるはず（ソートが変わっても name で取る）
+    # 名前で取る（生年月日を使わないため、並びは相談の一致・人気で決まる）
     by_name = {x.get("name"): x for x in recs if isinstance(x, dict)}
     assert set(by_name.keys()) >= {"A", "B", "C"}
 
@@ -159,12 +159,14 @@ def test_concierge_chat_need_and_breakdown_contract(client, monkeypatch, setting
         "popular": 0.1,
         "direction_bonus": 0.0,
     }
-    assert bd["score_element"] == 2
+    # コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）ため、
+    # birthdate を送っても生年月日の点（score_element）は 0。
+    assert bd["score_element"] == 0
     assert bd["matched_need_tags"] == ["career", "rest"]
     assert bd["score_need"] == 2
     assert bd["score_popular"] == 0.8
 
-    expected_total = 2 * 0.6 + 2 * 0.3 + 0.8 * 0.1
+    expected_total = 0 * 0.6 + 2 * 0.3 + 0.8 * 0.1
     assert bd["score_total"] == pytest.approx(expected_total, rel=1e-6)
 
     # B / C は形だけ最低限保証（過度に数値固定しない）
