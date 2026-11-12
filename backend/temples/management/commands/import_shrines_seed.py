@@ -13,6 +13,7 @@ from temples.management.commands.sync_visit_style_tags_from_seed import (
     MIN_TAGS_PER_SHRINE,
     REQUEST_ONLY_TAGS,
 )
+from temples.domain.removed_shrines import is_removed_shrine
 from temples.models import GoriyakuTag, Shrine
 
 
@@ -303,6 +304,12 @@ class Command(BaseCommand):
                 if not name or not address:
                     skipped += 1
                     self.stdout.write(f"SKIP invalid row name={name!r} address={address!r}")
+                    continue
+
+                # 本番から削除した神社は作り直さない（temples/domain/removed_shrines.py）
+                if is_removed_shrine(name, address):
+                    skipped += 1
+                    self.stdout.write(f"SKIP removed {name}")
                     continue
 
                 requested_tag_names = (

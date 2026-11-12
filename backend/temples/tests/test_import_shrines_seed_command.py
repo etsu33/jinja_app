@@ -24,6 +24,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import IntegrityError, transaction
 
+from temples.domain.removed_shrines import REMOVED_SHRINES
 from temples.management.commands.sync_visit_style_tags_from_seed import (
     MANAGED_COHORT_MIN_COUNT,
 )
@@ -516,10 +517,12 @@ def test_repair_only_visit_style_backfill_is_idempotent_against_canonical_seed()
     assert all(row["visit_style_tags"] for row in managed)
     seed_names = [row["name_jp"] for row in data]
     # 同名・別住所の行（例: 群馬県と新潟県の赤城神社）があるため exact (name_jp, address) で数える。
-    managed_identities = {(row["name_jp"], row["address"]) for row in managed}
+    # 本番から削除した神社（temples/domain/removed_shrines.py）は取り込みで作らないので数えない。
+    managed_identities = {(row["name_jp"], row["address"]) for row in managed} - REMOVED_SHRINES
+    removed_in_seed = sum(1 for row in data if (row["name_jp"], row["address"]) in REMOVED_SHRINES)
 
     first = _summary(_run("--source", str(SEED_PATH), "--skip-goriyaku-tags"))
-    assert first["created"] == len(data)
+    assert first["created"] == len(data) - removed_in_seed
 
     call_command("backfill_goriyaku_tags", "--with-visit-style", "--force", stdout=StringIO())
     tagged = Shrine.objects.exclude(visit_style_tags=[]).values_list("name_jp", "address")
