@@ -6,8 +6,10 @@ import pytest
 from temples.domain.feature_words_en import (
     CATEGORIES,
     FEATURE_WORDS,
+    build_travel_feature_payload,
     extract_feature_words,
     is_english_request,
+    is_travel_mode,
 )
 
 
@@ -96,3 +98,34 @@ def test_payload_shape():
 )
 def test_is_english_request(language, expected):
     assert is_english_request(language) is expected
+
+
+@pytest.mark.parametrize(
+    "mode, expected",
+    [
+        ("travel", True),
+        ("TRAVEL", True),
+        (" travel ", True),
+        ("need", False),
+        ("compat", False),
+        (None, False),
+        ("", False),
+    ],
+)
+def test_is_travel_mode(mode, expected):
+    assert is_travel_mode(mode) is expected
+
+
+def test_travel_payload_uses_english_dictionary_only_for_english():
+    en = build_travel_feature_payload("quiet forest", "en")
+    assert en["requested_mode"] == "travel"
+    assert en["dictionary"] == "en"
+    assert en["ids"] == ["S_FOREST", "F_QUIET"]
+
+    ja = build_travel_feature_payload("quiet forest", "ja")
+    assert ja["dictionary"] == "none"
+    assert ja["ids"] == []
+    assert ja["matched"] is False
+
+    unspecified = build_travel_feature_payload("quiet forest", None)
+    assert unspecified["dictionary"] == "none"

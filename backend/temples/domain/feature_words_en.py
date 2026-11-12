@@ -469,3 +469,26 @@ def is_english_request(language: str | None) -> bool:
     """リクエストの language が英語のときだけ True。未指定は日本語として扱う。"""
     value = (language or "").strip().lower()
     return value == "en" or value.startswith("en-")
+
+
+TRAVEL_MODE = "travel"
+
+
+def is_travel_mode(mode: str | None) -> bool:
+    """リクエストの mode が travel（旅行・文化体験の推薦モード）のときだけ True。"""
+    return str(mode or "").strip().lower() == TRAVEL_MODE
+
+
+def build_travel_feature_payload(text: str | None, language: str | None) -> dict:
+    """travel モードの相談から、特徴語を取り出した記録用の値を作る。
+
+    言語とモードは独立している。英語の辞書を使うのは言語が英語のときだけで、
+    それ以外（日本語など）は辞書がまだ無いので dictionary="none" として記録する。
+    """
+    if is_english_request(language):
+        dictionary = "en"
+        result = extract_feature_words(text)
+    else:
+        dictionary = "none"
+        result = FeatureWordResult()
+    return {"requested_mode": TRAVEL_MODE, "dictionary": dictionary, **result.as_payload()}

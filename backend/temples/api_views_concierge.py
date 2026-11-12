@@ -26,7 +26,7 @@ from temples.api.serializers.concierge import (
 from temples.geocoding.client import geocode_google_point
 from temples.models import ConciergeThread
 from temples.domain.consultation_axis import resolve_consultation_axis
-from temples.domain.feature_words_en import extract_feature_words, is_english_request
+from temples.domain.feature_words_en import build_travel_feature_payload, is_travel_mode
 from temples.domain.kyusei import annual_lucky_directions, planned_visit_lucky_directions
 
 from temples.services.plan_service import resolve_plan_context
@@ -347,7 +347,7 @@ def _build_chat_response(
         "consultation_meaning": consultation_meaning,
     }
     # 英語の相談（language=en）のときだけ載せる。日本語の応答の形は変えない。
-    # 取り出した特徴語は記録用で、並び順には使っていない（temples/domain/feature_words_en.py）。
+    # travel モードのときだけ。取り出した特徴語は記録用で、並び順には使っていない（temples/domain/feature_words_en.py）。
     if feature_words_en is not None:
         body["feature_words_en"] = feature_words_en
 
@@ -553,11 +553,12 @@ class ConciergeChatView(APIView):
             extra_condition = canonical_input.extra_condition
             visit_preferences = canonical_input.visit_preferences
 
-            # 英語の相談（language=en）のときだけ、英語の特徴語を辞書で取り出す。
+            # travel モード（旅行・文化体験）のときだけ、相談文から特徴語を取り出す。
+            # 言語とは独立（英語の辞書は language=en のときだけ使う）。
             # 応答と ConciergeRecommendationLog に残すだけで、並び順には使わない。
             feature_words_en = (
-                extract_feature_words(query or message or "").as_payload()
-                if is_english_request(language)
+                build_travel_feature_payload(query or message or "", language)
+                if is_travel_mode(data.get("mode"))
                 else None
             )
 
@@ -1007,7 +1008,7 @@ class ConciergeChatView(APIView):
                     llm_enabled=bool(llm_meta.get("enabled")),
                     llm_used=bool(llm_meta.get("used")),
                     recommendations=recs.get("recommendations") or [],
-                    # 英語の相談では、取り出した特徴語を記録に足す。ids が空の行が「辞書の取りこぼし」。
+                    # travel モードの相談では、取り出した特徴語を記録に足す。dictionary="en" で ids が空の行が「辞書の取りこぼし」。
                     result_state=(
                         {**result_state, "feature_words_en": feature_words_en}
                         if feature_words_en is not None
