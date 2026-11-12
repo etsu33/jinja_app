@@ -54,7 +54,7 @@ def test_request_normalization_characterisation_top_level_precedence_over_filter
     r = client.post(URL, data=json.dumps(payload), content_type="application/json")
     assert r.status_code == 200
 
-    assert captured["recs"]["birthdate"] == "1990-01-01"
+    assert captured["recs"]["birthdate"] is None  # コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）
     assert captured["recs"]["goriyaku_tag_ids"] == [999]
     assert captured["recs"]["extra_condition"] == "にぎやか"
 
@@ -81,7 +81,7 @@ def test_request_normalization_characterisation_promotes_filters_only_when_top_l
     r = client.post(URL, data=json.dumps(payload), content_type="application/json")
     assert r.status_code == 200
 
-    assert captured["recs"]["birthdate"] == "1984-05-15"
+    assert captured["recs"]["birthdate"] is None  # コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）
     assert captured["recs"]["goriyaku_tag_ids"] == [10, 20]
     assert captured["recs"]["extra_condition"] == "静か"
 

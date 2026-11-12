@@ -24,10 +24,7 @@ import { buildPayloadFromUnified } from "@/features/concierge/buildPayloadFromUn
 
 const baseFilterState: any = {
   isOpen: false,
-  birthdate: "",
-  element4: null,
   goriyakuTags: [],
-  suggestedTags: [],
   selectedTagIds: [],
   tagsLoading: false,
   tagsError: null,
@@ -102,12 +99,13 @@ describe("Collapsed filter density (default collapsed contract)", () => {
     const openState = {
       ...baseFilterState,
       isOpen: true,
-      birthdate: "1990-05-20",
+      plannedVisitDate: "2026-09-15",
       extraCondition: "駅近",
     };
 
     // 保持の観測点:
-    //   birthdate    -> ConciergeFilterPanel の date input の value
+    //   plannedVisitDate -> ConciergeFilterPanel の参拝予定日の date input の value
+    //   （以前は誕生日の入力を見ていたが、コンシェルジュでは生年月日を使わないため入力を外した）
     //   extraCondition -> 結果近くの appliedLabel チップ「条件: 駅近」
     // （以前は Renderer 側の独立Quick Presetチップの活性状態を見ていたが、
     //   そのUIは ConciergeFilterPanel へ一本化して廃止したため観測点を移した。
@@ -120,12 +118,12 @@ describe("Collapsed filter density (default collapsed contract)", () => {
         isEntryRoute={false}
       />,
     );
-    expect((screen.getByLabelText("誕生日") as HTMLInputElement).value).toBe("1990-05-20");
+    expect((screen.getByLabelText("参拝予定日") as HTMLInputElement).value).toBe("2026-09-15");
     expect(screen.getByText("条件: 駅近")).toBeInTheDocument();
 
     // Close: only the parent's isOpen flag flips, the rest of filterState is untouched
     // (mirrors how ConciergeClientFull's filter_close handler only calls
-    // setIsFilterOpen(false), never resets extraCondition/birthdate/etc).
+    // setIsFilterOpen(false), never resets extraCondition/plannedVisitDate/etc).
     const closedState = { ...openState, isOpen: false };
     rerender(
       <ConciergeSectionsRenderer
@@ -148,7 +146,7 @@ describe("Collapsed filter density (default collapsed contract)", () => {
         isEntryRoute={false}
       />,
     );
-    expect((screen.getByLabelText("誕生日") as HTMLInputElement).value).toBe("1990-05-20");
+    expect((screen.getByLabelText("参拝予定日") as HTMLInputElement).value).toBe("2026-09-15");
     expect(screen.getByText("条件: 駅近")).toBeInTheDocument();
   });
 

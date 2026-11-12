@@ -43,12 +43,15 @@ computes or references them.
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Dict, List, Optional
 
 from temples.domain.visit_preference import normalize_visit_preferences
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Compatibility normalization (moved from api_views_concierge.py, unchanged)
@@ -319,3 +322,104 @@ def resolve_profile_context_birthdate(
     if not isinstance(profile_user, dict):
         return None
     return profile_user.get("birthdate") or profile_user.get("birthday")
+
+
+# ---------------------------------------------------------------------------
+# コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）。
+# 相談の API のビューの入り口で、生年月日に関わる入力を外す。順位付けの共通部分
+# （build_chat_recommendations）はコンパスも生年月日つきで呼ぶため、そこでは止めない。
+# ---------------------------------------------------------------------------
+
+# profile_context.user_profile から外す項目（生年月日と、出生時刻・出生地）。
+PROFILE_USER_BIRTH_KEYS = ("birthdate", "birthday", "birthTime", "birthPlace", "birth_time", "birth_place")
+# profile_context から丸ごと外す項目（生年月日から計算した九星・五行・ライフパス・吉方位）。
+PROFILE_DERIVED_KEYS = ("derived_profile", "direction_profile")
+
+
+def _has_value(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, (str, list, tuple, dict)):
+        return bool(value.strip() if isinstance(value, str) else value)
+    return True
+
+
+def concierge_birthdate_request_sources(data: Any) -> Dict[str, bool]:
+    """入力を読み取る前の、本文と filters に生年月日があるか（値は持たない）。"""
+    if not isinstance(data, dict):
+        return {"body": False, "filters": False}
+    filters = data.get("filters") if isinstance(data.get("filters"), dict) else {}
+    return {"body": _has_value(data.get("birthdate")), "filters": _has_value(filters.get("birthdate"))}
+
+
+def strip_concierge_profile_context_birthdate(
+    profile_context: Optional[Dict[str, Any]],
+) -> tuple[Optional[Dict[str, Any]], Dict[str, int]]:
+    """profile_context から生年月日と、生年月日から計算した値を外す。
+
+    返り値: (外したあとの profile_context, 外した項目の件数)。値はどこにも残さない。
+    """
+    counts = {"profile_user_birth": 0, "profile_derived": 0}
+    if not isinstance(profile_context, dict):
+        return profile_context, counts
+
+    cleaned = dict(profile_context)
+    user_profile = cleaned.get("user_profile")
+    if isinstance(user_profile, dict):
+        kept = {k: v for k, v in user_profile.items() if k not in PROFILE_USER_BIRTH_KEYS}
+        counts["profile_user_birth"] = sum(
+            1 for k in PROFILE_USER_BIRTH_KEYS if _has_value(user_profile.get(k))
+        )
+        if kept:
+            cleaned["user_profile"] = kept
+        else:
+            cleaned.pop("user_profile", None)
+    for key in PROFILE_DERIVED_KEYS:
+        if key in cleaned:
+            if _has_value(cleaned.get(key)):
+                counts["profile_derived"] += 1
+            cleaned.pop(key, None)
+    return cleaned, counts
+
+
+def strip_concierge_birthdate_inputs(
+    *,
+    sources: Dict[str, bool],
+    canonical_birthdate: Optional[str],
+    profile_context: Optional[Dict[str, Any]],
+    mode: Any,
+    rid: str = "",
+) -> Optional[Dict[str, Any]]:
+    """相談の API の入り口で、生年月日に関わる入力を外す。
+
+    - 本文・filters・日付だけの相談文から来た birthdate は使わない（呼び出し側は birthdate=None にする）
+    - profile_context から生年月日・出生時刻・出生地と、九星・五行・ライフパス・吉方位を外す
+    - mode="compat"（相性モード）は使わない（None にして、相談の内容からモードを決める）
+
+    外した入力は件数だけログに出す（値は出さない）。
+    返り値: 外したあとの profile_context。モードの指定は resolve_concierge_requested_mode() で決める
+    （モードは生年月日のデータではないため、この関数の戻り値から取らない）。
+    """
+    cleaned, profile_counts = strip_concierge_profile_context_birthdate(profile_context)
+    mode_compat = str(mode or "").strip().lower() == "compat"
+    from_body_or_filters = bool(sources.get("body") or sources.get("filters"))
+    counts = {
+        "body": int(bool(sources.get("body"))),
+        "filters": int(bool(sources.get("filters"))),
+        "query_date": int(bool((canonical_birthdate or "").strip()) and not from_body_or_filters),
+        **profile_counts,
+        "mode_compat": int(mode_compat),
+    }
+    if any(counts.values()):
+        logger.info(
+            "[concierge/birthdate_ignored] rid=%s %s",
+            rid,
+            " ".join(f"{key}={value}" for key, value in counts.items()),
+        )
+    return cleaned
+
+
+def resolve_concierge_requested_mode(mode: Any) -> Optional[str]:
+    """コンシェルジュのモードの指定。相性モード（compat）は使わない（None にして、相談の内容から決める）。"""
+    requested = str(mode or "").strip().lower() or None
+    return None if requested == "compat" else requested

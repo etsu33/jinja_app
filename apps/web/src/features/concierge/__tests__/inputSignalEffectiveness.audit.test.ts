@@ -13,7 +13,7 @@
  *            substring, so the derivation can never fire from the live UI.
  *   CIS-004  One 参拝スタイル preset click emits the same intent twice:
  *            as `extra_condition` free text and as `visit_preferences` tags.
- *   CIS-005  `birthdate` / `goriyaku_tag_ids` / `extra_condition` are each
+ *   CIS-005  `goriyaku_tag_ids` / `extra_condition` are each (birthdate is no longer sent)
  *            sent BOTH top-level and inside `filters`.
  */
 import { describe, expect, it } from "vitest";
@@ -61,8 +61,6 @@ const EMPTY_BASE_FILTERS = {
 function buildPayload(overrides: Partial<Parameters<typeof buildConciergeRequestPayload>[0]> = {}) {
   return buildConciergeRequestPayload({
     needText: "仕事の迷いを整理したい",
-    temporaryBirthdate: null,
-    savedProfile: null,
     baseFilters: EMPTY_BASE_FILTERS,
     visitPreferences: [],
     plannedVisitDate: "",
@@ -102,16 +100,14 @@ describe("CIS-002: the crowd / duration derivation cannot fire from the live UI"
   });
 });
 
-describe("CIS-001: filter_apply flips the request mode to compat", () => {
+describe("CIS-001: filter_apply no longer flips the request mode to compat", () => {
   it("the entry submit path sends mode: need", () => {
     expect(buildPayload().mode).toBe("need");
   });
 
-  it("an explicit mode override (filter_apply) is carried into the payload", () => {
-    // ConciergeClientFull's "filter_apply" action spreads
-    // `{ ...buildFilterPayload(), mode: "compat" }` -- the builder itself
-    // honours input.mode, which is what makes the flip reach the backend.
-    expect(buildPayload({ input: { mode: "compat" } }).mode).toBe("compat");
+  it("an explicit mode override (filter_apply) is NOT carried: the concierge always sends mode: need", () => {
+    // コンシェルジュでは生年月日を使わないため、相性モード（compat）は送らない。
+    expect(buildPayload({ input: { mode: "compat" } }).mode).toBe("need");
   });
 });
 
@@ -131,9 +127,8 @@ describe("CIS-004 / CIS-005: duplicate representations in one request", () => {
     expect(payload.visit_preferences).toEqual(["less_crowded"]);
   });
 
-  it("birthdate / goriyaku_tag_ids / extra_condition are sent both top-level and in filters", () => {
+  it("goriyaku_tag_ids / extra_condition are sent both top-level and in filters; birthdate is not sent (concierge does not use birthdates)", () => {
     const payload = buildPayload({
-      temporaryBirthdate: "1990-05-05",
       baseFilters: {
         ...EMPTY_BASE_FILTERS,
         birthdate: "1990-05-05",
@@ -142,8 +137,8 @@ describe("CIS-004 / CIS-005: duplicate representations in one request", () => {
       },
     });
 
-    expect(payload.birthdate).toBe("1990-05-05");
-    expect(payload.filters?.birthdate).toBe("1990-05-05");
+    expect(payload).not.toHaveProperty("birthdate");
+    expect(payload.filters).not.toHaveProperty("birthdate");
 
     expect(payload.goriyaku_tag_ids).toEqual([1, 2]);
     expect(payload.filters?.goriyaku_tag_ids).toEqual([1, 2]);
