@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "vocabulary_version": "2026-11-12",
-  "source": "Google スプレッドシート「KAMI MUSUBI 英語版の特徴語と10社の当てはめ表」の「当てはめ表」タブ（正本）。このファイルは写し。",
+  "source": "Google スプレッドシート「KAMI MUSUBI 英語版の特徴語と10社の当てはめ表」の「当てはめ表」タブ（正本。2026-11-13 に追加15社を追記）。このファイルは写し。",
   "shrines": [
     {
       "shrine_ref": {
@@ -912,6 +912,1046 @@
           "source_url": "https://www.itsukushimajinja.jp/jp-sp/",
           "source_type": "神社公式",
           "checked_on": "2026-11-12"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "乃木神社",
+        "address": "東京都港区赤坂8-11-27"
+      },
+      "features": [
+        {
+          "word_id": "F_URBAN_OASIS",
+          "evidence_quote": "乃木神社は都心の真中にある緑豊かな神社です。",
+          "note": "都心の緑",
+          "source_url": "https://nogijinja.or.jp/map.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "S_FOREST",
+          "evidence_quote": "乃木神社は都心の真中にある緑豊かな神社です。",
+          "note": "緑豊か",
+          "source_url": "https://nogijinja.or.jp/map.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_TREASURE_HALL",
+          "evidence_quote": "御鎮座九十年を記念して修復・奉納された御祭神の石膏像、ご殉死の刀をはじめ、遺言の條々、勲章、漢詩などを展示しております。",
+          "note": "宝物殿（入場無料）",
+          "source_url": "https://nogijinja.or.jp/museum.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "S_FLOWERS",
+          "evidence_quote": "季節のお守りであります「さくら守」は一の鳥居脇の枝垂桜開花にあわせて頒布を開始致しました。",
+          "note": "花：枝垂桜",
+          "source_url": "https://nogijinja.or.jp/news/older/912.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_CHARM",
+          "evidence_quote": "境内の桜も少しずつ開花しております。 本日より、桜の時期限定の「桜まもり」を頒布致します。",
+          "note": "桜の時期限定のお守り",
+          "source_url": "https://nogijinja.or.jp/news/older/334.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_IMPERIAL",
+          "evidence_quote": "御鎮座20年祭齋行、天皇陛下より御菓子料下賜",
+          "note": "沿革（昭和18年）",
+          "source_url": "https://nogijinja.or.jp/history.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_PERFORMANCE",
+          "evidence_quote": "御大典奉祝大祭を齋行 （舞楽「乃木の舞」を製作）",
+          "note": "製作の記述のみで、奉納の頻度は公式で未確認",
+          "source_url": "https://nogijinja.or.jp/history.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "宇佐神宮",
+        "address": "大分県宇佐市南宇佐2859"
+      },
+      "features": [
+        {
+          "word_id": "ST_SYNCRETISM",
+          "evidence_quote": "以後、弥勒寺は宇佐宮とともに、神仏習合の輝かしい歴史を続けることになります。",
+          "note": "神宮寺・弥勒寺",
+          "source_url": "http://www.usajinguu.com/shinbutsu/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_IMPERIAL",
+          "evidence_quote": "皇室も伊勢の神宮につぐ第二の宗廟(そうびょう)として御崇敬になり、一般の人々にも鎮守の神として古来より広く親しまれてきました。",
+          "note": "第二の宗廟",
+          "source_url": "http://www.usajinguu.com/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_ANCIENT",
+          "evidence_quote": "八幡大神（応神天皇）・比売大神・神功皇后をご祭神にお祀りし、神亀2年に創建されました。",
+          "note": "神亀2年＝725年",
+          "source_url": "http://www.usajinguu.com/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_PERFORMANCE",
+          "evidence_quote": "宇佐神宮では、毎年10月21日に御神能が奉納されます。",
+          "note": "御神能",
+          "source_url": "http://www.usajinguu.com/news/4570/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_TREASURE_HALL",
+          "evidence_quote": "また、この期間中は宝物館も開館（有料）しておりますので、併せてお楽しみいただけます。",
+          "note": "宝物館",
+          "source_url": "http://www.usajinguu.com/news/4144/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_NATIONAL_TREASURE",
+          "evidence_quote": "千古斧(おの)を入れない深緑の杜(もり)に映える美しい本殿は国宝に指定されており、総本宮にふさわしい威容を誇っています。",
+          "note": "国宝の本殿",
+          "source_url": "http://www.usajinguu.com/lineage/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "S_FOREST",
+          "evidence_quote": "千古斧(おの)を入れない深緑の杜(もり)に映える美しい本殿は国宝に指定されており、総本宮にふさわしい威容を誇っています。",
+          "note": "深緑の杜",
+          "source_url": "http://www.usajinguu.com/lineage/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_VERMILION",
+          "evidence_quote": "桧皮葺(ひはだぶき)で白壁朱漆塗柱の華麗な建物が、横一列に並んでいます。",
+          "note": "本殿の朱漆塗柱",
+          "source_url": "http://www.usajinguu.com/guide/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_HERITAGE",
+          "evidence_quote": "呉橋は、宇佐神宮西参道の寄藻川に架かる全国的にも珍しい屋根付きの橋で、大分県の有形文化財に指定をされています。",
+          "note": "呉橋（県指定）",
+          "source_url": "http://www.usajinguu.com/news/4039/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_ORIGINAL_BUILDINGS",
+          "evidence_quote": "西大門は文禄のころ（１５９２～）改築されたといわれ、以来この桃山風の華麗な構造となっています。",
+          "note": "令和7年に西大門の竣功奉祝祭あり（修理か建て替えかは公式で未確認）",
+          "source_url": "http://www.usajinguu.com/guide/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "平塚八幡宮",
+        "address": "神奈川県平塚市浅間町1-6"
+      },
+      "features": [
+        {
+          "word_id": "ST_ANCIENT",
+          "evidence_quote": "平塚八幡宮は、仁徳天皇の御代68年（380年）、この地に大変大きな地震があり、人々の苦しむ様を見かねた仁徳天皇（第16代）が社を建てられたことが創祀とされています。",
+          "note": "380年創祀（伝承）",
+          "source_url": "http://www.hachiman.org/yurai.php",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_IMPERIAL",
+          "evidence_quote": "特に御朱印に揮毫する「鎮地大神」は、推古天皇（第33代）より賜った御宸筆から戴いております。",
+          "note": "推古天皇の御宸筆",
+          "source_url": "http://www.hachiman.org/yurai.php",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_GOSHUIN",
+          "evidence_quote": "特に御朱印に揮毫する「鎮地大神」は、推古天皇（第33代）より賜った御宸筆から戴いております。",
+          "note": "御朱印「鎮地大神」",
+          "source_url": "http://www.hachiman.org/yurai.php",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_SAMURAI",
+          "evidence_quote": "その後も相模國一國一社の八幡宮として、歴代の天皇や源頼朝公をはじめとする武士からも崇敬を集めます。",
+          "note": "源頼朝",
+          "source_url": "http://www.hachiman.org/yurai.php",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_ANIMAL",
+          "evidence_quote": "源頼朝公が夫人 北条政子の安産祈願のために平塚八幡宮へ神馬を奉納されたように、白馬は神々の乗りものとして、また、私たちの願いを神々へ運ぶ神聖な生き物とされていました。",
+          "note": "神馬（生きた馬が奉仕。神使として祀る記述ではない）",
+          "source_url": "http://www.hachiman.org/sacredhorse.php",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_FESTIVAL",
+          "evidence_quote": "③例大祭（8/15）、國府祭（5/5）、その他の神社行事のご案内をお送りしますので、ご都合のつく方はご参列下さい。",
+          "note": "例大祭・國府祭",
+          "source_url": "http://www.hachiman.org/sacredhorse.php",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "三峯神社",
+        "address": "埼玉県秩父市三峰298-1"
+      },
+      "features": [
+        {
+          "word_id": "ST_ANIMAL",
+          "evidence_quote": "三峯神社の神様のお使い（神様の霊力を受け、神様と同じ働きをするとして仰がれる動物）はオオカミです。",
+          "note": "神使：オオカミ",
+          "source_url": "https://www.mitsuminejinja.or.jp/kitou/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_MYTH",
+          "evidence_quote": "この時、尊を道案内したのが狼(山犬)であったとされ、神様の使いとして一緒にお祀りされています。",
+          "note": "日本武尊と狼の伝説",
+          "source_url": "https://www.mitsuminejinja.or.jp/saijin/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_ANCIENT",
+          "evidence_quote": "三峯神社の由緒は古く、当山大縁起によると日本武尊（やまとたけるのみこと）が伊弉諾尊（いざなぎのみこと）・伊弉册尊（いざなみのみこと）をお祀りしたのが始まりと伝わります。",
+          "note": "創建は日本武尊の伝承",
+          "source_url": "https://www.mitsuminejinja.or.jp/saijin/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_MOUNTAIN_WORSHIP",
+          "evidence_quote": "降って文武天皇の時、修験の祖役小角（おづぬ）が伊豆から三峯山に往来して修行したと伝えられています。",
+          "note": "修験",
+          "source_url": "https://www.mitsuminejinja.or.jp/saijin/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_SYNCRETISM",
+          "evidence_quote": "数多くの記録文書や書画類、崇敬者より奉納された品々、また神仏混淆時代の仏像仏画経典などは、永らく人の目に触れることなく蔵の中に眠っていました。",
+          "note": "神仏混淆時代の宝物",
+          "source_url": "https://www.mitsuminejinja.or.jp/hakubutsukan/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_TREASURE_HALL",
+          "evidence_quote": "三峯神社のあれこれが学べます。神社の歴史や信仰のほか、秩父宮家の御下賜品も展示しています。",
+          "note": "三峰山博物館",
+          "source_url": "https://www.mitsuminejinja.or.jp/hakubutsukan/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_IMPERIAL",
+          "evidence_quote": "その後、景行天皇は日本武尊が平定した東国を巡幸された折に三峯山に登られ、三山高く美しく連らなることから「三峯の宮」の称号をたまわりました。",
+          "note": "景行天皇の称号",
+          "source_url": "https://www.mitsuminejinja.or.jp/saijin/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "S_MOUNTAIN",
+          "evidence_quote": "埼玉県秩父市三峰にある三峯神社は、秩父多摩甲斐国立公園内標高約1100mに鎮座しています。",
+          "note": "標高約1100m",
+          "source_url": "https://www.mitsuminejinja.or.jp/aisatsu/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_HIKE",
+          "evidence_quote": "参加資格：山道を往復で３時間程歩く体力があり、過去に同企画に参加したことのない方",
+          "note": "奥宮（妙法ヶ岳）登拝企画の募集要項。本社の参拝自体に登りがあるとは書かれていない",
+          "source_url": "https://www.mitsuminejinja.or.jp/info/2019/07/88/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "九頭龍神社 新宮",
+        "address": "神奈川県足柄下郡箱根町元箱根80-1"
+      },
+      "features": [
+        {
+          "word_id": "ST_MYTH",
+          "evidence_quote": "湖水神事は、奈良時代の昔、箱根大神の神力を得た万巻上人が、里人に害を及ぼしていた九頭の毒龍を調伏し、芦ノ湖の守護神・九頭龍大神としてお祀りしたことに由来します。",
+          "note": "九頭龍誕生の伝説（ふりがなは除いて引用）",
+          "source_url": "https://hakonejinja.or.jp/hakone/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_FESTIVAL",
+          "evidence_quote": "４月2９日午前10時、昭和祭に引き続き九頭龍神社新宮に於いて例祭が斎行されます。",
+          "note": "新宮の例祭",
+          "source_url": "https://hakonejinja.or.jp/hakone/fes_detail.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_FESTIVAL",
+          "evidence_quote": "湖水祭は、箱根神社例大祭の宵宮として行われる九頭龍大神のお祭りです。",
+          "note": "湖水祭（7月31日）",
+          "source_url": "https://hakonejinja.or.jp/hakone/celebration.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_GOSHUIN",
+          "evidence_quote": "九頭龍神社の御神印は、九頭龍神社本宮では行わず箱根神社で承っておりますので、箱根神社に「九頭龍神社御祈祷神札」と「龍神水」をお引換においでの際にお受け下さい。",
+          "note": "御神印は箱根神社で授与",
+          "source_url": "https://hakonejinja.or.jp/hakone/celebration.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "鶴嶺八幡宮",
+        "address": "神奈川県茅ヶ崎市浜之郷462"
+      },
+      "features": [
+        {
+          "word_id": "ST_SAMURAI",
+          "evidence_quote": "長元三年九月（1030年）、源頼義は下総の乱を鎮定するため懐島郷（現地）に至り、源家の守護神石清水八幡宮を勧請して戦勝祈願をしました（別に宇佐八幡宮勧請説もあります）。",
+          "note": "源頼義（1030年なので ST_ANCIENT には当たらない）",
+          "source_url": "https://www.tsuruminehachimangu.com/history/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_SHOGUN",
+          "evidence_quote": "江戸時代、徳川幕府は先規により高七石の朱印地を寄進しています。",
+          "note": "徳川幕府の朱印地",
+          "source_url": "https://www.tsuruminehachimangu.com/history/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_FESTIVAL",
+          "evidence_quote": "七月の第三月曜日「海の日」（平成十六年度より）に行われる禊祭です。",
+          "note": "浜降祭（神奈川県無形民俗文化財）",
+          "source_url": "https://www.tsuruminehachimangu.com/hamaorisai/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_PERFORMANCE",
+          "evidence_quote": "鶴嶺八幡宮で行われる祭典「皐月祭」で、子どもたちによる「祭祀舞」が奉納されます。",
+          "note": "祭祀舞",
+          "source_url": "https://www.tsuruminehachimangu.com/annual_event/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_OLDEST",
+          "evidence_quote": "デザインは茅ヶ崎総鎮守である当八幡宮の神輿です 茅ヶ崎市内で一番古く文化三年(1806年)に造られたといわれます",
+          "note": "市内最古の神輿（建物ではない）",
+          "source_url": "https://www.tsuruminehachimangu.com/%E9%81%8E%E5%8E%BB%E3%83%BB%E5%B8%B8%E8%A8%AD%E6%8A%95%E7%A8%BF/%E6%B5%9C%E9%99%8D%E7%A5%AD%E3%81%8C%E8%A1%8C%E3%82%8F%E3%82%8C%E3%81%BE%E3%81%97%E3%81%9F/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_GOSHUIN",
+          "evidence_quote": "6月20日より限定御朱印を頒布しています 無くなり次第終了です",
+          "note": "浜降祭の限定御朱印",
+          "source_url": "https://www.tsuruminehachimangu.com/info/%E6%B5%9C%E9%99%8D%E7%A5%AD%E9%99%90%E5%AE%9A%E5%BE%A1%E6%9C%B1%E5%8D%B0%E9%A0%92%E5%B8%83/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "S_GIANT_TREE",
+          "evidence_quote": "社殿付近には御神木「大銀杏」をはじめ、いろいろな種類の木があります",
+          "note": "御神木の大銀杏",
+          "source_url": "https://www.tsuruminehachimangu.com/info/%E5%A2%83%E5%86%85%E6%B8%85%E6%8E%83%E3%83%9C%E3%83%A9%E3%83%B3%E3%83%86%E3%82%A3%E3%82%A2%E5%8B%9F%E9%9B%86/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "S_TREE_AVENUE",
+          "evidence_quote": "まだ明けやらぬ境内をお立ちになり、太鼓橋を渡り、古歌にうたわれた「八丁松並木」の長い参道を提灯の灯りを揺るがせながら進む神輿の姿は幽玄の世界を感じさせます。",
+          "note": "八丁松並木の参道",
+          "source_url": "https://www.tsuruminehachimangu.com/hamaorisai/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "S_POND",
+          "evidence_quote": "神池には島が四つあります",
+          "note": "神池",
+          "source_url": "https://www.tsuruminehachimangu.com/info/%E7%A5%9E%E6%B1%A0%E3%81%AE%E6%98%A5%E6%97%A5%E7%A4%BE%E5%8F%8A%E3%81%B3%E5%B1%B1%E7%8E%8B%E7%A4%BE%E5%BB%BA%E7%AB%8B%E5%BE%A1%E5%A5%89%E8%B3%9B%E3%81%AE%E3%81%8A%E9%A1%98%E3%81%84/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "伊勢神宮（内宮）",
+        "address": "三重県伊勢市宇治館町1"
+      },
+      "features": [
+        {
+          "word_id": "ST_ANCIENT",
+          "evidence_quote": "およそ2000年前、垂仁天皇の御代から五十鈴川のほとりに鎮まります皇大神宮は皇室の御祖先であり、我々国民から総氏神のように崇められる天照大御神をお祀りしています。",
+          "note": "約2000年前の鎮座（伝承）",
+          "source_url": "https://www.isejingu.or.jp/about/naiku/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_IMPERIAL",
+          "evidence_quote": "皇室の御祖神であり国民の総氏神である天照大御神をお祀りしています。",
+          "note": "皇室の御祖神",
+          "source_url": "https://www.isejingu.or.jp/about/naiku/shogu.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "S_FOREST",
+          "evidence_quote": "宮域林と呼ばれる神宮の森は、内宮のほとりを流れる五十鈴川の上流に位置し、約5500ヘクタールあり、一般的には「神宮林」と呼ばれています。",
+          "note": "神宮林",
+          "source_url": "https://www.isejingu.or.jp/sengu/forest.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_QUIET",
+          "evidence_quote": "早朝の静寂の中、内宮を巡る。緑豊かな参道の風景をご覧いただけます。",
+          "note": "動画「神宮の自然 巡る」の紹介文",
+          "source_url": "https://www.isejingu.or.jp/visit/map/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_PHOTO",
+          "evidence_quote": "内宮の見どころやおすすめ撮影スポット、バリアフリールートをマップ上で紹介します。",
+          "note": "公式の域内マップ",
+          "source_url": "https://www.isejingu.or.jp/visit/map/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_FESTIVAL",
+          "evidence_quote": "伊勢の住民（旧神領民）が中心となり、式年遷宮を奉祝する賑やかな民俗行事も数多く開催されます。",
+          "note": "式年遷宮の御木曳行事",
+          "source_url": "https://www.isejingu.or.jp/sengu/the63rd/about.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_GOSHUIN",
+          "evidence_quote": "ご祈祷やお神札‧お守りの授与、御朱印の取り扱いや式年遷宮のためのご寄付などを承っています。",
+          "note": "内宮神楽殿",
+          "source_url": "https://www.isejingu.or.jp/about/naiku/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_PERFORMANCE",
+          "evidence_quote": "初日には外宮が午前8時30分、内宮が午前10時からそれぞれの神楽殿において御神楽を奉奏し、午前11時には内宮神苑の特設舞台で舞楽を公開します。",
+          "note": "春・秋の神楽祭",
+          "source_url": "https://www.isejingu.or.jp/ritual/annual/event.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "S_GIANT_TREE",
+          "evidence_quote": "樹齢数百年の巨木が息づく森。深い薫りに満たされ、呼吸が整います。",
+          "note": "内宮参道の巨木（ふりがなは除いて引用）",
+          "source_url": "https://www.isejingu.or.jp/nature/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "S_AUTUMN",
+          "evidence_quote": "風日祈宮に通じる風日祈宮橋の上からは、美しい新緑や紅葉を望むことができます。",
+          "note": "風日祈宮橋の紅葉（ふりがなは除いて引用）",
+          "source_url": "https://www.isejingu.or.jp/visit/map/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "多摩川浅間神社",
+        "address": "東京都大田区田園調布1-55-12"
+      },
+      "features": [
+        {
+          "word_id": "S_VIEW",
+          "evidence_quote": "高台にある境内の見晴台より眺める景色は、デートスポットとしても大変人気です",
+          "note": "見晴台",
+          "source_url": "https://sengenjinja.info/about/keidai.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_SAMURAI",
+          "evidence_quote": "鎌倉時代の文治年間(1185~90)、右大将源頼朝は、豊島郡滝野川松崎に出陣しました。",
+          "note": "源頼朝・北条政子の由緒",
+          "source_url": "https://sengenjinja.info/about/index.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_SYNCRETISM",
+          "evidence_quote": "村人たちはこの像を「富士浅間大菩薩」と呼び、永く尊崇しました。",
+          "note": "正観世音像を富士浅間大菩薩として崇敬",
+          "source_url": "https://sengenjinja.info/about/index.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_MOUNTAIN_WORSHIP",
+          "evidence_quote": "木花咲耶姫命の鎮まる霊峰富士に、「六根清浄（ろっこんしょうじょう）」を唱えながら登拝し、その山容に似た雄大なご神徳を仰ぐ浅間信仰に基づき、各地に浅間神社が勧請されております。",
+          "note": "浅間信仰（富士山信仰）の一社。「中心」とは書かれていない",
+          "source_url": "https://sengenjinja.info/about/index.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_CHARM",
+          "evidence_quote": "出合い（結びかんざし）、食への恵み（米粒）、金運回復（金運） 3つの願いを成す（茄子）に封じ込めました。",
+          "note": "願い叶う成す守り",
+          "source_url": "https://sengenjinja.info/about/omamori.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_PHOTO",
+          "evidence_quote": "参拝の折に家族でこの「たけくらべ」の石碑で背を図って写真を撮る光景が多くみられる。",
+          "note": "たけくらべの石碑",
+          "source_url": "https://sengenjinja.info/about/keidai.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "大宮八幡宮",
+        "address": "東京都杉並区大宮2-3-1"
+      },
+      "features": [
+        {
+          "word_id": "S_FOREST",
+          "evidence_quote": "都心の豊かな緑に囲まれた 静かなたたずまいー鎮守の杜ー",
+          "note": "鎮守の杜",
+          "source_url": "https://www.ohmiya-hachimangu.or.jp/hachimangu",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_URBAN_OASIS",
+          "evidence_quote": "都心の豊かな緑に囲まれた 静かなたたずまいー鎮守の杜ー",
+          "note": "都心の緑",
+          "source_url": "https://www.ohmiya-hachimangu.or.jp/hachimangu",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_QUIET",
+          "evidence_quote": "都心の豊かな緑に囲まれた 静かなたたずまいー鎮守の杜ー",
+          "note": "静かなたたずまい",
+          "source_url": "https://www.ohmiya-hachimangu.or.jp/hachimangu",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_SAMURAI",
+          "evidence_quote": "源頼義公は、「これは八幡大神の御守護のしるしである」と喜ばれ、乱を鎮めた暁には必ずこの地に神社を構えることを誓って、武運を祈り出陣されました。",
+          "note": "源頼義（1063年創建なので ST_ANCIENT には当たらない）",
+          "source_url": "https://www.ohmiya-hachimangu.or.jp/hachimangu/history",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_MYTH",
+          "evidence_quote": "また、大空に八条の白雲がたなびいて軍を勝利に導いたという縁起から、当宮には厄除開運の信仰があって、当宮の破魔矢を家庭や職場におまつりしますと、「禍(まが)つもの」を祓って繁栄をもたらすといわれています。",
+          "note": "八条の白雲の縁起",
+          "source_url": "https://www.ohmiya-hachimangu.or.jp/hachimangu/history",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_SHOGUN",
+          "evidence_quote": "当社叢につつじが多いのは、徳川三代将軍家光公の発願で千本の山つつじが植えられ、満開時には境内が紅に輝いて「山照らし」と、称されたという由緒によるものです。",
+          "note": "徳川家光",
+          "source_url": "https://www.ohmiya-hachimangu.or.jp/hachimangu",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "S_FLOWERS",
+          "evidence_quote": "表参道の両脇にはたくさんのつつじが植わっています。",
+          "note": "花：つつじ",
+          "source_url": "https://www.ohmiya-hachimangu.or.jp/hachimangu",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_FESTIVAL",
+          "evidence_quote": "夏の暑さも和らぎ、秋の気配を感じる９月、恒例の大宮八幡祭りが行われます。",
+          "note": "大宮八幡祭り",
+          "source_url": "https://www.ohmiya-hachimangu.or.jp/6756",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "忌宮神社",
+        "address": "山口県下関市長府宮の内町1-18"
+      },
+      "features": [
+        {
+          "word_id": "ST_IMPERIAL",
+          "evidence_quote": "「古事記」「日本書紀」等の書物によれば、九州の熊襲平定のため西下された仲哀天皇と神功皇后は、本州の西端で九州を真向こうに見据える要衝のこの地に8年正月までご滞在になり、斎宮を建て神祇を祀られたのが忌宮の起りとされております。",
+          "note": "仲哀天皇・神功皇后の滞在地",
+          "source_url": "https://iminomiya-jinjya.com/precinct",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_ANCIENT",
+          "evidence_quote": "のち聖武天皇の神亀5年（728）、神託によって筑前香椎宮より神功皇后の神霊を勧請して中殿に奉斎し、相殿として仲哀天皇、応神天皇をお祀したと伝えられております。",
+          "note": "728年（伝承）",
+          "source_url": "https://iminomiya-jinjya.com/precinct",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_MYTH",
+          "evidence_quote": "皇軍は歓喜のあまり矛をかざし旗を振って塵輪の屍のまわりを踊りまわったのが数方庭の起こりと伝えられています。",
+          "note": "数方庭・鬼石の伝説",
+          "source_url": "https://iminomiya-jinjya.com/schedule/event11",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_FESTIVAL",
+          "evidence_quote": "数方庭の期間の毎夜男子は幟、女子は切籠と呼ぶ灯籠を吊した笹竹を持って、鉦・太鼓に和して鬼石のまわりを踊り舞います。天下の奇祭と呼ばれ勇壮かつ典雅な神事です。",
+          "note": "数方庭祭（8月7日〜13日、県無形民俗文化財）",
+          "source_url": "https://iminomiya-jinjya.com/schedule/event11",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_TREASURE_HALL",
+          "evidence_quote": "収蔵の資料は、古文書・刀剣・武具・能面・祭器具・楽器・絵馬など400点余あります。",
+          "note": "宝物館",
+          "source_url": "https://iminomiya-jinjya.com/precinct",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_SAMURAI",
+          "evidence_quote": "中でも、足利尊氏以下一族四名の法楽和歌・武内大宮司家文書並びに境内絵図、および伝則宗・長船盛光の太刀は国の重要文化財に指定されています。",
+          "note": "足利尊氏ゆかりの宝物",
+          "source_url": "https://iminomiya-jinjya.com/precinct",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "伏見稲荷大社",
+        "address": "京都府京都市伏見区深草薮之内町68"
+      },
+      "features": [
+        {
+          "word_id": "ST_ANCIENT",
+          "evidence_quote": "当社の御祭神である稲荷大神様がこのお山に御鎮座されたのは、奈良時代の和銅4年（711）2月初午の日のこと。",
+          "note": "711年御鎮座",
+          "source_url": "https://inari.jp/about/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_VERMILION",
+          "evidence_quote": "山中には、おびただしいお塚が群在し､参道には数千もの朱の鳥居が建ち並んでいます。",
+          "note": "朱の鳥居（千本鳥居）",
+          "source_url": "https://inari.jp/trip/map01/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_HIKE",
+          "evidence_quote": "稲荷山に登り、これらの神蹟やお塚を巡拝することを「お山する」といい、参詣の人は日夜あとをたちません。",
+          "note": "お山する（稲荷山の巡拝）",
+          "source_url": "https://inari.jp/trip/map01/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_MOUNTAIN_WORSHIP",
+          "evidence_quote": "そして、稲荷信仰の原点が、稲荷山であります。",
+          "note": "稲荷山",
+          "source_url": "https://inari.jp/about/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_MYTH",
+          "evidence_quote": "当社の起源については「山城国風土記」の逸文に《秦中家ノ忌寸等の遠祖、伊呂具秦公の的にして射た餅が白鳥と化して飛び翔けり、その留った山の峰に“稲”が生じた奇瑞によって、イナリという社名になった》とあり",
+          "note": "山城国風土記の伝承",
+          "source_url": "https://inari.jp/about/saijin/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_SPIRIT_LEGEND",
+          "evidence_quote": "東寺の塔造営の用材として、御神木を伐る祟りにて御病悩あるにより、稲荷神に従五位下を授けらる",
+          "note": "御神木を伐った祟りの記録（天長4年）。御霊の伝承とまでは言えない",
+          "source_url": "https://inari.jp/sp/history/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_POP_CULTURE",
+          "evidence_quote": "清少納言の「枕草子」に、二月初午の日、稲荷山に詣で、中社の辺にて甚だ苦しきを堪え登ることが記さる",
+          "note": "枕草子（文学）",
+          "source_url": "https://inari.jp/sp/history/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_HERITAGE",
+          "evidence_quote": "楼門は伏見稲荷大社の正門に当たる建物で、重要文化財に指定されています。",
+          "note": "楼門（重要文化財）",
+          "source_url": "https://inari.jp/vr/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_ORIGINAL_BUILDINGS",
+          "evidence_quote": "本殿は明応8年（1499）の再興で、重要文化財に指定されています。",
+          "note": "本殿は1499年再興",
+          "source_url": "https://inari.jp/vr/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_ANIMAL",
+          "evidence_quote": "「稲荷大神様」のお使い（眷族）はきつねとされています。",
+          "note": "神使：きつね",
+          "source_url": "https://inari.jp/kanban/index_01.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_SAMURAI",
+          "evidence_quote": "1500年頃には既に建てられていたようですが、現在の入母屋造り檜皮葺き二階建の楼門は天下人豊臣秀吉の寄進と伝えられています。",
+          "note": "豊臣秀吉の寄進",
+          "source_url": "https://inari.jp/vr/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "二荒山神社",
+        "address": "栃木県日光市山内2307"
+      },
+      "features": [
+        {
+          "word_id": "C_WORLD_HERITAGE",
+          "evidence_quote": "日光の社寺、世界文化遺産登録103棟の建造物中、最古の建物での結婚式は澄みきった空気の中、厳かに執り行われます。",
+          "note": "世界文化遺産",
+          "source_url": "http://www.futarasan.jp/wedding/index.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_OLDEST",
+          "evidence_quote": "日光の社寺、世界文化遺産登録103棟の建造物中、最古の建物での結婚式は澄みきった空気の中、厳かに執り行われます。",
+          "note": "日光の社寺103棟中で最古",
+          "source_url": "http://www.futarasan.jp/wedding/index.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_MOUNTAIN_WORSHIP",
+          "evidence_quote": "日光国立公園の中心に位置する男体山を御神体山と仰ぐ二荒山神社は、1,220年の歴史ある日光の氏神さまです。",
+          "note": "男体山が御神体山",
+          "source_url": "http://www.futarasan.jp/wedding/index.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_ANCIENT",
+          "evidence_quote": "2年(782)沙門勝道が前人未踏の登頂を果し、二荒神を奉斎してより、今年で1230年の記念の年を迎えました。",
+          "note": "天応2年（782）。ページ上で「奈良時代の末天応」の直後に改行あり",
+          "source_url": "http://www.futarasan.jp/exhibition/message.shtml",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_HIKE",
+          "evidence_quote": "注 意 ：往復約6〜7時間、道中には水場・トイレ等はありません。",
+          "note": "男体山の登拝（公式に「男体山は二荒山神社のご神体山・境内地」と記載）",
+          "source_url": "http://www.futarasan.jp/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_TREASURE_HALL",
+          "evidence_quote": "永い歴史と伝統を守り伝える日光二荒山神社の御神宝の数々を紹介─南北朝時代製作の荘重豪華な神輿",
+          "note": "宝物館（中宮祠にある）",
+          "source_url": "http://futarasan.jp/houmotsukan/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "S_GIANT_TREE",
+          "evidence_quote": "また、正面鳥居の傍には“縁結び御神木”があり、好きなら一緒・・・と男女の縁が結ばれます。",
+          "note": "縁結び御神木",
+          "source_url": "http://www.futarasan.jp/pdf/yoien2024.pdf",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "品川神社",
+        "address": "東京都品川区北品川3-7-15"
+      },
+      "features": [
+        {
+          "word_id": "ST_SAMURAI",
+          "evidence_quote": "今からおよそ800年程前の平安時代末期の文治3年（1187）に、源頼朝公が安房国の洲崎明神（現・千葉県館山市鎮座 洲崎神社）の天比理乃咩命を当地にお迎えして海上交通安全と祈願成就を祈られたのを創始とします。",
+          "note": "源頼朝の創始",
+          "source_url": "https://shinagawajinja.tokyo/deity/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_SHOGUN",
+          "evidence_quote": "慶長5年（1600）、徳川家康公が関ヶ原の戦いへ出陣の際に当社へ参拝し戦勝を祈願され、その後、祈願成就の御礼として仮面（天下一嘗の面）・神輿（葵神輿）などを奉納されました。",
+          "note": "徳川家康",
+          "source_url": "https://shinagawajinja.tokyo/deity/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_IMPERIAL",
+          "evidence_quote": "時代は明治に移り、同元年（1868）11月には明治天皇様が新都・東京の安寧と国家の繁栄を御祈願されるために、当社を含んだ都内の十の神社を「准勅祭神社」と定められ、御勅使が御参拝になられ御祈願をされました。",
+          "note": "准勅祭社",
+          "source_url": "https://shinagawajinja.tokyo/deity/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_PERFORMANCE",
+          "evidence_quote": "江戸時代には年間十回ほど太太神楽が行われていたと記録にありますが、現在は、1月・歳旦祭、4月・春祭、6月・例大祭、11月・新嘗祭の年4回奉納されています。",
+          "note": "太太神楽（東京都無形民俗文化財）",
+          "source_url": "https://shinagawajinja.tokyo/treasure/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_FESTIVAL",
+          "evidence_quote": "引き続き 正面石段を葵神輿を担ぎ昇り宮入り（～午後8時前後）",
+          "note": "例大祭（北の天王祭）の宮入り",
+          "source_url": "https://shinagawajinja.tokyo/information/info_post/260513.php",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_MOUNTAIN_WORSHIP",
+          "evidence_quote": "この富士塚に登ることで本物の富士山に登ったのと同じ御利益があるとする「富士信仰」に基づくものです。",
+          "note": "富士塚（品川区指定有形民俗文化財）。「中心」とは書かれていない",
+          "source_url": "https://shinagawajinja.tokyo/treasure/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "椿大神社",
+        "address": "三重県鈴鹿市山本町1871"
+      },
+      "features": [
+        {
+          "word_id": "ST_ANCIENT",
+          "evidence_quote": "そのことより、肇国の礎を成した大神として、人皇第十一代垂仁天皇の二十七年秋（西暦紀元前三年）、倭姫命の御神託により、この地に「道別大神の社」として社殿が奉斎された日本最古の神社です。",
+          "note": "紀元前3年（伝承）",
+          "source_url": "https://tsubaki.or.jp/about/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "C_OLDEST",
+          "evidence_quote": "伊勢国鈴鹿山系の中央山麓に鎮座する椿大神社は、 「椿さん」の愛称で皆様に親しまれ、 二千年の歴史を持つ日本最古の神社です。",
+          "note": "「日本最古の神社」（神社自身の表現）",
+          "source_url": "https://tsubaki.or.jp/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_MYTH",
+          "evidence_quote": "猿田彦大神は、天孫 瓊々杵尊降臨の際、天の八衢に「道別の大神」として出迎え、高千穂の峯に御先導申し上げます。",
+          "note": "天孫降臨の神話",
+          "source_url": "https://tsubaki.or.jp/about/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_MOUNTAIN_WORSHIP",
+          "evidence_quote": "標高906.1m、高山入道ヶ嶽の山頂には奥の宮が鎮座します。一帯には、太古の祭祀跡である磐座が点在しています。",
+          "note": "入道ヶ嶽と磐座",
+          "source_url": "https://tsubaki.or.jp/keidai/keidai_map.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_PERFORMANCE",
+          "evidence_quote": "以来、干支に丑、辰、未、戌の付く年を舞年と定め、この3年毎の巡舞作法を守りながら今日まで伝えられてきた日本最古の獅子舞です。",
+          "note": "獅子舞神事（3年に1度、県指定無形民俗文化財）",
+          "source_url": "https://tsubaki.or.jp/saiji/saiji_dentou.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_IMPERIAL",
+          "evidence_quote": "天皇は御自ら治世の乱を鎮めるべく、当神社にご親拝。",
+          "note": "聖武天皇の親拝（伝承）",
+          "source_url": "https://tsubaki.or.jp/saiji/saiji_dentou.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_CAFE",
+          "evidence_quote": "お呈茶は一服1000円にて（銘々皿付）お召しあがりいただけます。",
+          "note": "茶室・鈴松庵",
+          "source_url": "https://tsubaki.or.jp/public/cafe.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "S_FOREST",
+          "evidence_quote": "鈴松庵は、境内老杉大木の中にあり、小間（三畳台目席）、広間（十畳書院）、立礼席（六坪）の三室を備え、新緑の春、紅葉の秋、冬の雪景色など四季折々の風情もお楽しみいただけます。",
+          "note": "境内の老杉大木",
+          "source_url": "https://tsubaki.or.jp/public/cafe.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_HIKE",
+          "evidence_quote": "神社の後方にそびえる神山です｡多くの登山者が四季の山を楽しみながら登っています｡ 山頂には当社の奥宮が鎮座しております。",
+          "note": "入道ヶ嶽の登山（奥宮）。本社の参拝自体の登りではない",
+          "source_url": "https://tsubaki.or.jp/mobile/midokoro.html",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "千住神社",
+        "address": "東京都足立区千住宮元町24-1"
+      },
+      "features": [
+        {
+          "word_id": "ST_ANCIENT",
+          "evidence_quote": "当神社は、千住（千寿）に集落が形成され始めた、延長四年（九二六年）丙戌年、土地鎮護と五穀豊饒を祈って、伏見稲荷より分霊を勧請し、稲荷神社を創立した。",
+          "note": "926年創立",
+          "source_url": "https://www.senjujinja926.com/%E5%8D%83%E4%BD%8F%E7%A5%9E%E7%A4%BE%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_SAMURAI",
+          "evidence_quote": "永承六年（一〇五一年）源義家は、奥州征伐の際、荒川（現千住大橋付近）を渡り、二ッ森（現千住神社）に陣営し、",
+          "note": "源義家の戦勝祈願（ページ上で改行されて「神前に戦勝を祈願したと、古記録に記載されている。」に続く）",
+          "source_url": "https://www.senjujinja926.com/%E5%8D%83%E4%BD%8F%E7%A5%9E%E7%A4%BE%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "S_GIANT_TREE",
+          "evidence_quote": "寄り添う樹木は「夫婦銀杏」（めおといちょう）として親しまれており、縁結び、夫婦円満、家内安全、子宝安産の象徴となっております。",
+          "note": "夫婦銀杏",
+          "source_url": "https://www.senjujinja926.com/%E5%8D%83%E4%BD%8F%E7%A5%9E%E7%A4%BE%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_FESTIVAL",
+          "evidence_quote": "五年に一度の九月大祭にて、千住の町を一日巡行渡御致します。",
+          "note": "一之宮大神輿の渡御",
+          "source_url": "https://www.senjujinja926.com/%E7%A5%AD-%E5%B9%B4%E9%96%93%E8%A1%8C%E4%BA%8B",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_CHARM",
+          "evidence_quote": "巾着型に鯛をデザインした心願成就の御守です。",
+          "note": "恵比寿守",
+          "source_url": "https://www.senjujinja926.com/%E5%BE%A1%E5%AE%88-%E6%8E%88%E4%B8%8E%E5%93%81",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "ST_MOUNTAIN_WORSHIP",
+          "evidence_quote": "宿場町として栄えた千住には、多くの富士講があり、活気溢れる土地柄もあり、当社にも富士塚がつくられ、富士信仰の文化が、脈々と受け継がれてきました。",
+          "note": "千住富士（7月1日のみ登拝可）。「中心」とは書かれていない",
+          "source_url": "https://www.senjujinja926.com/%E5%8D%83%E4%BD%8F%E7%A5%9E%E7%A4%BE%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
+        },
+        {
+          "word_id": "F_GOSHUIN",
+          "evidence_quote": "（御祈祷のご予約、御朱印、御守の授与は社務所受付時間内で承っております。）",
+          "note": "御朱印（社務所 8:00〜17:00）",
+          "source_url": "https://www.senjujinja926.com/",
+          "source_type": "神社公式",
+          "checked_on": "2026-11-13"
         }
       ]
     }

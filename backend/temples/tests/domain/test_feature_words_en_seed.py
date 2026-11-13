@@ -21,10 +21,11 @@ def test_seed_shape_matches_spreadsheet():
     seed = _seed()
     assert seed["vocabulary_version"] == FEATURE_WORDS_VERSION
     names = [s["shrine_ref"]["name_jp"] for s in seed["shrines"]]
-    assert len(names) == 10
-    assert len(set(names)) == 10
-    # 当てはめ表は104行（日光東照宮の C_CARVINGS は根拠が2つで2行）
-    assert sum(len(s["features"]) for s in seed["shrines"]) == 104
+    # 最初の10社（2026-11-12）＋推薦回数の上位から機械的に選んだ追加15社（2026-11-13）
+    assert len(names) == 25
+    assert len(set(names)) == 25
+    # 当てはめ表は 104行（最初の10社）＋115行（追加15社）
+    assert sum(len(s["features"]) for s in seed["shrines"]) == 219
 
 
 def test_every_row_has_known_word_quote_url_and_date():
@@ -39,8 +40,12 @@ def test_every_row_has_known_word_quote_url_and_date():
 
 
 def test_name_and_address_match_knowledge_seeds_exactly():
-    # resolve_shrine は正式名称と住所の完全一致で結びつける。知識データと1文字でも違うと外れる
+    # resolve_shrine は正式名称と住所の完全一致で結びつける。知識データ（または基本シード）と1文字でも違うと外れる
     refs = set()
+    # 千住神社は知識データに無く、基本シード（shrines_seed_clean.json）にだけある
+    with open(os.path.join(DATA_DIR, "shrines_seed_clean.json"), encoding="utf-8") as f:
+        for shrine in json.load(f):
+            refs.add((shrine.get("name_jp"), shrine.get("address")))
     for path in glob.glob(os.path.join(DATA_DIR, "knowledge_seeds", "*.json")):
         with open(path, encoding="utf-8") as f:
             for shrine in json.load(f).get("shrines", []):
