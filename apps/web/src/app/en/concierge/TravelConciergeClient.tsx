@@ -72,7 +72,7 @@ export default function TravelConciergeClient() {
         old trees&rdquo; or &ldquo;a shrine with a great view after a short hike&rdquo;.
       </p>
       <p className="mt-1 text-xs text-neutral-500">
-        Preview: results are currently shown in Japanese. We use your current location as the starting point.
+        Preview: shrine names are currently shown in Japanese. We use your current location as the starting point.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-3">

@@ -347,7 +347,7 @@ def _build_chat_response(
         "consultation_meaning": consultation_meaning,
     }
     # 英語の相談（language=en）のときだけ載せる。日本語の応答の形は変えない。
-    # travel モードのときだけ。取り出した特徴語は記録用で、並び順には使っていない（temples/domain/feature_words_en.py）。
+    # travel モードのときだけ。英語の辞書を使ったときは、取り出した特徴語で並べ替えている（temples/services/travel_ranking.py）。
     if feature_words_en is not None:
         body["feature_words_en"] = feature_words_en
 
@@ -555,7 +555,8 @@ class ConciergeChatView(APIView):
 
             # travel モード（旅行・文化体験）のときだけ、相談文から特徴語を取り出す。
             # 言語とは独立（英語の辞書は language=en のときだけ使う）。
-            # 応答と ConciergeRecommendationLog に残すだけで、並び順には使わない。
+            # 英語の辞書を使ったとき（dictionary=en）は、この語で候補を並べ替える
+            # （temples/services/travel_ranking.py）。応答と ConciergeRecommendationLog にも残す。
             feature_words_en = (
                 build_travel_feature_payload(query or message or "", language)
                 if is_travel_mode(data.get("mode"))
@@ -826,6 +827,12 @@ class ConciergeChatView(APIView):
                     user=user if getattr(user, "is_authenticated", False) else None,
                     profile_context=raw_profile_context if isinstance(raw_profile_context, dict) else None,
                     interpretation_profile=interpretation_profile,
+                    # travel モードで英語の辞書を使ったときだけ並べ替える（日本語などは辞書が無いので並びは変えない）
+                    travel_request_feature_ids=(
+                        list(feature_words_en.get("ids") or [])
+                        if feature_words_en is not None and feature_words_en.get("dictionary") == "en"
+                        else None
+                    ),
                 )
             except Exception:
                 log.exception(
@@ -988,6 +995,9 @@ class ConciergeChatView(APIView):
             from temples.services.concierge_observability import save_concierge_recommendation_log
 
             feature_words_en = _attach_shrine_matches(feature_words_en, recs, rid)
+            travel_ranking = recs.pop("_travel_ranking", None)
+            if feature_words_en is not None and travel_ranking is not None:
+                feature_words_en = {**feature_words_en, "travel_ranking": travel_ranking}
 
             signals = recs.get("_signals") or {}
             llm_meta = signals.get("llm") or {}
