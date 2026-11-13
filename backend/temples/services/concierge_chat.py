@@ -9,6 +9,7 @@ from temples.domain.shrine_identity import resolve_shrine_id, resolve_shrine_ide
 from temples.models import GoriyakuTag
 
 from temples.services.concierge_candidate_utils import _normalize_candidate_fields
+from temples.services.travel_ranking import rerank_for_travel
 from temples.services.concierge_history import load_shrine_history_facts
 from temples.services.channel_b_typed_need_match import strip_channel_b_carrier
 from temples.services.consultation_interpreter import interpret_consultation
@@ -723,6 +724,7 @@ def build_chat_recommendations(
     user=None,
     profile_context: Optional[Dict[str, Any]] = None,
     interpretation_profile: dict[str, Any] | None = None,
+    travel_request_feature_ids: list[str] | None = None,
 ) -> Dict[str, Any]:
     """
     候補リストからおすすめ神社を選んで返す関数。
@@ -947,6 +949,15 @@ def build_chat_recommendations(
     )
     recs.setdefault("_debug", {})["score_v3_mode"] = score_v3_mode
     recs.setdefault("_debug", {})["score_v3_mode_source"] = score_v3_mode_detail["source"]
+    # travel モード（英語の相談）：need で並んだ候補を、特徴語の重なりと場所の価値で並べ替える。
+    # None のとき（travel でない・英語でない）は何もしない（temples/services/travel_ranking.py）。
+    if travel_request_feature_ids is not None:
+        reordered, travel_observation = rerank_for_travel(
+            recs.get("recommendations") or [],
+            travel_request_feature_ids,
+        )
+        recs["recommendations"] = reordered
+        recs["_travel_ranking"] = travel_observation
     recs["recommendations"] = _attach_rank_comparison(recs.get("recommendations") or [])
     recs.setdefault("_debug", {})["user_state_profile"] = _build_user_state_profile(
         query=query or "",

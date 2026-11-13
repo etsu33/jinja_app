@@ -4,7 +4,8 @@
 - mode=travel のときだけ応答に feature_words_en を載せ、記録（ConciergeRecommendationLog）に残す
 - 言語とモードは独立。英語の辞書を使うのは language=en のときだけ。日本語は dictionary="none"
 - mode=travel でなければ、language=en でも何も足さない（今までの応答の形は変えない）
-- 並び順には使わない（推薦の結果は mode=travel で変わらない）
+- 並べ替えは英語の辞書を使ったとき（mode=travel・language=en）だけ。語の一覧を
+  build_chat_recommendations に渡す（並べ替え自体は test_build_chat_recommendations_travel.py）
 """
 
 import json
@@ -91,11 +92,56 @@ def test_without_travel_mode_nothing_is_added(client, stub_pipeline, extra):
     assert "feature_words_en" not in (_latest_log().result_state or {})
 
 
+@pytest.fixture
+def capture_pipeline(monkeypatch):
+    calls = []
+    monkeypatch.setattr("temples.api_views_concierge.build_chat_candidates", lambda **kwargs: [])
+
+    def fake(**kwargs):
+        calls.append(kwargs)
+        return {"recommendations": [dict(r) for r in RECS]}
+
+    monkeypatch.setattr("temples.api_views_concierge.build_chat_recommendations", fake)
+    return calls
+
+
 @pytest.mark.django_db
-def test_travel_mode_does_not_change_recommendations(client, stub_pipeline):
-    need = _post(client, {"query": "quiet forest"}).json()
-    travel = _post(client, {"query": "quiet forest", "mode": "travel", "language": "en"}).json()
-    assert _names(travel) == _names(need)
+def test_travel_mode_in_english_passes_words_for_reranking(client, capture_pipeline):
+    _post(client, {"query": "Somewhere quiet with old trees", "mode": "travel", "language": "en"})
+    assert capture_pipeline[-1]["travel_request_feature_ids"] == ["S_FOREST", "F_QUIET"]
+
+
+@pytest.mark.django_db
+def test_travel_mode_in_english_without_words_still_reranks_by_place_value(client, capture_pipeline):
+    _post(client, {"query": "I want to rest", "mode": "travel", "language": "en"})
+    assert capture_pipeline[-1]["travel_request_feature_ids"] == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "extra",
+    [{}, {"language": "en"}, {"mode": "need"}, {"mode": "travel"}, {"mode": "travel", "language": "ja"}],
+)
+def test_no_reranking_without_english_travel(client, capture_pipeline, extra):
+    _post(client, {"query": "quiet forest", **extra})
+    assert capture_pipeline[-1]["travel_request_feature_ids"] is None
+
+
+@pytest.mark.django_db
+def test_travel_ranking_observation_is_returned_and_logged(client, monkeypatch):
+    monkeypatch.setattr("temples.api_views_concierge.build_chat_candidates", lambda **kwargs: [])
+    monkeypatch.setattr(
+        "temples.api_views_concierge.build_chat_recommendations",
+        lambda **kwargs: {
+            "recommendations": [dict(r) for r in RECS],
+            "_travel_ranking": {"pool_size": 2, "covered_in_pool": 0},
+        },
+    )
+    r = _post(client, {"query": "quiet forest", "mode": "travel", "language": "en"})
+    body = r.json()
+    assert body["feature_words_en"]["travel_ranking"]["pool_size"] == 2
+    assert "_travel_ranking" not in body["data"]
+    assert _latest_log().result_state["feature_words_en"]["travel_ranking"]["covered_in_pool"] == 0
 
 
 @pytest.mark.django_db

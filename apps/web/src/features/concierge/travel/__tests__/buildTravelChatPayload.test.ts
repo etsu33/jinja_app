@@ -32,19 +32,40 @@ describe("buildTravelChatPayload", () => {
 });
 
 describe("pickTravelRecommendations", () => {
-  it("keeps name, detail link, reason, address and distance", () => {
+  it("keeps name, detail link, English reason, address and distance", () => {
     const body = {
       data: {
         recommendations: [
-          { name: "赤坂氷川神社", shrine_id: 60, reason: "静かな杜", address: "東京都港区", distance_m: 1200 },
+          {
+            name: "赤坂氷川神社",
+            shrine_id: 60,
+            reason: "静かな杜",
+            travel_reason_en: { type: "matches", text: "Matches your interests: sacred forest, quiet" },
+            address: "東京都港区",
+            distance_m: 1200,
+          },
           { display_name: "日枝神社", id: "43" },
         ],
       },
     };
     expect(pickTravelRecommendations(body)).toEqual([
-      { key: "shrine-60", name: "赤坂氷川神社", href: "/shrines/60", reason: "静かな杜", address: "東京都港区", distanceM: 1200 },
+      {
+        key: "shrine-60",
+        name: "赤坂氷川神社",
+        href: "/shrines/60",
+        reason: "Matches your interests: sacred forest, quiet",
+        address: "東京都港区",
+        distanceM: 1200,
+      },
       { key: "shrine-43", name: "日枝神社", href: "/shrines/43", reason: null, address: null, distanceM: null },
     ]);
+  });
+
+  it("never shows the Japanese reason on the English page", () => {
+    const [rec] = pickTravelRecommendations({
+      data: { recommendations: [{ name: "神社", shrine_id: 1, reason: "日本語の理由", travel_reason_en: null }] },
+    });
+    expect(rec.reason).toBeNull();
   });
 
   it("skips rows without a name and tolerates odd shapes", () => {

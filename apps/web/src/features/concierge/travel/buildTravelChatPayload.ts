@@ -2,8 +2,9 @@
 //
 // 英語の相談ページ（/en/concierge・限定公開）から送る相談の中身を組み立てる。
 // - mode は "travel"（旅行・文化体験の推薦モード）、language は "en"。言語とモードは別々に持つ。
-// - backend は travel モードのときだけ、相談文から英語の特徴語を取り出して記録する。
-//   並び順はまだ need と同じ（travel 専用の点数は後の段）。
+// - backend は travel モードで英語のとき、相談文から英語の特徴語を取り出し、
+//   特徴語の重なりと場所の価値で候補を並べ替える（backend/temples/services/travel_ranking.py）。
+// - 推薦の理由は backend の travel_reason_en（英語）だけを出す。日本語の reason は英語のページに出さない。
 // - 出発地点はブラウザの現在地。取れなかったときは lat/lng を送らない。
 
 export type TravelOrigin = { lat: number; lng: number };
@@ -43,7 +44,7 @@ type RawRecommendation = {
   display_name?: unknown;
   shrine_id?: unknown;
   id?: unknown;
-  reason?: unknown;
+  travel_reason_en?: { text?: unknown } | null;
   address?: unknown;
   distance_m?: unknown;
 };
@@ -71,7 +72,7 @@ export function pickTravelRecommendations(body: unknown): TravelRecommendation[]
         key: id ? `shrine-${id}` : `rec-${index}`,
         name,
         href: id ? `/shrines/${id}` : null,
-        reason: asText(rec?.reason),
+        reason: asText(rec?.travel_reason_en?.text),
         address: asText(rec?.address),
         distanceM: distance,
       };
