@@ -698,15 +698,14 @@ def test_none_coordinate_to_numeric_is_updated(tmp_path):
     assert shrine.longitude == 139.5
 
 
-def test_numeric_coordinate_to_none_is_updated(tmp_path):
-    """numeric vs None も different（FC-05）。0.0 扱いに落とさない。
+def test_numeric_coordinate_with_seed_none_is_kept(tmp_path):
+    """シードの座標が None でも、本番の数値座標は上書きしない（2026-11-13 変更）。
 
-    ここで固定するのは「比較の判定」であり、書き込み後のDB値ではない。
-    pytest下では ``temples.signals.fill_latlng_if_missing`` が pre_save で
-    NULL座標をダミー値へ戻すため、``latitude is None`` という書き込み結果は
-    この環境では観測できない（Productionでは IS_PYTEST が false なので
-    NULL がそのまま書かれる）。signalを止めればShrineの保存契約自体を
-    テスト都合で変えることになるため、そこには踏み込まない。
+    以前は FC-05（numeric vs None は different）に従って UPDATE していた。
+    2026-11-12 の goriyaku 空上書き事故を受けて「シードが空なら本番の値を残す」
+    契約に変え、座標も対象に含めた（えつこさん決定：本番の緯度経度を残す）。
+    比較関数 ``_coordinate_values_equal`` の FC-05（None と数値は別）はそのまま。
+    「残す」判定は比較より前に行う（``_is_empty_value``）。
     """
     shrine = _make_shrine(
         latitude=35.0,
@@ -720,10 +719,15 @@ def test_numeric_coordinate_to_none_is_updated(tmp_path):
 
     output = _run("--source", str(source))
 
-    assert _summary(output)["updated"] == 1
-    reported = _reported_fields(output)
-    assert "latitude" in reported
-    assert "longitude" in reported
+    assert _summary(output)["updated"] == 0
+    assert "latitude" not in _reported_fields(output)
+    keep = [ln for ln in output.splitlines() if ln.startswith("KEEP ")]
+    assert len(keep) == 1
+    assert "'latitude'" in keep[0] and "'longitude'" in keep[0]
+
+    shrine.refresh_from_db()
+    assert shrine.latitude == 35.0
+    assert shrine.longitude == 139.0
 
     # comparator そのものの numeric vs None は unit level で固定する
     # （test_coordinate_comparator_is_defined_once_with_the_contracted_tolerance）。

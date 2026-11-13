@@ -330,17 +330,25 @@ def test_coordinate_round_trip_within_importer_tolerance_is_not_a_conflict(tmp_p
 
 # Each mutation on an existing exact target -> CONFLICT with this reason.
 # importer_overwrites: whether a subset import of the 4 seed rows would UPDATE the row.
+#
+# 2026-11-13: import_shrines_seed は「シードが空（None・空文字・空リスト）で本番に値がある項目は
+# 上書きしない（KEEP）」に変わった（2026-11-12 の goriyaku 空上書き事故の再発防止）。
+# H003 の4行はシード側の goriyaku / kyusei / astro_elements / sajin / description /
+# name_romaji / element が空なので、本番にだけ値がある "*-set" は取り込みでは上書きされない。
+# この SQL は 2026-10-18 に使い終えた記録（C7 CATALOG_READY）なので変更しない。
+# SQL は引き続き CONFLICT（IMPORT_WOULD_OVERWRITE_PAYLOAD）と判定し、取り込みより慎重な側になる。
+# 判定名の "WOULD_OVERWRITE" は、変更後の取り込みの動きとは一致しない。
 _COLUMN_MUTATIONS = {
     "coordinate-drift": ({"latitude": TARGETS[MUTATED][1] + 1e-9}, "COORDINATE_MISMATCH", True),
     "coordinate-null": ({"latitude": None, "longitude": None}, "COORDINATE_MISMATCH", True),
-    "goriyaku-set": ({"goriyaku": "開運"}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", True),
+    "goriyaku-set": ({"goriyaku": "開運"}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", False),
     "goriyaku-null": ({"goriyaku": None}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", True),
-    "kyusei-set": ({"kyusei": "一白水星"}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", True),
-    "astro-set": ({"astro_elements": ["火"]}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", True),
-    "sajin-set": ({"sajin": "豊城入彦命"}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", True),
-    "description-set": ({"description": "説明"}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", True),
-    "romaji-set": ({"name_romaji": "Akagi Jinja"}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", True),
-    "element-set": ({"element": "火"}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", True),
+    "kyusei-set": ({"kyusei": "一白水星"}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", False),
+    "astro-set": ({"astro_elements": ["火"]}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", False),
+    "sajin-set": ({"sajin": "豊城入彦命"}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", False),
+    "description-set": ({"description": "説明"}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", False),
+    "romaji-set": ({"name_romaji": "Akagi Jinja"}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", False),
+    "element-set": ({"element": "火"}, "IMPORT_WOULD_OVERWRITE_PAYLOAD", False),
     "visit-style-set": ({"visit_style_tags": ["nature"]}, "UNEXPECTED_CATALOG_STATE", False),
     "history-theme-set": ({"history_theme": "military"}, "UNEXPECTED_CATALOG_STATE", False),
     "kind-changed": ({"kind": "temple"}, "UNEXPECTED_CATALOG_STATE", False),
