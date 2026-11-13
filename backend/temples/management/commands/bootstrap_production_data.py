@@ -43,7 +43,7 @@ BOOTSTRAP_STEPS: tuple[BootstrapStep, ...] = (
     # 英語の特徴語（travel モードの検証用）。シードJSONを直したら version を上げて取り込み直す。
     BootstrapStep(
         step="import_feature_words_en",
-        version="2026-11-12-v1",
+        version="2026-11-13-v2",
         command="import_feature_words_en",
     ),
 )

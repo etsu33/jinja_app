@@ -37,9 +37,9 @@ def test_imports_resolved_shrines_and_reports_the_rest():
     assert row.note == "現在の社殿は1958年の再建"
     assert row.source_url == "https://www.hiejinja.net/english/"
     assert str(row.checked_on) == "2026-11-12"
-    # 作っていない8社は推測で入れず、ERROR として報告する
-    assert err.count("ERROR") == 8
-    assert "shrines=2 rows=23 problems=8" in out
+    # 作っていない23社（シード25社のうち2社以外）は推測で入れず、ERROR として報告する
+    assert err.count("ERROR") == 23
+    assert "shrines=2 rows=23 problems=23" in out
 
 
 @pytest.mark.django_db
