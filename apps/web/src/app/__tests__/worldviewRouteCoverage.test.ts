@@ -30,6 +30,8 @@ const ROUTE_MATRIX: Record<string, Category> = {
   "/concierge": "USER_FACING_WORLDVIEW",
   "/concierge/full": "USER_FACING_WORLDVIEW",
   "/consultation": "USER_FACING_WORLDVIEW",
+  // 英語の相談ページ（限定公開・noindex）
+  "/en/concierge": "USER_FACING_WORLDVIEW",
   "/favorites": "USER_FACING_WORLDVIEW",
   "/g/[username]": "USER_FACING_WORLDVIEW",
   "/goshuin/new": "USER_FACING_WORLDVIEW",
