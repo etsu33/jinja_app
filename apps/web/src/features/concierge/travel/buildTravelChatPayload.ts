@@ -71,7 +71,8 @@ export function pickTravelRecommendations(body: unknown): TravelRecommendation[]
       return {
         key: id ? `shrine-${id}` : `rec-${index}`,
         name,
-        href: id ? `/shrines/${id}` : null,
+        // 英語の結果カードは、英語の神社詳細へ繋ぐ。
+        href: id ? `/en/shrines/${id}` : null,
         reason: asText(rec?.travel_reason_en?.text),
         address: asText(rec?.address),
         distanceM: distance,

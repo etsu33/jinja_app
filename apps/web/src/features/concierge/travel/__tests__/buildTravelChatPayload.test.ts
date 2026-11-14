@@ -52,12 +52,12 @@ describe("pickTravelRecommendations", () => {
       {
         key: "shrine-60",
         name: "赤坂氷川神社",
-        href: "/shrines/60",
+        href: "/en/shrines/60",
         reason: "Matches your interests: sacred forest, quiet",
         address: "東京都港区",
         distanceM: 1200,
       },
-      { key: "shrine-43", name: "日枝神社", href: "/shrines/43", reason: null, address: null, distanceM: null },
+      { key: "shrine-43", name: "日枝神社", href: "/en/shrines/43", reason: null, address: null, distanceM: null },
     ]);
   });
 
