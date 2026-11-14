@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { post } from "../lib/http";
 import Button from "../components/ui/Button";
@@ -44,7 +44,7 @@ export default function LoginScreen() {
   }, [canSubmit, password, router, username]);
 
   return (
-    <View style={styles.screen}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
         <Text style={styles.eyebrow}>LOGIN</Text>
         <Text style={styles.title}>ログイン</Text>
@@ -54,6 +54,7 @@ export default function LoginScreen() {
           <View style={styles.field}>
             <Text style={styles.label}>ユーザー名</Text>
             <TextInput
+              accessibilityLabel="ユーザー名"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
@@ -68,6 +69,7 @@ export default function LoginScreen() {
           <View style={styles.field}>
             <Text style={styles.label}>パスワード</Text>
             <TextInput
+              accessibilityLabel="パスワード"
               value={password}
               onChangeText={setPassword}
               autoCapitalize="none"
@@ -80,7 +82,9 @@ export default function LoginScreen() {
             />
           </View>
 
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+          {errorMessage ? (
+            <Text accessibilityRole="alert" style={styles.errorText}>{errorMessage}</Text>
+          ) : null}
 
           <Button
             title="ログインする"
@@ -107,7 +111,7 @@ export default function LoginScreen() {
           </Pressable>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -115,6 +119,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: theme.background,
+  },
+  content: {
+    flexGrow: 1,
     justifyContent: "center",
     padding: spacing.screenX,
   },
