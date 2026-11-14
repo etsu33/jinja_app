@@ -35,6 +35,9 @@ export function ProfilePickerModal({
               return (
                 <Pressable
                   key={option.value}
+                  accessibilityRole="radio"
+                  accessibilityLabel={option.label}
+                  accessibilityState={{ checked: selected }}
                   style={[styles.option, selected && styles.optionSelected]}
                   onPress={() => {
                     onClose();
