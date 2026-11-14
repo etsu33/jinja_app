@@ -67,6 +67,9 @@ export default function GoshuinList() {
               <Image
                 key={String(s.id)}
                 source={{ uri: s.uri }}
+                accessible
+                accessibilityRole="image"
+                accessibilityLabel={`御朱印の記録 ${index + 1}件目`}
                 style={[
                   styles.stampImage,
                   {

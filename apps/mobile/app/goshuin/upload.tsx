@@ -7,6 +7,10 @@ import { pushStamp } from "../../lib/storage";
 import Button from "../../components/ui/Button";
 import { kamimusubiDark as theme } from "../../design/theme";
 
+function showSaveFailure() {
+  Alert.alert("保存できませんでした", "時間をおいて、もう一度お試しください。");
+}
+
 export default function GoshuinUpload() {
   const router = useRouter();
   const [uri, setUri] = React.useState<string | null>(null);
@@ -50,7 +54,10 @@ export default function GoshuinUpload() {
     setSaving(true);
     try {
       const savedItem = await pushStamp(uri);
-      if (!savedItem) return;
+      if (!savedItem) {
+        showSaveFailure();
+        return;
+      }
 
       Alert.alert("保存しました");
       goBack();
@@ -58,6 +65,7 @@ export default function GoshuinUpload() {
       if (__DEV__) {
         console.warn("[GoshuinUpload] failed to save stamp", error);
       }
+      showSaveFailure();
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -79,11 +87,21 @@ export default function GoshuinUpload() {
       </View>
 
       <View style={styles.pickRow}>
-        <Pressable onPress={takePhoto} style={({ pressed }) => [styles.pickBtn, pressed && styles.pressed]}>
+        <Pressable
+          onPress={takePhoto}
+          style={({ pressed }) => [styles.pickBtn, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel="カメラで御朱印を撮影する"
+        >
           <Text style={styles.pickBtnIcon}>□</Text>
           <Text style={styles.pickBtnText}>カメラ</Text>
         </Pressable>
-        <Pressable onPress={pickFromLibrary} style={({ pressed }) => [styles.pickBtn, pressed && styles.pressed]}>
+        <Pressable
+          onPress={pickFromLibrary}
+          style={({ pressed }) => [styles.pickBtn, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel="アルバムから御朱印画像を選択する"
+        >
           <Text style={styles.pickBtnIcon}>□</Text>
           <Text style={styles.pickBtnText}>アルバム</Text>
         </Pressable>
@@ -91,7 +109,13 @@ export default function GoshuinUpload() {
 
       {uri ? (
         <View style={styles.previewBlock}>
-          <Image source={{ uri }} style={styles.previewImage} />
+          <Image
+            source={{ uri }}
+            style={styles.previewImage}
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel="選択した御朱印画像"
+          />
           <Button
             title="この御朱印を保存する"
             variant="primary"
