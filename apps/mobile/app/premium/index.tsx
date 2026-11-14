@@ -271,7 +271,7 @@ export default function PremiumScreen() {
                   accessibilityLabel="Premiumに登録する"
                 />
 
-                {checkoutError ? <Text style={styles.checkoutErrorText}>{checkoutError}</Text> : null}
+                {checkoutError ? <Text accessibilityRole="alert" style={styles.checkoutErrorText}>{checkoutError}</Text> : null}
               </View>
             )}
           </View>

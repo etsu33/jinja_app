@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  AccessibilityInfo,
   KeyboardAvoidingView,
   Platform,
   View,
@@ -766,6 +767,9 @@ export default function ConciergeScreen() {
         location: toOriginPayload(origin),
       });
       setResults(recommendations);
+      AccessibilityInfo.announceForAccessibility(
+        `神社の提案結果を更新しました。${recommendations.length}件です。`,
+      );
     } catch {
       setErrorMessage("通信に失敗しました。前回の結果を表示したまま、もう一度相談できます。");
     } finally {
@@ -974,7 +978,7 @@ export default function ConciergeScreen() {
 
           {errorMessage ? (
             <View style={styles.errorNotice}>
-              <Text style={styles.errorNoticeText}>{errorMessage}</Text>
+              <Text accessibilityRole="alert" style={styles.errorNoticeText}>{errorMessage}</Text>
             </View>
           ) : null}
         </View>
