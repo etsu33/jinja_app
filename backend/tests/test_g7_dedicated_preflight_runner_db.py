@@ -9,7 +9,10 @@ runner's contract, and that a real libpq session is stopped by the live-settings
 from __future__ import annotations
 
 import importlib.util
+import os
+import signal
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -40,6 +43,8 @@ def _local_params() -> dict:
         "user": settings.get("USER"),
         "password": settings.get("PASSWORD") or None,
         "dbname": settings["NAME"],
+        # The connect runs inside the runner's signal-deferral section（Issue #3426）: bound how long it can block.
+        "connect_timeout": 5,
     }
 
 
@@ -69,6 +74,9 @@ class LocalConnection:
         self.raw = raw
         self._live_override = live_override
         self.executed: list[str] = []
+        self.close_calls = (
+            0  # runner-side releases of the wrapped handle（double-release detection）
+        )
 
     def live_settings(self):
         if self._live_override is not None:
@@ -99,27 +107,42 @@ class LocalConnection:
         self.raw.execute("ROLLBACK")
 
     def close(self):
+        self.close_calls += 1
         self.raw.close()
 
 
 class LocalConnector:
     PREFLIGHT_CONNECTOR_KIND = "local_disposable"
 
-    def __init__(self, live_override=None):
+    def __init__(
+        self, live_override=None, interrupt_after_acquire=False, interrupt_before_return=False
+    ):
         self.live_override = live_override
         self.conn = None
-        self.allocated: list = []  # every handle this connector opened（for assertions only）
+        self.allocated: list = (
+            []
+        )  # every handle this connector opened（test bookkeeping, not ownership）
         self.backend_pids: list[int] = (
             []
         )  # server-side identity of those handles（for assertions only）
-        self._unadopted: list = []
+        self._unadopted: list = []  # ownership registry used by release_unadopted()
+        self.interrupt_after_acquire = bool(interrupt_after_acquire)  # Issue #3426 R1 point
+        self.interrupt_before_return = bool(interrupt_before_return)  # Issue #3426 R2 point
+        self.alive_at_injection: list[int] = []  # positive control captured at the injection point
+        self.closed_by_connector = 0  # connector-side releases（double-release detection）
 
     def connect(self, params):
         raw = _open_loopback_raw()
         self.allocated.append(raw)
-        self._unadopted.append(raw)  # recorded before anything else can fail
         self.backend_pids.append(raw.info.backend_pid)
+        if self.interrupt_after_acquire:
+            self.alive_at_injection.append(_live_backends([raw.info.backend_pid]))
+            inject_interrupt()  # R1: acquired, not yet registered for release
+        self._unadopted.append(raw)  # registration
         self.conn = LocalConnection(raw, self.live_override)
+        if self.interrupt_before_return:
+            self.alive_at_injection.append(_live_backends([raw.info.backend_pid]))
+            inject_interrupt()  # R2: registered, not yet adopted by the runner
         return self.conn
 
     def release_unadopted(self):
@@ -127,7 +150,51 @@ class LocalConnector:
         pending, self._unadopted = self._unadopted, []
         for raw in pending:
             if not raw.closed:
+                self.closed_by_connector += 1
                 raw.close()
+
+
+class InjectedInterrupt(BaseException):
+    """Raised by the test SIGUSR1 handler: a real, signal-originated asynchronous interrupt（Issue #3426）."""
+
+
+def _raise_injected(signum, frame):
+    raise InjectedInterrupt()
+
+
+def inject_interrupt():
+    os.kill(os.getpid(), signal.SIGUSR1)
+
+
+@pytest.fixture
+def sigusr1_interrupt():
+    on_linux = sys.platform.startswith("linux")
+    if not (
+        pf.interrupt_deferral_supported() and hasattr(signal, "SIGUSR1") and hasattr(os, "kill")
+    ):
+        if on_linux:
+            pytest.fail("signal deferral must be available on Linux")
+        pytest.skip("POSIX signal deferral unavailable on this platform")
+    if threading.current_thread() is not threading.main_thread():
+        if on_linux:
+            pytest.fail("signal injection tests must run on the main thread")
+        pytest.skip("not on the main thread")
+    previous = signal.signal(signal.SIGUSR1, _raise_injected)
+    try:
+        yield
+    finally:
+        restored = signal.getsignal(signal.SIGUSR1)
+        signal.signal(signal.SIGUSR1, previous)
+        assert restored is _raise_injected  # the runner put the original Python handler back
+        assert signal.SIGUSR1 not in signal.sigpending()  # nothing left pending
+
+
+class _NoDeferral:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        return False
 
 
 @pytest.fixture
@@ -371,3 +438,78 @@ def test_ownership_local_connection_refuses_non_loopback_or_foreign_handles():
     raw.close()
     with pytest.raises(RuntimeError, match="local_disposable_only"):
         LocalConnection(raw)
+
+
+# --------------------------------------------------------------------------- #
+# Issue #3426 PR-A: R1 / R2 on a real local session（separate autocommit observer, exact backend PIDs）
+# --------------------------------------------------------------------------- #
+
+
+def test_r1_real_handle_interrupted_before_registration_is_closed_exactly_once(
+    ca_file, sigusr1_interrupt
+):
+    connector = LocalConnector(interrupt_after_acquire=True)
+    with pytest.raises(InjectedInterrupt):
+        pf.run_preflight(_config(ca_file), connector)
+    assert connector.alive_at_injection == [
+        1
+    ]  # positive control: the backend existed when interrupted
+    # Deferred to the end of the handoff: adopted, so exactly one release by the runner.
+    assert connector.closed_by_connector + connector.conn.close_calls == 1
+    assert connector.conn.close_calls == 1 and connector.conn.executed == []
+    assert _wait_until_gone(connector.backend_pids) == 0
+
+
+def test_r1_real_negative_control_without_deferral_leaks_a_backend(
+    ca_file, sigusr1_interrupt, monkeypatch
+):
+    monkeypatch.setattr(pf, "_InterruptDeferral", _NoDeferral)
+    connector = LocalConnector(interrupt_after_acquire=True)
+    with pytest.raises(InjectedInterrupt):
+        pf.run_preflight(_config(ca_file), connector)
+    assert connector.alive_at_injection == [1]
+    assert connector.closed_by_connector == 0 and connector.conn is None
+    try:
+        # The leak is real and observable on the server side.
+        assert _wait_until_gone(connector.backend_pids, timeout=1.0) == 1
+    finally:
+        connector.allocated[0].close()  # test cleanup of the deliberately leaked handle
+    assert _wait_until_gone(connector.backend_pids) == 0
+
+
+def test_r2_real_interrupt_before_adoption_is_closed_exactly_once(ca_file, sigusr1_interrupt):
+    connector = LocalConnector(interrupt_before_return=True)
+    with pytest.raises(InjectedInterrupt):
+        pf.run_preflight(_config(ca_file), connector)
+    assert connector.alive_at_injection == [1]
+    assert connector.closed_by_connector == 0 and connector.conn.close_calls == 1
+    assert _wait_until_gone(connector.backend_pids) == 0
+
+
+def test_r2_real_single_marker_without_deferral_is_closed_exactly_once(
+    ca_file, sigusr1_interrupt, monkeypatch
+):
+    monkeypatch.setattr(pf, "_InterruptDeferral", _NoDeferral)
+    connector = LocalConnector(interrupt_before_return=True)
+    with pytest.raises(InjectedInterrupt):
+        pf.run_preflight(_config(ca_file), connector)
+    # Interrupted before the ownership store: the connector releases, the runner never closes.
+    assert connector.closed_by_connector == 1 and connector.conn.close_calls == 0
+    assert _wait_until_gone(connector.backend_pids) == 0
+
+
+def test_r1_real_multi_threaded_process_is_closed_exactly_once(ca_file, sigusr1_interrupt):
+    """Same as the R1 test, with a second thread present（the pytest-xdist condition）."""
+    stop = threading.Event()
+    thread = threading.Thread(target=stop.wait, args=(30,), daemon=True)
+    thread.start()
+    try:
+        connector = LocalConnector(interrupt_after_acquire=True)
+        with pytest.raises(InjectedInterrupt):
+            pf.run_preflight(_config(ca_file), connector)
+    finally:
+        stop.set()
+        thread.join(5)
+    assert connector.alive_at_injection == [1]
+    assert connector.closed_by_connector == 0 and connector.conn.close_calls == 1
+    assert _wait_until_gone(connector.backend_pids) == 0
