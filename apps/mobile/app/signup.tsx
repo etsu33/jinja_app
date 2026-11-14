@@ -76,7 +76,7 @@ export default function SignupScreen() {
               style={styles.input}
               accessibilityLabel="ユーザー名"
             />
-            {errors.username ? <Text style={styles.errorText}>{errors.username}</Text> : null}
+            {errors.username ? <Text accessibilityRole="alert" style={styles.errorText}>{errors.username}</Text> : null}
           </View>
 
           <View style={styles.field}>
@@ -95,7 +95,7 @@ export default function SignupScreen() {
               style={styles.input}
               accessibilityLabel="メールアドレス"
             />
-            {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+            {errors.email ? <Text accessibilityRole="alert" style={styles.errorText}>{errors.email}</Text> : null}
           </View>
 
           <View style={styles.field}>
@@ -115,10 +115,10 @@ export default function SignupScreen() {
               accessibilityLabel="パスワード"
             />
             <Text style={styles.hint}>{PASSWORD_MIN_LENGTH}文字以上</Text>
-            {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+            {errors.password ? <Text accessibilityRole="alert" style={styles.errorText}>{errors.password}</Text> : null}
           </View>
 
-          {errors.form ? <Text style={styles.errorText}>{errors.form}</Text> : null}
+          {errors.form ? <Text accessibilityRole="alert" style={styles.errorText}>{errors.form}</Text> : null}
 
           <Button
             title="アカウントを作成する"
