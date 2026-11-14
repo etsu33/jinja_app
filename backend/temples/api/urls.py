@@ -41,6 +41,7 @@ from temples.api.views.shrine import (
     ShrineViewSet,
 )
 from temples.api.views.tags import goriyaku_tags_list
+from temples.api.views.shrine_feature_words_en import ShrineFeatureWordsEnView
 from temples.api.views.shrine_meaning import ShrineMeaningView
 from temples.api.views.visit import VisitCreateView, UserVisitListView
 from temples.api.views.reflection import ShrineReflectionCreateView, ShrineReflectionListView
@@ -120,6 +121,7 @@ urlpatterns = [
     path("shrines/<int:pk>/", shrine_detail_view, name="shrine_detail"),
     path("shrines/<int:pk>/data/", shrine_detail_view, name="shrine_detail_data"),
     path("shrines/<int:pk>/meaning/", ShrineMeaningView.as_view(), name="shrine_meaning"),
+    path("shrines/<int:pk>/feature-words-en/", ShrineFeatureWordsEnView.as_view(), name="shrine_feature_words_en"),
     path("deep-dive/ask/", DeepDiveAskView.as_view(), name="deep-dive-ask"),
     path("shrines/nearby/", NearestShrinesAPIView.as_view(), name="nearby"),
     path("shrines/<int:id>/visit/", VisitCreateView.as_view(), name="shrine-visit"),
