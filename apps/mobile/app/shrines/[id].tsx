@@ -1,6 +1,6 @@
 // apps/mobile/app/shrines/[id].tsx
 import * as React from "react";
-import { View, Text, Image, Pressable, StyleSheet, ScrollView, Linking, Platform, TextInput } from "react-native";
+import { View, Text, Image, Pressable, StyleSheet, ScrollView, Linking, Platform, TextInput, AccessibilityInfo } from "react-native";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { SHRINES } from "../../data/shrines";
 import { incVisits, isFavorite, toggleFavorite, pushRecent } from "../../lib/storage";
@@ -542,6 +542,7 @@ export default function ShrineDetail() {
           provenance: analyticsProvenance,
           recommendationInstanceId: contextRecommendationInstanceId,
         });
+        AccessibilityInfo.announceForAccessibility("振り返りを保存しました");
       }
     } catch (error) {
       if (isUnauthenticatedError(error)) {
@@ -661,6 +662,7 @@ export default function ShrineDetail() {
             style={[styles.favBtn, fav && styles.favBtnActive]}
             accessibilityRole="button"
             accessibilityLabel="お気に入りの切り替え"
+            accessibilityState={{ selected: fav }}
           >
             <Text style={[styles.favBtnText, fav && styles.favBtnTextActive]}>
               {fav ? "♡ 登録済み" : "♡ お気に入り"}
@@ -839,6 +841,7 @@ export default function ShrineDetail() {
               参拝して感じたことを残しておくと、次の相談や再訪時に自分の変化を見返しやすくなります。
             </Text>
             <TextInput
+              accessibilityLabel="参拝後の振り返り"
               value={reflectionAnswer}
               onChangeText={(text) => {
                 setReflectionAnswer(text);
