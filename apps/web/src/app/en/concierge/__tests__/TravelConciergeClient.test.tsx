@@ -44,7 +44,7 @@ describe("/en/concierge (preview)", () => {
       lng: 139.73,
     });
     expect(await screen.findByText("赤坂氷川神社")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /赤坂氷川神社|詳細/ })).toHaveAttribute("href", "/shrines/60");
+    expect(screen.getByRole("link", { name: /赤坂氷川神社|詳細/ })).toHaveAttribute("href", "/en/shrines/60");
   });
 
   it("still sends without a location and says so", async () => {
