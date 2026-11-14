@@ -124,6 +124,9 @@ export default function Home() {
             return (
               <Pressable
                 key={t}
+                accessibilityRole="button"
+                accessibilityLabel={t}
+                accessibilityState={{ selected: active }}
                 onPress={() => setSelectedTheme(active ? null : t)}
                 style={[styles.themePill, active && styles.themePillActive]}
               >
@@ -137,6 +140,7 @@ export default function Home() {
       {/* 自由入力カード */}
       <View style={styles.chatCard}>
         <TextInput
+          accessibilityLabel="相談内容"
           placeholder="例: 迷いを整理して、前に進むきっかけがほしい"
           placeholderTextColor={theme.mutedDark}
           style={styles.chatInput}
@@ -147,7 +151,12 @@ export default function Home() {
         />
         <View style={styles.chatFooter}>
           <Text style={styles.aiHint}>相談内容を整えて、ご縁の神社へ進みます</Text>
-          <Pressable onPress={openConcierge} style={styles.sendButton}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="相談内容を送信する"
+            onPress={openConcierge}
+            style={styles.sendButton}
+          >
             <Text style={styles.sendButtonText}>↑</Text>
           </Pressable>
         </View>
@@ -155,6 +164,9 @@ export default function Home() {
 
       {/* 条件追加トグル */}
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={conditionToggleLabel}
+        accessibilityState={{ expanded: showConditions }}
         onPress={() => setShowConditions((c) => !c)}
         style={styles.accordionToggle}
       >
@@ -187,7 +199,12 @@ export default function Home() {
       ) : null}
 
       {/* 主CTA */}
-      <Pressable onPress={openConcierge} style={styles.primaryCta}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="この相談からご縁を見る"
+        onPress={openConcierge}
+        style={styles.primaryCta}
+      >
         <Text style={styles.primaryCtaText}>この相談からご縁を見る</Text>
       </Pressable>
 
