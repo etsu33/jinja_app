@@ -26,6 +26,9 @@ export type ShrineCardCompactProps = {
   // (primary reason phrase, or legacy reason text as fallback) -- this component never
   // chooses between multiple reason sources itself, and never re-decides which one wins.
   reason?: string | null;
+  // reason の見出し。呼び出し側がバックエンドの主な根拠(primary_reason_source)から
+  // 決めて渡す(lib/concierge/primaryReasonAuthority.ts)。この部品は判断しない。
+  reasonLabel?: string;
   // Explanation-only Knowledge fact (deity/shrine_history) -- docs/product/
   // recommendation-signal-authority.md §8. Same Explanation-only classification Hero uses
   // (reasonV4FactPriority.ts / buildHeroReasonV4Sections.ts via the caller), rendered here
@@ -74,6 +77,7 @@ export default function ShrineCardCompact({
   imageUrl = null,
   address = null,
   reason = null,
+  reasonLabel = "相談内容・ご利益との一致",
   explanationOnlyFactText = null,
   trustMetadata = null,
   tags: _tags = [],
@@ -154,7 +158,7 @@ export default function ShrineCardCompact({
             {originSummary ? <p className="line-clamp-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{originSummary}</p> : null}
             {reason ? (
               <div data-testid="recommendation-match-reason">
-                <p className="text-[10px] font-semibold text-[var(--kt-color-action-primary)]">相談内容・ご利益との一致</p>
+                <p className="text-[10px] font-semibold text-[var(--kt-color-action-primary)]">{reasonLabel}</p>
                 <p className="line-clamp-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{reason}</p>
               </div>
             ) : null}

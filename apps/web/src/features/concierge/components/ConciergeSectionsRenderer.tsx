@@ -13,6 +13,7 @@ import { adaptReasonFactsForViewModel } from "@/lib/concierge/adaptReasonFactsFo
 import { buildHeroReasonV4Sections } from "@/features/concierge/buildHeroReasonV4Sections";
 import { buildHeroConclusionLines } from "@/features/concierge/buildHeroConclusion";
 import { buildRuntimeMatchLines } from "@/features/concierge/buildRuntimeMatchLine";
+import { MATCH_SECTION_LABEL, resolvePrimaryReasonMatchKind } from "@/lib/concierge/primaryReasonAuthority";
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
 import type {
   ConciergeThreadSaveError,
@@ -861,6 +862,10 @@ export default function ConciergeSectionsRenderer({
                         const inputNeedTags = payload?.meta?.needTags ?? [];
                         const matchedNeedTags = heroItem.breakdown?.matched_need_tags ?? [];
                         const effectiveNeedTags = inputNeedTags.length > 0 ? inputNeedTags : matchedNeedTags;
+                        // 一致を言う表示(ラベル・結論の見出し・今回の相談との接点)は、
+                        // バックエンドが決めた主な根拠だけで決める(lib/concierge/primaryReasonAuthority.ts)。
+                        const heroPrimaryReasonSource = heroItem.analyticsProvenance?.primaryReasonSource ?? null;
+                        const heroMatchKind = resolvePrimaryReasonMatchKind(heroPrimaryReasonSource);
 
                         const reasonVm = buildRecommendationReasonViewModel({
                           rec: {
@@ -881,6 +886,7 @@ export default function ConciergeSectionsRenderer({
                           index: 0,
                           mode: normalizedMode,
                           needTags: effectiveNeedTags,
+                          primaryReasonSource: heroPrimaryReasonSource,
                         });
                         const reasonDisplay = buildRecommendationReasonDisplay({
                           matchReason: reasonVm.list.primaryPhrase,
@@ -954,11 +960,17 @@ export default function ConciergeSectionsRenderer({
                           : heroReasonV4.factSource === "goriyaku"
                             ? heroReasonV4.factText
                             : null;
-                        const runtimeMatchLines = buildRuntimeMatchLines({
-                          needTags: effectiveNeedTags,
-                          goriyakuLabel: runtimeMatchGoriyakuLabel,
-                          goriyakuMatched: runtimeMatchGoriyakuMatched,
-                        });
+                        // 「この神社に登録されています」と言えるのは、神社と実際に一致したタグ
+                        // (matched_need_tags)だけ。相談文から取ったタグ(inputNeedTags)は使わない。
+                        // 主な根拠が相談との一致でないときは、この枠自体を出さない。
+                        const runtimeMatchLines =
+                          heroMatchKind === "consultation"
+                            ? buildRuntimeMatchLines({
+                                needTags: matchedNeedTags,
+                                goriyakuLabel: runtimeMatchGoriyakuLabel,
+                                goriyakuMatched: runtimeMatchGoriyakuMatched,
+                              })
+                            : [];
 
                         return (
                           /* PR-G1 (docs/design/premium-meaning-ui-direction.md §7, Direction C):
@@ -984,6 +996,7 @@ export default function ConciergeSectionsRenderer({
                                 topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
                                 eyebrowLabel={reasonVm.hero.eyebrowLabel ?? null}
                                 conclusionLines={conclusionLines}
+                                conclusionLabel={MATCH_SECTION_LABEL[heroMatchKind]}
                                 explanationOnlyFactText={heroReasonV4.explanationOnlyFactText}
                                 actionReason={heroReasonV4.actionText}
                                 actionSuggestionV4Preview={(heroItem as any).actionSuggestionV4Preview ?? null}
@@ -1197,6 +1210,7 @@ export default function ConciergeSectionsRenderer({
                                 index: compactIdx + 1,
                                 mode: normalizedMode,
                                       needTags: item.breakdown?.matched_need_tags ?? [],
+                                primaryReasonSource: item.analyticsProvenance?.primaryReasonSource ?? null,
                               });
                               const compactReasonDisplay = buildRecommendationReasonDisplay({
                                 matchReason: compactReasonVm.list.primaryPhrase,
@@ -1231,6 +1245,11 @@ export default function ConciergeSectionsRenderer({
                                     imageUrl={item.imageUrl}
                                     address={item.address ?? null}
                                     reason={compactReason}
+                                    reasonLabel={
+                                      MATCH_SECTION_LABEL[
+                                        resolvePrimaryReasonMatchKind(item.analyticsProvenance?.primaryReasonSource ?? null)
+                                      ]
+                                    }
                                     explanationOnlyFactText={compactReasonV4.explanationOnlyFactText}
                                     tags={[]}
                                     distanceM={(item as any).distance_m ?? null}
