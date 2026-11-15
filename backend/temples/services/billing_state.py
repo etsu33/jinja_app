@@ -10,6 +10,7 @@ from django.utils import timezone as dj_timezone
 from users.models import UserProfile
 from users.services.billing import is_subscription_active
 from users.services.premium_pass import get_pass_period_end
+from users.services.premium_subscription import get_subscription_entitlement
 
 PROVIDER_CHOICES = ("stub", "stripe", "revenuecat", "unknown")
 
@@ -53,12 +54,20 @@ def _resolve_billing_status(user, now: datetime, *, staff_access: bool = False) 
     if prov == "stub" or not authenticated:
         return _status_from_stub_env(now_=now, prov=prov)
 
-    subscription_end = profile.current_period_end if profile else None
-    subscription_active = is_subscription_active(
-        status=profile.subscription_status if profile else None,
-        current_period_end=subscription_end,
-        now=now,
+    has_subscription_rows, subscription_end = (
+        get_subscription_entitlement(user_id=user_id, now=now)
+        if user_id is not None
+        else (False, None)
     )
+    subscription_active = subscription_end is not None
+    if not has_subscription_rows and profile:
+        subscription_end = profile.current_period_end
+        subscription_active = is_subscription_active(
+            status=profile.subscription_status,
+            current_period_end=subscription_end,
+            now=now,
+        )
+
     pass_end = get_pass_period_end(user_id=user_id) if user_id is not None else None
     pass_active = pass_end is not None and pass_end > now
     legacy_end = profile.legacy_premium_until if profile else None
@@ -75,6 +84,7 @@ def _resolve_billing_status(user, now: datetime, *, staff_access: bool = False) 
         if enabled and end is not None
     )
     effective_end = max(active_ends, default=None)
+    # Preserve the response for an undated legacy subscription during the fallback.
     if subscription_active and subscription_end is None:
         effective_end = None
     return BillingStatus(

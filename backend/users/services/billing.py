@@ -15,9 +15,7 @@ def is_subscription_active(
     current_period_end: Optional[datetime],
     now: Optional[datetime] = None,
 ) -> bool:
-    """
-    status だけに頼ると事故るので、current_period_end があるなら期限優先。
-    """
+    """Preserve the UserProfile subscription policy during the migration fallback."""
     s = (status or "").strip()
     now_ = now or timezone.now()
 
