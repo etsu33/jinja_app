@@ -48,7 +48,7 @@ def user(django_user_model):
 
 @pytest.fixture
 def sdk(monkeypatch, settings):
-    settings.APPLE_STOREKIT_ENVIRONMENT = ENVIRONMENT.value
+    settings.APPLE_STOREKIT_ENVIRONMENTS = ENVIRONMENT.value
     monkeypatch.setenv("BILLING_PROVIDER", "stripe")
     sdk = Mock(spec=SignedDataVerifier)
     monkeypatch.setattr(apple_storekit, "_configured_verifier", lambda environment: sdk)
@@ -185,7 +185,7 @@ def test_invalid_jws_is_rejected_by_real_apple_sdk(sdk, user, monkeypatch):
 
 
 def test_production_never_accepts_sandbox_transaction(sdk, user, now, settings):
-    settings.APPLE_STOREKIT_ENVIRONMENT = "Production"
+    settings.APPLE_STOREKIT_ENVIRONMENTS = "Production"
     sdk.verify_and_decode_signed_transaction.return_value = apple_transaction(now)
 
     assert claim(user).status_code == 400
@@ -299,8 +299,9 @@ def test_invalid_inner_transaction_and_retryable_verification_failure(sdk, now):
     assert not AppleStoreKitReceipt.objects.exists()
 
 
-def test_pass_refund_keeps_history_and_preserves_stripe_behavior(sdk, user, now):
-    spec = apple_transaction(now, product=f"{BUNDLE}.pass.7day")
+def test_pass_refund_keeps_history_and_preserves_stripe_behavior(sdk, user, now, settings):
+    settings.APPLE_STOREKIT_ENVIRONMENTS = "Production"
+    spec = apple_transaction(now, product=f"{BUNDLE}.pass.7day", environment=Environment.PRODUCTION)
     sdk.verify_and_decode_signed_transaction.return_value = spec
     assert claim(user).status_code == 200
     stripe = grant_premium_pass(
@@ -309,7 +310,12 @@ def test_pass_refund_keeps_history_and_preserves_stripe_behavior(sdk, user, now)
     assert stripe.period_end == now + timedelta(days=8)
 
     for _ in range(2):
-        assert notification(sdk, time=now, kind=NotificationTypeV2.REFUND).status_code == 200
+        assert (
+            notification(
+                sdk, time=now, kind=NotificationTypeV2.REFUND, environment=Environment.PRODUCTION
+            ).status_code
+            == 200
+        )
     assert claim(user).status_code == 200
     apple = PremiumPassPurchase.objects.get(source="apple")
     assert apple.status == "refunded"
@@ -355,17 +361,24 @@ def test_expired_or_revoked_direct_claim_cannot_grant_premium(sdk, user, now):
     assert PremiumSubscription.objects.get(original_transaction_id="200").status == "revoked"
 
 
-def test_receipt_from_earlier_pass_stack_does_not_shorten_new_pass(sdk, user, now):
+def test_receipt_from_earlier_pass_stack_does_not_shorten_new_pass(sdk, user, now, settings):
+    settings.APPLE_STOREKIT_ENVIRONMENTS = "Production"
     sdk.verify_and_decode_signed_transaction.return_value = apple_transaction(
         now - timedelta(days=4),
         product=f"{BUNDLE}.pass.1day",
+        environment=Environment.PRODUCTION,
     )
     assert claim(user).data["plan"] == "free"
     newer = grant_premium_pass(
         user=user, days=7, source="stripe", external_id="newer-pass", now=now
     )
 
-    assert notification(sdk, time=now, kind=NotificationTypeV2.REFUND).status_code == 200
+    assert (
+        notification(
+            sdk, time=now, kind=NotificationTypeV2.REFUND, environment=Environment.PRODUCTION
+        ).status_code
+        == 200
+    )
     assert PremiumPassPurchase.objects.get(source="apple").status == "refunded"
     assert get_pass_period_end(user_id=user.pk) == newer.period_end
 
@@ -376,3 +389,199 @@ def test_missing_signed_transaction_cannot_apply_notification(sdk, now):
         == 400
     )
     assert not AppleStoreKitReceipt.objects.exists()
+
+
+@pytest.fixture
+def signed_apple_payload(monkeypatch, settings):
+    """Use the SDK's real JWS/app/environment checks with a local signing key."""
+    import jwt
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    key = ec.generate_private_key(ec.SECP256R1())
+    verifiers = {
+        environment: SignedDataVerifier([], True, environment, BUNDLE, 1234)
+        for environment in (Environment.SANDBOX, Environment.PRODUCTION)
+    }
+    for verifier in verifiers.values():
+        monkeypatch.setattr(
+            verifier._chain_verifier, "verify_chain", lambda *args: key.public_key()
+        )
+    factory = Mock(side_effect=verifiers.__getitem__)
+    monkeypatch.setattr(apple_storekit, "_configured_verifier", factory)
+    monkeypatch.setenv("BILLING_PROVIDER", "stripe")
+    settings.APPLE_STOREKIT_ENVIRONMENTS = "Production,Sandbox"
+
+    def sign(payload, *, invalid_signature=False):
+        signing_key = ec.generate_private_key(ec.SECP256R1()) if invalid_signature else key
+        return jwt.encode(payload, signing_key, algorithm="ES256", headers={"x5c": ["test-chain"]})
+
+    return sign, factory
+
+
+def signed_transaction_payload(now, *, environment, product=MONTHLY, **overrides):
+    return {
+        "bundleId": BUNDLE,
+        "environment": environment.value,
+        "productId": product,
+        "transactionId": "100",
+        "originalTransactionId": "100",
+        "purchaseDate": ms(now),
+        "expiresDate": ms(now + timedelta(days=30)),
+        "signedDate": ms(now),
+        **overrides,
+    }
+
+
+@pytest.mark.parametrize("environment", [Environment.PRODUCTION, Environment.SANDBOX])
+def test_app_review_and_production_transactions_grant_premium(
+    signed_apple_payload, user, now, environment
+):
+    sign, factory = signed_apple_payload
+    response = claim(
+        user, signed_transaction=sign(signed_transaction_payload(now, environment=environment))
+    )
+
+    assert response.status_code == 200
+    assert response.data["plan"] == "premium"
+    assert PremiumSubscription.objects.get().environment == environment.value
+    attempts = [call.args[0] for call in factory.call_args_list]
+    assert attempts == (
+        [Environment.SANDBOX, Environment.PRODUCTION]
+        if environment == Environment.PRODUCTION
+        else [Environment.SANDBOX]
+    )
+
+
+def test_production_only_rejects_valid_sandbox_jws(signed_apple_payload, settings, user, now):
+    sign, factory = signed_apple_payload
+    settings.APPLE_STOREKIT_ENVIRONMENTS = "Production"
+    response = claim(
+        user,
+        signed_transaction=sign(signed_transaction_payload(now, environment=Environment.SANDBOX)),
+    )
+
+    assert response.status_code == 400
+    factory.assert_called_once_with(Environment.PRODUCTION)
+    assert not PremiumSubscription.objects.exists()
+
+
+@pytest.mark.parametrize("invalid_signature", [True, False])
+def test_no_fallback_on_signature_or_bundle_failure(
+    signed_apple_payload, user, now, invalid_signature
+):
+    sign, factory = signed_apple_payload
+    payload = signed_transaction_payload(
+        now,
+        environment=Environment.PRODUCTION,
+        bundleId=BUNDLE if invalid_signature else "unrelated.bundle",
+    )
+
+    assert (
+        claim(
+            user, signed_transaction=sign(payload, invalid_signature=invalid_signature)
+        ).status_code
+        == 400
+    )
+    factory.assert_called_once_with(Environment.SANDBOX)
+    assert not PremiumSubscription.objects.exists()
+
+
+def test_subscription_ids_and_notification_updates_are_isolated(
+    signed_apple_payload,
+    user,
+    now,
+    django_user_model,
+):
+    sign, _ = signed_apple_payload
+    production_owner = django_user_model.objects.create_user(username="production-owner")
+    production = signed_transaction_payload(now, environment=Environment.PRODUCTION)
+    sandbox = signed_transaction_payload(now, environment=Environment.SANDBOX)
+    assert claim(production_owner, signed_transaction=sign(production)).status_code == 200
+    assert claim(user, signed_transaction=sign(sandbox)).status_code == 200
+    assert claim(user, signed_transaction=sign(production)).status_code == 409
+
+    notification = sign(
+        {
+            "notificationType": "REFUND",
+            "signedDate": ms(now + timedelta(seconds=1)),
+            "data": {
+                "bundleId": BUNDLE,
+                "environment": "Sandbox",
+                "status": 5,
+                "signedTransactionInfo": sign(sandbox),
+            },
+        }
+    )
+    assert (
+        APIClient().post(WEBHOOK, {"signedPayload": notification}, format="json").status_code == 200
+    )
+    assert PremiumSubscription.objects.get(environment="Sandbox", user=user).status == "revoked"
+    assert (
+        PremiumSubscription.objects.get(environment="Production", user=production_owner).status
+        == "active"
+    )
+
+
+def test_production_notifications_keep_app_id_check_and_reject_mixed_inner_environment(
+    signed_apple_payload,
+    user,
+    now,
+):
+    sign, _ = signed_apple_payload
+    production = signed_transaction_payload(now, environment=Environment.PRODUCTION)
+    sandbox = signed_transaction_payload(now, environment=Environment.SANDBOX)
+    assert claim(user, signed_transaction=sign(production)).status_code == 200
+    outer = {
+        "notificationType": "REFUND",
+        "signedDate": ms(now + timedelta(seconds=1)),
+        "data": {
+            "bundleId": BUNDLE,
+            "environment": "Production",
+            "appAppleId": 9999,
+            "status": 5,
+            "signedTransactionInfo": sign(production),
+        },
+    }
+    client = APIClient()
+    assert client.post(WEBHOOK, {"signedPayload": sign(outer)}, format="json").status_code == 400
+    outer["data"].update(appAppleId=1234, signedTransactionInfo=sign(sandbox))
+    assert client.post(WEBHOOK, {"signedPayload": sign(outer)}, format="json").status_code == 400
+    assert PremiumSubscription.objects.get().status == "active"
+
+    outer["data"]["signedTransactionInfo"] = sign(production)
+    assert client.post(WEBHOOK, {"signedPayload": sign(outer)}, format="json").status_code == 200
+    assert PremiumSubscription.objects.get().status == "revoked"
+
+
+def test_pass_refund_cannot_change_same_id_production_purchase(signed_apple_payload, user, now):
+    sign, _ = signed_apple_payload
+    product = f"{BUNDLE}.pass.7day"
+    production = signed_transaction_payload(
+        now, environment=Environment.PRODUCTION, product=product
+    )
+    sandbox = signed_transaction_payload(now, environment=Environment.SANDBOX, product=product)
+    assert claim(user, signed_transaction=sign(production)).status_code == 200
+    assert claim(user, signed_transaction=sign(sandbox)).status_code == 200
+    assert claim(user, signed_transaction=sign(sandbox)).status_code == 200
+    assert PremiumPassPurchase.objects.count() == 2
+    expected_end = now + timedelta(days=7)
+    assert get_pass_period_end(user_id=user.pk) == expected_end
+
+    outer = sign(
+        {
+            "notificationType": "REFUND",
+            "signedDate": ms(now + timedelta(seconds=1)),
+            "data": {
+                "bundleId": BUNDLE,
+                "environment": "Sandbox",
+                "signedTransactionInfo": sign(sandbox),
+            },
+        }
+    )
+    assert APIClient().post(WEBHOOK, {"signedPayload": outer}, format="json").status_code == 200
+    assert PremiumPassPurchase.objects.get(environment="Sandbox").status == "refunded"
+    assert (
+        PremiumPassPurchase.objects.get(environment="Production").effective_period_end
+        == expected_end
+    )
+    assert get_billing_status(user=user, now=now).is_active

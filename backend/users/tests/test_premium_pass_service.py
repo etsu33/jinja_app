@@ -46,7 +46,9 @@ def test_grant_adds_to_a_future_period_and_records_before_after():
     user = _user()
     now = timezone.now()
     future = now + timedelta(days=3)
-    grant_premium_pass(user=user, days=3, source="apple", external_id="previous", now=now)
+    grant_premium_pass(
+        user=user, days=3, source="apple", environment="Production", external_id="previous", now=now,
+    )
 
     grant_premium_pass(user=user, days=7, source="stripe", external_id="cs_1", pass_type="7d", now=now)
 
@@ -62,7 +64,9 @@ def test_grant_is_idempotent_per_source_and_external_id():
     first = grant_premium_pass(user=user, days=7, source="stripe", external_id="cs_1", now=now)
 
     again = grant_premium_pass(user=user, days=7, source="stripe", external_id="cs_1", now=now)
-    other_source = grant_premium_pass(user=user, days=1, source="apple", external_id="cs_1", now=now)
+    other_source = grant_premium_pass(
+        user=user, days=1, source="apple", environment="Production", external_id="cs_1", now=now,
+    )
 
     assert again.applied is False
     assert again.period_end == first.period_end

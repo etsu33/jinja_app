@@ -44,6 +44,8 @@ def apply_subscription_update(update: SubscriptionUpdate, *, user=None, authorit
     }[update.source]
     rows = PremiumSubscription.objects.select_for_update()
     identity = {"source": update.source, identity_field: update.identity}
+    if update.source == PremiumSubscription.Source.APPLE:
+        identity["environment"] = update.environment
     values = {
         "product_id": update.product_id,
         "environment": update.environment,

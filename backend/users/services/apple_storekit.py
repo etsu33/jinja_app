@@ -84,11 +84,26 @@ def resolve_apple_product(product_id: str) -> AppleProduct:
     return product
 
 
-def _configured_environment() -> Environment:
-    value = settings.APPLE_STOREKIT_ENVIRONMENT
-    if value not in (Environment.PRODUCTION.value, Environment.SANDBOX.value):
+def _configured_environments() -> tuple[Environment, ...]:
+    values = {value.strip() for value in settings.APPLE_STOREKIT_ENVIRONMENTS.split(",")}
+    # The Production notification verifier checks appAppleId before environment.
+    # Start with Sandbox when allowed, then fully verify Production on a signed mismatch.
+    supported = (Environment.SANDBOX, Environment.PRODUCTION)
+    if not values <= {environment.value for environment in supported}:
         raise AppleStoreKitUnavailable("Unsupported Apple StoreKit environment.")
-    return Environment(value)
+    return tuple(environment for environment in supported if environment.value in values)
+
+
+def _verify_in_configured_environment(method, signed):
+    for environment in _configured_environments():
+        verifier = _configured_verifier(environment)
+        try:
+            decoded = _verify(getattr(verifier, method), signed, allow_environment_mismatch=True)
+        except VerificationException:
+            # SDK v3.1.2 emits INVALID_ENVIRONMENT after signature and chain checks.
+            continue
+        return decoded, verifier, environment
+    raise AppleStoreKitInvalid("Apple signed environment is not enabled.")
 
 
 @lru_cache(maxsize=4)
@@ -111,10 +126,12 @@ def _configured_verifier(environment: Environment) -> SignedDataVerifier:
     )
 
 
-def _verify(decode, signed):
+def _verify(decode, signed, *, allow_environment_mismatch=False):
     try:
         return decode(signed)
     except VerificationException as exc:
+        if allow_environment_mismatch and exc.status == VerificationStatus.INVALID_ENVIRONMENT:
+            raise
         if exc.status == VerificationStatus.RETRYABLE_VERIFICATION_FAILURE:
             raise AppleStoreKitUnavailable(
                 "Apple verification is temporarily unavailable."
@@ -136,8 +153,7 @@ def _datetime(value: int) -> datetime:
         raise AppleStoreKitInvalid("Invalid Apple timestamp.") from None
 
 
-def _decode_transaction(verifier, signed, environment) -> VerifiedAppleTransaction:
-    decoded = _verify(verifier.verify_and_decode_signed_transaction, signed)
+def _normalize_transaction(decoded, environment) -> VerifiedAppleTransaction:
     if decoded.bundleId != BUNDLE_ID or decoded.environment != environment:
         raise AppleStoreKitInvalid("Apple bundle or environment does not match.")
     product = resolve_apple_product(decoded.productId)
@@ -168,8 +184,10 @@ def _decode_transaction(verifier, signed, environment) -> VerifiedAppleTransacti
 
 
 def verify_apple_transaction(signed: str) -> VerifiedAppleTransaction:
-    environment = _configured_environment()
-    return _decode_transaction(_configured_verifier(environment), signed, environment)
+    decoded, _, environment = _verify_in_configured_environment(
+        "verify_and_decode_signed_transaction", signed
+    )
+    return _normalize_transaction(decoded, environment)
 
 
 def apple_subscription_update(
@@ -240,9 +258,9 @@ def _subscription_notification(verifier, data, purchase, event_at):
 
 
 def verify_apple_notification(signed: str) -> VerifiedAppleNotification | None:
-    environment = _configured_environment()
-    verifier = _configured_verifier(environment)
-    decoded = _verify(verifier.verify_and_decode_notification, signed)
+    decoded, verifier, environment = _verify_in_configured_environment(
+        "verify_and_decode_notification", signed
+    )
     if decoded.notificationType is None:
         raise AppleStoreKitInvalid("Unsupported Apple notification type.")
     if decoded.data is None or decoded.notificationType == NotificationTypeV2.TEST:
@@ -253,7 +271,8 @@ def verify_apple_notification(signed: str) -> VerifiedAppleNotification | None:
         raise AppleStoreKitInvalid("Missing Apple notification transaction.")
     if data.bundleId != BUNDLE_ID or data.environment != environment:
         raise AppleStoreKitInvalid("Apple notification bundle or environment does not match.")
-    purchase = _decode_transaction(verifier, data.signedTransactionInfo, environment)
+    transaction = _verify(verifier.verify_and_decode_signed_transaction, data.signedTransactionInfo)
+    purchase = _normalize_transaction(transaction, environment)
     event_at = _datetime(decoded.signedDate)
     revoked = purchase.revoked_at is not None or decoded.notificationType in (
         NotificationTypeV2.REFUND,

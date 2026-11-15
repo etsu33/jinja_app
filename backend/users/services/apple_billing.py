@@ -70,7 +70,9 @@ def _revoke_apple_pass(receipt, event_at):
         receipt.event_at = event_at
         receipt.save(update_fields=["event_at"])
     return revoke_premium_pass(
-        source=PremiumPassPurchase.SOURCE_APPLE, external_id=receipt.external_id
+        source=PremiumPassPurchase.SOURCE_APPLE,
+        external_id=receipt.external_id,
+        environment=receipt.environment,
     )
 
 
@@ -93,6 +95,7 @@ def apply_apple_purchase(purchase: VerifiedAppleTransaction, *, user):
             PremiumPassPurchase.objects.filter(
                 source=PremiumPassPurchase.SOURCE_APPLE,
                 external_id=purchase.transaction_id,
+                environment=purchase.environment,
             )
             .values_list("user_id", flat=True)
             .first()
@@ -104,6 +107,7 @@ def apply_apple_purchase(purchase: VerifiedAppleTransaction, *, user):
         user=user,
         source=PremiumPassPurchase.SOURCE_APPLE,
         external_id=purchase.transaction_id,
+        environment=purchase.environment,
         pass_type=definition.pass_type,
         days=definition.days,
         now=purchase.purchased_at,
