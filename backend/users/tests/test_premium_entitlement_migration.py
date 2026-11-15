@@ -9,7 +9,7 @@ from users.services.premium_pass import get_pass_period_end, revoke_premium_pass
 
 OLD = [("users", "0010_premium_pass_purchase")]
 NEW = [("users", "0011_separate_premium_entitlements")]
-LATEST = [("users", "0013_backfill_stripe_premium_subscriptions")]
+LATEST = [("users", "0014_apple_storekit_receipt")]
 
 pytestmark = pytest.mark.django_db(transaction=True)
 

@@ -26,7 +26,7 @@ def before_backfill():
     finally:
         # Remove any deliberately invalid legacy rows before restoring the latest schema.
         profiles.all().delete()
-        migrate(BACKFILL)
+        migrate(("users", "0014_apple_storekit_receipt"))
 
 
 def create_profile(apps, username, **fields):

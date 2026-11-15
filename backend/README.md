@@ -234,3 +234,36 @@ Render無料枠ではShellを利用できないため、環境に応じてMigrat
 ```bash
 python manage.py shell -c "from temples.models import Shrine; print(Shrine.objects.count())"
 ```
+
+### Apple StoreKit backend
+
+The authenticated purchase endpoint is `POST /api/billings/apple/transactions/`
+with only `signed_transaction`. Configure App Store Server Notifications V2 to
+send `signedPayload` to `POST /api/webhooks/apple/app-store/`.
+
+- `APPLE_STOREKIT_ENVIRONMENT` defaults to `Production`. Use `Sandbox` with a
+  separate deployment and database. Do not switch an existing entitlement database
+  from Sandbox to Production.
+- `APPLE_STOREKIT_ROOT_CERTIFICATES` is a comma-separated list of server-side paths
+  to DER-encoded App Store trust roots from [Apple PKI](https://www.apple.com/certificateauthority/).
+- `APPLE_STOREKIT_APP_ID` is the numeric App Store ID, required in Production.
+  The bundle ID is fixed to `com.morietsu.kamimusubi`. A DB-backed billing provider
+  is required to expose real entitlements through the billing resolver.
+
+Apple's [App Store Server Library](https://github.com/apple/app-store-server-library-python)
+validates the JWS chain and signature, with online certificate checks enabled.
+The API also verifies the inner transaction and any subscription renewal JWS.
+Without verification configuration the new endpoints respond with HTTP 503.
+
+The authenticated account that first registers a verified transaction establishes
+local ownership. Notifications cannot establish ownership. A notification received
+before registration can preserve verified state without associating a user, so
+a later claim cannot replay a revoked purchase. Passes use Apple's signed purchase
+date as the starting point and retain the existing stacking rules. Refund reversals
+do not automatically regrant consumable Passes.
+
+After the backend records Apple subscriptions, passes or verified state,
+rolling back through migration 0014 is unsafe and the reverse migration refuses
+the operation. To roll back application code, keep the database schema and Apple
+billing state. Retain the notification delivery and reconcile pending events
+before resuming Apple purchase traffic.

@@ -2,7 +2,7 @@
 """買い切りの旅行パス（1日・7日・14日）で Premium の期限を延ばす・戻す。
 
 - 期限を延ばす処理はこのファイルの grant_premium_pass に1か所でまとめる。
-  Stripe の Webhook から呼ぶ。あとで Apple のアプリ内課金の通知からも同じ関数を呼ぶ。
+  Stripe の Webhook と Apple の購入登録から呼ぶ。
 - 新しい期限は「今と、Pass期限の遅い方」に日数を足した日時（1日 = 24時間）。
 - 同じ支払い（source + external_id）は1回分しか数えない。
 - 返金では購入時の記録を保持し、有効期限だけを調整する。
@@ -19,6 +19,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Max
 from django.utils import timezone
 from users.models import PremiumPassPurchase, UserProfile
+from users.services.billing import BillingOwnershipConflict
 
 log = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ def grant_premium_pass(
         UserProfile.objects.select_for_update().get_or_create(user=user)
         before = get_pass_period_end(user_id=user.pk)
         payment = PremiumPassPurchase.objects.filter(source=source, external_id=external_id)
-        if payment.exists():
+        if _already_granted(payment, user=user, source=source):
             return GrantResult(applied=False, period_end=before)
 
         base = before if before is not None and before > now_ else now_
@@ -108,12 +109,19 @@ def grant_premium_pass(
                     effective_period_end=after,
                 )
         except IntegrityError:
-            if not payment.exists():
+            if not _already_granted(payment, user=user, source=source):
                 raise
             return GrantResult(applied=False, period_end=before)
 
     log.info("[premium-pass] granted source=%s days=%s", source, days)
     return GrantResult(applied=True, period_end=after)
+
+
+def _already_granted(payment, *, user, source):
+    owner_id = payment.values_list("user_id", flat=True).first()
+    if owner_id is not None and source == PremiumPassPurchase.SOURCE_APPLE and owner_id != user.pk:
+        raise BillingOwnershipConflict
+    return owner_id is not None
 
 
 @dataclass(frozen=True)
@@ -135,10 +143,29 @@ def revoke_premium_pass_for_refund(
     if not payment_intent_id:
         return RefundResult(applied=False, period_end=None)
 
-    now_ = now or timezone.now()
+    return _revoke_pass(
+        PremiumPassPurchase.objects.filter(source=source, payment_intent_id=payment_intent_id),
+        now_=now or timezone.now(),
+    )
 
+
+def revoke_premium_pass(
+    *, source: str, external_id: str, now: Optional[datetime] = None
+) -> RefundResult:
+    """Apply a provider revocation by its original purchase identifier."""
+    if not source or not external_id:
+        return RefundResult(applied=False, period_end=None)
+    return _revoke_pass(
+        PremiumPassPurchase.objects.filter(source=source, external_id=external_id),
+        now_=now or timezone.now(),
+        preserve_separate_stacks=True,
+    )
+
+
+def _revoke_pass(
+    payment, *, now_: datetime, preserve_separate_stacks: bool = False
+) -> RefundResult:
     with transaction.atomic():
-        payment = PremiumPassPurchase.objects.filter(source=source, payment_intent_id=payment_intent_id)
         user_id = payment.values_list("user_id", flat=True).first()
         if user_id is None:
             return RefundResult(applied=False, period_end=None)
@@ -156,7 +183,7 @@ def revoke_premium_pass_for_refund(
         purchase.save(update_fields=["status", "refunded_at", "effective_period_end"])
 
         cutoff = None
-        if current is not None:
+        if current is not None and (not preserve_separate_stacks or _in_latest_stack(purchase)):
             cutoff = max(now_, current - timedelta(days=purchase.days))
             # A later purchase can include days from the refunded purchase.
             PremiumPassPurchase.objects.filter(
@@ -168,5 +195,14 @@ def revoke_premium_pass_for_refund(
         if end is not None and end <= now_:
             end = now_
 
-    log.info("[premium-pass] refunded source=%s days=%s", source, purchase.days)
+    log.info("[premium-pass] refunded source=%s days=%s", purchase.source, purchase.days)
     return RefundResult(applied=True, period_end=end or cutoff)
+
+
+def _in_latest_stack(purchase):
+    """A new stack after a lapse does not include days from an earlier purchase."""
+    later = PremiumPassPurchase.objects.filter(user_id=purchase.user_id, pk__gt=purchase.pk)
+    for before, after, days in later.values_list("period_end_before", "period_end_after", "days"):
+        if before is None or after - timedelta(days=days) > before:
+            return False
+    return True

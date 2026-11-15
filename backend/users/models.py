@@ -52,6 +52,7 @@ class PremiumPassPurchase(models.Model):
     """
 
     SOURCE_STRIPE = "stripe"
+    SOURCE_APPLE = "apple"
 
     STATUS_COMPLETED = "completed"
     STATUS_REFUNDED = "refunded"
@@ -141,5 +142,25 @@ class PremiumSubscription(models.Model):
                     | models.Q(source="apple", original_transaction_id__gt="")
                 ),
                 name="premium_subscription_has_provider_id",
+            ),
+        ]
+
+
+class AppleStoreKitReceipt(models.Model):
+    """A lock and the latest verified state received before a purchase has an owner."""
+
+    environment = models.CharField(max_length=32)
+    kind = models.CharField(max_length=16)
+    external_id = models.CharField(max_length=255)
+    event_at = models.DateTimeField(null=True, blank=True)
+    purchased_at = models.DateTimeField(null=True, blank=True)
+    period_end = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=16, blank=True, default="")
+    auto_renew_enabled = models.BooleanField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["environment", "kind", "external_id"], name="uniq_apple_storekit_receipt"
             ),
         ]
