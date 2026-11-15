@@ -9,6 +9,7 @@ from users.services.premium_pass import get_pass_period_end, revoke_premium_pass
 
 OLD = [("users", "0010_premium_pass_purchase")]
 NEW = [("users", "0011_separate_premium_entitlements")]
+LATEST = [("users", "0013_backfill_stripe_premium_subscriptions")]
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -17,8 +18,17 @@ def migrate(target):
     return MigrationExecutor(connection).migrate(target).apps
 
 
+@pytest.fixture(autouse=True)
+def restore_latest_schema():
+    migrate(NEW)
+    try:
+        yield
+    finally:
+        migrate(LATEST)
+
+
 @pytest.fixture
-def old_schema():
+def old_schema(restore_latest_schema):
     try:
         yield migrate(OLD)
     finally:
@@ -37,7 +47,7 @@ def test_migration_preserves_deadlines_and_can_reverse(old_schema, had_expired_b
     legacy = profiles.create(user=users.create(username="legacy"), current_period_end=end)
     subscription = profiles.create(
         user=users.create(username="subscription"), current_period_end=final_end,
-        stripe_subscription_id="sub_test", subscription_status="active", cancel_at_period_end=True,
+        stripe_subscription_id="sub_test", stripe_price_id="price_test", subscription_status="active", cancel_at_period_end=True,
     )
     pass_profile = profiles.create(
         user=users.create(username="pass"), current_period_end=final_end, subscription_status="active",
@@ -137,6 +147,8 @@ def test_reverse_refuses_to_overwrite_subscription_with_legacy(django_user_model
     legacy_end = now + timedelta(days=5)
     UserProfile.objects.update_or_create(user=user, defaults={
         "stripe_subscription_id": "sub_test",
+        "stripe_price_id": "price_test",
+        "subscription_status": "active",
         "current_period_end": sub_end,
         "legacy_premium_until": legacy_end,
     })

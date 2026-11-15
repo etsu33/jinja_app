@@ -91,3 +91,55 @@ class PremiumPassPurchase(models.Model):
 
     def __str__(self) -> str:
         return f"{self.source}:{self.external_id} ({self.pass_type or self.days})"
+
+
+class PremiumSubscription(models.Model):
+    class Source(models.TextChoices):
+        STRIPE = "stripe", "Stripe"
+        APPLE = "apple", "Apple"
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        GRACE = "grace", "Grace"
+        BILLING_RETRY = "billing_retry", "Billing retry"
+        EXPIRED = "expired", "Expired"
+        REVOKED = "revoked", "Revoked"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="premium_subscriptions",
+    )
+    source = models.CharField(max_length=16, choices=Source.choices)
+    product_id = models.CharField(max_length=255)
+    external_subscription_id = models.CharField(max_length=255, blank=True, default="")
+    original_transaction_id = models.CharField(max_length=255, blank=True, default="")
+    status = models.CharField(max_length=16, choices=Status.choices)
+    current_period_start = models.DateTimeField(blank=True, null=True)
+    current_period_end = models.DateTimeField(blank=True, null=True)
+    auto_renew_enabled = models.BooleanField(default=False)
+    environment = models.CharField(max_length=32, default="unknown")
+    last_event_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source", "external_subscription_id"],
+                condition=models.Q(source="stripe"),
+                name="uniq_premium_subscription_stripe_id",
+            ),
+            models.UniqueConstraint(
+                fields=["source", "original_transaction_id"],
+                condition=models.Q(source="apple"),
+                name="uniq_premium_subscription_apple_id",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(source="stripe", external_subscription_id__gt="")
+                    | models.Q(source="apple", original_transaction_id__gt="")
+                ),
+                name="premium_subscription_has_provider_id",
+            ),
+        ]
