@@ -234,3 +234,49 @@ Render無料枠ではShellを利用できないため、環境に応じてMigrat
 ```bash
 python manage.py shell -c "from temples.models import Shrine; print(Shrine.objects.count())"
 ```
+
+### Apple StoreKit backend
+
+The authenticated purchase endpoint is `POST /api/billings/apple/transactions/`
+with only `signed_transaction`. Configure App Store Server Notifications V2 to
+send `signedPayload` to `POST /api/webhooks/apple/app-store/`.
+
+- `APPLE_STOREKIT_ENVIRONMENTS` defaults to `Production`. Set it to
+  `Production,Sandbox` on the backend used by App Review and TestFlight, which
+  use Apple Sandbox for in-app purchases. Set it to `Sandbox` for a sandbox-only
+  deployment. The existing singular environment variable is a fallback when the
+  new variable is unset. See [Apple App Review setup](https://developer.apple.com/help/app-review/before-submitting-for-review/configure-in-app-purchases).
+- `APPLE_STOREKIT_ROOT_CERTIFICATES` is a comma-separated list of server-side paths
+  to DER-encoded App Store trust roots from [Apple PKI](https://www.apple.com/certificateauthority/).
+- `APPLE_STOREKIT_APP_ID` is the numeric App Store ID, required in Production.
+  The bundle ID is fixed to `com.morietsu.kamimusubi`. A DB-backed billing provider
+  is required to expose real entitlements through the billing resolver.
+
+Apple's [App Store Server Library](https://github.com/apple/app-store-server-library-python)
+validates the JWS chain and signature, with online certificate checks enabled.
+The API also verifies the inner transaction and any subscription renewal JWS
+against the environment verified for the outer notification. Another configured
+verifier is tried only when the Apple SDK reports a signed environment mismatch.
+Without verification configuration the new endpoints respond with HTTP 503.
+
+The authenticated account that first registers a verified transaction establishes
+local ownership. Notifications cannot establish ownership. A notification received
+before registration can preserve verified state without associating a user, so
+a later claim cannot replay a revoked purchase. Passes use Apple's signed purchase
+date as the starting point and retain the existing stacking rules. Refund reversals
+do not automatically regrant consumable Passes. Apple subscriptions and Pass
+purchases have separate identities per environment. Verified Sandbox purchases
+can grant Premium to the claiming account through the usual resolver. Sandbox
+Pass time stacks separately from Production and Stripe Pass time.
+
+Migration 0015 identifies existing Apple Pass environments using the verified
+receipts. It stops if a Pass has no unique matching environment. Backfill retains
+the recorded deadlines. A schema rollback cannot collapse two Apple identities
+that differ only by environment.
+
+After the backend records Apple subscriptions, passes or verified state,
+rolling back through migration 0014 is unsafe and the reverse migration refuses
+the operation. If rolling back application code to a version that handles only
+one environment, keep the database schema and Apple billing state, and pause
+Apple purchase and notification processing until an environment-aware version
+is restored. Reconcile pending events before resuming processing.

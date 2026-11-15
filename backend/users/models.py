@@ -46,12 +46,13 @@ class UserProfile(models.Model):
 class PremiumPassPurchase(models.Model):
     """買い切りの旅行パス（1日・7日・14日）の購入の記録。
 
-    - 同じ支払いの通知が2回以上届いても、期限は1回分しか延ばさない（source + external_id で一意）。
+    - 同じ支払いでは期限を1回だけ延ばす。Apple の購入IDは環境ごとに一意。
     - 期限を延ばす処理は users.services.premium_pass.grant_premium_pass に1か所でまとめる。
     - 退会のときは、ユーザーと一緒に消える（CASCADE）。
     """
 
     SOURCE_STRIPE = "stripe"
+    SOURCE_APPLE = "apple"
 
     STATUS_COMPLETED = "completed"
     STATUS_REFUNDED = "refunded"
@@ -66,6 +67,7 @@ class PremiumPassPurchase(models.Model):
     source = models.CharField(max_length=16)
     # 支払いの ID。Stripe ならチェックアウトの ID（cs_...）。
     external_id = models.CharField(max_length=255)
+    environment = models.CharField(max_length=32, blank=True, default="")
     # Stripe の PaymentIntent の ID（pi_...）。返金の通知との照合に使う。
     payment_intent_id = models.CharField(max_length=255, blank=True, default="", db_index=True)
     pass_type = models.CharField(max_length=8, blank=True, default="")
@@ -84,8 +86,21 @@ class PremiumPassPurchase(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["source", "external_id"],
-                name="uniq_premium_pass_purchase_source_external_id",
-            )
+                condition=~models.Q(source="apple"),
+                name="uniq_premium_pass_non_apple_id",
+            ),
+            models.UniqueConstraint(
+                fields=["source", "environment", "external_id"],
+                condition=models.Q(source="apple"),
+                name="uniq_premium_pass_apple_environment_id",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(source="apple", environment__in=("Production", "Sandbox"))
+                    | (~models.Q(source="apple") & models.Q(environment=""))
+                ),
+                name="premium_pass_environment_matches_source",
+            ),
         ]
         ordering = ["-created_at"]
 
@@ -131,9 +146,9 @@ class PremiumSubscription(models.Model):
                 name="uniq_premium_subscription_stripe_id",
             ),
             models.UniqueConstraint(
-                fields=["source", "original_transaction_id"],
+                fields=["source", "environment", "original_transaction_id"],
                 condition=models.Q(source="apple"),
-                name="uniq_premium_subscription_apple_id",
+                name="uniq_premium_subscription_apple_environment_id",
             ),
             models.CheckConstraint(
                 condition=(
@@ -141,5 +156,25 @@ class PremiumSubscription(models.Model):
                     | models.Q(source="apple", original_transaction_id__gt="")
                 ),
                 name="premium_subscription_has_provider_id",
+            ),
+        ]
+
+
+class AppleStoreKitReceipt(models.Model):
+    """A lock and the latest verified state received before a purchase has an owner."""
+
+    environment = models.CharField(max_length=32)
+    kind = models.CharField(max_length=16)
+    external_id = models.CharField(max_length=255)
+    event_at = models.DateTimeField(null=True, blank=True)
+    purchased_at = models.DateTimeField(null=True, blank=True)
+    period_end = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=16, blank=True, default="")
+    auto_renew_enabled = models.BooleanField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["environment", "kind", "external_id"], name="uniq_apple_storekit_receipt"
             ),
         ]

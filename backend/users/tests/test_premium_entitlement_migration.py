@@ -9,7 +9,7 @@ from users.services.premium_pass import get_pass_period_end, revoke_premium_pass
 
 OLD = [("users", "0010_premium_pass_purchase")]
 NEW = [("users", "0011_separate_premium_entitlements")]
-LATEST = [("users", "0013_backfill_stripe_premium_subscriptions")]
+LATEST = [("users", "0015_apple_billing_environments")]
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -79,7 +79,7 @@ def test_migration_preserves_deadlines_and_can_reverse(old_schema, had_expired_b
     assert restored.get(pk=pass_profile.pk).current_period_end == final_end
     assert restored.get(pk=subscription.pk).current_period_end == final_end
 
-    migrate(NEW)
+    migrate(LATEST)
     revoke_premium_pass_for_refund(source="stripe", payment_intent_id="first", now=now)
     assert get_pass_period_end(user_id=pass_profile.user_id) == final_end - timedelta(days=1)
     assert PremiumPassPurchase.objects.get(pk=second.pk).period_end_after == final_end

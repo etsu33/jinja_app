@@ -6,6 +6,11 @@ from typing import Optional
 
 from django.utils import timezone
 
+
+class BillingOwnershipConflict(Exception):
+    """A provider purchase is already associated with another billing identity."""
+
+
 ACTIVE_STATUSES = {"active", "trialing"}
 
 
