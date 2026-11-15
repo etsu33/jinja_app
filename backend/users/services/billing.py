@@ -21,6 +21,9 @@ def is_subscription_active(
     s = (status or "").strip()
     now_ = now or timezone.now()
 
+    if s == "canceled":
+        return False
+
     if current_period_end is not None:
         # 期限が未来なら有効。statusが多少ズレても救う。
         return now_ < current_period_end

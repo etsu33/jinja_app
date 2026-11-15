@@ -3,9 +3,9 @@
 
 - 期限を延ばす処理はこのファイルの grant_premium_pass に1か所でまとめる。
   Stripe の Webhook から呼ぶ。あとで Apple のアプリ内課金の通知からも同じ関数を呼ぶ。
-- 新しい期限は「今と、今の期限の遅い方」に日数を足した日時（1日 = 24時間）。
+- 新しい期限は「今と、Pass期限の遅い方」に日数を足した日時（1日 = 24時間）。
 - 同じ支払い（source + external_id）は1回分しか数えない。
-- Premium の判定（users.services.billing.is_subscription_active：期限が未来なら Premium）は変えない。
+- 返金では購入時の記録を保持し、有効期限だけを調整する。
 """
 
 from __future__ import annotations
@@ -16,12 +16,17 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from django.db import IntegrityError, transaction
+from django.db.models import Max
 from django.utils import timezone
 from users.models import PremiumPassPurchase, UserProfile
 
 log = logging.getLogger(__name__)
 
-ACTIVE_STATUS = "active"
+
+def get_pass_period_end(*, user_id) -> Optional[datetime]:
+    return PremiumPassPurchase.objects.filter(
+        user_id=user_id, status=PremiumPassPurchase.STATUS_COMPLETED
+    ).aggregate(end=Max("effective_period_end"))["end"]
 
 
 @dataclass(frozen=True)
@@ -78,13 +83,12 @@ def grant_premium_pass(
     now_ = now or timezone.now()
 
     with transaction.atomic():
-        profile, _ = UserProfile.objects.select_for_update().get_or_create(user=user)
+        UserProfile.objects.select_for_update().get_or_create(user=user)
+        before = get_pass_period_end(user_id=user.pk)
+        payment = PremiumPassPurchase.objects.filter(source=source, external_id=external_id)
+        if payment.exists():
+            return GrantResult(applied=False, period_end=before)
 
-        existing = PremiumPassPurchase.objects.filter(source=source, external_id=external_id).first()
-        if existing is not None:
-            return GrantResult(applied=False, period_end=profile.current_period_end)
-
-        before = profile.current_period_end
         base = before if before is not None and before > now_ else now_
         after = base + timedelta(days=days)
 
@@ -101,25 +105,14 @@ def grant_premium_pass(
                     currency=(currency or "").strip().lower(),
                     period_end_before=before,
                     period_end_after=after,
+                    effective_period_end=after,
                 )
         except IntegrityError:
-            # ほかの処理が同じ支払いを先に記録した（同時に届いた通知）。延ばさない。
-            return GrantResult(applied=False, period_end=profile.current_period_end)
+            if not payment.exists():
+                raise
+            return GrantResult(applied=False, period_end=before)
 
-        profile.current_period_end = after
-        profile.subscription_status = ACTIVE_STATUS
-        profile.cancel_at_period_end = False
-        profile.save(
-            update_fields=["current_period_end", "subscription_status", "cancel_at_period_end", "updated_at"]
-        )
-
-    log.info(
-        "[premium-pass] granted source=%s external_id=%s days=%s period_end=%s",
-        source,
-        external_id,
-        days,
-        after.isoformat(),
-    )
+    log.info("[premium-pass] granted source=%s days=%s", source, days)
     return GrantResult(applied=True, period_end=after)
 
 
@@ -137,11 +130,7 @@ def revoke_premium_pass_for_refund(
     payment_intent_id: str,
     now: Optional[datetime] = None,
 ) -> RefundResult:
-    """全額返金されたパスの日数を、期限から引く。
-
-    - 記録が無い・すでに返金済みなら何もしない。
-    - 引いた結果が今より前になったら、今で終わり（期限＝今）にする。
-    """
+    """Apply a full refund once, reducing the remaining Pass deadline."""
     payment_intent_id = (payment_intent_id or "").strip()
     if not payment_intent_id:
         return RefundResult(applied=False, period_end=None)
@@ -149,39 +138,35 @@ def revoke_premium_pass_for_refund(
     now_ = now or timezone.now()
 
     with transaction.atomic():
-        purchase = (
-            PremiumPassPurchase.objects.select_for_update()
-            .filter(source=source, payment_intent_id=payment_intent_id)
-            .first()
-        )
-        if purchase is None or purchase.status == PremiumPassPurchase.STATUS_REFUNDED:
+        payment = PremiumPassPurchase.objects.filter(source=source, payment_intent_id=payment_intent_id)
+        user_id = payment.values_list("user_id", flat=True).first()
+        if user_id is None:
             return RefundResult(applied=False, period_end=None)
 
-        profile, _ = UserProfile.objects.select_for_update().get_or_create(user=purchase.user)
-        current = profile.current_period_end
-        new_end: Optional[datetime] = None
-        if current is not None:
-            new_end = current - timedelta(days=purchase.days)
-            if new_end < now_:
-                new_end = now_
+        # Both grants and refunds acquire the profile lock before changing purchases.
+        UserProfile.objects.select_for_update().get_or_create(user_id=user_id)
+        purchase = payment.filter(user_id=user_id).first()
+        if purchase is None or purchase.status != PremiumPassPurchase.STATUS_COMPLETED:
+            return RefundResult(applied=False, period_end=None)
 
+        current = get_pass_period_end(user_id=user_id)
         purchase.status = PremiumPassPurchase.STATUS_REFUNDED
         purchase.refunded_at = now_
-        purchase.save(update_fields=["status", "refunded_at"])
+        purchase.effective_period_end = None
+        purchase.save(update_fields=["status", "refunded_at", "effective_period_end"])
 
-        profile.current_period_end = new_end
-        update_fields = ["current_period_end", "updated_at"]
-        if new_end is None:
-            # 期限が無いまま status が active だと、判定（is_subscription_active）が Premium のままになる。
-            profile.subscription_status = "inactive"
-            update_fields.append("subscription_status")
-        profile.save(update_fields=update_fields)
+        cutoff = None
+        if current is not None:
+            cutoff = max(now_, current - timedelta(days=purchase.days))
+            # A later purchase can include days from the refunded purchase.
+            PremiumPassPurchase.objects.filter(
+                user_id=user_id,
+                status=PremiumPassPurchase.STATUS_COMPLETED,
+                effective_period_end__gt=cutoff,
+            ).update(effective_period_end=cutoff)
+        end = get_pass_period_end(user_id=user_id)
+        if end is not None and end <= now_:
+            end = now_
 
-    log.info(
-        "[premium-pass] refunded source=%s payment_intent=%s days=%s period_end=%s",
-        source,
-        payment_intent_id,
-        purchase.days,
-        new_end.isoformat() if new_end else None,
-    )
-    return RefundResult(applied=True, period_end=new_end)
+    log.info("[premium-pass] refunded source=%s days=%s", source, purchase.days)
+    return RefundResult(applied=True, period_end=end or cutoff)
