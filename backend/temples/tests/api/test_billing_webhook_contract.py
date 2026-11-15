@@ -18,6 +18,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from users.models import PremiumPassPurchase, UserProfile
+from users.services.premium_pass import get_pass_period_end, grant_premium_pass
 
 WEBHOOK_URL = "/api/billings/webhook/"
 STATUS_URL = "/api/billings/status/"
@@ -125,10 +126,11 @@ def test_paid_checkout_extends_period_from_now_and_makes_premium(stripe_billing,
     assert res.status_code == 200
     profile = UserProfile.objects.get(user=user)
     assert profile.stripe_customer_id == "cus_pass"
-    assert profile.subscription_status == "active"
+    assert profile.subscription_status == "inactive"
+    assert profile.current_period_end is None
     assert profile.cancel_at_period_end is False
     expected = before + timedelta(days=days)
-    assert abs((profile.current_period_end - expected).total_seconds()) < 60
+    assert abs((get_pass_period_end(user_id=user.pk) - expected).total_seconds()) < 60
 
     purchase = PremiumPassPurchase.objects.get(user=user)
     assert (purchase.source, purchase.external_id, purchase.payment_intent_id) == ("stripe", "cs_test_1", "pi_cs_test_1")
@@ -146,11 +148,11 @@ def test_same_checkout_delivered_twice_extends_only_once(stripe_billing):
     user = _user()
 
     _post("checkout.session.completed", _session(user, pass_type="7d"))
-    first_end = UserProfile.objects.get(user=user).current_period_end
+    first_end = get_pass_period_end(user_id=user.pk)
     res = _post("checkout.session.completed", _session(user, pass_type="7d"))
 
     assert res.status_code == 200
-    assert UserProfile.objects.get(user=user).current_period_end == first_end
+    assert get_pass_period_end(user_id=user.pk) == first_end
     assert PremiumPassPurchase.objects.filter(user=user).count() == 1
 
 
@@ -159,23 +161,24 @@ def test_second_pass_extends_from_the_current_period_end(stripe_billing):
     user = _user()
 
     _post("checkout.session.completed", _session(user, session_id="cs_a", pass_type="7d"))
-    first_end = UserProfile.objects.get(user=user).current_period_end
+    first_end = get_pass_period_end(user_id=user.pk)
     _post("checkout.session.completed", _session(user, session_id="cs_b", pass_type="1d"))
 
-    assert UserProfile.objects.get(user=user).current_period_end == first_end + timedelta(days=1)
+    assert get_pass_period_end(user_id=user.pk) == first_end + timedelta(days=1)
 
 
 @pytest.mark.django_db
 def test_pass_after_expiry_starts_from_now(stripe_billing):
     user = _user()
-    UserProfile.objects.update_or_create(
-        user=user, defaults={"current_period_end": timezone.now() - timedelta(days=3), "subscription_status": "active"}
+    grant_premium_pass(
+        user=user, days=1, source="stripe", external_id="previous",
+        now=timezone.now() - timedelta(days=4),
     )
     before = timezone.now()
 
     _post("checkout.session.completed", _session(user, pass_type="1d"))
 
-    end = UserProfile.objects.get(user=user).current_period_end
+    end = get_pass_period_end(user_id=user.pk)
     assert abs((end - (before + timedelta(days=1))).total_seconds()) < 60
 
 
@@ -232,12 +235,12 @@ def test_full_refund_removes_the_pass_days(stripe_billing):
     user = _user()
     _post("checkout.session.completed", _session(user, session_id="cs_a", pass_type="7d"))
     _post("checkout.session.completed", _session(user, session_id="cs_b", pass_type="1d"))
-    end_before = UserProfile.objects.get(user=user).current_period_end
+    end_before = get_pass_period_end(user_id=user.pk)
 
     res = _post("charge.refunded", _charge("pi_cs_a"))
 
     assert res.status_code == 200
-    assert UserProfile.objects.get(user=user).current_period_end == end_before - timedelta(days=7)
+    assert get_pass_period_end(user_id=user.pk) == end_before - timedelta(days=7)
     purchase = PremiumPassPurchase.objects.get(external_id="cs_a")
     assert purchase.status == "refunded"
     assert purchase.refunded_at is not None
@@ -260,22 +263,22 @@ def test_refund_delivered_twice_is_applied_once(stripe_billing):
     _post("checkout.session.completed", _session(user, session_id="cs_a", pass_type="7d"))
     _post("checkout.session.completed", _session(user, session_id="cs_b", pass_type="14d"))
     _post("charge.refunded", _charge("pi_cs_a"))
-    end_after_first = UserProfile.objects.get(user=user).current_period_end
+    end_after_first = get_pass_period_end(user_id=user.pk)
 
     _post("charge.refunded", _charge("pi_cs_a"))
 
-    assert UserProfile.objects.get(user=user).current_period_end == end_after_first
+    assert get_pass_period_end(user_id=user.pk) == end_after_first
 
 
 @pytest.mark.django_db
 def test_partial_refund_keeps_the_period(stripe_billing):
     user = _user()
     _post("checkout.session.completed", _session(user, pass_type="7d"))
-    end_before = UserProfile.objects.get(user=user).current_period_end
+    end_before = get_pass_period_end(user_id=user.pk)
 
     _post("charge.refunded", _charge("pi_cs_test_1", amount_refunded=300, refunded=False))
 
-    assert UserProfile.objects.get(user=user).current_period_end == end_before
+    assert get_pass_period_end(user_id=user.pk) == end_before
     assert PremiumPassPurchase.objects.get(user=user).status == "completed"
 
 

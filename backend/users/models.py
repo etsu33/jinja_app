@@ -27,11 +27,15 @@ class UserProfile(models.Model):
         default="inactive",
         db_index=True,
     )
+    # Subscription period end.
     current_period_end = models.DateTimeField(blank=True, null=True)
     # Stripe subscription.cancel_at_period_end のミラー。
     # 「期間終了時に解約」予約の有無だけを持ち、Premium/Free の判定には使わない
     # （判定は subscription_status + current_period_end が正）。
     cancel_at_period_end = models.BooleanField(default=False)
+
+    legacy_premium_until = models.DateTimeField(blank=True, null=True)
+    account_entitlement_disabled = models.BooleanField(default=False)
 
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -70,6 +74,8 @@ class PremiumPassPurchase(models.Model):
     currency = models.CharField(max_length=8, blank=True, default="")
     period_end_before = models.DateTimeField(blank=True, null=True)
     period_end_after = models.DateTimeField()
+    # Refunds may reduce the usable deadline without rewriting the purchase history.
+    effective_period_end = models.DateTimeField(blank=True, null=True)
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_COMPLETED)
     refunded_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
