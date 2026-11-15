@@ -29,8 +29,10 @@ def separate_entitlements(apps, schema_editor):
         if previous_end != profile.current_period_end:
             raise RuntimeError("Existing Pass deadline does not match the shared deadline.")
 
-    purchases.update(effective_period_end=F("period_end_after"))
     without_subscription = profiles.filter(stripe_subscription_id="", stripe_price_id="")
+    if without_subscription.filter(cancel_at_period_end=True).exists():
+        raise RuntimeError("Cannot classify a cancellation-scheduled profile without subscription identifiers.")
+    purchases.update(effective_period_end=F("period_end_after"))
     without_subscription.exclude(user_id__in=pass_users).update(legacy_premium_until=F("current_period_end"))
     without_subscription.update(current_period_end=None, subscription_status="inactive", cancel_at_period_end=False)
 

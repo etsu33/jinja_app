@@ -95,6 +95,31 @@ def test_migration_refuses_to_assign_ambiguous_initial_deadline(old_schema):
         purchase.delete()
 
 
+def test_migration_refuses_legacy_classification_for_cancellation_scheduled_profile(old_schema):
+    user = old_schema.get_model("auth", "User").objects.create(username="cancellation_scheduled")
+    profiles = old_schema.get_model("users", "UserProfile").objects
+    period_end = timezone.now() + timedelta(days=7)
+    profile = profiles.create(
+        user_id=user.pk,
+        current_period_end=period_end,
+        subscription_status="active",
+        cancel_at_period_end=True,
+    )
+    try:
+        with pytest.raises(RuntimeError, match="cancellation-scheduled"):
+            migrate(NEW)
+
+        assert NEW[0] not in MigrationExecutor(connection).loader.applied_migrations
+        unchanged = profiles.get(pk=profile.pk)
+        assert unchanged.stripe_subscription_id == ""
+        assert unchanged.stripe_price_id == ""
+        assert unchanged.current_period_end == period_end
+        assert unchanged.subscription_status == "active"
+        assert unchanged.cancel_at_period_end
+    finally:
+        profile.delete()
+
+
 def test_reverse_preserves_account_stop_by_refusing_rollback(django_user_model):
     user = django_user_model.objects.create_user(username="disabled")
     UserProfile.objects.update_or_create(user=user, defaults={"account_entitlement_disabled": True})
