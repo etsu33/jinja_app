@@ -44,14 +44,22 @@ function fixture() {
   const native = {
     initConnection: vi.fn().mockResolvedValue(true),
     fetchProducts: vi.fn<QueryField<"fetchProducts">>().mockResolvedValue([
-      { id: monthly.id, platform: "ios", type: "subs", displayPrice: "€8,99" },
-      { id: oneDay.id, platform: "ios", type: "in-app", displayPrice: "95円" },
-      { id: sevenDays.id, platform: "ios", type: "subs", displayPrice: "¥300" },
+      { id: monthly.id, platform: "ios", type: "subs", typeIOS: "auto-renewable-subscription", displayPrice: "€8,99" },
+      { id: oneDay.id, platform: "ios", type: "subs", typeIOS: "non-renewing-subscription", displayPrice: "95円" },
+      { id: sevenDays.id, platform: "ios", type: "subs", typeIOS: "non-renewing-subscription", displayPrice: "¥300" },
+      {
+        id: fourteenDays.id,
+        platform: "ios",
+        type: "subs",
+        typeIOS: "non-renewing-subscription",
+        displayPrice: "¥500",
+      },
     ] as Awaited<ReturnType<QueryField<"fetchProducts">>>),
     requestPurchase: vi.fn().mockResolvedValue(purchase(monthly.id)),
     finishTransaction: vi.fn().mockResolvedValue(undefined),
     syncIOS: vi.fn().mockResolvedValue(true),
     getAvailablePurchases: vi.fn().mockResolvedValue([]),
+    getAllTransactionsIOS: vi.fn().mockResolvedValue([]),
     getPendingTransactionsIOS: vi.fn().mockResolvedValue([]),
   };
   const store = createAppleStoreKit(native);
@@ -81,9 +89,26 @@ describe("iOS products and platform scope", () => {
       "com.morietsu.kamimusubi.pass.14day",
     ];
     expect(APPLE_PRODUCTS.map((product) => product.id)).toEqual(ids);
-    expect(await store.loadPrices()).toEqual({ [monthly.id]: "€8,99", [oneDay.id]: "95円" });
-    expect(native.fetchProducts).toHaveBeenCalledWith({ skus: ids, type: "all" });
+    expect(await store.loadPrices()).toEqual({
+      [monthly.id]: "€8,99",
+      [oneDay.id]: "95円",
+      [sevenDays.id]: "¥300",
+      [fourteenDays.id]: "¥500",
+    });
+    expect(native.fetchProducts).toHaveBeenCalledWith({ skus: ids, type: "subs" });
   });
+
+  it.each([oneDay, sevenDays, fourteenDays])(
+    "hides a Pass SKU exposed as the wrong StoreKit type for $id",
+    async (product) => {
+      const { native, store } = fixture();
+      native.fetchProducts.mockResolvedValueOnce([
+        { id: product.id, platform: "ios", type: "in-app", typeIOS: "consumable", displayPrice: "¥100" },
+        { id: product.id, platform: "ios", type: "subs", typeIOS: "auto-renewable-subscription", displayPrice: "¥200" },
+      ] as Awaited<ReturnType<QueryField<"fetchProducts">>>);
+      expect(await store.loadPrices()).toEqual({});
+    },
+  );
 
   it.each(["android", "web"])("does not load the native module on %s", async (platform) => {
     const load = vi.fn();
@@ -108,7 +133,7 @@ describe("iOS purchase lifecycle", () => {
     await flow.purchase(product);
 
     expect(native.requestPurchase).toHaveBeenCalledWith({
-      type: product.type,
+      type: "subs",
       request: { apple: { sku: product.id, andDangerouslyFinishTransactionAutomatically: false } },
     });
     expect(postAuth).toHaveBeenCalledExactlyOnceWith("/billings/apple/transactions/", {
@@ -116,7 +141,7 @@ describe("iOS purchase lifecycle", () => {
     });
     expect(native.finishTransaction).toHaveBeenCalledWith({
       purchase: transaction,
-      isConsumable: product.type === "in-app",
+      isConsumable: false,
     });
     expect(postAuth).toHaveBeenCalledBefore(native.finishTransaction);
     expect(native.finishTransaction).toHaveBeenCalledBefore(refresh);
@@ -210,6 +235,7 @@ describe("iOS purchase lifecycle", () => {
     const finished = purchase(monthly.id, "subscription", 2);
     const unfinished = purchase(sevenDays.id, "pass", 1);
     native.getAvailablePurchases.mockResolvedValueOnce([finished, unfinished, purchase("unrelated", "other")]);
+    native.getAllTransactionsIOS.mockResolvedValueOnce([finished, unfinished]);
     native.getPendingTransactionsIOS.mockResolvedValueOnce([unfinished]);
     await flow.restore();
 
@@ -218,6 +244,7 @@ describe("iOS purchase lifecycle", () => {
       onlyIncludeActiveItemsIOS: true,
       alsoPublishToEventListenerIOS: false,
     });
+    expect(native.getAllTransactionsIOS).toHaveBeenCalledTimes(1);
     expect(postAuth).toHaveBeenCalledTimes(2);
     expect(postAuth).toHaveBeenNthCalledWith(1, "/billings/apple/transactions/", {
       signed_transaction: unfinished.purchaseToken,
@@ -225,9 +252,36 @@ describe("iOS purchase lifecycle", () => {
     expect(postAuth).toHaveBeenNthCalledWith(2, "/billings/apple/transactions/", {
       signed_transaction: finished.purchaseToken,
     });
-    expect(native.finishTransaction).toHaveBeenCalledExactlyOnceWith({ purchase: unfinished, isConsumable: true });
+    expect(native.finishTransaction).toHaveBeenCalledExactlyOnceWith({ purchase: unfinished, isConsumable: false });
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(publishPurchaseState).toHaveBeenLastCalledWith({ kind: "updated" });
+  });
+
+  it.each([oneDay, sevenDays, fourteenDays])("restores completed Pass history for $id", async (product) => {
+    const { native, flow, refresh, publishStatus } = fixture();
+    const first = purchase(product.id, "earlier", 1);
+    const second = purchase(product.id, "later", 2);
+    native.getAvailablePurchases.mockResolvedValueOnce([second]);
+    native.getAllTransactionsIOS.mockResolvedValueOnce([
+      second,
+      purchase(monthly.id, "historical-monthly"),
+      first,
+      purchase("unrelated", "other"),
+    ]);
+    refresh.mockResolvedValueOnce(backendFree);
+    vi.mocked(postAuth).mockResolvedValue(backendFree);
+
+    await flow.restore();
+
+    expect(postAuth).toHaveBeenCalledTimes(2);
+    expect(postAuth).toHaveBeenNthCalledWith(1, "/billings/apple/transactions/", {
+      signed_transaction: first.purchaseToken,
+    });
+    expect(postAuth).toHaveBeenNthCalledWith(2, "/billings/apple/transactions/", {
+      signed_transaction: second.purchaseToken,
+    });
+    expect(native.finishTransaction).not.toHaveBeenCalled();
+    expect(publishStatus).toHaveBeenLastCalledWith(backendFree);
   });
 
   it("preserves both Apple environments when restore returns the same transaction ID", async () => {

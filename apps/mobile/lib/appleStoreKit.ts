@@ -1,10 +1,10 @@
 import type { Purchase } from "expo-iap";
 
 export const APPLE_PRODUCTS = [
-  { id: "com.morietsu.kamimusubi.premium.monthly", label: "月額Premium", type: "subs" },
-  { id: "com.morietsu.kamimusubi.pass.1day", label: "Premium Pass 1日", type: "in-app" },
-  { id: "com.morietsu.kamimusubi.pass.7day", label: "Premium Pass 7日", type: "in-app" },
-  { id: "com.morietsu.kamimusubi.pass.14day", label: "Premium Pass 14日", type: "in-app" },
+  { id: "com.morietsu.kamimusubi.premium.monthly", label: "月額Premium", typeIOS: "auto-renewable-subscription" },
+  { id: "com.morietsu.kamimusubi.pass.1day", label: "Premium Pass 1日", typeIOS: "non-renewing-subscription" },
+  { id: "com.morietsu.kamimusubi.pass.7day", label: "Premium Pass 7日", typeIOS: "non-renewing-subscription" },
+  { id: "com.morietsu.kamimusubi.pass.14day", label: "Premium Pass 14日", typeIOS: "non-renewing-subscription" },
 ] as const;
 
 export type AppleProduct = (typeof APPLE_PRODUCTS)[number];
@@ -18,6 +18,7 @@ type NativeStore = Pick<
   | "finishTransaction"
   | "syncIOS"
   | "getAvailablePurchases"
+  | "getAllTransactionsIOS"
   | "getPendingTransactionsIOS"
 >;
 
@@ -74,12 +75,16 @@ export function createAppleStoreKit(native: NativeStore) {
     async loadPrices(): Promise<ApplePrices> {
       const items = await native.fetchProducts({
         skus: APPLE_PRODUCTS.map((product) => product.id),
-        type: "all",
+        type: "subs",
       });
       const prices: ApplePrices = {};
       for (const product of APPLE_PRODUCTS) {
         const item = items?.find(
-          (candidate) => candidate.id === product.id && candidate.platform === "ios" && candidate.type === product.type,
+          (candidate) =>
+            candidate.id === product.id &&
+            candidate.platform === "ios" &&
+            candidate.type === "subs" &&
+            candidate.typeIOS === product.typeIOS,
         );
         if (item?.displayPrice.trim()) prices[product.id] = item.displayPrice;
       }
@@ -88,7 +93,7 @@ export function createAppleStoreKit(native: NativeStore) {
     async purchase(product: AppleProduct): Promise<StoreKitTransaction | null> {
       // The pinned iOS implementation returns the verified transaction for this request.
       const result = await native.requestPurchase({
-        type: product.type,
+        type: "subs",
         request: { apple: { sku: product.id, andDangerouslyFinishTransactionAutomatically: false } },
       });
       const purchase = (Array.isArray(result) ? result : result ? [result] : []).find(
@@ -98,24 +103,34 @@ export function createAppleStoreKit(native: NativeStore) {
     },
     async restore(): Promise<StoreKitTransaction[]> {
       if (!(await native.syncIOS())) throw new ApplePurchaseError("store-unavailable");
-      const [active, unfinished] = await Promise.all([
+      const [active, history, unfinished] = await Promise.all([
         native.getAvailablePurchases({
           onlyIncludeActiveItemsIOS: true,
           alsoPublishToEventListenerIOS: false,
         }),
+        native.getAllTransactionsIOS(),
         native.getPendingTransactionsIOS(),
       ]);
       const transactions = new Map<string, StoreKitTransaction>();
       for (const purchase of active) {
-        if (appleProductFor(purchase)) transactions.set(transactionKey(purchase), { purchase, finish: false });
+        if (appleProductFor(purchase)?.typeIOS === "auto-renewable-subscription") {
+          transactions.set(transactionKey(purchase), { purchase, finish: false });
+        }
+      }
+      // Non-renewing subscriptions can have multiple past transactions for one product.
+      // Resend the verified history so the backend can reconcile durations and revocations.
+      for (const purchase of history) {
+        if (appleProductFor(purchase)?.typeIOS === "non-renewing-subscription") {
+          transactions.set(transactionKey(purchase), { purchase, finish: false });
+        }
       }
       for (const purchase of unfinished) {
         if (appleProductFor(purchase)) transactions.set(transactionKey(purchase), { purchase, finish: true });
       }
       return [...transactions.values()].sort((a, b) => a.purchase.transactionDate - b.purchase.transactionDate);
     },
-    async finish(purchase: Purchase, product: AppleProduct) {
-      await native.finishTransaction({ purchase, isConsumable: product.type === "in-app" });
+    async finish(purchase: Purchase) {
+      await native.finishTransaction({ purchase, isConsumable: false });
     },
   };
 }

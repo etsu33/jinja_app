@@ -58,7 +58,7 @@ export function createApplePurchaseFlow(deps: Dependencies) {
     deps.publishStatus(status);
     if (finish) {
       try {
-        await deps.store.finish(purchase, product);
+        await deps.store.finish(purchase);
       } catch {
         return "finish";
       }

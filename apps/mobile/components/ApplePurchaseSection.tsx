@@ -106,12 +106,12 @@ export function ApplePurchaseSection({ onBillingStatus }: Props) {
                   {product.label}は現在購入できません。
                 </Text>
               );
-            const title = `${product.label} ${price}${product.type === "subs" ? " / 月" : ""}`;
+            const title = `${product.label} ${price}${product.typeIOS === "auto-renewable-subscription" ? " / 月" : ""}`;
             return (
               <Button
                 key={product.id}
                 title={title}
-                variant={product.type === "subs" ? "primary" : "outline"}
+                variant={product.typeIOS === "auto-renewable-subscription" ? "primary" : "outline"}
                 onPress={() => void flow?.purchase(product)}
                 disabled={busy || !flow}
                 accessibilityLabel={title}
