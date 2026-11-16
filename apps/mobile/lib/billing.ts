@@ -158,3 +158,15 @@ export function isPremiumStatus(status: BillingStatus | null | undefined): boole
 export function isFreeStatus(status: BillingStatus | null | undefined): boolean {
   return !isPremiumStatus(status);
 }
+
+export async function registerAppleTransaction(signedTransaction: string): Promise<BillingStatus> {
+  const data = await postAuth<unknown>("/billings/apple/transactions/", {
+    signed_transaction: signedTransaction,
+  });
+  if (!data || typeof data !== "object" || !("plan" in data) ||
+      (data.plan !== "free" && data.plan !== "premium") ||
+      !("is_active" in data) || typeof data.is_active !== "boolean") {
+    throw new Error("Invalid Apple transaction response");
+  }
+  return parseBillingStatus(data);
+}
