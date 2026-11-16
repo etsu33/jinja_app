@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   AppState,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -29,6 +30,7 @@ import {
   trackPremiumUpgradeClick,
   type PremiumCheckoutFailureType,
 } from "../../lib/premiumAnalytics";
+import { ApplePurchaseSection } from "../../components/ApplePurchaseSection";
 import { StateCard } from "../../components/common/StateCard";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
 import { kamimusubiDark as theme } from "../../design/theme";
@@ -64,13 +66,13 @@ function formatDate(value: string): string {
   return date.toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric" });
 }
 
-function describeStatus(status: BillingStatus): { label: string; helper: string } {
+function describeStatus(status: BillingStatus, isIOS: boolean): { label: string; helper: string } {
   if (isPremiumStatus(status)) {
     const periodEnd = status.current_period_end ? formatDate(status.current_period_end) : "";
     return {
       label: "Premium登録済み",
       helper: periodEnd
-        ? `次回更新日: ${periodEnd}${status.cancel_at_period_end ? "（更新停止予定）" : ""}`
+        ? `${isIOS ? "利用期限" : "次回更新日"}: ${periodEnd}${!isIOS && status.cancel_at_period_end ? "（更新停止予定）" : ""}`
         : "Premiumの機能をすべて利用できます。",
     };
   }
@@ -83,6 +85,7 @@ function describeStatus(status: BillingStatus): { label: string; helper: string 
 
 export default function PremiumScreen() {
   const router = useRouter();
+  const isIOS = Platform.OS === "ios";
   const [state, setState] = React.useState<StatusState>({ kind: "loading" });
   const [checkoutLoading, setCheckoutLoading] = React.useState(false);
   const [checkoutError, setCheckoutError] = React.useState<string | null>(null);
@@ -104,6 +107,17 @@ export default function PremiumScreen() {
     trackPremiumScreenView();
   }, []);
 
+  const publishBillingStatus = React.useCallback((status: BillingStatus) => {
+    setState({ kind: "ready", status });
+    // 再取得しても、同じ状態の計測は重複させない。
+    const statusKey = `${status.plan}|${status.is_active}|${status.provider}`;
+    if (lastTrackedStatusKeyRef.current !== statusKey) {
+      lastTrackedStatusKeyRef.current = statusKey;
+      trackPremiumStatusView(status);
+      trackPremiumActive(status);
+    }
+  }, []);
+
   const loadStatus = React.useCallback(async () => {
     setState({ kind: "loading" });
     setCheckoutError(null);
@@ -111,14 +125,7 @@ export default function PremiumScreen() {
     try {
       const status = await getAuthenticatedBillingStatus();
       if (status) {
-        setState({ kind: "ready", status });
-        // premium_status_view / premium_active: 同じstatusへの再計測は避ける(タブ復帰・再試行・Checkout復帰再取得での重複送信防止)
-        const statusKey = `${status.plan}|${status.is_active}|${status.provider}`;
-        if (lastTrackedStatusKeyRef.current !== statusKey) {
-          lastTrackedStatusKeyRef.current = statusKey;
-          trackPremiumStatusView(status);
-          trackPremiumActive(status);
-        }
+        publishBillingStatus(status);
       } else {
         setState({ kind: "error" });
       }
@@ -132,7 +139,7 @@ export default function PremiumScreen() {
         setState({ kind: "error" });
       }
     }
-  }, []);
+  }, [publishBillingStatus]);
 
   React.useEffect(() => {
     void loadStatus();
@@ -141,6 +148,7 @@ export default function PremiumScreen() {
   // Checkout復帰計測: Checkout開始後に一度background/inactiveへ遷移したことを確認してから
   // active復帰を「Checkoutから戻ってきた」と判定する(通常のAppState復帰では何もしない)。
   React.useEffect(() => {
+    if (isIOS) return;
     const subscription = AppState.addEventListener("change", (nextState: AppStateStatus) => {
       if (!awaitingCheckoutReturnRef.current) return;
 
@@ -159,12 +167,12 @@ export default function PremiumScreen() {
     });
 
     return () => subscription.remove();
-  }, [loadStatus]);
+  }, [isIOS, loadStatus]);
 
   const onStartCheckout = React.useCallback(async () => {
     // Checkout開始中の二重送信防止: refで即時ガードし、setState反映前の連打も弾く
     // このガードを通過した1回分だけ upgrade_click / checkout_started を計測する(二重計測防止)
-    if (checkoutInFlightRef.current) return;
+    if (isIOS || checkoutInFlightRef.current) return;
     checkoutInFlightRef.current = true;
     setCheckoutLoading(true);
     setCheckoutError(null);
@@ -218,7 +226,7 @@ export default function PremiumScreen() {
       checkoutInFlightRef.current = false;
       setCheckoutLoading(false);
     }
-  }, []);
+  }, [isIOS]);
 
   return (
     <>
@@ -257,10 +265,10 @@ export default function PremiumScreen() {
 
         {state.kind === "ready" ? (
           <View style={styles.statusCard}>
-            <Text style={styles.statusLabel}>{describeStatus(state.status).label}</Text>
-            <Text style={styles.statusHelper}>{describeStatus(state.status).helper}</Text>
+            <Text style={styles.statusLabel}>{describeStatus(state.status, isIOS).label}</Text>
+            <Text style={styles.statusHelper}>{describeStatus(state.status, isIOS).helper}</Text>
 
-            {isPremiumStatus(state.status) ? null : (
+            {isIOS ? <ApplePurchaseSection onBillingStatus={publishBillingStatus} /> : isPremiumStatus(state.status) ? null : (
               <View style={styles.checkoutSection}>
                 <Button
                   title="Premiumに登録する"
