@@ -23,7 +23,7 @@ describe("trackRecommendationQualityFromRecommendations: Knowledge品質property
 
   beforeEach(() => {
     trackMock.mockReset();
-    mockedGetAnalyticsProvider.mockReturnValue({ track: trackMock });
+    mockedGetAnalyticsProvider.mockReturnValue({ track: trackMock, identify: vi.fn(), reset: vi.fn() });
   });
 
   afterEach(() => {
@@ -202,7 +202,7 @@ describe("trackRecommendationQualityFromRecommendations: F-4 Shrine identity契�
 
   beforeEach(() => {
     trackMock.mockReset();
-    mockedGetAnalyticsProvider.mockReturnValue({ track: trackMock });
+    mockedGetAnalyticsProvider.mockReturnValue({ track: trackMock, identify: vi.fn(), reset: vi.fn() });
   });
 
   afterEach(() => {
