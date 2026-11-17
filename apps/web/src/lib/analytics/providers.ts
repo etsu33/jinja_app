@@ -45,6 +45,10 @@ export class PostHogAnalyticsProvider implements AnalyticsProvider {
       capture_pageview: "history_change",
       // URL 系 property から utm_* 以外の query parameter を除く（検索語などを送らない）。
       before_send: sanitizeCaptureResult,
+      // apps/web は feature flag を使わないので、/flags への問い合わせをしない。
+      // advanced_disable_flags と違い remote config（/array/<token>/config）は読み込むため、
+      // autocapture・session recording などプロジェクト設定で決まる機能には影響しない。
+      advanced_disable_feature_flags: true,
     });
 
     this.initialized = true;

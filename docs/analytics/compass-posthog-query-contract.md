@@ -23,7 +23,11 @@
 >   one series. Record the production deploy date here once known: `TBD`.
 > - Web `$pageview` is now captured on every App Router path change (`capture_pageview:
 >   "history_change"`), and URL properties (`$current_url`, `$initial_current_url`, `$referrer`,
->   including inside `$set_once`) keep only `utm_*` query parameters.
+>   `$initial_referrer`, `$session_entry_url`, `$session_entry_referrer`, including inside `$set` /
+>   `$set_once`) keep only `utm_*` query parameters. The search-engine keyword properties
+>   `ph_keyword`, `$initial_ph_keyword` and `$session_entry_ph_keyword` are dropped.
+> - Web does not request feature flags (`advanced_disable_feature_flags: true`); remote config is
+>   still loaded, so project-level settings for autocapture and session recording are unaffected.
 
 This document defines how the already-implemented Compass analytics (PR-A #2488,
 PR-B #2489, PR-C #2490 — all merged) should be **queried** in PostHog. It is a

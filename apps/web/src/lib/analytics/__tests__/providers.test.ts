@@ -58,6 +58,15 @@ describe("PostHogAnalyticsProvider", () => {
       expect(config.before_send).toBe(sanitizeCaptureResult);
     });
 
+    it("feature flag の問い合わせだけを止め、remote config は止めない", () => {
+      new PostHogAnalyticsProvider().track("some_event", {});
+
+      const [, config] = posthogMock.init.mock.calls[0];
+      expect(config.advanced_disable_feature_flags).toBe(true);
+      // advanced_disable_flags は remote config の読み込みまで止めるため使わない。
+      expect(config).not.toHaveProperty("advanced_disable_flags");
+    });
+
     it("identify は内部ユーザーIDの1引数だけで呼ぶ（person properties を渡さない）", () => {
       new PostHogAnalyticsProvider().identify("42");
 

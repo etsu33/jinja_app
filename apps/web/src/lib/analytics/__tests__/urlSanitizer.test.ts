@@ -85,7 +85,38 @@ describe("sanitizeCaptureResult（before_send）", () => {
     expect(result?.uuid).toBe("uuid-1");
   });
 
-  it("$set_once 内の $initial_current_url / $current_url / $referrer も絞る", () => {
+  it("properties の $initial_referrer も絞る", () => {
+    const result = sanitizeCaptureResult(
+      buildCaptureResult({
+        properties: { $initial_referrer: "https://www.google.com/search?q=secret&utm_source=g" },
+      }),
+    );
+
+    expect(result?.properties.$initial_referrer).toBe("https://www.google.com/search?utm_source=g");
+  });
+
+  it("properties の $session_entry_url / $session_entry_referrer も絞り、$session_entry_ph_keyword を消す", () => {
+    const result = sanitizeCaptureResult(
+      buildCaptureResult({
+        properties: {
+          $session_entry_url: "https://example.com/shrines?q=entry&utm_medium=mail",
+          $session_entry_referrer: "https://www.google.com/search?q=entry-ref",
+          $session_entry_ph_keyword: "entry-keyword",
+          $session_entry_pathname: "/shrines",
+          $session_entry_utm_medium: "mail",
+        },
+      }),
+    );
+
+    expect(result?.properties).toEqual({
+      $session_entry_url: "https://example.com/shrines?utm_medium=mail",
+      $session_entry_referrer: "https://www.google.com/search",
+      $session_entry_pathname: "/shrines",
+      $session_entry_utm_medium: "mail",
+    });
+  });
+
+  it("$set_once 内の $initial_current_url / $current_url / $referrer / $initial_referrer も絞る", () => {
     const result = sanitizeCaptureResult(
       buildCaptureResult({
         event: "$identify",
@@ -93,6 +124,7 @@ describe("sanitizeCaptureResult（before_send）", () => {
           $initial_current_url: "https://example.com/shrines?q=first&utm_campaign=c",
           $current_url: "https://example.com/shrines?q=entry",
           $referrer: "https://example.com/?q=ref",
+          $initial_referrer: "https://www.google.com/search?q=first-ref",
           $initial_utm_source: "x",
         },
       }),
@@ -102,6 +134,7 @@ describe("sanitizeCaptureResult（before_send）", () => {
       $initial_current_url: "https://example.com/shrines?utm_campaign=c",
       $current_url: "https://example.com/shrines",
       $referrer: "https://example.com/",
+      $initial_referrer: "https://www.google.com/search",
       $initial_utm_source: "x",
     });
   });
@@ -124,8 +157,53 @@ describe("sanitizeCaptureResult（before_send）", () => {
     expect(result?.properties.$set_once).toEqual({ $initial_current_url: "https://example.com/d?utm_term=t" });
   });
 
+  it("ph_keyword を properties から消し、ほかの property は残す", () => {
+    const result = sanitizeCaptureResult(
+      buildCaptureResult({
+        properties: { ph_keyword: "神社 縁結び", $search_engine: "google", $pathname: "/" },
+      }),
+    );
+
+    expect(result?.properties).not.toHaveProperty("ph_keyword");
+    expect(result?.properties.$search_engine).toBe("google");
+    expect(result?.properties.$pathname).toBe("/");
+  });
+
+  it("$set_once 内の ph_keyword と $initial_ph_keyword（派生キー）を消す", () => {
+    const result = sanitizeCaptureResult(
+      buildCaptureResult({
+        event: "$identify",
+        $set_once: {
+          ph_keyword: "session-keyword",
+          $initial_ph_keyword: "initial-keyword",
+          $initial_search_engine: "google",
+        },
+      }),
+    );
+
+    expect(result?.$set_once).toEqual({ $initial_search_engine: "google" });
+  });
+
+  it("$set と properties 内の $set / $set_once からも ph_keyword を消す", () => {
+    const result = sanitizeCaptureResult(
+      buildCaptureResult({
+        $set: { ph_keyword: "a" },
+        properties: {
+          $set: { ph_keyword: "b", keep: 1 },
+          $set_once: { $initial_ph_keyword: "c", keep: 2 },
+        },
+      }),
+    );
+
+    expect(result?.$set).toEqual({});
+    expect(result?.properties.$set).toEqual({ keep: 1 });
+    expect(result?.properties.$set_once).toEqual({ keep: 2 });
+  });
+
   it("元の CaptureResult は書き換えない", () => {
-    const original = buildCaptureResult({ $set_once: { $initial_current_url: "https://example.com/?q=1" } });
+    const original = buildCaptureResult({
+      $set_once: { $initial_current_url: "https://example.com/?q=1", $initial_ph_keyword: "k" },
+    });
     const snapshot = structuredClone(original);
 
     sanitizeCaptureResult(original);
