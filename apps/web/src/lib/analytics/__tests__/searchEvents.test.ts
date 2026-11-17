@@ -17,7 +17,7 @@ describe("searchEvents契約", () => {
 
   beforeEach(() => {
     trackMock.mockReset();
-    mockedGetAnalyticsProvider.mockReturnValue({ track: trackMock });
+    mockedGetAnalyticsProvider.mockReturnValue({ track: trackMock, identify: vi.fn(), reset: vi.fn() });
   });
 
   afterEach(() => {
