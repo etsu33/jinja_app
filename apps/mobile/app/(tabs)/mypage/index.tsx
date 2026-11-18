@@ -2,6 +2,8 @@ import * as React from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
+
+import { LEGAL_LABELS, openLegalDocument } from "../../../lib/legalLinks";
 import { kamimusubiDark as theme } from "../../../design/theme";
 import { getFavoriteShrines, getRecentViewed } from "../../../lib/shrineStorage";
 import { getCounts } from "../../../lib/storage";
@@ -32,6 +34,17 @@ const CONTACT_MAILTO_URL = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent
 // (既存の app/shrines/[id].tsx と同じ扱い)。
 function openContactMail() {
   Linking.openURL(CONTACT_MAILTO_URL).catch(() => {});
+}
+
+// 利用規約・プライバシーポリシーはWeb版のページを外部ブラウザで開く。
+// App Store Review Guideline 3.1.2 が、自動更新サブスクリプションを持つアプリに
+// 「機能する」リンクをバイナリ内へ置くことを求めるため、飾りのカードにしない。
+function openTerms() {
+  openLegalDocument("terms", Linking.openURL);
+}
+
+function openPrivacy() {
+  openLegalDocument("privacy", Linking.openURL);
 }
 
 type PremiumMetaState =
@@ -354,13 +367,6 @@ export default function MyPageScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>設定・サポート</Text>
-        <MyPageCard
-          title="設定"
-          description="通知や表示設定を確認する場所です。"
-          meta="準備中"
-          iconText="設"
-          actionLabel="開く"
-        />
         {loggedIn ? (
           <MyPageCard
             title="退会する"
@@ -372,10 +378,18 @@ export default function MyPageScreen() {
           />
         ) : null}
         <MyPageCard
-          title="利用規約"
+          title={LEGAL_LABELS.terms}
           description="アプリの利用条件を確認できます。"
           iconText="規"
-          actionLabel="確認"
+          actionLabel="開く"
+          onPress={openTerms}
+        />
+        <MyPageCard
+          title={LEGAL_LABELS.privacy}
+          description="取得する情報と取り扱いを確認できます。"
+          iconText="私"
+          actionLabel="開く"
+          onPress={openPrivacy}
         />
         <MyPageCard
           title="お問い合わせ"

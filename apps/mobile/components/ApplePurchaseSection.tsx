@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import * as Linking from "expo-linking";
 
 import { kamimusubiDark as theme } from "../design/theme";
 import { spacing } from "../design/spacing";
@@ -12,6 +13,7 @@ import {
   type ApplePurchaseFailureCode,
 } from "../lib/appleStoreKit";
 import { getAuthenticatedBillingStatus, registerAppleTransaction, type BillingStatus } from "../lib/billing";
+import { LEGAL_LABELS, openLegalDocument, type LegalDocument } from "../lib/legalLinks";
 import Button from "./ui/Button";
 import { typography } from "../design/typography";
 
@@ -36,6 +38,26 @@ const notices = {
 } as const;
 
 type ProductState = { kind: "loading" | "error" } | { kind: "ready"; prices: ApplePrices };
+
+// App Store Review Guideline 3.1.2: 自動更新サブスクリプションを売る画面には、
+// 更新の条件と、利用規約・プライバシーポリシーへの機能するリンクを置く。
+const AUTO_RENEWAL_NOTICE =
+  "月額Premiumは自動更新です。期間終了の24時間前までに解約しない限り、同じ料金で更新されます。" +
+  "解約と次回更新日の確認は、iPhoneの「設定」>「Apple Account」>「サブスクリプション」から行えます。" +
+  "Premium Passは自動更新されません。";
+
+function LegalLink({ document }: { document: LegalDocument }) {
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={`${LEGAL_LABELS[document]}を開く`}
+      hitSlop={12}
+      onPress={() => openLegalDocument(document, Linking.openURL)}
+    >
+      <Text style={styles.legalLinkText}>{LEGAL_LABELS[document]}</Text>
+    </Pressable>
+  );
+}
 
 type Props = { onBillingStatus: (status: BillingStatus) => void };
 
@@ -154,12 +176,23 @@ export function ApplePurchaseSection({ onBillingStatus }: Props) {
           {errors[purchaseState.reason]}
         </Text>
       ) : null}
+
+      <Text style={styles.notice}>{AUTO_RENEWAL_NOTICE}</Text>
+      <View style={styles.legalRow}>
+        <LegalLink document="terms" />
+        <Text style={styles.legalSeparator}>・</Text>
+        <LegalLink document="privacy" />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   section: { marginTop: spacing.smGap, gap: spacing.smGap },
+  notice: { ...typography.footnote, color: theme.mutedDark, marginTop: spacing.smGap },
+  legalRow: { flexDirection: "row", alignItems: "center", gap: spacing.tightGap },
+  legalLinkText: { ...typography.footnoteStrong, color: theme.gold },
+  legalSeparator: { ...typography.footnote, color: theme.mutedDark },
   helper: { ...typography.subhead, color: theme.mutedSoft },
   message: { ...typography.footnote, color: theme.gold },
 });

@@ -13,7 +13,8 @@
       "environment": "preview"
     },
     "production": {
-      "environment": "production"
+      "environment": "production",
+      "autoIncrement": true
     },
     "android-map-qa": {
       "distribution": "internal",
