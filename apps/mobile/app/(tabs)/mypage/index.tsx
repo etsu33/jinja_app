@@ -120,7 +120,7 @@ function UsageStat({ label, value, helper, onPress }: UsageStatProps) {
   );
 }
 
-// 画面内コンテンツの上余白。safe area inset にこの値を足して使う。
+// 画面内コンテンツの上余白。safe area inset の内側に置く。
 const CONTENT_TOP_PADDING = 24;
 
 export default function MyPageScreen() {
@@ -277,153 +277,151 @@ export default function MyPageScreen() {
   }, []);
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + CONTENT_TOP_PADDING }]}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>MY PAGE</Text>
-        <Text style={styles.title}>マイページ</Text>
-        <Text style={styles.subtitle}>
-          プロフィール、Premium、設定をここから確認できます。
-        </Text>
-      </View>
-
-      {loggedIn ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>アカウント</Text>
-          <MyPageCard
-            title={accountUsername ?? LOGOUT_MESSAGES.signedInFallbackName}
-            description="ログイン中です。別のアカウントに入り直すときは、ログアウトしてください。"
-            iconText="人"
-            actionLabel="ログアウト"
-            onPress={confirmAndLogout}
-          />
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.eyebrow}>MY PAGE</Text>
+          <Text style={styles.title}>マイページ</Text>
+          <Text style={styles.subtitle}>
+            プロフィール、Premium、設定をここから確認できます。
+          </Text>
         </View>
-      ) : (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>アカウント</Text>
-          <MyPageCard
-            title="ログイン"
-            description="記録や相談履歴を保存して、あとから見返せます。"
-            iconText="入"
-            actionLabel="ログイン"
-            onPress={() => router.push("/login")}
-          />
-          <MyPageCard
-            title="新規登録"
-            description="アカウントをお持ちでない方はこちらから作成できます。"
-            iconText="新"
-            actionLabel="登録"
-            onPress={() => router.push("/signup")}
-          />
-        </View>
-      )}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>プロフィール</Text>
-        <MyPageCard
-          title="プロフィールカード"
-          description="生年月日や出生情報、参拝スタイルを設定できます。"
-          meta="入力内容は神社提案の補助情報として使われます。"
-          iconText="人"
-          actionLabel="確認"
-          onPress={() => router.push("/profile")}
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>利用状況</Text>
-        <View style={styles.usageGrid}>
-          <UsageStat
-            label="お気に入り"
-            value={favoriteCount === null ? "..." : `${favoriteCount}`}
-            helper="保存した神社"
-            onPress={() => router.push("/favorites")}
-          />
-          <UsageStat
-            label="参拝回数"
-            value={visitCount === null ? "..." : `${visitCount}`}
-            helper="記録された参拝"
-            onPress={() => router.push("/visit-history")}
-          />
-          <UsageStat
-            label="最近見た神社"
-            value={recentCount === null ? "..." : `${recentCount}`}
-            helper="閲覧履歴"
-            onPress={() => router.push("/recently-viewed")}
-          />
-          <UsageStat
-            label="御朱印"
-            value={stampCount === null ? "..." : `${stampCount}`}
-            helper="登録した御朱印"
-            onPress={() => router.push("/goshuin")}
-          />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>相談</Text>
-        <MyPageCard
-          title="相談履歴"
-          description="これまでの相談と、当時推薦された神社を見返せます。"
-          iconText="談"
-          actionLabel="開く"
-          onPress={() => {
-            trackConsultationHistoryEntryClicked();
-            router.push("/consultation-history");
-          }}
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Premium</Text>
-        <MyPageCard
-          title="Premium"
-          description="前回比較、深い振り返り、保存した相談の整理を使えるようにします。"
-          meta={describePremiumMeta(premiumMeta)}
-          iconText="P"
-          actionLabel="確認"
-          onPress={() => router.push("/premium")}
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>設定・サポート</Text>
         {loggedIn ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>アカウント</Text>
+            <MyPageCard
+              title={accountUsername ?? LOGOUT_MESSAGES.signedInFallbackName}
+              description="ログイン中です。別のアカウントに入り直すときは、ログアウトしてください。"
+              iconText="人"
+              actionLabel="ログアウト"
+              onPress={confirmAndLogout}
+            />
+          </View>
+        ) : (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>アカウント</Text>
+            <MyPageCard
+              title="ログイン"
+              description="記録や相談履歴を保存して、あとから見返せます。"
+              iconText="入"
+              actionLabel="ログイン"
+              onPress={() => router.push("/login")}
+            />
+            <MyPageCard
+              title="新規登録"
+              description="アカウントをお持ちでない方はこちらから作成できます。"
+              iconText="新"
+              actionLabel="登録"
+              onPress={() => router.push("/signup")}
+            />
+          </View>
+        )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>プロフィール</Text>
           <MyPageCard
-            title="退会する"
-            description="アカウントと記録を削除します。この操作は取り消せません。"
-            meta={deletingAccount ? "退会処理中..." : "Premiumをご利用中の場合、購読も停止されます。"}
-            iconText="退"
-            actionLabel="退会"
-            onPress={deletingAccount ? undefined : confirmAccountDeletion}
+            title="プロフィールカード"
+            description="生年月日や出生情報、参拝スタイルを設定できます。"
+            meta="入力内容は神社提案の補助情報として使われます。"
+            iconText="人"
+            actionLabel="確認"
+            onPress={() => router.push("/profile")}
           />
-        ) : null}
-        <MyPageCard
-          title={LEGAL_LABELS.terms}
-          description="アプリの利用条件を確認できます。"
-          iconText="規"
-          actionLabel="開く"
-          onPress={openTerms}
-        />
-        <MyPageCard
-          title={LEGAL_LABELS.privacy}
-          description="取得する情報と取り扱いを確認できます。"
-          iconText="私"
-          actionLabel="開く"
-          onPress={openPrivacy}
-        />
-        <MyPageCard
-          title="お問い合わせ"
-          description="不具合や相談がある場合の連絡先です。"
-          iconText="問"
-          actionLabel="送る"
-          onPress={openContactMail}
-        />
-      </View>
-    </ScrollView>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>利用状況</Text>
+          <View style={styles.usageGrid}>
+            <UsageStat
+              label="お気に入り"
+              value={favoriteCount === null ? "..." : `${favoriteCount}`}
+              helper="保存した神社"
+              onPress={() => router.push("/favorites")}
+            />
+            <UsageStat
+              label="参拝回数"
+              value={visitCount === null ? "..." : `${visitCount}`}
+              helper="記録された参拝"
+              onPress={() => router.push("/visit-history")}
+            />
+            <UsageStat
+              label="最近見た神社"
+              value={recentCount === null ? "..." : `${recentCount}`}
+              helper="閲覧履歴"
+              onPress={() => router.push("/recently-viewed")}
+            />
+            <UsageStat
+              label="御朱印"
+              value={stampCount === null ? "..." : `${stampCount}`}
+              helper="登録した御朱印"
+              onPress={() => router.push("/goshuin")}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>相談</Text>
+          <MyPageCard
+            title="相談履歴"
+            description="これまでの相談と、当時推薦された神社を見返せます。"
+            iconText="談"
+            actionLabel="開く"
+            onPress={() => {
+              trackConsultationHistoryEntryClicked();
+              router.push("/consultation-history");
+            }}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Premium</Text>
+          <MyPageCard
+            title="Premium"
+            description="前回比較、深い振り返り、保存した相談の整理を使えるようにします。"
+            meta={describePremiumMeta(premiumMeta)}
+            iconText="P"
+            actionLabel="確認"
+            onPress={() => router.push("/premium")}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>設定・サポート</Text>
+          {loggedIn ? (
+            <MyPageCard
+              title="退会する"
+              description="アカウントと記録を削除します。この操作は取り消せません。"
+              meta={deletingAccount ? "退会処理中..." : "Premiumをご利用中の場合、購読も停止されます。"}
+              iconText="退"
+              actionLabel="退会"
+              onPress={deletingAccount ? undefined : confirmAccountDeletion}
+            />
+          ) : null}
+          <MyPageCard
+            title={LEGAL_LABELS.terms}
+            description="アプリの利用条件を確認できます。"
+            iconText="規"
+            actionLabel="開く"
+            onPress={openTerms}
+          />
+          <MyPageCard
+            title={LEGAL_LABELS.privacy}
+            description="取得する情報と取り扱いを確認できます。"
+            iconText="私"
+            actionLabel="開く"
+            onPress={openPrivacy}
+          />
+          <MyPageCard
+            title="お問い合わせ"
+            description="不具合や相談がある場合の連絡先です。"
+            iconText="問"
+            actionLabel="送る"
+            onPress={openContactMail}
+          />
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -434,6 +432,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 24,
+    paddingTop: CONTENT_TOP_PADDING,
     paddingBottom: 48,
     gap: 22,
   },

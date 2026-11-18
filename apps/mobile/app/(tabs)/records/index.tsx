@@ -174,26 +174,26 @@ export default function RecordsScreen() {
 
   return (
     <>
-    <ScrollView
-      style={{ backgroundColor: kamimusubiDark.background, flex: 1 }}
-      contentContainerStyle={{
-        gap: spacing.lgGap,
-        paddingHorizontal: spacing.screenXWide,
-        paddingTop: insets.top + spacing.screenXWide,
-        paddingBottom: spacing.bottomSpace,
-      }}
-    >
-      <View style={{ marginBottom: spacing.lgGap }}>
-        <Text style={{ ...typography.display, color: kamimusubiDark.gold }}>記録</Text>
-        <Text style={{ ...typography.subhead, color: kamimusubiDark.text, marginTop: spacing.mdGap }}>
-          相談から育ったご縁や、保存した神社、御朱印をここから振り返れます。
-        </Text>
-      </View>
+    <View style={{ backgroundColor: kamimusubiDark.background, flex: 1, paddingTop: insets.top }}>
+      <ScrollView
+        contentContainerStyle={{
+          gap: spacing.lgGap,
+          padding: spacing.screenXWide,
+          paddingBottom: spacing.bottomSpace,
+        }}
+      >
+        <View style={{ marginBottom: spacing.lgGap }}>
+          <Text style={{ ...typography.display, color: kamimusubiDark.gold }}>記録</Text>
+          <Text style={{ ...typography.subhead, color: kamimusubiDark.text, marginTop: spacing.mdGap }}>
+            相談から育ったご縁や、保存した神社、御朱印をここから振り返れます。
+          </Text>
+        </View>
 
-      {recordItemsWithMeta.map((item) => (
-        <RecordCard key={item.routeLabel} {...item} onPress={handlePress} />
-      ))}
-    </ScrollView>
+        {recordItemsWithMeta.map((item) => (
+          <RecordCard key={item.routeLabel} {...item} onPress={handlePress} />
+        ))}
+      </ScrollView>
+    </View>
 
     <AuthPrompt
       visible={authPromptVisible}

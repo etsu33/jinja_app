@@ -31,18 +31,15 @@ describe("タブ画面の上部セーフエリア", () => {
     expect(source).toContain("const insets = useSafeAreaInsets();");
   });
 
-  it.each(TAB_SCREENS)("%s が inset を上余白に足す", (file) => {
-    expect(read(file)).toMatch(/paddingTop: insets\.top \+ /);
+  it.each(TAB_SCREENS)("%s がスクロール領域の外側で inset を確保する", (file) => {
+    // contentContainerStyle 側に inset を足すとコンテンツがステータスバーの
+    // 下へ潜り、ヘッダーのぼかしが無いこれらの画面では Dynamic Island と
+    // 電波・バッテリーに文字が重なる(iPhone 17 / iOS 26 で確認)。
+    // スクロール領域そのものを inset の内側に置く。
+    expect(read(file)).toMatch(/paddingTop: insets\.top(?!\s*\+)/);
   });
 
-  it.each(TAB_SCREENS)("%s の最上位コンテナに固定の paddingTop を残さない", (file) => {
-    // StyleSheet 側に paddingTop を残すと inset を足した値に上書きされるか、
-    // 逆に上書きしてしまい、どちらが効くかがソースから読めなくなる。
-    const source = read(file);
-    const styleBlocks = [...source.matchAll(/\n {2}(content|header|screen): \{([^{}]*)\},/g)];
-
-    for (const [, key, body] of styleBlocks) {
-      expect(body, key).not.toMatch(/paddingTop: [0-9]/);
-    }
+  it.each(TAB_SCREENS)("%s が inset をスクロール中身の余白に足さない", (file) => {
+    expect(read(file)).not.toMatch(/paddingTop: insets\.top\s*\+/);
   });
 });

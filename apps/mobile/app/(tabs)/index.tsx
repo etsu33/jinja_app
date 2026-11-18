@@ -23,7 +23,7 @@ const THEMES = [
   "仕事の流れを整えたい",
 ] as const;
 
-// 画面内コンテンツの上余白。safe area inset にこの値を足して使う。
+// 画面内コンテンツの上余白。safe area inset の内側に置く。
 const CONTENT_TOP_PADDING = 22;
 
 export default function Home() {
@@ -103,132 +103,131 @@ export default function Home() {
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + CONTENT_TOP_PADDING }]}
-    >
-      {/* ブランドヘッダー */}
-      <View style={styles.header}>
-        <View style={styles.brandRow}>
-          <Text style={styles.logoMark}>⛩️</Text>
-          <View>
-            <Text style={styles.brandName}>神結び</Text>
-            <Text style={styles.brandRuby}>kami musubi</Text>
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <ScrollView contentContainerStyle={styles.content}>
+        {/* ブランドヘッダー */}
+        <View style={styles.header}>
+          <View style={styles.brandRow}>
+            <Text style={styles.logoMark}>⛩️</Text>
+            <View>
+              <Text style={styles.brandName}>神結び</Text>
+              <Text style={styles.brandRuby}>kami musubi</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* Hero */}
-      <View style={styles.hero}>
-        <Text style={styles.heroLead}>今の相談を、神社とのご縁につなげる</Text>
-        <Text style={styles.heroSub}>
-          ここでは相談内容だけを整えます。次の画面で、今の相談から結ばれた神社を確認できます。
-        </Text>
-      </View>
-
-      {/* テーマチップ */}
-      <View style={styles.themeSection}>
-        <Text style={styles.themeLabel}>まずは近い相談テーマを選ぶ</Text>
-        <View style={styles.themeGrid}>
-          {THEMES.map((t) => {
-            const active = selectedTheme === t;
-            return (
-              <Pressable
-                key={t}
-                accessibilityRole="button"
-                accessibilityLabel={t}
-                accessibilityState={{ selected: active }}
-                onPress={() => setSelectedTheme(active ? null : t)}
-                style={[styles.themePill, active && styles.themePillActive]}
-              >
-                <Text style={[styles.themePillText, active && styles.themePillTextActive]}>{t}</Text>
-              </Pressable>
-            );
-          })}
+        {/* Hero */}
+        <View style={styles.hero}>
+          <Text style={styles.heroLead}>今の相談を、神社とのご縁につなげる</Text>
+          <Text style={styles.heroSub}>
+            ここでは相談内容だけを整えます。次の画面で、今の相談から結ばれた神社を確認できます。
+          </Text>
         </View>
-      </View>
 
-      {/* 自由入力カード */}
-      <View style={styles.chatCard}>
-        <TextInput
-          accessibilityLabel="相談内容"
-          placeholder="例: 迷いを整理して、前に進むきっかけがほしい"
-          placeholderTextColor={theme.mutedDark}
-          style={styles.chatInput}
-          value={consultation}
-          onChangeText={setConsultation}
-          multiline
-          textAlignVertical="top"
-        />
-        <View style={styles.chatFooter}>
-          <Text style={styles.aiHint}>相談内容を整えて、ご縁の神社へ進みます</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="相談内容を送信する"
-            onPress={openConcierge}
-            style={styles.sendButton}
-          >
-            <Text style={styles.sendButtonText}>↑</Text>
-          </Pressable>
+        {/* テーマチップ */}
+        <View style={styles.themeSection}>
+          <Text style={styles.themeLabel}>まずは近い相談テーマを選ぶ</Text>
+          <View style={styles.themeGrid}>
+            {THEMES.map((t) => {
+              const active = selectedTheme === t;
+              return (
+                <Pressable
+                  key={t}
+                  accessibilityRole="button"
+                  accessibilityLabel={t}
+                  accessibilityState={{ selected: active }}
+                  onPress={() => setSelectedTheme(active ? null : t)}
+                  style={[styles.themePill, active && styles.themePillActive]}
+                >
+                  <Text style={[styles.themePillText, active && styles.themePillTextActive]}>{t}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
-      </View>
 
-      {/* 条件追加トグル */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={conditionToggleLabel}
-        accessibilityState={{ expanded: showConditions }}
-        onPress={() => setShowConditions((c) => !c)}
-        style={styles.accordionToggle}
-      >
-        <Text style={styles.accordionToggleText}>{conditionToggleLabel}</Text>
-      </Pressable>
-
-      {!showConditions && conditionSummaryText ? (
-        <Text style={styles.conditionSummaryText}>{conditionSummaryText}</Text>
-      ) : null}
-
-      {showConditions ? (
-        <View style={styles.conditionHint}>
-          <ConditionFieldsCard
-            birthdate={birthdate}
-            onChangeBirthdate={setBirthdate}
-            plannedVisitDate={plannedVisitDate}
-            onChangePlannedVisitDate={setPlannedVisitDate}
-            locationStatus={locationStatus}
-            onUseCurrentLocation={() => void useCurrentLocation()}
-            origin={origin}
-            onChangeOrigin={setOrigin}
-            selectedVisitStyle={selectedVisitStyle}
-            onSelectVisitStyle={setSelectedVisitStyle}
-            selectedGoriyaku={selectedGoriyaku}
-            onSelectGoriyaku={setSelectedGoriyaku}
-            supportText={supportText}
-            onChangeSupportText={setSupportText}
+        {/* 自由入力カード */}
+        <View style={styles.chatCard}>
+          <TextInput
+            accessibilityLabel="相談内容"
+            placeholder="例: 迷いを整理して、前に進むきっかけがほしい"
+            placeholderTextColor={theme.mutedDark}
+            style={styles.chatInput}
+            value={consultation}
+            onChangeText={setConsultation}
+            multiline
+            textAlignVertical="top"
           />
+          <View style={styles.chatFooter}>
+            <Text style={styles.aiHint}>相談内容を整えて、ご縁の神社へ進みます</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="相談内容を送信する"
+              onPress={openConcierge}
+              style={styles.sendButton}
+            >
+              <Text style={styles.sendButtonText}>↑</Text>
+            </Pressable>
+          </View>
         </View>
-      ) : null}
 
-      {/* 主CTA */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="この相談からご縁を見る"
-        onPress={openConcierge}
-        style={styles.primaryCta}
-      >
-        <Text style={styles.primaryCtaText}>この相談からご縁を見る</Text>
-      </Pressable>
+        {/* 条件追加トグル */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={conditionToggleLabel}
+          accessibilityState={{ expanded: showConditions }}
+          onPress={() => setShowConditions((c) => !c)}
+          style={styles.accordionToggle}
+        >
+          <Text style={styles.accordionToggleText}>{conditionToggleLabel}</Text>
+        </Pressable>
 
-      {/* Search入口(補助CTA) */}
-      <Button
-        title="神社を探す"
-        variant="outline"
-        onPress={openSearch}
-        accessibilityLabel="神社を探す"
-        style={styles.searchEntryCta}
-      />
+        {!showConditions && conditionSummaryText ? (
+          <Text style={styles.conditionSummaryText}>{conditionSummaryText}</Text>
+        ) : null}
 
-    </ScrollView>
+        {showConditions ? (
+          <View style={styles.conditionHint}>
+            <ConditionFieldsCard
+              birthdate={birthdate}
+              onChangeBirthdate={setBirthdate}
+              plannedVisitDate={plannedVisitDate}
+              onChangePlannedVisitDate={setPlannedVisitDate}
+              locationStatus={locationStatus}
+              onUseCurrentLocation={() => void useCurrentLocation()}
+              origin={origin}
+              onChangeOrigin={setOrigin}
+              selectedVisitStyle={selectedVisitStyle}
+              onSelectVisitStyle={setSelectedVisitStyle}
+              selectedGoriyaku={selectedGoriyaku}
+              onSelectGoriyaku={setSelectedGoriyaku}
+              supportText={supportText}
+              onChangeSupportText={setSupportText}
+            />
+          </View>
+        ) : null}
+
+        {/* 主CTA */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="この相談からご縁を見る"
+          onPress={openConcierge}
+          style={styles.primaryCta}
+        >
+          <Text style={styles.primaryCtaText}>この相談からご縁を見る</Text>
+        </Pressable>
+
+        {/* Search入口(補助CTA) */}
+        <Button
+          title="神社を探す"
+          variant="outline"
+          onPress={openSearch}
+          accessibilityLabel="神社を探す"
+          style={styles.searchEntryCta}
+        />
+
+      </ScrollView>
+    </View>
   );
 }
 
@@ -244,6 +243,7 @@ const styles = StyleSheet.create({
     minHeight: "100%",
     backgroundColor: theme.background,
     paddingHorizontal: 20,
+    paddingTop: CONTENT_TOP_PADDING,
     paddingBottom: 48,
   },
 

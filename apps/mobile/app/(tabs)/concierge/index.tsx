@@ -651,9 +651,6 @@ function ResultCard({
 // ────────────────────────────────────────────
 // メイン画面
 // ────────────────────────────────────────────
-// ヘッダーの上余白。safe area inset にこの値を足して使う。
-const HEADER_TOP_PADDING = 18;
-
 export default function ConciergeScreen() {
   const params = useLocalSearchParams<{
     q?: string;
@@ -902,12 +899,12 @@ export default function ConciergeScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.screen}
+      style={[styles.screen, { paddingTop: insets.top }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* ヘッダー。タブ画面なので戻るは持たない(ホームはタブバーから戻る)。 */}
-        <View style={[styles.header, { paddingTop: insets.top + HEADER_TOP_PADDING }]}>
+        <View style={styles.header}>
           <Text accessibilityRole="header" style={styles.headerTitle}>ご縁の神社</Text>
         </View>
 
@@ -1058,6 +1055,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     paddingHorizontal: 18,
+    paddingTop: 18,
     paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: theme.borderHeader,
