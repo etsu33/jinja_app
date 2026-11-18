@@ -352,6 +352,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   themePill: {
+    // HIGの最小タップ領域44pt。文字と余白だけでは37ptにしかならない。
+    minHeight: 44,
+    justifyContent: "center",
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 999,
@@ -373,6 +376,9 @@ const styles = StyleSheet.create({
 
   // 条件追加
   accordionToggle: {
+    // HIGの最小タップ領域44pt。文字と余白だけでは37ptにしかならない。
+    minHeight: 44,
+    justifyContent: "center",
     marginTop: 18,
     paddingVertical: 8,
   },

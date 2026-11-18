@@ -26,7 +26,12 @@ export function ProfilePickerModal({
         <Pressable style={styles.sheet} onPress={(event) => event.stopPropagation()}>
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
-            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="閉じる">
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="閉じる"
+              style={styles.closeButton}
+            >
               <Text style={styles.close}>閉じる</Text>
             </Pressable>
           </View>
@@ -62,7 +67,10 @@ const styles = StyleSheet.create({
   sheet: { maxHeight: "72%", backgroundColor: theme.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: 20 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
   title: { ...typography.subheading, color: theme.text },
-  close: { ...typography.label, color: theme.gold, padding: 8 },
+  // HIGの最小タップ領域44pt。余白をTextに持たせると37ptにしかならないため、
+  // Pressable側で高さを確保する。
+  closeButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
+  close: { ...typography.label, color: theme.gold },
   options: { flexGrow: 0 },
   optionsContent: { paddingBottom: 24 },
   option: { minHeight: 48, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: theme.borderHeader },

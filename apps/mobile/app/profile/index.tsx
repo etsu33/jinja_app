@@ -172,7 +172,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: cardSizes.borderWidth,
     borderBottomColor: theme.borderHeader,
   },
-  selectButton: { minWidth: 180, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8, paddingVertical: 8 },
+  // HIGの最小タップ領域44pt。文字と余白だけでは37ptにしかならない。
+  selectButton: { minHeight: 44, minWidth: 180, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8, paddingVertical: 8 },
   selectText: { ...typography.label, color: theme.text },
   placeholder: { color: theme.muted },
   chevron: { color: theme.gold, fontSize: 22, lineHeight: 22 },
