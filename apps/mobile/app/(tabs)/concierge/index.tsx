@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { kamimusubiDark as theme } from "../../../design/theme";
@@ -650,6 +651,9 @@ function ResultCard({
 // ────────────────────────────────────────────
 // メイン画面
 // ────────────────────────────────────────────
+// ヘッダーの上余白。safe area inset にこの値を足して使う。
+const HEADER_TOP_PADDING = 18;
+
 export default function ConciergeScreen() {
   const params = useLocalSearchParams<{
     q?: string;
@@ -663,6 +667,9 @@ export default function ConciergeScreen() {
     originLng?: string;
   }>();
   const router = useRouter();
+  // タブ画面はネイティブヘッダーを持たないため、Dynamic Island / ステータスバーの
+  // 高さを自分で避ける(下層画面はStackのヘッダーが避けている)。
+  const insets = useSafeAreaInsets();
   const { userProfile: globalUserProfile } = useProfileStore();
 
   const initialQuery = [params.q, params.theme].filter(Boolean).join(" ").trim();
@@ -900,7 +907,7 @@ export default function ConciergeScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* ヘッダー。タブ画面なので戻るは持たない(ホームはタブバーから戻る)。 */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + HEADER_TOP_PADDING }]}>
           <Text accessibilityRole="header" style={styles.headerTitle}>ご縁の神社</Text>
         </View>
 
@@ -1051,7 +1058,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     paddingHorizontal: 18,
-    paddingTop: 18,
     paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: theme.borderHeader,

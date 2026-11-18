@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useRouter } from "expo-router";
 import { ScrollView, View, Text, TextInput, StyleSheet, Pressable } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { kamimusubiDark as theme } from "../../design/theme";
 import { shadows } from "../../design/shadow";
 import { ConditionFieldsCard } from "../../components/ConditionFieldsCard";
@@ -22,8 +23,14 @@ const THEMES = [
   "仕事の流れを整えたい",
 ] as const;
 
+// 画面内コンテンツの上余白。safe area inset にこの値を足して使う。
+const CONTENT_TOP_PADDING = 22;
+
 export default function Home() {
   const router = useRouter();
+  // タブ画面はネイティブヘッダーを持たないため、Dynamic Island / ステータスバーの
+  // 高さを自分で避ける(下層画面はStackのヘッダーが避けている)。
+  const insets = useSafeAreaInsets();
   const [consultation, setConsultation] = React.useState("");
   const [selectedTheme, setSelectedTheme] = React.useState<string | null>(null);
   const [showConditions, setShowConditions] = React.useState(false);
@@ -96,7 +103,10 @@ export default function Home() {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + CONTENT_TOP_PADDING }]}
+    >
       {/* ブランドヘッダー */}
       <View style={styles.header}>
         <View style={styles.brandRow}>
@@ -234,7 +244,6 @@ const styles = StyleSheet.create({
     minHeight: "100%",
     backgroundColor: theme.background,
     paddingHorizontal: 20,
-    paddingTop: 22,
     paddingBottom: 48,
   },
 

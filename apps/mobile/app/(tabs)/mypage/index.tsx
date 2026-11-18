@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 
@@ -111,8 +112,14 @@ function UsageStat({ label, value, helper }: UsageStatProps) {
   );
 }
 
+// 画面内コンテンツの上余白。safe area inset にこの値を足して使う。
+const CONTENT_TOP_PADDING = 24;
+
 export default function MyPageScreen() {
   const router = useRouter();
+  // タブ画面はネイティブヘッダーを持たないため、Dynamic Island / ステータスバーの
+  // 高さを自分で避ける(下層画面はStackのヘッダーが避けている)。
+  const insets = useSafeAreaInsets();
   const [favoriteCount, setFavoriteCount] = React.useState<number | null>(null);
   const [recentCount, setRecentCount] = React.useState<number | null>(null);
   const [visitCount, setVisitCount] = React.useState<number | null>(null);
@@ -259,7 +266,7 @@ export default function MyPageScreen() {
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + CONTENT_TOP_PADDING }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
@@ -409,7 +416,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.background,
   },
   content: {
-    padding: 24,
+    paddingHorizontal: 24,
     paddingBottom: 48,
     gap: 22,
   },

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { kamimusubiDark } from "../../../design/theme";
 import { spacing } from "../../../design/spacing";
@@ -147,6 +148,9 @@ function RecordCard({ title, description, meta, iconText, routeLabel, onPress }:
 
 export default function RecordsScreen() {
   const router = useRouter();
+  // タブ画面はネイティブヘッダーを持たないため、Dynamic Island / ステータスバーの
+  // 高さを自分で避ける(下層画面はStackのヘッダーが避けている)。
+  const insets = useSafeAreaInsets();
   const [favCount, setFavCount] = useState<number | null>(null);
   const [authPromptVisible, setAuthPromptVisible] = useState(false);
 
@@ -195,7 +199,12 @@ export default function RecordsScreen() {
     <>
     <ScrollView
       style={{ backgroundColor: kamimusubiDark.background, flex: 1 }}
-      contentContainerStyle={{ gap: spacing.lgGap, padding: spacing.screenXWide, paddingBottom: spacing.bottomSpace }}
+      contentContainerStyle={{
+        gap: spacing.lgGap,
+        paddingHorizontal: spacing.screenXWide,
+        paddingTop: insets.top + spacing.screenXWide,
+        paddingBottom: spacing.bottomSpace,
+      }}
     >
       <View style={{ marginBottom: spacing.lgGap }}>
         <Text
