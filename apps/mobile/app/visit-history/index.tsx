@@ -1,6 +1,5 @@
 import * as React from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { listVisits, type VisitHistoryItem } from "../../lib/visits";
 import { StateCard } from "../../components/common/StateCard";
@@ -94,7 +93,6 @@ function VisitTimelineCard({ visit, isLast }: { visit: VisitHistoryItem; isLast:
 }
 
 export default function VisitHistoryScreen() {
-  const router = useRouter();
   const [visits, setVisits] = React.useState<VisitHistoryItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
@@ -135,10 +133,6 @@ export default function VisitHistoryScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.gold} />}
     >
       <View style={styles.header}>
-        <Pressable onPress={() => router.replace("/records")} style={styles.backButton}>
-          <Text style={styles.backText}>← 記録へ戻る</Text>
-        </Pressable>
-        <Text style={styles.title}>参拝履歴</Text>
         <Text style={styles.subtitle}>
           参拝済みにした神社を、新しい順に見返せます。行動の積み重ねを確認するための記録です。
         </Text>
@@ -201,20 +195,6 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: spacing.mdGap,
-  },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: spacing.smGap,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  title: {
-    color: theme.gold,
-    fontSize: 26,
-    fontWeight: "900",
   },
   subtitle: {
     color: theme.text,

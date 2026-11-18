@@ -12,10 +12,10 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Location from "expo-location";
-import { kamimusubiDark as theme } from "../../design/theme";
-import { shadows } from "../../design/shadow";
-import { ConditionFieldsCard } from "../../components/ConditionFieldsCard";
-import Button from "../../components/ui/Button";
+import { kamimusubiDark as theme } from "../../../design/theme";
+import { shadows } from "../../../design/shadow";
+import { ConditionFieldsCard } from "../../../components/ConditionFieldsCard";
+import Button from "../../../components/ui/Button";
 import {
   buildConditionFilters,
   buildConditionProfileContext,
@@ -23,20 +23,20 @@ import {
   type ConditionFilters,
   type ConditionState,
   type ProfileContextPayload,
-} from "../../lib/conditionPayload";
-import { post } from "../../lib/http";
-import { trackActionEvent, type ActionEventActionType } from "../../lib/actionEvents";
-import { useProfileStore } from "../../store/profileStore";
+} from "../../../lib/conditionPayload";
+import { post } from "../../../lib/http";
+import { trackActionEvent, type ActionEventActionType } from "../../../lib/actionEvents";
+import { useProfileStore } from "../../../store/profileStore";
 import {
   directionReferenceMatchCopy,
   validDirectionReferenceOrNull,
   type DirectionReference,
-} from "../../../../packages/shared/directionReference";
-import { toOriginPayload, type UserOrigin } from "../../../../packages/shared/userOrigin";
-import { buildRecommendationReasonDisplay } from "../../../../packages/shared/recommendationReasonDisplay";
-import { getOriginSession } from "../../lib/originSession";
-import { trackMobileDirection } from "../../lib/directionEvents";
-import { track } from "../../lib/analytics";
+} from "../../../../../packages/shared/directionReference";
+import { toOriginPayload, type UserOrigin } from "../../../../../packages/shared/userOrigin";
+import { buildRecommendationReasonDisplay } from "../../../../../packages/shared/recommendationReasonDisplay";
+import { getOriginSession } from "../../../lib/originSession";
+import { trackMobileDirection } from "../../../lib/directionEvents";
+import { track } from "../../../lib/analytics";
 import {
   buildRecommendationImpressionDedupKey,
   buildRecommendationResultSetId,
@@ -44,20 +44,20 @@ import {
   recommendationAnalyticsProperties,
   recommendationAnalyticsProvenance,
   type RecommendationAnalyticsProvenance,
-} from "../../../../packages/shared/recommendationAnalyticsProvenance";
+} from "../../../../../packages/shared/recommendationAnalyticsProvenance";
 import {
   buildReasonV4Sections,
   normalizeRecommendationReasonV4Detail,
   serializeReasonV4Detail,
   type RecommendationReasonV4Detail,
-} from "../../lib/recommendationReasonV4";
+} from "../../../lib/recommendationReasonV4";
 import {
   buildReasonFactItems,
   findPrimaryReasonFact,
   normalizeRecommendationReasonFacts,
   resolveActionEventHistoryTheme,
   type ConciergeReasonFacts,
-} from "../../lib/recommendationReasonFacts";
+} from "../../../lib/recommendationReasonFacts";
 
 // ────────────────────────────────────────────
 // 型
@@ -898,17 +898,9 @@ export default function ConciergeScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* ヘッダー */}
+        {/* ヘッダー。タブ画面なので戻るは持たない(ホームはタブバーから戻る)。 */}
         <View style={styles.header}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="前の画面に戻る"
-            onPress={() => router.back()}
-            style={styles.backBtn}
-          >
-            <Text style={styles.backText}>← 戻る</Text>
-          </Pressable>
-          <Text style={styles.headerTitle}>ご縁の神社</Text>
+          <Text accessibilityRole="header" style={styles.headerTitle}>ご縁の神社</Text>
         </View>
 
         {/* 相談内容 */}
@@ -1062,15 +1054,6 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: theme.borderHeader,
-  },
-  backBtn: {
-    paddingVertical: 4,
-    paddingRight: 8,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 14,
-    fontWeight: "700",
   },
   headerTitle: {
     color: theme.text,

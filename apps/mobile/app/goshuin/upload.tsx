@@ -74,15 +74,7 @@ export default function GoshuinUpload() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Pressable onPress={goBack} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← 戻る</Text>
-        </Pressable>
-      </View>
-
       <View style={styles.titleBlock}>
-        <Text style={styles.lead}>参拝の記録</Text>
-        <Text style={styles.title}>御朱印を登録</Text>
         <Text style={styles.subtitle}>カメラで撮影、またはアルバムから選択してください。</Text>
       </View>
 
@@ -150,32 +142,8 @@ const styles = StyleSheet.create({
     paddingTop: 22,
     paddingBottom: 48,
   },
-  header: {
-    marginBottom: 28,
-  },
-  backBtn: {
-    alignSelf: "flex-start",
-    paddingVertical: 8,
-    paddingHorizontal: 13,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.borderGold,
-    backgroundColor: "transparent",
-  },
-  backBtnText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
-  },
   titleBlock: {
     marginBottom: 24,
-  },
-  lead: {
-    color: theme.mutedSoft,
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 1,
-    marginBottom: 10,
   },
   title: {
     color: theme.text,

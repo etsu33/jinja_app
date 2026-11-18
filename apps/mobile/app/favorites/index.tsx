@@ -55,17 +55,6 @@ export default function FavoritesScreen() {
       contentContainerStyle={{ padding: spacing.screenXWide, paddingBottom: spacing.bottomSpace, gap: spacing.lgGap }}
     >
       <View style={{ marginBottom: spacing.lgGap }}>
-        <Pressable
-          onPress={() => router.replace("/records")}
-          style={{ marginBottom: spacing.xlGap }}
-        >
-          <Text style={{ color: theme.gold, fontSize: 13, fontWeight: "700" }}>
-            ← 記録へ戻る
-          </Text>
-        </Pressable>
-        <Text style={{ color: theme.gold, fontSize: 26, fontWeight: "700" }}>
-          お気に入り
-        </Text>
         <Text style={{ color: theme.text, fontSize: 15, lineHeight: 23, marginTop: spacing.mdGap }}>
           保存した神社を確認できます。
         </Text>

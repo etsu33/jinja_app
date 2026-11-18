@@ -97,12 +97,7 @@ export default function SearchPage() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} style={styles.back}>
-        <Text style={styles.backText}>← 戻る</Text>
-      </Pressable>
-
       <View style={styles.hero}>
-        <Text style={styles.heroLead}>神社を探す</Text>
         <Text style={styles.heroTitle}>今の気持ちに合う神社を、{`\n`}静かに見つける</Text>
         <Text style={styles.heroSub}>地域やご利益、気になる言葉から、参拝先との接点を確認できます。</Text>
       </View>
@@ -311,30 +306,9 @@ const styles = StyleSheet.create({
     paddingTop: 22,
     paddingBottom: 96,
   },
-  back: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: theme.borderGold,
-    paddingVertical: 8,
-    paddingHorizontal: 13,
-    borderRadius: 999,
-    backgroundColor: "transparent",
-    marginBottom: 28,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
-  },
   hero: {
     paddingBottom: 22,
     gap: 10,
-  },
-  heroLead: {
-    color: theme.mutedSoft,
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 1,
   },
   heroTitle: {
     color: theme.text,

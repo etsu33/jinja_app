@@ -1,6 +1,5 @@
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
 import { kamimusubiDark as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
@@ -13,7 +12,6 @@ const PREFECTURES = ["北海道", "青森県", "岩手県", "宮城県", "秋田
 type PickerKind = "year" | "month" | "day" | "time" | "place" | null;
 
 export default function ProfileScreen() {
-  const router = useRouter();
   const { userProfile, derivedProfile, directionProfile, setBirthday, setBirthTime, setBirthPlace } =
     useProfileStore();
   const normalizedBirthday = normalizeBirthday(userProfile.birthday);
@@ -47,11 +45,6 @@ export default function ProfileScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.replace("/mypage")} style={styles.backButton}>
-          <Text style={styles.backText}>← マイページへ戻る</Text>
-        </Pressable>
-        <Text style={styles.eyebrow}>PROFILE</Text>
-        <Text style={styles.title}>プロフィール</Text>
         <Text style={styles.subtitle}>
           あなたの基本情報を入力すると、神社提案に活用されます。
         </Text>
@@ -150,26 +143,6 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: spacing.mdGap,
-  },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: spacing.smGap,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  eyebrow: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 2,
-  },
-  title: {
-    color: theme.gold,
-    fontSize: 26,
-    fontWeight: "900",
   },
   subtitle: {
     color: theme.text,

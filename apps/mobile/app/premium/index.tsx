@@ -3,7 +3,6 @@ import {
   AppState,
   Linking,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -232,10 +231,6 @@ export default function PremiumScreen() {
     <>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.replace("/mypage")} style={styles.backButton}>
-            <Text style={styles.backText}>← マイページへ戻る</Text>
-          </Pressable>
-          <Text style={styles.title}>Premium</Text>
           <Text style={styles.subtitle}>前回比較、深い振り返り、保存した相談の整理などをPremiumで利用できます。</Text>
         </View>
 
@@ -310,20 +305,6 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: spacing.mdGap,
-  },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: spacing.smGap,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  title: {
-    color: theme.gold,
-    fontSize: 26,
-    fontWeight: "900",
   },
   subtitle: {
     color: theme.text,

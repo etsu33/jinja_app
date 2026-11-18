@@ -1,7 +1,7 @@
 // apps/mobile/app/shrines/[id].tsx
 import * as React from "react";
 import { View, Text, Image, Pressable, StyleSheet, ScrollView, Linking, Platform, TextInput, AccessibilityInfo } from "react-native";
-import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { SHRINES } from "../../data/shrines";
 import { incVisits, isFavorite, toggleFavorite, pushRecent } from "../../lib/storage";
 import { kamimusubiDark as theme } from "../../design/theme";
@@ -633,15 +633,13 @@ export default function ShrineDetail() {
     return (
       <View style={styles.errorScreen}>
         <Text style={styles.errorText}>該当の神社が見つかりませんでした。</Text>
-        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/")} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← 戻る</Text>
-        </Pressable>
       </View>
     );
   }
 
   return (
     <>
+      <Stack.Screen options={{ title: shrine.name }} />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         {/* ヒーロー画像 */}
         {shrine.imageUrl ? (
@@ -652,11 +650,8 @@ export default function ShrineDetail() {
           </View>
         )}
 
-        {/* ヘッダー（戻る + お気に入り） */}
+        {/* ヘッダー（お気に入り）。戻るはネイティブヘッダーが持つ。 */}
         <View style={styles.headerBar}>
-          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← 戻る</Text>
-          </Pressable>
           <Pressable
             onPress={onToggleFav}
             style={[styles.favBtn, fav && styles.favBtnActive]}
@@ -925,23 +920,10 @@ const styles = StyleSheet.create({
   headerBar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     paddingHorizontal: spacing.screenX,
     paddingTop: spacing.xlGap,
     paddingBottom: spacing.smGap,
-  },
-  backBtn: {
-    paddingVertical: ctaSizes.pillPaddingY,
-    paddingHorizontal: ctaSizes.pillPaddingX,
-    borderRadius: radius.pill,
-    borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
-    backgroundColor: "transparent",
-  },
-  backBtnText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
   },
   favBtn: {
     paddingVertical: ctaSizes.pillPaddingY,

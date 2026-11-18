@@ -1,6 +1,5 @@
 import * as React from "react";
 import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
 
 import { listShrineReflections, type ShrineReflectionResponse } from "../../lib/reflections";
 import { StateCard } from "../../components/common/StateCard";
@@ -182,7 +181,6 @@ function ReflectionDetailModal({
 }
 
 export default function ReflectionHistoryScreen() {
-  const router = useRouter();
   const [reflections, setReflections] = React.useState<ShrineReflectionResponse[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
@@ -224,11 +222,6 @@ export default function ReflectionHistoryScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.gold} />}
     >
       <View style={styles.header}>
-        <Pressable onPress={() => router.replace("/records")} style={styles.backButton}>
-          <Text style={styles.backText}>← 記録へ戻る</Text>
-        </Pressable>
-
-        <Text style={styles.title}>振り返り履歴</Text>
         <Text style={styles.subtitle}>
           参拝後に残した振り返りを、新しい順に見返せます。次の相談につなげるための記録です。
         </Text>
@@ -287,20 +280,6 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: spacing.mdGap,
-  },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: spacing.smGap,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  title: {
-    color: theme.gold,
-    fontSize: 26,
-    fontWeight: "900",
   },
   subtitle: {
     color: theme.text,

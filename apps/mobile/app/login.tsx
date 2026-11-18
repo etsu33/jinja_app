@@ -102,13 +102,6 @@ export default function LoginScreen() {
           >
             <Text style={styles.linkButtonText}>アカウントをお持ちでない方は 新規登録はこちら</Text>
           </Pressable>
-
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace("/mypage"))}
-            style={styles.backButton}
-          >
-            <Text style={styles.backButtonText}>戻る</Text>
-          </Pressable>
         </View>
       </View>
     </ScrollView>
@@ -183,16 +176,6 @@ const styles = StyleSheet.create({
   },
   linkButtonText: {
     color: theme.gold,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  backButton: {
-    minHeight: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backButtonText: {
-    color: theme.muted,
     fontSize: 14,
     fontWeight: "700",
   },

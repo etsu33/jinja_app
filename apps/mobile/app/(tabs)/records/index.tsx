@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { kamimusubiDark } from "../../design/theme";
-import { spacing } from "../../design/spacing";
-import { cardSizes } from "../../design/cardSizes";
-import { radius } from "../../design/radius";
+import { kamimusubiDark } from "../../../design/theme";
+import { spacing } from "../../../design/spacing";
+import { cardSizes } from "../../../design/cardSizes";
+import { radius } from "../../../design/radius";
 
-import { getFavoriteShrines } from "../../lib/shrineStorage";
-import { isLoggedIn } from "../../lib/authTokens";
-import { AuthPrompt } from "../../components/common/AuthPrompt";
+import { getFavoriteShrines } from "../../../lib/shrineStorage";
+import { isLoggedIn } from "../../../lib/authTokens";
+import { AuthPrompt } from "../../../components/common/AuthPrompt";
 
 const AUTH_REQUIRED_ROUTES = new Set(["journey"]);
 

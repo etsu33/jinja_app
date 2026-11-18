@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import {
@@ -332,10 +332,6 @@ export default function JourneyScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.gold} />}
     >
       <View style={styles.header}>
-        <Pressable onPress={() => router.replace("/records")} style={styles.backButton}>
-          <Text style={styles.backText}>← 記録へ戻る</Text>
-        </Pressable>
-        <Text style={styles.title}>ご縁の歩み</Text>
         <Text style={styles.subtitle}>
           相談から提案、参拝、振り返りまでの出来事を時系列で見返せます。
         </Text>
@@ -408,20 +404,6 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: spacing.mdGap,
-  },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: spacing.smGap,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  title: {
-    color: theme.gold,
-    fontSize: 26,
-    fontWeight: "900",
   },
   subtitle: {
     color: theme.text,

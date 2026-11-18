@@ -172,9 +172,6 @@ export default function ConsultationHistoryDetailScreen() {
     <>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backText}>← 相談履歴へ戻る</Text>
-          </Pressable>
           <Text style={styles.title}>
             {state.kind === "ready" ? state.thread.title?.trim() || "相談タイトル未設定" : "相談履歴"}
           </Text>
@@ -283,15 +280,6 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: spacing.mdGap,
-  },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: spacing.smGap,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
   },
   title: {
     color: theme.gold,

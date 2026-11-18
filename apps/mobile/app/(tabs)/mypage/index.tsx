@@ -2,15 +2,15 @@ import * as React from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
-import { kamimusubiDark as theme } from "../../design/theme";
-import { getFavoriteShrines, getRecentViewed } from "../../lib/shrineStorage";
-import { getCounts } from "../../lib/storage";
-import { getAuthenticatedBillingStatus, isPremiumStatus, type BillingStatus } from "../../lib/billing";
-import { isUnauthenticatedError } from "../../lib/http";
-import { trackConsultationHistoryEntryClicked } from "../../lib/consultationHistoryAnalytics";
-import { isLoggedIn } from "../../lib/authTokens";
-import { ACCOUNT_DELETION_MESSAGES, deleteAccount } from "../../lib/accountDeletion";
-import { LOGOUT_MESSAGES, confirmLogout, fetchAccountUsername, logout } from "../../lib/logout";
+import { kamimusubiDark as theme } from "../../../design/theme";
+import { getFavoriteShrines, getRecentViewed } from "../../../lib/shrineStorage";
+import { getCounts } from "../../../lib/storage";
+import { getAuthenticatedBillingStatus, isPremiumStatus, type BillingStatus } from "../../../lib/billing";
+import { isUnauthenticatedError } from "../../../lib/http";
+import { trackConsultationHistoryEntryClicked } from "../../../lib/consultationHistoryAnalytics";
+import { isLoggedIn } from "../../../lib/authTokens";
+import { ACCOUNT_DELETION_MESSAGES, deleteAccount } from "../../../lib/accountDeletion";
+import { LOGOUT_MESSAGES, confirmLogout, fetchAccountUsername, logout } from "../../../lib/logout";
 
 // ---- お問い合わせ (Mother Ship承認済みの契約) ----
 // 宛先と件名は可読な定数として保持する。

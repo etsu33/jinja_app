@@ -33,7 +33,10 @@ describe("Login画面の操作契約", () => {
     expect(source).toMatch(/await setTokens\(data\.access, data\.refresh\);\s*router\.replace\("\/mypage"\);/);
   });
 
-  it("戻る履歴がなければマイページへ遷移する", () => {
-    expect(source).toContain('router.canGoBack() ? router.back() : router.replace("/mypage")');
+  it("戻るUIを画面内に持たない(StackのネイティブヘッダーとAuthPromptが担う)", () => {
+    // 旧実装は画面下に「戻る」Pressableを置いていた。Stack移行後は
+    // ネイティブヘッダーの戻るとスワイプバックが戻り導線になる。
+    expect(source).not.toContain("router.canGoBack()");
+    expect(source).not.toMatch(/<Text style=\{styles\.backButtonText\}>/);
   });
 });

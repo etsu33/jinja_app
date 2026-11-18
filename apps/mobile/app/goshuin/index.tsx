@@ -1,6 +1,6 @@
 // apps/mobile/app/goshuin/index.tsx
 import * as React from "react";
-import { View, Text, Image, Pressable, StyleSheet, ScrollView, Dimensions } from "react-native";
+import { View, Text, Image, StyleSheet, ScrollView, Dimensions } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { getStamps } from "../../lib/storage";
 import { kamimusubiDark as theme } from "../../design/theme";
@@ -39,9 +39,6 @@ export default function GoshuinList() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.headerBar}>
-        <Pressable onPress={() => router.replace("/records")} style={styles.back}>
-          <Text style={styles.backText}>← 記録へ戻る</Text>
-        </Pressable>
         <Button
           title="＋ 記録する"
           variant="outline"
@@ -119,22 +116,8 @@ const styles = StyleSheet.create({
   headerBar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     marginBottom: 28,
-  },
-  back: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: theme.borderGold,
-    paddingVertical: 8,
-    paddingHorizontal: 13,
-    borderRadius: 999,
-    backgroundColor: "transparent",
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
   },
   heroBlock: {
     paddingBottom: 24,

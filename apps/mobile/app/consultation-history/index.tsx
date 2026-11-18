@@ -127,11 +127,6 @@ export default function ConsultationHistoryScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.gold} />}
       >
         <View style={styles.header}>
-          <Pressable onPress={() => router.replace("/records")} style={styles.backButton}>
-            <Text style={styles.backText}>← 記録へ戻る</Text>
-          </Pressable>
-
-          <Text style={styles.title}>相談履歴</Text>
           <Text style={styles.subtitle}>
             これまでの相談を新しい順に見返せます。迷いや願いの変化を、次の相談につなげるための記録です。
           </Text>
@@ -220,20 +215,6 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: spacing.mdGap,
-  },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: spacing.smGap,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  title: {
-    color: theme.gold,
-    fontSize: 26,
-    fontWeight: "900",
   },
   subtitle: {
     color: theme.text,

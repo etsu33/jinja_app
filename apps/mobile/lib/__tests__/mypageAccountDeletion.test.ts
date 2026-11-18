@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const source = readFileSync(resolve(mobileRoot, "app/mypage/index.tsx"), "utf8");
+const source = readFileSync(resolve(mobileRoot, "app/(tabs)/mypage/index.tsx"), "utf8");
 
 describe("MyPage 退会導線", () => {
   it("「設定・サポート」セクションの設定カードの直後に「退会する」カードを置く", () => {
