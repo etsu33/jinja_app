@@ -20,7 +20,6 @@ const STACK_ROUTES = [
   "goshuin/index",
   "goshuin/upload",
   "visit-history/index",
-  "reflection-history/index",
   "consultation-history/index",
   "consultation-history/[id]",
   "recently-viewed/index",

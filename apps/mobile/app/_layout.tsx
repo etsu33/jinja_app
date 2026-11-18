@@ -24,7 +24,6 @@ const SCREEN_TITLES: Record<string, string> = {
   "goshuin/index": "参拝の記録",
   "goshuin/upload": "御朱印を登録",
   "visit-history/index": "参拝履歴",
-  "reflection-history/index": "振り返り履歴",
   "consultation-history/index": "相談履歴",
   "consultation-history/[id]": "相談の詳細",
   "recently-viewed/index": "最近見た神社",

@@ -75,6 +75,7 @@ type UsageStatProps = {
   label: string;
   value: string;
   helper: string;
+  onPress: () => void;
 };
 
 function MyPageCard({ title, description, meta, iconText, actionLabel, onPress }: MyPageCardProps) {
@@ -102,13 +103,20 @@ function MyPageCard({ title, description, meta, iconText, actionLabel, onPress }
   );
 }
 
-function UsageStat({ label, value, helper }: UsageStatProps) {
+// 数字だけを見せて行き先が無いと、利用状況が行き止まりになる。
+// 4つとも対応する一覧画面を持つため、カードごとそこへ繋ぐ。
+function UsageStat({ label, value, helper, onPress }: UsageStatProps) {
   return (
-    <View style={styles.statCard}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label} ${value}。一覧を開く`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.statCard, pressed && styles.cardPressed]}
+    >
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
       <Text style={styles.statHelper}>{helper}</Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -123,6 +131,7 @@ export default function MyPageScreen() {
   const [favoriteCount, setFavoriteCount] = React.useState<number | null>(null);
   const [recentCount, setRecentCount] = React.useState<number | null>(null);
   const [visitCount, setVisitCount] = React.useState<number | null>(null);
+  const [stampCount, setStampCount] = React.useState<number | null>(null);
   const [premiumMeta, setPremiumMeta] = React.useState<PremiumMetaState>({ kind: "loading" });
   const [loggedIn, setLoggedIn] = React.useState(false);
   const [accountUsername, setAccountUsername] = React.useState<string | null>(null);
@@ -251,11 +260,15 @@ export default function MyPageScreen() {
       });
 
     getCounts()
-      .then(({ visits }) => {
-        if (mounted) setVisitCount(visits);
+      .then(({ visits, stamps }) => {
+        if (!mounted) return;
+        setVisitCount(visits);
+        setStampCount(stamps);
       })
       .catch(() => {
-        if (mounted) setVisitCount(0);
+        if (!mounted) return;
+        setVisitCount(0);
+        setStampCount(0);
       });
 
     return () => {
@@ -327,21 +340,25 @@ export default function MyPageScreen() {
             label="お気に入り"
             value={favoriteCount === null ? "..." : `${favoriteCount}`}
             helper="保存した神社"
+            onPress={() => router.push("/favorites")}
           />
           <UsageStat
             label="参拝回数"
             value={visitCount === null ? "..." : `${visitCount}`}
             helper="記録された参拝"
+            onPress={() => router.push("/visit-history")}
           />
           <UsageStat
             label="最近見た神社"
             value={recentCount === null ? "..." : `${recentCount}`}
             helper="閲覧履歴"
+            onPress={() => router.push("/recently-viewed")}
           />
           <UsageStat
             label="御朱印"
-            value="0"
-            helper="次フェーズで連携"
+            value={stampCount === null ? "..." : `${stampCount}`}
+            helper="登録した御朱印"
+            onPress={() => router.push("/goshuin")}
           />
         </View>
       </View>

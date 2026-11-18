@@ -204,7 +204,15 @@ export default function SearchPage() {
       <View style={styles.popularSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>人気の神社</Text>
-          <Text style={styles.sectionCount}>{popularStatus === "ready" ? `${popularShrines.length}件` : ""}</Text>
+          {/* ここは上位3件だけを出す(loadPopularShrinesのslice)。全件はランキング画面が持つ。 */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="人気の神社をすべて見る"
+            hitSlop={12}
+            onPress={() => router.push("/ranking")}
+          >
+            <Text style={styles.sectionLink}>すべて見る</Text>
+          </Pressable>
         </View>
 
         {popularStatus === "loading" ? (
@@ -378,6 +386,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.subheading,
     color: theme.text,
+  },
+  sectionLink: {
+    ...typography.footnoteStrong,
+    color: theme.gold,
   },
   sectionCount: {
     ...typography.footnoteStrong,
