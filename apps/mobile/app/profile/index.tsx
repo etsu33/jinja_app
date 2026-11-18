@@ -7,6 +7,7 @@ import { radius } from "../../design/radius";
 import { useProfileStore } from "../../store/profileStore";
 import { normalizeBirthday } from "../../lib/profile";
 import { ProfilePickerModal } from "../../components/profile/ProfilePickerModal";
+import { typography } from "../../design/typography";
 
 const PREFECTURES = ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"];
 type PickerKind = "year" | "month" | "day" | "time" | "place" | null;
@@ -145,13 +146,11 @@ const styles = StyleSheet.create({
     gap: spacing.mdGap,
   },
   subtitle: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 23,
-    fontWeight: "600",
   },
   saveNotice: { alignSelf: "flex-start", backgroundColor: "rgba(221, 178, 82, 0.1)", borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8 },
-  saveNoticeText: { color: theme.goldSoft, fontSize: 12, fontWeight: "700" },
+  saveNoticeText: { ...typography.footnote, color: theme.goldSoft },
   sectionCard: {
     backgroundColor: theme.surface,
     borderWidth: cardSizes.borderWidth,
@@ -161,9 +160,8 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   sectionTitle: {
+    ...typography.title,
     color: theme.gold,
-    fontSize: 15,
-    fontWeight: "900",
     marginBottom: spacing.tightGap,
   },
   row: {
@@ -175,24 +173,20 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.borderHeader,
   },
   selectButton: { minWidth: 180, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8, paddingVertical: 8 },
-  selectText: { color: theme.text, fontSize: 14, fontWeight: "700" },
+  selectText: { ...typography.label, color: theme.text },
   placeholder: { color: theme.muted },
   chevron: { color: theme.gold, fontSize: 22, lineHeight: 22 },
   label: {
+    ...typography.label,
     color: theme.text,
-    fontSize: 14,
-    fontWeight: "700",
     flex: 1,
   },
   value: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 14,
-    fontWeight: "600",
   },
   noticeText: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
   },
 });

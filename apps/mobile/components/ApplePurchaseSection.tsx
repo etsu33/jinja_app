@@ -13,6 +13,7 @@ import {
 } from "../lib/appleStoreKit";
 import { getAuthenticatedBillingStatus, registerAppleTransaction, type BillingStatus } from "../lib/billing";
 import Button from "./ui/Button";
+import { typography } from "../design/typography";
 
 const errors: Record<ApplePurchaseFailureCode, string> = {
   "store-unavailable": "App Storeに接続できません。しばらくしてから再試行してください。",
@@ -159,6 +160,6 @@ export function ApplePurchaseSection({ onBillingStatus }: Props) {
 
 const styles = StyleSheet.create({
   section: { marginTop: spacing.smGap, gap: spacing.smGap },
-  helper: { color: theme.mutedSoft, fontSize: 13, lineHeight: 20, fontWeight: "600" },
-  message: { color: theme.gold, fontSize: 12, lineHeight: 18, fontWeight: "700" },
+  helper: { ...typography.subhead, color: theme.mutedSoft },
+  message: { ...typography.footnote, color: theme.gold },
 });

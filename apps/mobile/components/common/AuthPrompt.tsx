@@ -6,6 +6,7 @@ import { kamimusubiDark as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { radius } from "../../design/radius";
 import Button from "../ui/Button";
+import { typography } from "../../design/typography";
 
 type AuthPromptProps = {
   visible: boolean;
@@ -81,14 +82,12 @@ const styles = StyleSheet.create({
     gap: spacing.mdGap,
   },
   title: {
+    ...typography.subheading,
     color: theme.gold,
-    fontSize: 18,
-    fontWeight: "800",
   },
   description: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 21,
   },
   signupButton: {
     minHeight: 44,
@@ -96,9 +95,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   signupButtonText: {
+    ...typography.label,
     color: theme.gold,
-    fontSize: 14,
-    fontWeight: "700",
   },
   closeButton: {
     minHeight: 44,
@@ -106,9 +104,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   closeButtonText: {
+    ...typography.label,
     color: theme.muted,
-    fontSize: 14,
-    fontWeight: "700",
   },
   loginButtonSpacing: {
     marginTop: spacing.smGap,

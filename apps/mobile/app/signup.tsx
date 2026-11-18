@@ -12,6 +12,7 @@ import {
 import { kamimusubiDark as theme } from "../design/theme";
 import { spacing } from "../design/spacing";
 import { radius } from "../design/radius";
+import { typography } from "../design/typography";
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -161,20 +162,16 @@ const styles = StyleSheet.create({
     gap: spacing.mdGap,
   },
   eyebrow: {
+    ...typography.eyebrow,
     color: theme.gold,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.4,
   },
   title: {
+    ...typography.display,
     color: theme.text,
-    fontSize: 28,
-    fontWeight: "800",
   },
   subtitle: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 14,
-    lineHeight: 21,
   },
   form: {
     gap: spacing.mdGap,
@@ -184,11 +181,11 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   label: {
+    ...typography.label,
     color: theme.text,
-    fontSize: 13,
-    fontWeight: "700",
   },
   input: {
+    ...typography.bodyStrong,
     minHeight: 48,
     borderWidth: 1,
     borderColor: theme.border,
@@ -196,16 +193,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.contentX,
     color: theme.text,
     backgroundColor: theme.background,
-    fontSize: 16,
   },
   hint: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
   },
   errorText: {
+    ...typography.subhead,
     color: "#FCA5A5",
-    fontSize: 13,
-    lineHeight: 19,
   },
   linkButton: {
     minHeight: 44,
@@ -213,8 +208,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   linkButtonText: {
+    ...typography.label,
     color: theme.gold,
-    fontSize: 14,
-    fontWeight: "700",
   },
 });

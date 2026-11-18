@@ -37,6 +37,7 @@ import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
 import Button from "../../components/ui/Button";
+import { typography } from "../../design/typography";
 
 // Stripe Checkout はhttp(s)のリダイレクト先を要求するため、Web版の /billing/success, /billing/cancel を再利用する。
 // API サーバーのオリジンを流用した暫定値。Webアプリの配信ドメインが確定したら差し替える。
@@ -307,10 +308,8 @@ const styles = StyleSheet.create({
     gap: spacing.mdGap,
   },
   subtitle: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 23,
-    fontWeight: "600",
   },
   errorBlock: {
     gap: spacing.smGap,
@@ -324,24 +323,19 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   statusLabel: {
+    ...typography.subheading,
     color: theme.gold,
-    fontSize: 18,
-    fontWeight: "900",
   },
   statusHelper: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
   },
   checkoutSection: {
     marginTop: spacing.smGap,
     gap: spacing.smGap,
   },
   checkoutErrorText: {
+    ...typography.footnote,
     color: theme.gold,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "700",
   },
 });

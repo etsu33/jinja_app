@@ -1,6 +1,7 @@
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { kamimusubiDark as theme } from "../../design/theme";
 import { radius } from "../../design/radius";
+import { typography } from "../../design/typography";
 
 type Option = { label: string; value: string };
 
@@ -60,13 +61,13 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.68)", justifyContent: "flex-end" },
   sheet: { maxHeight: "72%", backgroundColor: theme.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: 20 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-  title: { color: theme.text, fontSize: 18, fontWeight: "900" },
-  close: { color: theme.gold, fontSize: 14, fontWeight: "800", padding: 8 },
+  title: { ...typography.subheading, color: theme.text },
+  close: { ...typography.label, color: theme.gold, padding: 8 },
   options: { flexGrow: 0 },
   optionsContent: { paddingBottom: 24 },
   option: { minHeight: 48, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: theme.borderHeader },
   optionSelected: { backgroundColor: "rgba(221, 178, 82, 0.12)" },
-  optionText: { color: theme.text, fontSize: 15 },
-  optionTextSelected: { color: theme.gold, fontWeight: "800" },
+  optionText: { ...typography.label, color: theme.text },
+  optionTextSelected: { color: theme.gold, fontWeight: "600" },
   check: { color: theme.gold, fontSize: 18, fontWeight: "900" },
 });

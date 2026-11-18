@@ -5,6 +5,7 @@ import { ctaSizes } from "../../design/ctaSizes";
 import { semanticRadius } from "../../design/radius";
 import { semanticShadow } from "../../design/shadow";
 import { kamimusubiDarkSemanticTheme } from "../../design/theme";
+import { typography } from "../../design/typography";
 
 type Props = {
   title: string;
@@ -135,12 +136,10 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   btnTextBase: {
-    fontWeight: "600",
-    fontSize: 16,
+    ...typography.button,
   },
   btnTextCompact: {
-    fontWeight: "800",
-    fontSize: 13,
+    ...typography.buttonCompact,
   },
   btnText: {
     color: kamimusubiDarkSemanticTheme["text.primary"],

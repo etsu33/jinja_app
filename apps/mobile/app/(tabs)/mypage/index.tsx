@@ -11,6 +11,7 @@ import { trackConsultationHistoryEntryClicked } from "../../../lib/consultationH
 import { isLoggedIn } from "../../../lib/authTokens";
 import { ACCOUNT_DELETION_MESSAGES, deleteAccount } from "../../../lib/accountDeletion";
 import { LOGOUT_MESSAGES, confirmLogout, fetchAccountUsername, logout } from "../../../lib/logout";
+import { typography } from "../../../design/typography";
 
 // ---- お問い合わせ (Mother Ship承認済みの契約) ----
 // 宛先と件名は可読な定数として保持する。
@@ -402,31 +403,23 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   eyebrow: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 1.4,
   },
   title: {
+    ...typography.display,
     color: theme.gold,
-    fontSize: 26,
-    fontWeight: "900",
-    letterSpacing: 0.4,
   },
   subtitle: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
   },
   section: {
     gap: 12,
   },
   sectionTitle: {
+    ...typography.title,
     color: theme.goldSoft,
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 0.6,
   },
   usageGrid: {
     flexDirection: "row",
@@ -451,16 +444,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   statLabel: {
+    ...typography.footnoteStrong,
     color: theme.text,
-    fontSize: 13,
-    fontWeight: "900",
     marginTop: 8,
   },
   statHelper: {
+    ...typography.caption,
     color: theme.muted,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: "600",
     marginTop: 4,
   },
   card: {
@@ -497,21 +487,16 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   cardTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 15,
-    fontWeight: "900",
   },
   cardDescription: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: "600",
   },
   cardMeta: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: "600",
   },
   cardAction: {
     borderWidth: 1,
@@ -521,8 +506,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   cardActionText: {
+    ...typography.caption,
     color: theme.gold,
-    fontSize: 11,
-    fontWeight: "800",
   },
 });

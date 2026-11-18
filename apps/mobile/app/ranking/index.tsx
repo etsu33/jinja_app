@@ -10,6 +10,7 @@ import { kamimusubiDark } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
+import { typography } from "../../design/typography";
 
 type FavoriteHeartButtonProps = {
   favored: boolean;
@@ -221,18 +222,17 @@ const styles = StyleSheet.create({
     marginRight: spacing.mdGap,
   },
   name: {
+    ...typography.title,
     color: kamimusubiDark.text,
-    fontWeight: "700",
-    fontSize: 15,
   },
   sub: {
+    ...typography.footnote,
     color: kamimusubiDark.muted,
-    fontSize: 12,
     marginTop: 3,
   },
   savedHint: {
+    ...typography.caption,
     color: kamimusubiDark.mutedSoft,
-    fontSize: 11,
     marginTop: 6,
   },
   heartBtn: {

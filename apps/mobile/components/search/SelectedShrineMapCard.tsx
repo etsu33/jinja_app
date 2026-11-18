@@ -8,6 +8,7 @@ import { radius } from "../../design/radius";
 import { spacing } from "../../design/spacing";
 import Button from "../ui/Button";
 import type { ShrineMapPoint } from "../../lib/shrineMap";
+import { typography } from "../../design/typography";
 
 type Props = {
   shrine: ShrineMapPoint;
@@ -82,14 +83,12 @@ const styles = StyleSheet.create({
     gap: spacing.tightGap,
   },
   name: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 15,
-    fontWeight: "900",
   },
   address: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "700",
   },
   detailWrap: {
     alignSelf: "flex-start",

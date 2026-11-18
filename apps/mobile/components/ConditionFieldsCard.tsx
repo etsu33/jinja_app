@@ -5,6 +5,7 @@ import { VISIT_STYLE_OPTIONS, GORIYAKU_OPTIONS } from "../lib/conditionPayload";
 import { ProfilePickerModal } from "./profile/ProfilePickerModal";
 import { MobileOriginSelector } from "./MobileOriginSelector";
 import type { UserOrigin } from "../../../packages/shared/userOrigin";
+import { typography } from "../design/typography";
 
 // Home画面・Concierge結果画面で共通の条件レイヤー入力（誕生日・参拝スタイル・ご利益・補助条件）
 export type ConditionFieldsCardProps = {
@@ -210,11 +211,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   introText: {
+    ...typography.footnote,
     flex: 1,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "500",
   },
   divider: {
     height: 1,
@@ -224,6 +223,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   input: {
+    ...typography.bodyStrong,
     minHeight: 44,
     backgroundColor: theme.surface,
     borderWidth: 1,
@@ -232,21 +232,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "700",
   },
   selectInput: { minHeight: 44, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  selectInputText: { color: theme.text, fontSize: 14, fontWeight: "700" },
-  selectPlaceholder: { color: theme.mutedDark, fontSize: 14 },
+  selectInputText: { ...typography.bodyStrong, color: theme.text },
+  selectPlaceholder: { ...typography.label, color: theme.mutedDark },
   selectChevron: { color: theme.gold, fontSize: 22 },
-  clearText: { color: theme.muted, fontSize: 12, fontWeight: "700", alignSelf: "flex-end" },
+  clearText: { ...typography.label, color: theme.muted, alignSelf: "flex-end" },
   clearButton: { minHeight: 44, alignSelf: "flex-end", justifyContent: "center", paddingHorizontal: 8 },
   locationButton: { minHeight: 44, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: theme.surface },
   locationButtonReady: { borderColor: theme.borderGold, backgroundColor: theme.gold },
-  locationButtonText: { color: theme.text, fontSize: 13, fontWeight: "800" },
+  locationButtonText: { ...typography.label, color: theme.text },
   locationButtonTextReady: { color: theme.background },
-  locationError: { color: "#ef8f8f", fontSize: 11, lineHeight: 16 },
+  locationError: { ...typography.footnote, color: "#ef8f8f" },
   textarea: {
     minHeight: 76,
     textAlignVertical: "top",
@@ -258,16 +255,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   label: {
+    ...typography.eyebrow,
     color: theme.mutedSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.6,
   },
   caption: {
+    ...typography.caption,
     color: theme.mutedDark,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: "500",
   },
   row: {
     flexDirection: "row",
@@ -289,9 +282,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.gold,
   },
   pillText: {
+    ...typography.footnoteStrong,
     color: theme.mutedSoft,
-    fontSize: 12,
-    fontWeight: "700",
   },
   pillTextActive: {
     color: theme.background,

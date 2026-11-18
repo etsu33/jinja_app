@@ -66,6 +66,7 @@ describe("Expo Router structure", () => {
       "shadow.ts",
       "spacing.ts",
       "theme.ts",
+      "typography.ts",
     ]);
   });
 });

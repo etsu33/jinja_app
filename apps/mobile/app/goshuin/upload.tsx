@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { pushStamp } from "../../lib/storage";
 import Button from "../../components/ui/Button";
 import { kamimusubiDark as theme } from "../../design/theme";
+import { typography } from "../../design/typography";
 
 function showSaveFailure() {
   Alert.alert("保存できませんでした", "時間をおいて、もう一度お試しください。");
@@ -146,17 +147,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
+    ...typography.display,
     color: theme.text,
-    fontSize: 30,
-    fontWeight: "900",
-    lineHeight: 40,
-    letterSpacing: 1,
   },
   subtitle: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
     marginTop: 10,
   },
   pickRow: {
@@ -181,9 +177,8 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   pickBtnText: {
+    ...typography.label,
     color: theme.text,
-    fontSize: 14,
-    fontWeight: "900",
   },
   pressed: {
     opacity: 0.75,
@@ -217,15 +212,12 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   placeholderTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 17,
-    fontWeight: "900",
   },
   placeholderText: {
+    ...typography.body,
     color: theme.mutedDark,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
     textAlign: "center",
   },
 });

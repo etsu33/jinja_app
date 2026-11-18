@@ -21,6 +21,7 @@ import { kamimusubiDark as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
+import { typography } from "../../design/typography";
 
 function ConsultationCard({ thread, onPress }: { thread: ConciergeThreadListItem; onPress: () => void }) {
   const title = thread.title?.trim() || "相談タイトル未設定";
@@ -217,10 +218,8 @@ const styles = StyleSheet.create({
     gap: spacing.mdGap,
   },
   subtitle: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 23,
-    fontWeight: "600",
   },
   errorBlock: {
     gap: spacing.smGap,
@@ -232,10 +231,8 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   groupLabel: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 0.8,
   },
   list: {
     gap: spacing.mdGap,
@@ -255,20 +252,16 @@ const styles = StyleSheet.create({
     gap: spacing.tightGap,
   },
   threadTitle: {
+    ...typography.title,
     color: theme.gold,
-    fontSize: 17,
-    fontWeight: "900",
   },
   createdAt: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "700",
   },
   previewText: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
   },
   metaRow: {
     flexDirection: "row",
@@ -285,9 +278,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   messageCountText: {
+    ...typography.footnote,
     color: theme.text,
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.6,
   },
 });

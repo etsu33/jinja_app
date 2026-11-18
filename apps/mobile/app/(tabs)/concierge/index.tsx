@@ -37,6 +37,7 @@ import { buildRecommendationReasonDisplay } from "../../../../../packages/shared
 import { getOriginSession } from "../../../lib/originSession";
 import { trackMobileDirection } from "../../../lib/directionEvents";
 import { track } from "../../../lib/analytics";
+import { typography } from "../../../design/typography";
 import {
   buildRecommendationImpressionDedupKey,
   buildRecommendationResultSetId,
@@ -1056,10 +1057,8 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.borderHeader,
   },
   headerTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 17,
-    fontWeight: "800",
-    letterSpacing: 0.5,
   },
 
   consultationArea: {
@@ -1077,16 +1076,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   consultationLabel: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.2,
   },
   consultationText: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: "800",
   },
 
   conditionCard: {
@@ -1109,16 +1104,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   conditionLabel: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.2,
   },
   conditionTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: "900",
   },
   conditionSummaryRow: {
     borderLeftWidth: 2,
@@ -1127,24 +1118,19 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   conditionSummaryLabel: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.7,
   },
   conditionSummaryText: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: "700",
   },
   loadingRow: {
     paddingVertical: 8,
   },
   loadingText: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 14,
-    fontWeight: "600",
   },
   errorNotice: {
     backgroundColor: theme.surface,
@@ -1155,10 +1141,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   errorNoticeText: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
 
   resultsArea: {
@@ -1171,16 +1155,12 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   resultsLabel: {
+    ...typography.label,
     color: theme.goldSoft,
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 0.5,
   },
   resultsLead: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
 
   // カード
@@ -1217,10 +1197,8 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   rankLabel: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 0.8,
   },
   rankLine: {
     flex: 1,
@@ -1233,16 +1211,12 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   cardName: {
+    ...typography.subheading,
     color: theme.text,
-    fontSize: 19,
-    fontWeight: "900",
-    letterSpacing: 0.3,
   },
   cardArea: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.2,
   },
 
   connectionBlock: {
@@ -1252,16 +1226,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   connectionLabel: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.7,
   },
   connectionText: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "800",
   },
 
   // 推薦理由
@@ -1275,16 +1245,12 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   reasonLabel: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0.7,
   },
   cardReason: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 22,
-    fontWeight: "700",
   },
   reasonFactsCard: {
     backgroundColor: theme.surface,
@@ -1296,25 +1262,19 @@ const styles = StyleSheet.create({
     gap: 9,
   },
   reasonFactsLabel: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0.7,
   },
   reasonFactItem: {
     gap: 3,
   },
   reasonFactLabel: {
+    ...typography.eyebrow,
     color: theme.muted,
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.3,
   },
   reasonFactText: {
+    ...typography.footnote,
     color: theme.mutedSoft,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
   directionReferenceCard: {
     backgroundColor: theme.surface,
@@ -1326,23 +1286,16 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   directionReferenceLabel: {
+    ...typography.label,
     color: theme.goldSoft,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "900",
-    letterSpacing: 0.7,
   },
   directionReferenceText: {
+    ...typography.body,
     color: theme.mutedSoft,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "600",
   },
   directionReferenceNote: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "600",
   },
 
   actionV4Card: {
@@ -1358,16 +1311,12 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   actionV4Label: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 0.8,
   },
   actionV4SubLabel: {
+    ...typography.eyebrow,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
   actionV4Item: {
     backgroundColor: theme.surface,
@@ -1382,22 +1331,16 @@ const styles = StyleSheet.create({
     opacity: 0.78,
   },
   actionV4ItemLabel: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0.7,
   },
   actionV4Title: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "900",
   },
   actionV4Description: {
+    ...typography.footnote,
     color: theme.mutedSoft,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
 
   // タグ
@@ -1415,10 +1358,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surfaceSoft,
   },
   tagText: {
+    ...typography.caption,
     color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.2,
   },
 
   // 入力バー
@@ -1438,6 +1379,7 @@ const styles = StyleSheet.create({
     borderTopColor: theme.borderHeader,
   },
   input: {
+    ...typography.bodyStrong,
     flex: 1,
     minHeight: 46,
     maxHeight: 120,
@@ -1448,8 +1390,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     paddingVertical: 10,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 22,
   },
   sendBtn: {
     width: 50,

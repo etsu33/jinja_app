@@ -30,6 +30,7 @@ import { kamimusubiDark as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
+import { typography } from "../../design/typography";
 
 function RecommendationCard({
   rec,
@@ -282,14 +283,12 @@ const styles = StyleSheet.create({
     gap: spacing.mdGap,
   },
   title: {
+    ...typography.heading,
     color: theme.gold,
-    fontSize: 22,
-    fontWeight: "900",
   },
   subtitle: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "700",
   },
   errorBlock: {
     gap: spacing.smGap,
@@ -298,10 +297,8 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   sectionTitle: {
+    ...typography.title,
     color: theme.goldSoft,
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 0.6,
   },
   list: {
     gap: spacing.mdGap,
@@ -321,10 +318,9 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   recommendationName: {
+    ...typography.title,
     flex: 1,
     color: theme.gold,
-    fontSize: 16,
-    fontWeight: "900",
   },
   actionBadge: {
     borderWidth: cardSizes.borderWidth,
@@ -334,29 +330,24 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   actionBadgeText: {
+    ...typography.caption,
     color: theme.gold,
-    fontSize: 11,
-    fontWeight: "800",
   },
   recommendationAddress: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "600",
   },
   recommendationFact: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "600",
   },
   detailLink: {
     marginTop: spacing.tightGap,
     alignSelf: "flex-start",
   },
   detailLinkText: {
+    ...typography.label,
     color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
     textDecorationLine: "underline",
   },
   messageBubble: {
@@ -371,14 +362,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
   },
   messageText: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
   },
   messageDate: {
+    ...typography.caption,
     color: theme.muted,
-    fontSize: 11,
-    fontWeight: "600",
   },
 });

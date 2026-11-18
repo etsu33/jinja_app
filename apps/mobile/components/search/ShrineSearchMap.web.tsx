@@ -14,6 +14,7 @@ import {
   type ShrineSearchMapProps,
 } from "../../lib/shrineMap";
 import { trackMapMarkerSelect } from "../../lib/searchAnalytics";
+import { typography } from "../../design/typography";
 
 // 公開クライアント用のstyle URL。secretはコードへ直書きせず、未設定時は
 // Mapを生成せず既存の一覧fallbackを表示する。domain制限・使用量制限は
@@ -236,10 +237,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surfaceSoft,
   },
   notice: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
   list: {
     gap: spacing.tightGap,
@@ -265,19 +264,16 @@ const styles = StyleSheet.create({
     gap: spacing.tightGap,
   },
   itemName: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 14,
-    fontWeight: "800",
   },
   itemSelectedBadge: {
+    ...typography.caption,
     color: theme.gold,
-    fontSize: 11,
-    fontWeight: "800",
   },
   itemAddress: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "600",
     marginTop: 2,
   },
 });

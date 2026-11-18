@@ -18,6 +18,7 @@ import {
 import { fetchPopularShrines, type PopularShrine } from "../../lib/popularShrines";
 import { trackSearchScreenView, trackShrineCardClick } from "../../lib/searchAnalytics";
 import { filterShrines, parseSearchFilters } from "../../lib/searchFilters";
+import { typography } from "../../design/typography";
 
 // Androidの地図可否はAPIキー実値ではなく、app.config.tsが生成したbooleanを
 // Constants.expoConfig経由で参照する(process.env.EXPO_PUBLIC_*はEAS BuildのGradle
@@ -311,17 +312,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   heroTitle: {
+    ...typography.display,
     color: theme.text,
-    fontSize: 28,
-    fontWeight: "900",
-    lineHeight: 38,
-    letterSpacing: 0.8,
   },
   heroSub: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-    lineHeight: 21,
-    fontWeight: "600",
   },
   summaryCard: {
     backgroundColor: theme.surface,
@@ -332,23 +328,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   summaryLabel: {
+    ...typography.eyebrow,
     color: theme.mutedSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.8,
     marginBottom: 8,
   },
   summaryText: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    fontWeight: "800",
   },
   summaryHint: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
     marginTop: 8,
-    fontWeight: "600",
   },
   tagRow: {
     flexDirection: "row",
@@ -375,9 +366,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   tagText: {
+    ...typography.footnoteStrong,
     color: theme.gold,
-    fontSize: 12,
-    fontWeight: "700",
   },
   sectionHeader: {
     flexDirection: "row",
@@ -386,14 +376,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
+    ...typography.subheading,
     color: theme.text,
-    fontSize: 18,
-    fontWeight: "900",
   },
   sectionCount: {
+    ...typography.footnoteStrong,
     color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
   },
   popularSection: {
     marginBottom: 26,
@@ -456,14 +444,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   cardName: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 16,
-    fontWeight: "900",
   },
   cardArea: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "700",
   },
   miniTagRow: {
     flexDirection: "row",
@@ -480,9 +466,8 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   miniTagText: {
+    ...typography.caption,
     color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "700",
   },
   chevron: {
     color: theme.gold,

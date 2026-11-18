@@ -8,6 +8,7 @@ import { kamimusubiDark as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
+import { typography } from "../../design/typography";
 
 export default function RecentlyViewedScreen() {
   const router = useRouter();
@@ -98,10 +99,8 @@ const styles = StyleSheet.create({
     gap: spacing.mdGap,
   },
   subtitle: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 23,
-    fontWeight: "600",
   },
   loadingText: {
     color: theme.muted,
@@ -122,16 +121,13 @@ const styles = StyleSheet.create({
     fontSize: 40,
   },
   emptyTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 15,
-    fontWeight: "800",
   },
   emptyText: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-    lineHeight: 20,
     textAlign: "center",
-    fontWeight: "600",
   },
   card: {
     alignItems: "center",
@@ -166,13 +162,12 @@ const styles = StyleSheet.create({
     gap: spacing.tightGap,
   },
   cardTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 16,
-    fontWeight: "700",
   },
   cardAddress: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
   },
   chevron: {
     color: theme.muted,

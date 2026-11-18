@@ -33,6 +33,7 @@ import {
 } from "../../lib/recommendationReasonV4";
 import { buildShrineFactViewModel, type ShrineDeity, type ShrineHistory } from "../../lib/shrineKnowledgeFact";
 import { track } from "../../lib/analytics";
+import { typography } from "../../design/typography";
 import {
   buildReasonFactItems,
   findPrimaryReasonFact,
@@ -893,9 +894,8 @@ const styles = StyleSheet.create({
     gap: spacing.xlGap,
   },
   errorText: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 15,
-    fontWeight: "600",
   },
 
   // ヒーロー
@@ -938,9 +938,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.borderGoldDark,
   },
   favBtnText: {
+    ...typography.footnoteStrong,
     color: theme.muted,
-    fontSize: 13,
-    fontWeight: "700",
   },
   favBtnTextActive: {
     color: theme.gold,
@@ -954,17 +953,12 @@ const styles = StyleSheet.create({
     gap: spacing.tightGap,
   },
   shrineName: {
+    ...typography.display,
     color: theme.text,
-    fontSize: 26,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-    lineHeight: 34,
   },
   shrineArea: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-    fontWeight: "600",
-    letterSpacing: 0.3,
   },
 
   // タグ
@@ -984,10 +978,8 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   tagText: {
+    ...typography.footnoteStrong,
     color: theme.goldSoft,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.3,
   },
 
   // v2カード共通
@@ -1032,40 +1024,28 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   meaningActionLabel: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.1,
   },
   cardEyebrow: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.4,
   },
   cardTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: "900",
   },
   cardBody: {
+    ...typography.body,
     color: theme.mutedSoft,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
   },
   actionV4Title: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: "900",
   },
   actionV4SubTitle: {
+    ...typography.subhead,
     color: theme.goldSoft,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: "900",
   },
   actionV4SecondaryBlock: {
     marginTop: spacing.smGap,
@@ -1082,25 +1062,19 @@ const styles = StyleSheet.create({
     gap: spacing.mdGap,
   },
   reasonFactsLabel: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.1,
   },
   reasonFactItem: {
     gap: spacing.tightGap,
   },
   reasonFactLabel: {
+    ...typography.eyebrow,
     color: theme.muted,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.4,
   },
   reasonFactText: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
   },
 
   noticeCard: {
@@ -1114,10 +1088,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lgGap,
   },
   noticeText: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
 
   // CTA
@@ -1127,10 +1099,8 @@ const styles = StyleSheet.create({
     gap: spacing.mdGap,
   },
   ctaCaption: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
     textAlign: "center",
   },
   reflectionCard: {
@@ -1147,15 +1117,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.smGap,
   },
   reflectionInput: {
+    ...typography.bodyStrong,
     minHeight: 96,
     borderRadius: radius.lg,
     borderWidth: cardSizes.borderWidth,
     borderColor: theme.borderSoft,
     backgroundColor: theme.surfaceSoft,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
     paddingHorizontal: cardSizes.cardPaddingMd,
     paddingVertical: spacing.mdGap,
   },

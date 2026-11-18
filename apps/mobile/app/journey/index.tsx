@@ -19,6 +19,7 @@ import { kamimusubiDark as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
+import { typography } from "../../design/typography";
 
 function formatTime(value: string | null | undefined): string {
   if (!value) return "";
@@ -406,10 +407,8 @@ const styles = StyleSheet.create({
     gap: spacing.mdGap,
   },
   subtitle: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 23,
-    fontWeight: "600",
   },
   timeline: {
     gap: spacing.lgGap,
@@ -418,10 +417,8 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   groupLabel: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 0.8,
   },
   list: {},
   timelineRow: {
@@ -472,10 +469,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   typePillText: {
+    ...typography.footnoteStrong,
     color: theme.goldSoft,
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.8,
   },
   typePillMuted: {
     alignSelf: "flex-start",
@@ -493,9 +488,8 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   moodText: {
+    ...typography.footnote,
     color: theme.goldSoft,
-    fontSize: 12,
-    fontWeight: "700",
   },
   reasonBlock: {
     borderTopColor: theme.borderHeader,
@@ -518,18 +512,15 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   benefitChipText: {
+    ...typography.caption,
     color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "700",
   },
   contextSection: {
     gap: spacing.tightGap,
   },
   sectionHeading: {
+    ...typography.eyebrow,
     color: theme.goldSoft,
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.4,
   },
   actionSuggestionBlock: {
     gap: spacing.tightGap,
@@ -538,63 +529,50 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   actionItemLabel: {
+    ...typography.label,
     color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
   },
   actionItemDescription: {
+    ...typography.footnote,
     color: theme.mutedSoft,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
   actionItemSecondary: {
     gap: 2,
   },
   actionItemSecondaryLabel: {
+    ...typography.eyebrow,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "700",
   },
   actionItemSecondaryDescription: {
+    ...typography.caption,
     color: theme.mutedSoft,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: "600",
   },
   reflectionPromptBlock: {
     gap: 2,
   },
   reflectionPromptLabel: {
+    ...typography.eyebrow,
     color: theme.muted,
-    fontSize: 11,
-    fontWeight: "700",
   },
   reflectionPromptText: {
+    ...typography.footnote,
     color: theme.goldSoft,
-    fontSize: 12,
     fontStyle: "italic",
-    fontWeight: "700",
   },
   occurredAt: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "700",
   },
   eventTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 15,
-    fontWeight: "800",
   },
   shrineName: {
+    ...typography.title,
     color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
   },
   descriptionText: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
   },
 });

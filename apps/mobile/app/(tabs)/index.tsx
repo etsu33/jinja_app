@@ -11,6 +11,7 @@ import type { UserOrigin } from "../../../../packages/shared/userOrigin";
 import { setOriginSession } from "../../lib/originSession";
 import { trackSearchEntryClick } from "../../lib/searchAnalytics";
 import { buildSearchFilters } from "../../lib/searchFilters";
+import { typography } from "../../design/typography";
 
 const THEMES = [
   "疲れを整えたい",
@@ -276,17 +277,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   heroLead: {
+    ...typography.subheading,
     color: theme.text,
-    fontSize: 20,
-    fontWeight: "900",
-    lineHeight: 30,
-    letterSpacing: 0.4,
   },
   heroSub: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 21,
-    fontWeight: "500",
   },
 
   // 入力カード
@@ -301,10 +297,9 @@ const styles = StyleSheet.create({
     ...shadows.softCard,
   },
   chatInput: {
+    ...typography.bodyStrong,
     minHeight: 78,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 24,
     padding: 0,
   },
   chatFooter: {
@@ -315,10 +310,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   aiHint: {
+    ...typography.footnote,
     flex: 1,
     color: theme.mutedDark,
-    fontSize: 12,
-    lineHeight: 18,
   },
   sendButton: {
     width: 54,
@@ -339,11 +333,9 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   themeLabel: {
+    ...typography.eyebrow,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "700",
     marginBottom: 12,
-    letterSpacing: 0.3,
   },
   themeGrid: {
     flexDirection: "row",
@@ -363,9 +355,8 @@ const styles = StyleSheet.create({
     borderColor: theme.gold,
   },
   themePillText: {
+    ...typography.footnoteStrong,
     color: theme.mutedSoft,
-    fontSize: 13,
-    fontWeight: "700",
   },
   themePillTextActive: {
     color: theme.background,
@@ -377,14 +368,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   accordionToggleText: {
+    ...typography.label,
     color: theme.mutedSoft,
-    fontSize: 13,
-    fontWeight: "700",
   },
   conditionSummaryText: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
     marginTop: -4,
     marginBottom: 4,
   },
@@ -409,10 +398,8 @@ const styles = StyleSheet.create({
     ...shadows.goldCta,
   },
   primaryCtaText: {
+    ...typography.button,
     color: theme.background,
-    fontSize: 16,
-    fontWeight: "900",
-    letterSpacing: 0.3,
   },
   searchEntryCta: {
     marginTop: 12,

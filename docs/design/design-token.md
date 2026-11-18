@@ -157,6 +157,33 @@ Phase 6監査で確認した実際の用途分布に基づき、以下のカテ�
 
 **FontFamily**: WebはGeist（Sans/Mono）、Mobileはシステムデフォルト（fontFamily指定なし、未確認）。この差を統一するかは保留事項とする。
 
+### Mobile Typography実値（2026-11 決定、iOSリリース対応）
+
+Mobileの実値を確定した。正本は`apps/mobile/design/typography.ts`、契約テストは`apps/mobile/lib/__tests__/typographyTokens.test.ts`。
+
+決定の理由（事実）: 確定前のMobileは246のテキストスタイルでfontSizeが20種（10〜48pt）に分散し、fontWeightは190件（77%）が700以上だった。本文の最頻値は13pt/12ptで、Apple HIGのBody 17ptに対して小さく、太さで可読性を補う構造になっていた。iOS App Store向けのリリースにあたり、HIGの標準スケールへ寄せる判断をした。
+
+| Token | fontSize | fontWeight | lineHeight | 用途 | HIG対応 |
+|---|---|---|---|---|---|
+| `display` | 32 | 700 | 42 | 画面最上位の大見出し（1画面1つ） | Large Title |
+| `heading` | 22 | 700 | 30 | セクションの大見出し | Title2 |
+| `subheading` | 20 | 600 | 28 | セクション見出し | Title3 |
+| `title` | 17 | 600 | 24 | カード見出し・リスト項目名 | Headline |
+| `body` | 17 | 400 | 26 | 本文 | Body |
+| `bodyStrong` | 17 | 600 | 26 | 入力文字・主CTAラベル | Body (emphasized) |
+| `subhead` | 15 | 400 | 23 | 補助説明 | Subhead |
+| `label` | 15 | 500 | 21 | フォームラベル・選択肢 | Subhead (emphasized) |
+| `footnote` | 13 | 400 | 19 | 注記・日時・住所 | Footnote |
+| `footnoteStrong` | 13 | 600 | 19 | タグ・ピル・順位 | Footnote (emphasized) |
+| `caption` | 12 | 500 | 17 | 最小の補足。これより小さい文字は使わない | Caption1 |
+| `eyebrow` | 12 | 600 | 16（字間1.2） | セクション先頭のラベル | Caption1 |
+| `button` | 17 | 600 | — | ボタン内テキスト | Headline |
+| `buttonCompact` | 15 | 600 | — | compactボタン内テキスト | Subhead |
+
+**対象外**: 絵文字・記号・数値を表示するスタイル（⛩ ♡ ↑ ✓ › のグリフ、円バッジ内の1文字、カウント値、ブランドロゴの字詰め）。これらは文字サイズではなく図形の寸法であるため、本スケールに載せない。対象外キーの一覧は契約テストが保持する。
+
+**Webは対象外**: 本決定はMobileのPlatform Theme実値のみを確定する。Web（`text-sm`基準）との統一可否は引き続き保留事項とする（設計原則2）。
+
 ---
 
 ## Spacing
@@ -350,6 +377,7 @@ Design Token v1の導入は、以下7段階のPRに分割する。各PRの目的
 4. dark modeの正式対応（Webへの追加を含む）
 5. Web/Mobileで完全に同じ実値を使うか、意味とToken名のみ共通化し実値はPlatform Themeに委ねるか
 6. Heroコンポーネントの全面共通化可否
+7. WebのTypography実値をMobile（HIG準拠スケール）へ合わせるか（Mobile側は2026-11に確定済み。「Mobile Typography実値」節を参照）
 
 ---
 
