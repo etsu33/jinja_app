@@ -8,9 +8,9 @@ import { StateCard } from "../../components/common/StateCard";
 import Button from "../../components/ui/Button";
 import { kamimusubiDark } from "../../design/theme";
 import { spacing } from "../../design/spacing";
+import { typography } from "../../design/typography";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
-import { typography } from "../../design/typography";
 
 type FavoriteHeartButtonProps = {
   favored: boolean;
@@ -107,20 +107,11 @@ export default function RankingPage() {
       style={{ flex: 1, backgroundColor: kamimusubiDark.background }}
       contentContainerStyle={{ padding: spacing.screenX, paddingBottom: spacing.bottomSpace }}
     >
+      <Text style={{ ...typography.heading, color: kamimusubiDark.gold }}>人気神社ランキング</Text>
       <Text
         style={{
-          color: kamimusubiDark.gold,
-          fontSize: 24,
-          fontWeight: "700",
-        }}
-      >
-        人気神社ランキング
-      </Text>
-      <Text
-        style={{
+          ...typography.body,
           color: kamimusubiDark.text,
-          fontSize: 14,
-          lineHeight: 21,
           marginTop: spacing.smGap,
           marginBottom: spacing.xlGap,
         }}
@@ -136,13 +127,7 @@ export default function RankingPage() {
           size="compact"
           onPress={() => setFavOnly((v) => !v)}
         />
-        <Text
-          style={{
-            marginLeft: spacing.smGap,
-            fontSize: 12,
-            color: kamimusubiDark.muted,
-          }}
-        >
+        <Text style={{ ...typography.footnote, marginLeft: spacing.smGap, color: kamimusubiDark.muted }}>
           保存 {favSet.size}
         </Text>
       </View>

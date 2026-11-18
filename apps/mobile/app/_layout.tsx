@@ -2,6 +2,7 @@ import * as React from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { kamimusubiDark as theme } from "../design/theme";
+import { typography } from "../design/typography";
 import { initAnalyticsProvider } from "../lib/posthogAnalyticsProvider";
 
 // 深いリンク(/premium など)で直接起動したときも、Stack の下に (tabs) を敷く。
@@ -47,7 +48,13 @@ export default function Root() {
         screenOptions={{
           headerStyle: { backgroundColor: theme.background },
           headerTintColor: theme.gold,
-          headerTitleStyle: { color: theme.text, fontSize: 17, fontWeight: "600" },
+          // headerTitleStyle は lineHeight / letterSpacing を受け付けないため、
+          // Tokenの実値のうちネイティブヘッダーが解釈する2つだけを渡す。
+          headerTitleStyle: {
+            color: theme.text,
+            fontSize: typography.title.fontSize,
+            fontWeight: typography.title.fontWeight,
+          },
           headerShadowVisible: false,
           // 戻るボタンに前画面名を出さず、シェブロンだけにする。
           headerBackButtonDisplayMode: "minimal",

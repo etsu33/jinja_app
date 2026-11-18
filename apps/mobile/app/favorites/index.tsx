@@ -7,6 +7,7 @@ import { kamimusubiDark as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
+import { typography } from "../../design/typography";
 
 export default function FavoritesScreen() {
   const router = useRouter();
@@ -55,7 +56,7 @@ export default function FavoritesScreen() {
       contentContainerStyle={{ padding: spacing.screenXWide, paddingBottom: spacing.bottomSpace, gap: spacing.lgGap }}
     >
       <View style={{ marginBottom: spacing.lgGap }}>
-        <Text style={{ color: theme.text, fontSize: 15, lineHeight: 23, marginTop: spacing.mdGap }}>
+        <Text style={{ ...typography.subhead, color: theme.text, marginTop: spacing.mdGap }}>
           保存した神社を確認できます。
         </Text>
       </View>
@@ -66,20 +67,16 @@ export default function FavoritesScreen() {
         </Text>
       ) : error ? (
         <View style={{ alignItems: "center", marginTop: spacing.bottomSpace + spacing.sectionTop, gap: spacing.lgGap }}>
-          <Text style={{ color: theme.muted, fontSize: 15 }}>
-            お気に入りを読み込めませんでした
-          </Text>
-          <Text style={{ color: theme.mutedDark, fontSize: 13, textAlign: "center" }}>
+          <Text style={{ ...typography.body, color: theme.muted }}>お気に入りを読み込めませんでした</Text>
+          <Text style={{ ...typography.footnote, color: theme.mutedDark, textAlign: "center" }}>
             通信状況を確認して、もう一度画面を開き直してください。
           </Text>
         </View>
       ) : items.length === 0 ? (
         <View style={{ alignItems: "center", marginTop: spacing.bottomSpace + spacing.sectionTop, gap: spacing.lgGap }}>
           <Text style={{ fontSize: 40 }}>♡</Text>
-          <Text style={{ color: theme.muted, fontSize: 15 }}>
-            お気に入りの神社はまだありません
-          </Text>
-          <Text style={{ color: theme.mutedDark, fontSize: 13, textAlign: "center" }}>
+          <Text style={{ ...typography.body, color: theme.muted }}>お気に入りの神社はまだありません</Text>
+          <Text style={{ ...typography.footnote, color: theme.mutedDark, textAlign: "center" }}>
             神社詳細ページから「♡ お気に入り」を押すと保存されます
           </Text>
         </View>
@@ -143,11 +140,11 @@ function FavoriteCard({
       )}
 
       <View style={{ flex: 1, gap: spacing.tightGap }}>
-        <Text style={{ color: theme.text, fontSize: 16, fontWeight: "700" }}>
+        <Text style={{ ...typography.title, color: theme.text }}>
           {shrine.name}
         </Text>
         {!!shrine.address && (
-          <Text style={{ color: theme.muted, fontSize: 13 }}>
+          <Text style={{ ...typography.footnote, color: theme.muted }}>
             {shrine.address}
           </Text>
         )}
@@ -165,7 +162,7 @@ function FavoriteCard({
           borderColor: theme.borderGold,
         }}
       >
-        <Text style={{ color: theme.gold, fontSize: 12, fontWeight: "700" }}>
+        <Text style={{ ...typography.footnoteStrong, color: theme.gold }}>
           解除
         </Text>
       </Pressable>

@@ -57,29 +57,38 @@ describe("Typography Token", () => {
 });
 
 describe("画面側の文字指定", () => {
-  it.each(screenFiles)("%s はグリフ以外で fontSize を直接指定しない", (file) => {
-    const source = readFileSync(resolve(mobileRoot, file), "utf8");
+  // グリフだけを描くテキスト。StyleSheet の外(インラインstyle)にも現れるため、
+  // スタイルキー名か、同じ場所に出る記号そのもので見分ける。
+  const GLYPH_CHARS = /[⛩♡♥↑←→›✓✕]/u;
+
+  function fontSizeOffenders(source: string): string[] {
     const offenders: string[] = [];
 
-    for (const match of source.matchAll(/\n {2}([A-Za-z0-9_]+): \{([^{}]*)\},/g)) {
-      const [, key, body] = match;
-      if (!body.includes("fontSize")) continue;
-      if (GLYPH_STYLE_KEYS.has(key)) continue;
-      offenders.push(key);
+    for (const match of source.matchAll(/fontSize: [0-9]+/g)) {
+      const window = source.slice(Math.max(0, match.index - 200), match.index + 200);
+      const isGlyph =
+        GLYPH_CHARS.test(window) || [...GLYPH_STYLE_KEYS].some((key) => window.includes(key));
+      if (!isGlyph) offenders.push(window.replace(/\s+/g, " ").trim().slice(0, 120));
     }
 
-    expect(offenders).toEqual([]);
+    return offenders;
+  }
+
+  it.each(screenFiles)("%s はグリフ以外で fontSize を直接指定しない", (file) => {
+    // StyleSheet の中だけでなく、JSXのインラインstyleも対象にする
+    // (記録・お気に入り・ランキングの各画面はインラインstyleで書かれている)。
+    expect(fontSizeOffenders(readFileSync(resolve(mobileRoot, file), "utf8"))).toEqual([]);
   });
 
   it.each(screenFiles)("%s はグリフ以外で fontWeight 800 / 900 を使わない", (file) => {
     const source = readFileSync(resolve(mobileRoot, file), "utf8");
     const offenders: string[] = [];
 
-    for (const match of source.matchAll(/\n {2}([A-Za-z0-9_]+): \{([^{}]*)\},/g)) {
-      const [, key, body] = match;
-      if (!/fontWeight: "[89]00"/.test(body)) continue;
-      if (GLYPH_STYLE_KEYS.has(key)) continue;
-      offenders.push(key);
+    for (const match of source.matchAll(/fontWeight: "[89]00"/g)) {
+      const window = source.slice(Math.max(0, match.index - 200), match.index + 200);
+      const isGlyph =
+        GLYPH_CHARS.test(window) || [...GLYPH_STYLE_KEYS].some((key) => window.includes(key));
+      if (!isGlyph) offenders.push(window.replace(/\s+/g, " ").trim().slice(0, 120));
     }
 
     expect(offenders).toEqual([]);

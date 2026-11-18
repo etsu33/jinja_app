@@ -6,6 +6,7 @@ import { kamimusubiDark } from "../../../design/theme";
 import { spacing } from "../../../design/spacing";
 import { cardSizes } from "../../../design/cardSizes";
 import { radius } from "../../../design/radius";
+import { typography } from "../../../design/typography";
 
 import { getFavoriteShrines } from "../../../lib/shrineStorage";
 import { isLoggedIn } from "../../../lib/authTokens";
@@ -109,33 +110,9 @@ function RecordCard({ title, description, meta, iconText, routeLabel, onPress }:
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              color: kamimusubiDark.gold,
-              fontSize: 18,
-              fontWeight: "700",
-            }}
-          >
-            {title}
-          </Text>
-          <Text
-            style={{
-              color: kamimusubiDark.text,
-              fontSize: 14,
-              marginTop: 5,
-            }}
-          >
-            {description}
-          </Text>
-          <Text
-            style={{
-              color: kamimusubiDark.muted,
-              fontSize: 12,
-              marginTop: 5,
-            }}
-          >
-            {meta}
-          </Text>
+          <Text style={{ ...typography.subheading, color: kamimusubiDark.gold }}>{title}</Text>
+          <Text style={{ ...typography.body, color: kamimusubiDark.text, marginTop: 5 }}>{description}</Text>
+          <Text style={{ ...typography.footnote, color: kamimusubiDark.muted, marginTop: 5 }}>{meta}</Text>
         </View>
 
         <Text accessibilityElementsHidden style={{ color: kamimusubiDark.muted, fontSize: 20 }}>
@@ -207,23 +184,8 @@ export default function RecordsScreen() {
       }}
     >
       <View style={{ marginBottom: spacing.lgGap }}>
-        <Text
-          style={{
-            color: kamimusubiDark.gold,
-            fontSize: 26,
-            fontWeight: "700",
-          }}
-        >
-          記録
-        </Text>
-        <Text
-          style={{
-            color: kamimusubiDark.text,
-            fontSize: 15,
-            lineHeight: 23,
-            marginTop: spacing.mdGap,
-          }}
-        >
+        <Text style={{ ...typography.display, color: kamimusubiDark.gold }}>記録</Text>
+        <Text style={{ ...typography.subhead, color: kamimusubiDark.text, marginTop: spacing.mdGap }}>
           相談から育ったご縁や、保存した神社、御朱印をここから振り返れます。
         </Text>
       </View>
