@@ -60,8 +60,8 @@ UIは情報入力フォームでも、神社情報を並べた検索アプリで
 
 | Role | Color |
 |---|---|
-| Background | `#F1ECE1` |
-| Background Subtle | `#E7E0D1` |
+| Background（鳥の子色） | `#F5EEDC` |
+| Background Subtle | `#EBE2CC` |
 | Surface Default | `#FFFFFF` |
 | Surface Elevated | `#FFFFFF` |
 | Structure（深藍） | `#172A40` |
@@ -69,13 +69,15 @@ UIは情報入力フォームでも、神社情報を並べた検索アプリで
 | Text Primary | `#242424` |
 | Text Secondary | `#55514A` |
 | Text Muted | `#656057` |
-| Border Default | `#C7BCA6` |
+| Border Default | `#CFC2A4` |
 | Border Strong | `#8E8472` |
 | Border Accent（金茶） | `#B39665` |
 
 > **注記（2026-11-19）**：指示書 v2.0 初版は Background `#F5F1E8` / Surface `#FBF8F2` / Border `#CFC6B5` を挙げていた。
 > この組み合わせは白カードと地のコントラスト比が 1.11 で、15節が求めるSurface Cardが面として読めなかった（実機で確認）。
-> 地を一段沈めて比 1.18 を確保した値へ改めている。経緯は `docs/design/color-direction-v1.md`。
+> 地を一段沈めて比 1.18 を確保した値へ改めた。
+> さらに 2026-11-19、起動時のSplash（和の朝焼け）の下端に合わせて地を鳥の子色 `#F5EEDC` へ温めた（比 1.16）。
+> 経緯は `docs/design/color-direction-v1.md`。
 
 ## 05 色の責務
 

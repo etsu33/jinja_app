@@ -64,10 +64,17 @@ describe("明基調パレットのコントラスト", () => {
     }
   });
 
-  it("朱は塗り専用で、文字には使えない", () => {
-    // 最も暗い面(surfaceSoft)の上で AA に届かない。
-    // 文字色へ昇格させる変更をここで止める。強調は深藍(accent)で受ける。
-    expect(contrast(light.vermilion, light.surfaceSoft)).toBeLessThan(4.5);
+  it("朱を本文の色に使わない", () => {
+    // 朱は「塗り」と「小さな印」のための色で、読ませる文字の色ではない
+    // (ios-ui-spec-v2.md 05節)。最暗面でのコントラストは 4.51 と境界上で、
+    // 数値では守れないため、使われ方そのものを検査する。
+    // 強調は深藍(accent)が受ける。
+    const screens = globSync(["app/**/*.tsx", "components/**/*.tsx"], { cwd: mobileRoot });
+    const offenders = screens.filter((file) =>
+      /color: theme\.vermilion/.test(readFileSync(resolve(mobileRoot, file), "utf8")),
+    );
+
+    expect(offenders).toEqual([]);
   });
 
   it("状態を示す境界が UI部品の基準 (3.0) を満たす", () => {
@@ -111,7 +118,9 @@ describe("Theme の export", () => {
     const theme = await import("../../design/theme");
 
     expect(theme.appColors).toBeDefined();
-    expect(theme.appColors.background).toBe("#F1ECE1");
+    expect(theme.appColors.background).toBe("#F5EEDC");
+    // Splash の下端と地が一致していること。起動から本編へ色が繋がる。
+    expect(theme.appColors.background).toBe(theme.dawn.colors[theme.dawn.colors.length - 1]);
     expect(theme.appSemanticTheme).toBeDefined();
     expect(theme.appSemanticTheme["action.primary"]).toBe("#B53A2D");
   });

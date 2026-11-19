@@ -102,22 +102,23 @@ export const kamimusubiDark = {
 // 金茶 (borderAccent) だけは 2.49 で文字に使えないため、線専用とする。
 // ────────────────────────────────────────────────────────────────
 export const kamimusubiLight = {
-  // ---- Foundation: 生成りの紙と、その上に置く白い紙 ----
+  // ---- Foundation: 朝の光を受けた紙 ----
+  // 地は鳥の子色。起動時のSplash(design/theme.ts の dawn)の下端と同値にして、
+  // 朝焼けが明けきった色からそのまま本編へ繋がるようにしている。
   // 明度は outside < surfaceSoft < background < surface の単調増加。
-  // カードは純白にし、地はわずかに沈めた。白と地の比は 1.18 で、
-  // 線や影に頼らなくても「紙の上に紙が乗っている」と読める差をつける。
-  background: "#F1ECE1",
-  surfaceSoft: "#E7E0D1",
+  // 白と地の比は 1.16 で、線や影に頼らずとも紙の上に紙が乗って見える。
+  background: "#F5EEDC",
+  surfaceSoft: "#EBE2CC",
   surface: "#FFFFFF",
   surfaceRaised: "#FFFFFF",
 
   // ---- Border ----
   // 区切りの線は主張させない。borderStrong だけは入力欄など状態を示す
   // 境界に使うため、白に対して 3.69 を確保する (WCAG 1.4.11)。
-  borderSoft: "#DCD3C0",
-  borderHeader: "#D4CAB6",
-  borderMuted: "#CFC6B5",
-  border: "#C7BCA6",
+  borderSoft: "#E2D8C0",
+  borderHeader: "#DAD0B6",
+  borderMuted: "#D5CAB0",
+  border: "#CFC2A4",
   borderStrong: "#8E8472",
   // 金茶。格式の記号として枠にだけ使う。文字には使わない。
   borderAccent: "#B39665",
@@ -162,7 +163,7 @@ export const kamimusubiLight = {
 
   // ---- Outside ----
   // 幅広画面で本文カラム(max-width 430)の外側に出る余白色。
-  outside: "#E0D8C6",
+  outside: "#E4D9BE",
 } as const;
 
 // 和の朝焼け。夜明け前の濃藍から地平の光へ、上から下へ一方向。
