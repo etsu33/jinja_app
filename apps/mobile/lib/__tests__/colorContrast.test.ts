@@ -85,6 +85,13 @@ describe("明基調パレットのコントラスト", () => {
     expect(contrast(light.borderAccent, light.background)).toBeLessThan(3.0);
   });
 
+  it("選択中の面が、非選択(白)と見分けられる", () => {
+    // ios-ui-spec-v2.md 15節: 選択は「深藍の線 + 薄い深藍系の面」。
+    // 全面塗りをやめた分、面の差と線で選択を示す。
+    expect(contrast(light.selectedSurface, light.surface)).toBeGreaterThanOrEqual(1.15);
+    expect(contrast(light.accent, light.selectedSurface)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("カードが地から面として見える差を持つ", () => {
     // 1.15 を下回ると、線や影に頼らないと紙の上の紙に見えない。
     expect(contrast(light.surface, light.background)).toBeGreaterThanOrEqual(1.15);

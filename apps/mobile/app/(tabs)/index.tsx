@@ -4,6 +4,7 @@ import { ScrollView, View, Text, TextInput, StyleSheet, Pressable } from "react-
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { appColors as theme } from "../../design/theme";
 import { shadows } from "../../design/shadow";
+import { ctaSizes } from "../../design/ctaSizes";
 import { ConditionFieldsCard } from "../../components/ConditionFieldsCard";
 import Button from "../../components/ui/Button";
 import { resolveGoriyakuTagIds } from "../../lib/conditionPayload";
@@ -302,7 +303,6 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
     marginTop: 24,
     padding: 16,
-    ...shadows.softCard,
   },
   chatInput: {
     ...typography.bodyStrong,
@@ -352,20 +352,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 999,
-    backgroundColor: theme.surfaceSoft,
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: theme.borderMuted,
+    borderColor: theme.border,
   },
+  // ios-ui-spec-v2.md 15節: 選択は「深藍の線 + 薄い深藍系の面」。
+  // 全面を塗ると、選択肢の数だけ強い面が並んで画面が騒がしくなる。
   themePillActive: {
-    backgroundColor: theme.accent,
+    backgroundColor: theme.selectedSurface,
     borderColor: theme.accent,
+    borderWidth: 2,
   },
   themePillText: {
     ...typography.footnoteStrong,
     color: theme.mutedSoft,
   },
   themePillTextActive: {
-    color: theme.background,
+    color: theme.accent,
   },
 
   // 条件追加
@@ -398,8 +401,8 @@ const styles = StyleSheet.create({
   // 主CTA
   // 画面でただ一つの朱。ここ以外は深藍で受ける。
   primaryCta: {
-    height: 54,
-    borderRadius: 14,
+    height: ctaSizes.primaryHeight,
+    borderRadius: ctaSizes.primaryRadius,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: theme.vermilion,

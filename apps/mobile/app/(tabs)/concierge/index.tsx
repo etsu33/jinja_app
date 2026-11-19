@@ -14,7 +14,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { appColors as theme } from "../../../design/theme";
-import { shadows } from "../../../design/shadow";
 import { ConditionFieldsCard } from "../../../components/ConditionFieldsCard";
 import Button from "../../../components/ui/Button";
 import {
@@ -1181,7 +1180,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 18,
     gap: 12,
-    ...shadows.card,
   },
 
   // ランク

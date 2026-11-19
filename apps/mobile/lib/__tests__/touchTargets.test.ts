@@ -36,14 +36,37 @@ function readStyle(file: string, key: string): string {
   return match[1];
 }
 
-describe("最小タップ領域", () => {
+/** 高さが ctaSizes の Token 参照で書かれている場合に実値へ解決する。 */
+function resolveSize(expression: string): number {
+  const token = expression.match(/ctaSizes\.(\w+)/)?.[1];
+  if (!token) return Number(expression);
+
+  const source = readFileSync(resolve(mobileRoot, "design/ctaSizes.ts"), "utf8");
+  return Number(source.match(new RegExp(`${token}: ([0-9]+)`))?.[1]);
+}
+
+describe("最小タップ領域の個別検証", () => {
   it.each(SIZED_TARGETS)("%s の %s が44pt以上の高さを持つ", (file, key) => {
     const body = readStyle(file, key);
-    const height = body.match(/(?<![a-zA-Z])height: ([0-9]+)/)?.[1];
-    const minHeight = body.match(/minHeight: ([0-9]+)/)?.[1];
-    const effective = Number(height ?? minHeight ?? 0);
+    const height = body.match(/(?<![a-zA-Z])height: ([^,\n]+)/)?.[1];
+    const minHeight = body.match(/minHeight: ([^,\n]+)/)?.[1];
+    const effective = resolveSize((height ?? minHeight ?? "0").trim());
 
     expect(effective).toBeGreaterThanOrEqual(MINIMUM);
+  });
+});
+
+describe("Primary CTA の寸法", () => {
+
+  it("Primary CTA の寸法が仕様どおり (高さ52〜56 / 丸み26〜28)", () => {
+    // ios-ui-spec-v2.md 19節
+    const source = readFileSync(resolve(mobileRoot, "design/ctaSizes.ts"), "utf8");
+    const num = (key: string) => Number(source.match(new RegExp(`${key}: ([0-9]+)`))?.[1]);
+
+    expect(num("primaryHeight")).toBeGreaterThanOrEqual(52);
+    expect(num("primaryHeight")).toBeLessThanOrEqual(56);
+    expect(num("primaryRadius")).toBeGreaterThanOrEqual(26);
+    expect(num("primaryRadius")).toBeLessThanOrEqual(28);
   });
 
   it("共通Buttonのサイズが44pt以上", () => {

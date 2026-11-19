@@ -130,6 +130,9 @@ export const kamimusubiLight = {
   accent: "#172A40",
   accentSoft: "#2E4056",
   premiumAccent: "#172A40",
+  // 選択中の面。深藍をごく薄く敷く (ios-ui-spec-v2.md 15節)。
+  // 面を塗りつぶさずに「選ばれている」ことを示すための段階。
+  selectedSurface: "#E2E7F0",
 
   // ---- Vermilion: 朱 ----
   // 鳥居と朱印の朱。1画面に1つだけ、主アクションの塗りにのみ使う。
