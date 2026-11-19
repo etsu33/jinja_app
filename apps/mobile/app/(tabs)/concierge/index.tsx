@@ -10,12 +10,10 @@ import {
   ScrollView,
   StyleSheet,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Location from "expo-location";
-import { kamimusubiDark as theme } from "../../design/theme";
-import { shadows } from "../../design/shadow";
-import { ConditionFieldsCard } from "../../components/ConditionFieldsCard";
-import Button from "../../components/ui/Button";
+import { appColors as theme } from "../../../design/theme";
+import Button from "../../../components/ui/Button";
 import {
   buildConditionFilters,
   buildConditionProfileContext,
@@ -23,20 +21,28 @@ import {
   type ConditionFilters,
   type ConditionState,
   type ProfileContextPayload,
-} from "../../lib/conditionPayload";
-import { post } from "../../lib/http";
-import { trackActionEvent, type ActionEventActionType } from "../../lib/actionEvents";
-import { useProfileStore } from "../../store/profileStore";
+} from "../../../lib/conditionPayload";
+import { post } from "../../../lib/http";
+import { trackActionEvent, type ActionEventActionType } from "../../../lib/actionEvents";
+import { useProfileStore } from "../../../store/profileStore";
 import {
   directionReferenceMatchCopy,
   validDirectionReferenceOrNull,
   type DirectionReference,
-} from "../../../../packages/shared/directionReference";
-import { toOriginPayload, type UserOrigin } from "../../../../packages/shared/userOrigin";
-import { buildRecommendationReasonDisplay } from "../../../../packages/shared/recommendationReasonDisplay";
-import { getOriginSession } from "../../lib/originSession";
-import { trackMobileDirection } from "../../lib/directionEvents";
-import { track } from "../../lib/analytics";
+} from "../../../../../packages/shared/directionReference";
+import { toOriginPayload, type UserOrigin } from "../../../../../packages/shared/userOrigin";
+import { buildRecommendationReasonDisplay } from "../../../../../packages/shared/recommendationReasonDisplay";
+import { getOriginSession } from "../../../lib/originSession";
+import { trackMobileDirection } from "../../../lib/directionEvents";
+import { track } from "../../../lib/analytics";
+import { typography } from "../../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// 送信ボタンの矢印。旧実装は "↑" のグリフだった。
+const SEND_ICON_SIZE = 22;
+
+// 相談文が空で条件だけが入っているときに送る既定文。従来と同じ文字列。
+const CONSULTATION_FALLBACK = "条件から合う神社を知りたい";
 import {
   buildRecommendationImpressionDedupKey,
   buildRecommendationResultSetId,
@@ -44,20 +50,20 @@ import {
   recommendationAnalyticsProperties,
   recommendationAnalyticsProvenance,
   type RecommendationAnalyticsProvenance,
-} from "../../../../packages/shared/recommendationAnalyticsProvenance";
+} from "../../../../../packages/shared/recommendationAnalyticsProvenance";
 import {
   buildReasonV4Sections,
   normalizeRecommendationReasonV4Detail,
   serializeReasonV4Detail,
   type RecommendationReasonV4Detail,
-} from "../../lib/recommendationReasonV4";
+} from "../../../lib/recommendationReasonV4";
 import {
   buildReasonFactItems,
   findPrimaryReasonFact,
   normalizeRecommendationReasonFacts,
   resolveActionEventHistoryTheme,
   type ConciergeReasonFacts,
-} from "../../lib/recommendationReasonFacts";
+} from "../../../lib/recommendationReasonFacts";
 
 // ────────────────────────────────────────────
 // 型
@@ -180,6 +186,17 @@ function normalizeRecommendationReasonDetail(raw: unknown): RecommendationReason
 
   return detail.heroMeaningCopy || detail.consultationSummary || detail.shrineMeaning || detail.actionMeaning ? detail : null;
 }
+
+// 1回の送信に効かせる条件。state とレンダーのタイミングをずらさずに submit へ渡すため、
+// 値の組として扱う。項目は従来の payload と同じで、増減させていない。
+type ConditionInputs = {
+  birthdate: string;
+  plannedVisitDate: string;
+  visitStyle?: string;
+  goriyaku?: string;
+  supportText: string;
+  origin: UserOrigin | null;
+};
 
 type ConciergeChatResponse = {
   data?: {
@@ -662,10 +679,13 @@ export default function ConciergeScreen() {
     originLng?: string;
   }>();
   const router = useRouter();
+  // タブ画面はネイティブヘッダーを持たないため、Dynamic Island / ステータスバーの
+  // 高さを自分で避ける(下層画面はStackのヘッダーが避けている)。
+  const insets = useSafeAreaInsets();
   const { userProfile: globalUserProfile } = useProfileStore();
 
   const initialQuery = [params.q, params.theme].filter(Boolean).join(" ").trim();
-  // Homeの条件レイヤーで入力済みの場合、相談文が空でも初回送信できるようにする
+  // 相談画面の条件だけが入力されている場合、相談文が空でも初回送信できるようにする
   const initialHasCondition = Boolean(params.birthdate || params.plannedVisitDate || params.visitStyle || params.goriyaku || params.support);
 
   const [input, setInput] = React.useState(initialQuery);
@@ -680,7 +700,6 @@ export default function ConciergeScreen() {
   const [plannedVisitDate, setPlannedVisitDate] = React.useState(params.plannedVisitDate ?? "");
   const initialOrigin: UserOrigin | null = getOriginSession() ?? (params.originLat && params.originLng ? { latitude: Number(params.originLat), longitude: Number(params.originLng), source: "device", displayName: "現在地", accuracy: "precise" } : null);
   const [origin, setOrigin] = React.useState<UserOrigin | null>(initialOrigin);
-  const [locationStatus, setLocationStatus] = React.useState<"idle" | "loading" | "ready" | "error">(initialOrigin ? "ready" : "idle");
   const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>(params.goriyaku || undefined);
   const [supportText, setSupportText] = React.useState(params.support ?? "");
   const hasAnyCondition = Boolean(selectedVisitStyle || birthdate.trim() || plannedVisitDate.trim() || selectedGoriyaku || supportText.trim());
@@ -723,23 +742,72 @@ export default function ConciergeScreen() {
   }, [results]);
   const lastInitialQueryRef = React.useRef<string | null>(null);
 
-  // Homeからの相談内容・条件が変わったら自動送信する
+  // 相談画面から戻ってきたかどうかの判定キー。
+  // 相談文だけでなく条件も含める。この画面はタブなので、相談画面が replace で戻ると
+  // 同じインスタンスが生き残る。相談文が同じで条件だけ変わった場合に再送信されない
+  // (= 条件の変更が結果に反映されない)のを防ぐ。
+  const paramsKey = [
+    params.q,
+    params.theme,
+    params.birthdate,
+    params.plannedVisitDate,
+    params.visitStyle,
+    params.goriyaku,
+    params.support,
+  ]
+    .map((value) => value ?? "")
+    .join("\u0001");
+
+  // 相談画面で確定した相談内容・条件を受け取ったら自動送信する
   React.useEffect(() => {
-    const autoSubmitKey = initialQuery || (initialHasCondition ? "__condition_only__" : "");
-    if (!autoSubmitKey || lastInitialQueryRef.current === autoSubmitKey) return;
+    if (!initialQuery && !initialHasCondition) return;
+    if (lastInitialQueryRef.current === paramsKey) return;
 
-    lastInitialQueryRef.current = autoSubmitKey;
+    lastInitialQueryRef.current = paramsKey;
+
+    // 同じインスタンスが生き残るため、params から state を揃え直す。
+    // state の反映はこのレンダー内では見えないので、送信には同じ値を直接渡す。
+    const incoming: ConditionInputs = {
+      birthdate: params.birthdate ?? "",
+      plannedVisitDate: params.plannedVisitDate ?? "",
+      visitStyle: params.visitStyle || undefined,
+      goriyaku: params.goriyaku || undefined,
+      supportText: params.support ?? "",
+      origin: getOriginSession() ?? initialOrigin,
+    };
+    setBirthdate(incoming.birthdate);
+    setPlannedVisitDate(incoming.plannedVisitDate);
+    setSelectedVisitStyle(incoming.visitStyle);
+    setSelectedGoriyaku(incoming.goriyaku);
+    setSupportText(incoming.supportText);
+    setOrigin(incoming.origin);
+
     setInput(initialQuery);
-    void submit(initialQuery);
-    // submitはこの画面内の状態更新関数だけを使うため、initialQuery / initialHasConditionの変更だけを監視する
+    void submit(initialQuery, incoming);
+    // submitはこの画面内の状態更新関数だけを使うため、受け取った値の変化だけを監視する
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialQuery, initialHasCondition]);
+  }, [paramsKey]);
 
-  const submit = async (text: string) => {
+  const submit = async (text: string, override?: ConditionInputs) => {
+    const applied: ConditionInputs = override ?? {
+      birthdate,
+      plannedVisitDate,
+      visitStyle: selectedVisitStyle,
+      goriyaku: selectedGoriyaku,
+      supportText,
+      origin,
+    };
+    const appliedHasCondition = Boolean(
+      applied.visitStyle ||
+        applied.goriyaku ||
+        applied.birthdate.trim() ||
+        applied.plannedVisitDate.trim() ||
+        applied.supportText.trim(),
+    );
     const trimmed = text.trim();
-    if (!trimmed && !hasAnyCondition) return;
-    const queryText = trimmed || "条件から合う神社を知りたい";
-    trackMobileDirection("direction_condition_submitted", { has_visit_date: !!plannedVisitDate, has_origin: !!origin });
+    if (!trimmed && !appliedHasCondition) return;
+    const queryText = trimmed || CONSULTATION_FALLBACK;
+    trackMobileDirection("direction_condition_submitted", { has_visit_date: !!applied.plannedVisitDate, has_origin: !!applied.origin });
 
     setConsultationText(queryText);
     setInput("");
@@ -748,14 +816,14 @@ export default function ConciergeScreen() {
     setErrorMessage(null);
 
     try {
-      const goriyakuTagIds = await resolveGoriyakuTagIds(selectedGoriyaku);
+      const goriyakuTagIds = await resolveGoriyakuTagIds(applied.goriyaku);
       const condition: ConditionState = {
-        birthdate,
-        plannedVisitDate,
-        visitStyleLabel: selectedVisitStyle,
-        goriyakuLabel: selectedGoriyaku,
+        birthdate: applied.birthdate,
+        plannedVisitDate: applied.plannedVisitDate,
+        visitStyleLabel: applied.visitStyle,
+        goriyakuLabel: applied.goriyaku,
         goriyakuTagIds,
-        supportText,
+        supportText: applied.supportText,
       };
       const conditionFilters = buildConditionFilters(condition);
       const profileContext = buildConditionProfileContext({ condition, globalUserProfile });
@@ -763,8 +831,8 @@ export default function ConciergeScreen() {
         consultation: queryText,
         conditionFilters,
         profileContext,
-        plannedVisitDate: plannedVisitDate.trim() || undefined,
-        location: toOriginPayload(origin),
+        plannedVisitDate: applied.plannedVisitDate.trim() || undefined,
+        location: toOriginPayload(applied.origin),
       });
       setResults(recommendations);
       AccessibilityInfo.announceForAccessibility(
@@ -780,23 +848,18 @@ export default function ConciergeScreen() {
 
   const handleSend = () => void submit(input);
 
-  const useCurrentLocation = async () => {
-    setLocationStatus("loading");
-    const permission = await Location.requestForegroundPermissionsAsync();
-    if (permission.status !== "granted") { setLocationStatus("error"); trackMobileDirection("direction_origin_result", { origin_type: "device", result: "denied" }); return; }
-    try {
-      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setOrigin({ latitude: current.coords.latitude, longitude: current.coords.longitude, source: "device", displayName: "現在地", accuracy: "precise" }); trackMobileDirection("direction_origin_result", { origin_type: "device", result: "success" });
-      setLocationStatus("ready");
-    } catch { setLocationStatus("error"); trackMobileDirection("direction_origin_result", { origin_type: "device", result: "failed" }); }
-  };
-
-  const handleChangeConditions = () => {
-    setInput(consultationText);
-  };
-
-  const handleResuggest = () => {
-    void submit(consultationText);
+  // 条件の編集は相談画面(/consultation)が持つ。ここからは今の値を渡して送り出すだけ。
+  const openConsultation = () => {
+    const query = new URLSearchParams();
+    const topic = consultationText === CONSULTATION_FALLBACK ? "" : consultationText.trim();
+    if (topic) query.set("q", topic);
+    if (birthdate.trim()) query.set("birthdate", birthdate.trim());
+    if (plannedVisitDate.trim()) query.set("plannedVisitDate", plannedVisitDate.trim());
+    if (selectedVisitStyle) query.set("visitStyle", selectedVisitStyle);
+    if (selectedGoriyaku) query.set("goriyaku", selectedGoriyaku);
+    if (supportText.trim()) query.set("support", supportText.trim());
+    const search = query.toString();
+    router.push(search ? `/consultation?${search}` : "/consultation");
   };
 
   const handleActionEvent = ({
@@ -858,6 +921,17 @@ export default function ConciergeScreen() {
     });
   };
 
+  // 効いている条件の読み上げ用。入力ではないので、値が無い項目は行ごと出さない。
+  const hasConsultation = Boolean(consultationText);
+  const appliedConditions = [
+    { label: "参拝スタイル", value: selectedVisitStyle ?? "" },
+    { label: "願うご縁", value: selectedGoriyaku ?? "" },
+    { label: "参拝予定日", value: plannedVisitDate.trim() },
+    { label: "誕生日", value: birthdate.trim() },
+    { label: "出発地点", value: origin?.displayName ?? "" },
+    { label: "その他", value: supportText.trim() },
+  ].filter((item) => item.value.length > 0);
+
   const handleDetail = (card: RecommendationCard, rank: number) => {
     if (card.directionReference?.matched) trackMobileDirection("direction_match_detail_opened", { matched: true, recommendation_rank: rank });
     if (!card.shrineId) return;
@@ -894,21 +968,13 @@ export default function ConciergeScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.screen}
+      style={[styles.screen, { paddingTop: insets.top }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* ヘッダー */}
+        {/* ヘッダー。タブ画面なので戻るは持たない(ホームはタブバーから戻る)。 */}
         <View style={styles.header}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="前の画面に戻る"
-            onPress={() => router.back()}
-            style={styles.backBtn}
-          >
-            <Text style={styles.backText}>← 戻る</Text>
-          </Pressable>
-          <Text style={styles.headerTitle}>ご縁の神社</Text>
+          <Text accessibilityRole="header" style={styles.headerTitle}>ご縁の神社</Text>
         </View>
 
         {/* 相談内容 */}
@@ -916,58 +982,48 @@ export default function ConciergeScreen() {
           <View style={styles.consultationCard}>
             <Text style={styles.consultationLabel}>相談内容</Text>
             <Text style={styles.consultationText}>
-              {consultationText || "ホームで選んだ相談内容をもとに、おすすめの神社を表示します。"}
+              {consultationText || "まだ相談がありません。4つの質問に答えると、ご縁のある神社を提案します。"}
             </Text>
           </View>
 
+          {/* docs/design/ios-ui-spec-v2.md 08節: 1画面1テーマ。
+              旧実装はここに ConditionFieldsCard を丸ごと置いており、相談画面の
+              STEP 2〜4 と同じ入力が2箇所にあった。この画面は結果を読む場所なので、
+              効いている条件は読むだけにし、編集は相談画面へ返す。 */}
           <View style={styles.conditionCard}>
             <View style={styles.conditionHeaderRow}>
               <View style={styles.conditionTitleBlock}>
-                <Text style={styles.conditionLabel}>条件レイヤー</Text>
-                <Text style={styles.conditionTitle}>今回の相談に反映する条件</Text>
+                <Text style={styles.conditionLabel}>
+                  {hasConsultation ? "この提案に効いている条件" : "相談の条件"}
+                </Text>
               </View>
               <Button
-                title="条件を変える"
-                variant="outline"
+                title={hasConsultation ? "条件を変える" : "相談を始める"}
+                variant={hasConsultation ? "outline" : "primary"}
                 size="compact"
-                onPress={handleChangeConditions}
-                accessibilityLabel="相談条件を変更する"
+                onPress={openConsultation}
+                accessibilityLabel={hasConsultation ? "相談条件を変更する" : "相談を始める"}
               />
             </View>
 
-            <View style={styles.conditionSummaryRow}>
-              <Text style={styles.conditionSummaryLabel}>相談テーマ</Text>
-              <Text style={styles.conditionSummaryText} numberOfLines={2}>
-                {consultationText || "未入力"}
+            {appliedConditions.length > 0 ? (
+              <View style={styles.conditionList}>
+                {appliedConditions.map((item) => (
+                  <View key={item.label} style={styles.conditionSummaryRow}>
+                    <Text style={styles.conditionSummaryLabel}>{item.label}</Text>
+                    <Text style={styles.conditionSummaryText} numberOfLines={2}>
+                      {item.value}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.conditionEmptyText}>
+                {hasConsultation
+                  ? "条件は加えていません。相談内容だけで提案しています。"
+                  : "まだ条件はありません。"}
               </Text>
-            </View>
-
-            <ConditionFieldsCard
-              birthdate={birthdate}
-              onChangeBirthdate={setBirthdate}
-              plannedVisitDate={plannedVisitDate}
-              onChangePlannedVisitDate={(value)=>{setPlannedVisitDate(value);if(value)trackMobileDirection("direction_visit_date_set");}}
-              locationStatus={locationStatus}
-              onUseCurrentLocation={() => void useCurrentLocation()}
-              origin={origin}
-              onChangeOrigin={(value)=>{setOrigin(value);if(value)trackMobileDirection("direction_origin_result",{origin_type:value.source,result:"selected"});}}
-              selectedVisitStyle={selectedVisitStyle}
-              onSelectVisitStyle={setSelectedVisitStyle}
-              selectedGoriyaku={selectedGoriyaku}
-              onSelectGoriyaku={setSelectedGoriyaku}
-              supportText={supportText}
-              onChangeSupportText={setSupportText}
-              disabled={loading}
-            />
-
-            <Button
-              title="この条件で再提案する"
-              variant="primary"
-              onPress={handleResuggest}
-              loading={loading}
-              disabled={!consultationText && !hasAnyCondition}
-              accessibilityLabel="この条件で再提案する"
-            />
+            )}
           </View>
 
           {loading ? (
@@ -1033,7 +1089,7 @@ export default function ConciergeScreen() {
           style={[styles.sendBtn, isSendDisabled && styles.sendBtnDisabled]}
           disabled={isSendDisabled}
         >
-          <Text style={styles.sendText}>↑</Text>
+          <Ionicons name="arrow-up" size={SEND_ICON_SIZE} color={theme.background} />
         </Pressable>
       </View>
     </KeyboardAvoidingView>
@@ -1063,20 +1119,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.borderHeader,
   },
-  backBtn: {
-    paddingVertical: 4,
-    paddingRight: 8,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 14,
-    fontWeight: "700",
-  },
   headerTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 17,
-    fontWeight: "800",
-    letterSpacing: 0.5,
   },
 
   consultationArea: {
@@ -1087,23 +1132,19 @@ const styles = StyleSheet.create({
   consultationCard: {
     backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 6,
   },
   consultationLabel: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.2,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   consultationText: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: "800",
   },
 
   conditionCard: {
@@ -1126,42 +1167,36 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   conditionLabel: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.2,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
-  conditionTitle: {
-    color: theme.text,
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: "900",
+  conditionList: {
+    gap: 10,
+  },
+  conditionEmptyText: {
+    ...typography.subhead,
+    color: theme.muted,
   },
   conditionSummaryRow: {
     borderLeftWidth: 2,
-    borderLeftColor: theme.borderGold,
+    borderLeftColor: theme.borderAccent,
     paddingLeft: 10,
     gap: 3,
   },
   conditionSummaryLabel: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.7,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   conditionSummaryText: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: "700",
   },
   loadingRow: {
     paddingVertical: 8,
   },
   loadingText: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 14,
-    fontWeight: "600",
   },
   errorNotice: {
     backgroundColor: theme.surface,
@@ -1172,10 +1207,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   errorNoticeText: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
 
   resultsArea: {
@@ -1188,16 +1221,12 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   resultsLabel: {
-    color: theme.goldSoft,
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+    ...typography.label,
+    color: theme.accentSoft,
   },
   resultsLead: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
 
   // カード
@@ -1205,12 +1234,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     paddingHorizontal: 18,
     paddingTop: 16,
     paddingBottom: 18,
     gap: 12,
-    ...shadows.card,
   },
 
   // ランク
@@ -1223,7 +1251,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: theme.gold,
+    backgroundColor: theme.accent,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1234,10 +1262,8 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   rankLabel: {
-    color: theme.goldSoft,
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 0.8,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   rankLine: {
     flex: 1,
@@ -1250,35 +1276,27 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   cardName: {
+    ...typography.subheading,
     color: theme.text,
-    fontSize: 19,
-    fontWeight: "900",
-    letterSpacing: 0.3,
   },
   cardArea: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.2,
   },
 
   connectionBlock: {
     borderLeftWidth: 2,
-    borderLeftColor: theme.borderGold,
+    borderLeftColor: theme.borderAccent,
     paddingLeft: 10,
     gap: 4,
   },
   connectionLabel: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.7,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   connectionText: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "800",
   },
 
   // 推薦理由
@@ -1292,16 +1310,12 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   reasonLabel: {
-    color: theme.goldSoft,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0.7,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   cardReason: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 22,
-    fontWeight: "700",
   },
   reasonFactsCard: {
     backgroundColor: theme.surface,
@@ -1313,25 +1327,19 @@ const styles = StyleSheet.create({
     gap: 9,
   },
   reasonFactsLabel: {
-    color: theme.goldSoft,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0.7,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   reasonFactItem: {
     gap: 3,
   },
   reasonFactLabel: {
+    ...typography.eyebrow,
     color: theme.muted,
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.3,
   },
   reasonFactText: {
+    ...typography.footnote,
     color: theme.mutedSoft,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
   directionReferenceCard: {
     backgroundColor: theme.surface,
@@ -1343,23 +1351,16 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   directionReferenceLabel: {
-    color: theme.goldSoft,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "900",
-    letterSpacing: 0.7,
+    ...typography.label,
+    color: theme.accentSoft,
   },
   directionReferenceText: {
+    ...typography.body,
     color: theme.mutedSoft,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "600",
   },
   directionReferenceNote: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "600",
   },
 
   actionV4Card: {
@@ -1375,16 +1376,12 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   actionV4Label: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 0.8,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   actionV4SubLabel: {
+    ...typography.eyebrow,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
   actionV4Item: {
     backgroundColor: theme.surface,
@@ -1399,22 +1396,16 @@ const styles = StyleSheet.create({
     opacity: 0.78,
   },
   actionV4ItemLabel: {
-    color: theme.goldSoft,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0.7,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   actionV4Title: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "900",
   },
   actionV4Description: {
+    ...typography.footnote,
     color: theme.mutedSoft,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
 
   // タグ
@@ -1432,10 +1423,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surfaceSoft,
   },
   tagText: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.2,
+    ...typography.caption,
+    color: theme.accentSoft,
   },
 
   // 入力バー
@@ -1455,6 +1444,7 @@ const styles = StyleSheet.create({
     borderTopColor: theme.borderHeader,
   },
   input: {
+    ...typography.bodyStrong,
     flex: 1,
     minHeight: 46,
     maxHeight: 120,
@@ -1465,8 +1455,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     paddingVertical: 10,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 22,
   },
   sendBtn: {
     width: 50,
@@ -1474,14 +1462,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 25,
-    backgroundColor: theme.gold,
+    backgroundColor: theme.accent,
   },
   sendBtnDisabled: {
     opacity: 0.4,
-  },
-  sendText: {
-    color: theme.background,
-    fontSize: 22,
-    fontWeight: "900",
   },
 });

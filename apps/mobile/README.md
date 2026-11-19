@@ -9,7 +9,8 @@ Expo Router で実装済みで、現在は **iOS リリース準備中**（App S
 
 - 実装：✅ 実装済み（Expo Router / 既存 Backend API に接続）
 - Git 管理：✅ 対象（`apps/mobile`）
-- リリース：iOS リリース準備中（v1 では iOS 内課金なし）
+- リリース：iOS リリース準備中
+- iOS 内課金：✅ 実装済み（StoreKit 2 / expo-iap。後述の「iOS Premium purchases」を参照）
 
 ---
 

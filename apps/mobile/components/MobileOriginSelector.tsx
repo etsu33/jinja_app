@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { get } from "../lib/http";
-import { kamimusubiDark as theme } from "../design/theme";
+import { appColors as theme } from "../design/theme";
 import { ProfilePickerModal } from "./profile/ProfilePickerModal";
 import {
   originSearchAnnouncement,
@@ -10,6 +10,7 @@ import {
 } from "../../../packages/shared/directionAccessibility";
 import { PREFECTURE_ORIGINS, prefectureOrigin, type OriginMode, type UserOrigin } from "../../../packages/shared/userOrigin";
 import { trackMobileDirection } from "../lib/directionEvents";
+import { typography } from "../design/typography";
 
 type Candidate = { place_id: string; name: string | null; lat: number; lng: number; type?: string };
 const modes: Array<[OriginMode, string]> = [
@@ -171,16 +172,16 @@ const styles = StyleSheet.create({
   wrap: { gap: 10 },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   button: { minHeight: 44, minWidth: "47%", flexGrow: 1, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 10, justifyContent: "center" },
-  active: { borderWidth: 2, borderColor: theme.goldSoft, backgroundColor: theme.surfaceSoft },
+  active: { borderWidth: 2, borderColor: theme.accentSoft, backgroundColor: theme.surfaceSoft },
   pressed: { opacity: 0.72 },
-  text: { color: theme.text, fontSize: 14, lineHeight: 20 },
-  activeText: { color: theme.goldSoft, fontWeight: "800" },
-  input: { minHeight: 44, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, color: theme.text, fontSize: 16, justifyContent: "center" },
+  text: { ...typography.body, color: theme.text },
+  activeText: { color: theme.accentSoft, fontWeight: "600" },
+  input: { ...typography.bodyStrong, minHeight: 44, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, color: theme.text, justifyContent: "center" },
   result: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 10, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: theme.borderSoft },
-  note: { color: theme.muted, fontSize: 14, lineHeight: 21 },
-  error: { color: "#fecaca", fontSize: 14, lineHeight: 21 },
-  errorBox: { gap: 8, borderWidth: 1, borderColor: "#fca5a5", borderRadius: 12, padding: 10 },
-  fallbackButton: { minHeight: 44, borderWidth: 1, borderColor: theme.goldSoft, borderRadius: 10, paddingHorizontal: 12, justifyContent: "center" },
-  fallbackText: { color: theme.goldSoft, fontSize: 14, fontWeight: "800" },
-  selected: { color: theme.goldSoft, fontSize: 14, lineHeight: 21, fontWeight: "700" },
+  note: { ...typography.body, color: theme.muted },
+  error: { ...typography.body, color: theme.error },
+  errorBox: { gap: 8, borderWidth: 1, borderColor: theme.error, borderRadius: 12, padding: 10 },
+  fallbackButton: { minHeight: 44, borderWidth: 1, borderColor: theme.accentSoft, borderRadius: 10, paddingHorizontal: 12, justifyContent: "center" },
+  fallbackText: { ...typography.body, color: theme.accentSoft },
+  selected: { ...typography.label, color: theme.accentSoft },
 });

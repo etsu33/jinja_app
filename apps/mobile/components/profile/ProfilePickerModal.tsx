@@ -1,6 +1,11 @@
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme, appSemanticTheme } from "../../design/theme";
 import { radius } from "../../design/radius";
+import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// 選択済みの印。旧実装は "✓" のグリフだった。
+const CHECK_SIZE = 20;
 
 type Option = { label: string; value: string };
 
@@ -25,7 +30,12 @@ export function ProfilePickerModal({
         <Pressable style={styles.sheet} onPress={(event) => event.stopPropagation()}>
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
-            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="閉じる">
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="閉じる"
+              style={styles.closeButton}
+            >
               <Text style={styles.close}>閉じる</Text>
             </Pressable>
           </View>
@@ -45,7 +55,7 @@ export function ProfilePickerModal({
                   }}
                 >
                   <Text style={[styles.optionText, selected && styles.optionTextSelected]}>{option.label}</Text>
-                  {selected ? <Text style={styles.check}>✓</Text> : null}
+                  {selected ? <Ionicons name="checkmark" size={CHECK_SIZE} color={theme.accent} /> : null}
                 </Pressable>
               );
             })}
@@ -57,16 +67,18 @@ export function ProfilePickerModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.68)", justifyContent: "flex-end" },
+  backdrop: { flex: 1, backgroundColor: appSemanticTheme["overlay.default"], justifyContent: "flex-end" },
   sheet: { maxHeight: "72%", backgroundColor: theme.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: 20 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-  title: { color: theme.text, fontSize: 18, fontWeight: "900" },
-  close: { color: theme.gold, fontSize: 14, fontWeight: "800", padding: 8 },
+  title: { ...typography.subheading, color: theme.text },
+  // HIGの最小タップ領域44pt。余白をTextに持たせると37ptにしかならないため、
+  // Pressable側で高さを確保する。
+  closeButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
+  close: { ...typography.label, color: theme.accent },
   options: { flexGrow: 0 },
   optionsContent: { paddingBottom: 24 },
   option: { minHeight: 48, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: theme.borderHeader },
-  optionSelected: { backgroundColor: "rgba(221, 178, 82, 0.12)" },
-  optionText: { color: theme.text, fontSize: 15 },
-  optionTextSelected: { color: theme.gold, fontWeight: "800" },
-  check: { color: theme.gold, fontSize: 18, fontWeight: "900" },
+  optionSelected: { backgroundColor: theme.surfaceSoft },
+  optionText: { ...typography.label, color: theme.text },
+  optionTextSelected: { color: theme.accent, fontWeight: "600" },
 });

@@ -4,7 +4,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, type ViewStyle } from "
 import { ctaSizes } from "../../design/ctaSizes";
 import { semanticRadius } from "../../design/radius";
 import { semanticShadow } from "../../design/shadow";
-import { kamimusubiDarkSemanticTheme } from "../../design/theme";
+import { appSemanticTheme } from "../../design/theme";
+import { typography } from "../../design/typography";
 
 type Props = {
   title: string;
@@ -53,14 +54,14 @@ export default function Button({
 
   const indicatorColor =
     variant === "primary"
-      ? kamimusubiDarkSemanticTheme["action.primaryText"]
+      ? appSemanticTheme["action.primaryText"]
       : variant === "accent"
-        ? kamimusubiDarkSemanticTheme["text.inverse"]
+        ? appSemanticTheme["text.inverse"]
         : variant === "outline"
-          ? kamimusubiDarkSemanticTheme["premium.accent"]
+          ? appSemanticTheme["premium.accent"]
           : variant === "success"
-            ? kamimusubiDarkSemanticTheme["status.successText"]
-            : kamimusubiDarkSemanticTheme["text.primary"];
+            ? appSemanticTheme["status.successText"]
+            : appSemanticTheme["text.primary"];
 
   return (
     <Pressable
@@ -107,26 +108,26 @@ const styles = StyleSheet.create({
     paddingVertical: ctaSizes.pillPaddingY,
   },
   btnPrimary: {
-    backgroundColor: kamimusubiDarkSemanticTheme["action.primary"],
+    backgroundColor: appSemanticTheme["action.primary"],
     ...semanticShadow.brand,
   },
   btnAccent: {
-    backgroundColor: kamimusubiDarkSemanticTheme["premium.accent"],
+    backgroundColor: appSemanticTheme["premium.accent"],
     ...semanticShadow.brand,
   },
   btnNeutral: {
-    backgroundColor: kamimusubiDarkSemanticTheme["surface.default"],
+    backgroundColor: appSemanticTheme["surface.default"],
     ...semanticShadow.low,
   },
   btnOutline: {
     backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: kamimusubiDarkSemanticTheme["premium.border"],
+    borderColor: appSemanticTheme["premium.border"],
   },
   btnSuccess: {
-    backgroundColor: kamimusubiDarkSemanticTheme["status.successSurface"],
+    backgroundColor: appSemanticTheme["status.successSurface"],
     borderWidth: 1,
-    borderColor: kamimusubiDarkSemanticTheme["status.successBorder"],
+    borderColor: appSemanticTheme["status.successBorder"],
   },
   btnPressed: {
     opacity: 0.85,
@@ -135,26 +136,24 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   btnTextBase: {
-    fontWeight: "600",
-    fontSize: 16,
+    ...typography.button,
   },
   btnTextCompact: {
-    fontWeight: "800",
-    fontSize: 13,
+    ...typography.buttonCompact,
   },
   btnText: {
-    color: kamimusubiDarkSemanticTheme["text.primary"],
+    color: appSemanticTheme["text.primary"],
   },
   btnPrimaryText: {
-    color: kamimusubiDarkSemanticTheme["action.primaryText"],
+    color: appSemanticTheme["action.primaryText"],
   },
   btnAccentText: {
-    color: kamimusubiDarkSemanticTheme["text.inverse"],
+    color: appSemanticTheme["text.inverse"],
   },
   btnOutlineText: {
-    color: kamimusubiDarkSemanticTheme["premium.accent"],
+    color: appSemanticTheme["premium.accent"],
   },
   btnSuccessText: {
-    color: kamimusubiDarkSemanticTheme["status.successText"],
+    color: appSemanticTheme["status.successText"],
   },
 });

@@ -4,10 +4,15 @@ import * as React from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { getRecentViewed, RecentShrineItem } from "../../lib/shrineStorage";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
+import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// リストの送り記号。旧実装は "›" のグリフだった。
+const CHEVRON_SIZE = 20;
 
 export default function RecentlyViewedScreen() {
   const router = useRouter();
@@ -31,13 +36,6 @@ export default function RecentlyViewedScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <Pressable
-          onPress={() => router.replace("/records")}
-          style={styles.backButton}
-        >
-          <Text style={styles.backText}>← 記録へ戻る</Text>
-        </Pressable>
-        <Text style={styles.title}>最近見た神社</Text>
         <Text style={styles.subtitle}>
           閲覧した神社をもう一度確認できます。
         </Text>
@@ -86,7 +84,7 @@ function RecentlyViewedCard({
         {!!shrine.address && <Text style={styles.cardAddress}>{shrine.address}</Text>}
       </View>
 
-      <Text accessibilityElementsHidden style={styles.chevron}>›</Text>
+      <Ionicons accessibilityElementsHidden name="chevron-forward" size={CHEVRON_SIZE} color={theme.accent} />
     </Pressable>
   );
 }
@@ -104,25 +102,9 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.mdGap,
   },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: spacing.smGap,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  title: {
-    color: theme.gold,
-    fontSize: 26,
-    fontWeight: "900",
-  },
   subtitle: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 23,
-    fontWeight: "600",
   },
   loadingText: {
     color: theme.muted,
@@ -143,16 +125,13 @@ const styles = StyleSheet.create({
     fontSize: 40,
   },
   emptyTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 15,
-    fontWeight: "800",
   },
   emptyText: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-    lineHeight: 20,
     textAlign: "center",
-    fontWeight: "600",
   },
   card: {
     alignItems: "center",
@@ -187,17 +166,11 @@ const styles = StyleSheet.create({
     gap: spacing.tightGap,
   },
   cardTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 16,
-    fontWeight: "700",
   },
   cardAddress: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-  },
-  chevron: {
-    color: theme.muted,
-    fontSize: 24,
-    fontWeight: "600",
   },
 });

@@ -4,9 +4,10 @@ import { useRouter } from "expo-router";
 import { post } from "../lib/http";
 import Button from "../components/ui/Button";
 import { setTokens } from "../lib/authTokens";
-import { kamimusubiDark as theme } from "../design/theme";
+import { appColors as theme } from "../design/theme";
 import { spacing } from "../design/spacing";
 import { radius } from "../design/radius";
+import { typography } from "../design/typography";
 
 type JwtCreateResponse = {
   access: string;
@@ -102,13 +103,6 @@ export default function LoginScreen() {
           >
             <Text style={styles.linkButtonText}>アカウントをお持ちでない方は 新規登録はこちら</Text>
           </Pressable>
-
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace("/mypage"))}
-            style={styles.backButton}
-          >
-            <Text style={styles.backButtonText}>戻る</Text>
-          </Pressable>
         </View>
       </View>
     </ScrollView>
@@ -134,20 +128,16 @@ const styles = StyleSheet.create({
     gap: spacing.mdGap,
   },
   eyebrow: {
-    color: theme.gold,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.4,
+    ...typography.eyebrow,
+    color: theme.accent,
   },
   title: {
+    ...typography.display,
     color: theme.text,
-    fontSize: 28,
-    fontWeight: "800",
   },
   subtitle: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 14,
-    lineHeight: 21,
   },
   form: {
     gap: spacing.mdGap,
@@ -157,11 +147,11 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   label: {
+    ...typography.label,
     color: theme.text,
-    fontSize: 13,
-    fontWeight: "700",
   },
   input: {
+    ...typography.bodyStrong,
     minHeight: 48,
     borderWidth: 1,
     borderColor: theme.border,
@@ -169,12 +159,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.contentX,
     color: theme.text,
     backgroundColor: theme.background,
-    fontSize: 16,
   },
   errorText: {
-    color: "#FCA5A5",
-    fontSize: 13,
-    lineHeight: 19,
+    ...typography.subhead,
+    color: theme.error,
   },
   linkButton: {
     minHeight: 44,
@@ -182,18 +170,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   linkButtonText: {
-    color: theme.gold,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  backButton: {
-    minHeight: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backButtonText: {
-    color: theme.muted,
-    fontSize: 14,
-    fontWeight: "700",
+    ...typography.label,
+    color: theme.accent,
   },
 });

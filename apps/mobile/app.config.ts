@@ -20,6 +20,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   name: "KAMI MUSUBI",
   slug: "jinja-app",
   scheme: "ai-sanpai-navi",
+  // App Storeに表示されるバージョン。機能の追加・修正を出すたびに上げる。
+  // ビルド番号(ios.buildNumber)はEASのautoIncrementが上げるため、ここでは触らない。
+  version: "1.0.0",
+  // 本文カラムは max-width 430 の1カラムで、横向きのレイアウトを持たない。
+  // 未指定だと全向き許容になり、横向きで左右が余白色で埋まる。
+  orientation: "portrait",
+  // 画面は明基調(kamimusubiLight)のみ。これを指定しないと、端末をダークに
+  // している利用者で、OSが用意するキーボード・アラート・アクションシートだけが
+  // 暗く出る。決定記録: docs/design/color-direction-v1.md
+  userInterfaceStyle: "light",
   plugins: [
     "expo-router",
     [
@@ -40,6 +50,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
   ],
   ios: {
+    // iPhone専用。iPadでは互換モードで動作する。
+    supportsTablet: false,
+    // EAS Buildのautoincrement(eas.json)が提出ごとに上げる。初回の基準値。
+    buildNumber: "1",
     infoPlist: {
       NSLocationWhenInUseUsageDescription: "近場の人気神社を提案するため、アプリ使用中に位置情報を利用します。",
       NSLocationAlwaysAndWhenInUseUsageDescription: "バックグラウンド含め近場の神社提案や現在地更新に位置情報を利用します。",

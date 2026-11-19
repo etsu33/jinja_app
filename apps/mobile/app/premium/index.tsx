@@ -3,7 +3,6 @@ import {
   AppState,
   Linking,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -33,11 +32,12 @@ import {
 import { ApplePurchaseSection } from "../../components/ApplePurchaseSection";
 import { StateCard } from "../../components/common/StateCard";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
 import Button from "../../components/ui/Button";
+import { typography } from "../../design/typography";
 
 // Stripe Checkout はhttp(s)のリダイレクト先を要求するため、Web版の /billing/success, /billing/cancel を再利用する。
 // API サーバーのオリジンを流用した暫定値。Webアプリの配信ドメインが確定したら差し替える。
@@ -232,10 +232,6 @@ export default function PremiumScreen() {
     <>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.replace("/mypage")} style={styles.backButton}>
-            <Text style={styles.backText}>← マイページへ戻る</Text>
-          </Pressable>
-          <Text style={styles.title}>Premium</Text>
           <Text style={styles.subtitle}>前回比較、深い振り返り、保存した相談の整理などをPremiumで利用できます。</Text>
         </View>
 
@@ -311,25 +307,9 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.mdGap,
   },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: spacing.smGap,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  title: {
-    color: theme.gold,
-    fontSize: 26,
-    fontWeight: "900",
-  },
   subtitle: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 23,
-    fontWeight: "600",
   },
   errorBlock: {
     gap: spacing.smGap,
@@ -343,24 +323,19 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   statusLabel: {
-    color: theme.gold,
-    fontSize: 18,
-    fontWeight: "900",
+    ...typography.subheading,
+    color: theme.accent,
   },
   statusHelper: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
   },
   checkoutSection: {
     marginTop: spacing.smGap,
     gap: spacing.smGap,
   },
   checkoutErrorText: {
-    color: theme.gold,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "700",
+    ...typography.footnote,
+    color: theme.accent,
   },
 });

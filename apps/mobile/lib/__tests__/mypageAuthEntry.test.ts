@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const source = readFileSync(resolve(mobileRoot, "app/mypage/index.tsx"), "utf8");
+const source = readFileSync(resolve(mobileRoot, "app/(tabs)/mypage/index.tsx"), "utf8");
 const body = source.slice(source.indexOf("export default function MyPageScreen"));
 
 describe("MyPage ログイン・新規登録の入口", () => {

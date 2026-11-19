@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const concierge = readFileSync(new URL("../../app/concierge/index.tsx", import.meta.url), "utf8");
+const concierge = readFileSync(new URL("../../app/(tabs)/concierge/index.tsx", import.meta.url), "utf8");
 const signup = readFileSync(new URL("../../app/signup.tsx", import.meta.url), "utf8");
 const premium = readFileSync(new URL("../../app/premium/index.tsx", import.meta.url), "utf8");
 

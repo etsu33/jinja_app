@@ -1,10 +1,11 @@
 // apps/mobile/app/goshuin/index.tsx
 import * as React from "react";
-import { View, Text, Image, Pressable, StyleSheet, ScrollView, Dimensions } from "react-native";
+import { View, Text, Image, StyleSheet, ScrollView, Dimensions } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { getStamps } from "../../lib/storage";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import Button from "../../components/ui/Button";
+import { typography } from "../../design/typography";
 
 const GAP = 10;
 const COLS = 3;
@@ -39,9 +40,6 @@ export default function GoshuinList() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.headerBar}>
-        <Pressable onPress={() => router.replace("/records")} style={styles.back}>
-          <Text style={styles.backText}>← 記録へ戻る</Text>
-        </Pressable>
         <Button
           title="＋ 記録する"
           variant="outline"
@@ -119,50 +117,29 @@ const styles = StyleSheet.create({
   headerBar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     marginBottom: 28,
-  },
-  back: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: theme.borderGold,
-    paddingVertical: 8,
-    paddingHorizontal: 13,
-    borderRadius: 999,
-    backgroundColor: "transparent",
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
   },
   heroBlock: {
     paddingBottom: 24,
   },
   heroLead: {
+    ...typography.body,
     color: theme.mutedSoft,
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 1,
     marginBottom: 10,
   },
   heroTitle: {
+    ...typography.display,
     color: theme.text,
-    fontSize: 30,
-    fontWeight: "900",
-    lineHeight: 40,
-    letterSpacing: 1,
   },
   heroCount: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-    fontWeight: "700",
     marginTop: 12,
   },
   stateText: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 15,
-    fontWeight: "700",
     marginTop: 40,
     textAlign: "center",
   },
@@ -172,17 +149,15 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
     borderRadius: 24,
     padding: 16,
-    shadowColor: "#000",
+    shadowColor: theme.text,
     shadowOpacity: 0.28,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
   sectionLabel: {
+    ...typography.eyebrow,
     color: theme.mutedSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 2,
     marginBottom: 14,
   },
   grid: {
@@ -205,21 +180,18 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   emptyIcon: {
-    color: theme.gold,
+    color: theme.accent,
     fontSize: 28,
     fontWeight: "900",
     marginBottom: 6,
   },
   emptyTitle: {
+    ...typography.subheading,
     color: theme.text,
-    fontSize: 18,
-    fontWeight: "900",
   },
   emptyText: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
     textAlign: "center",
   },
   emptyCtaPlacement: {

@@ -5,7 +5,8 @@ import { View, Text, Pressable, Image, StyleSheet, Alert, ScrollView } from "rea
 import { useRouter } from "expo-router";
 import { pushStamp } from "../../lib/storage";
 import Button from "../../components/ui/Button";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
+import { typography } from "../../design/typography";
 
 function showSaveFailure() {
   Alert.alert("保存できませんでした", "時間をおいて、もう一度お試しください。");
@@ -74,15 +75,7 @@ export default function GoshuinUpload() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Pressable onPress={goBack} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← 戻る</Text>
-        </Pressable>
-      </View>
-
       <View style={styles.titleBlock}>
-        <Text style={styles.lead}>参拝の記録</Text>
-        <Text style={styles.title}>御朱印を登録</Text>
         <Text style={styles.subtitle}>カメラで撮影、またはアルバムから選択してください。</Text>
       </View>
 
@@ -150,45 +143,16 @@ const styles = StyleSheet.create({
     paddingTop: 22,
     paddingBottom: 48,
   },
-  header: {
-    marginBottom: 28,
-  },
-  backBtn: {
-    alignSelf: "flex-start",
-    paddingVertical: 8,
-    paddingHorizontal: 13,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.borderGold,
-    backgroundColor: "transparent",
-  },
-  backBtnText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
-  },
   titleBlock: {
     marginBottom: 24,
   },
-  lead: {
-    color: theme.mutedSoft,
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 1,
-    marginBottom: 10,
-  },
   title: {
+    ...typography.display,
     color: theme.text,
-    fontSize: 30,
-    fontWeight: "900",
-    lineHeight: 40,
-    letterSpacing: 1,
   },
   subtitle: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
     marginTop: 10,
   },
   pickRow: {
@@ -208,14 +172,13 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
   },
   pickBtnIcon: {
-    color: theme.gold,
+    color: theme.accent,
     fontSize: 24,
     fontWeight: "900",
   },
   pickBtnText: {
+    ...typography.label,
     color: theme.text,
-    fontSize: 14,
-    fontWeight: "900",
   },
   pressed: {
     opacity: 0.75,
@@ -244,20 +207,17 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
   },
   placeholderIcon: {
-    color: theme.gold,
+    color: theme.accent,
     fontSize: 34,
     fontWeight: "900",
   },
   placeholderTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 17,
-    fontWeight: "900",
   },
   placeholderText: {
+    ...typography.body,
     color: theme.mutedDark,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
     textAlign: "center",
   },
 });

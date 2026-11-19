@@ -1,16 +1,21 @@
 import * as React from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
-import { kamimusubiDark as theme } from "../../design/theme";
-import { getFavoriteShrines, getRecentViewed } from "../../lib/shrineStorage";
-import { getCounts } from "../../lib/storage";
-import { getAuthenticatedBillingStatus, isPremiumStatus, type BillingStatus } from "../../lib/billing";
-import { isUnauthenticatedError } from "../../lib/http";
-import { trackConsultationHistoryEntryClicked } from "../../lib/consultationHistoryAnalytics";
-import { isLoggedIn } from "../../lib/authTokens";
-import { ACCOUNT_DELETION_MESSAGES, deleteAccount } from "../../lib/accountDeletion";
-import { LOGOUT_MESSAGES, confirmLogout, fetchAccountUsername, logout } from "../../lib/logout";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+import { LEGAL_LABELS, openLegalDocument } from "../../../lib/legalLinks";
+import { appColors as theme } from "../../../design/theme";
+import { getFavoriteShrines, getRecentViewed } from "../../../lib/shrineStorage";
+import { getCounts } from "../../../lib/storage";
+import { getAuthenticatedBillingStatus, isPremiumStatus, type BillingStatus } from "../../../lib/billing";
+import { isUnauthenticatedError } from "../../../lib/http";
+import { trackConsultationHistoryEntryClicked } from "../../../lib/consultationHistoryAnalytics";
+import { isLoggedIn } from "../../../lib/authTokens";
+import { ACCOUNT_DELETION_MESSAGES, deleteAccount } from "../../../lib/accountDeletion";
+import { LOGOUT_MESSAGES, confirmLogout, fetchAccountUsername, logout } from "../../../lib/logout";
+import { typography } from "../../../design/typography";
 
 // ---- お問い合わせ (Mother Ship承認済みの契約) ----
 // 宛先と件名は可読な定数として保持する。
@@ -33,6 +38,17 @@ function openContactMail() {
   Linking.openURL(CONTACT_MAILTO_URL).catch(() => {});
 }
 
+// 利用規約・プライバシーポリシーはWeb版のページを外部ブラウザで開く。
+// App Store Review Guideline 3.1.2 が、自動更新サブスクリプションを持つアプリに
+// 「機能する」リンクをバイナリ内へ置くことを求めるため、飾りのカードにしない。
+function openTerms() {
+  openLegalDocument("terms", Linking.openURL);
+}
+
+function openPrivacy() {
+  openLegalDocument("privacy", Linking.openURL);
+}
+
 type PremiumMetaState =
   | { kind: "loading" }
   | { kind: "unauthenticated" }
@@ -51,7 +67,10 @@ type MyPageCardProps = {
   title: string;
   description: string;
   meta?: string;
-  iconText: string;
+  // 旧実装は円の中に漢字1文字(人・規・私・退…)を置いていた。意味の読み解きが要り、
+  // Premium だけ "P" とラテン文字が混ざって体系が壊れていたため、タブバーと同じ
+  // Ionicons へ揃える。
+  icon: React.ComponentProps<typeof Ionicons>["name"];
   actionLabel?: string;
   onPress?: () => void;
 };
@@ -60,9 +79,10 @@ type UsageStatProps = {
   label: string;
   value: string;
   helper: string;
+  onPress: () => void;
 };
 
-function MyPageCard({ title, description, meta, iconText, actionLabel, onPress }: MyPageCardProps) {
+function MyPageCard({ title, description, meta, icon, actionLabel, onPress }: MyPageCardProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -71,7 +91,7 @@ function MyPageCard({ title, description, meta, iconText, actionLabel, onPress }
       accessibilityRole={onPress ? "button" : undefined}
     >
       <View style={styles.iconBox}>
-        <Text style={styles.iconText}>{iconText}</Text>
+        <Ionicons name={icon} size={CARD_ICON_SIZE} color={theme.accent} />
       </View>
       <View style={styles.cardBody}>
         <Text style={styles.cardTitle}>{title}</Text>
@@ -87,21 +107,38 @@ function MyPageCard({ title, description, meta, iconText, actionLabel, onPress }
   );
 }
 
-function UsageStat({ label, value, helper }: UsageStatProps) {
+// 数字だけを見せて行き先が無いと、利用状況が行き止まりになる。
+// 4つとも対応する一覧画面を持つため、カードごとそこへ繋ぐ。
+function UsageStat({ label, value, helper, onPress }: UsageStatProps) {
   return (
-    <View style={styles.statCard}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label} ${value}。一覧を開く`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.statCard, pressed && styles.cardPressed]}
+    >
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
       <Text style={styles.statHelper}>{helper}</Text>
-    </View>
+    </Pressable>
   );
 }
 
+// カード左のアイコン。iconBox(46pt)の中に置く。
+const CARD_ICON_SIZE = 22;
+
+// 画面内コンテンツの上余白。safe area inset の内側に置く。
+const CONTENT_TOP_PADDING = 24;
+
 export default function MyPageScreen() {
   const router = useRouter();
+  // タブ画面はネイティブヘッダーを持たないため、Dynamic Island / ステータスバーの
+  // 高さを自分で避ける(下層画面はStackのヘッダーが避けている)。
+  const insets = useSafeAreaInsets();
   const [favoriteCount, setFavoriteCount] = React.useState<number | null>(null);
   const [recentCount, setRecentCount] = React.useState<number | null>(null);
   const [visitCount, setVisitCount] = React.useState<number | null>(null);
+  const [stampCount, setStampCount] = React.useState<number | null>(null);
   const [premiumMeta, setPremiumMeta] = React.useState<PremiumMetaState>({ kind: "loading" });
   const [loggedIn, setLoggedIn] = React.useState(false);
   const [accountUsername, setAccountUsername] = React.useState<string | null>(null);
@@ -230,11 +267,15 @@ export default function MyPageScreen() {
       });
 
     getCounts()
-      .then(({ visits }) => {
-        if (mounted) setVisitCount(visits);
+      .then(({ visits, stamps }) => {
+        if (!mounted) return;
+        setVisitCount(visits);
+        setStampCount(stamps);
       })
       .catch(() => {
-        if (mounted) setVisitCount(0);
+        if (!mounted) return;
+        setVisitCount(0);
+        setStampCount(0);
       });
 
     return () => {
@@ -243,148 +284,151 @@ export default function MyPageScreen() {
   }, []);
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>MY PAGE</Text>
-        <Text style={styles.title}>マイページ</Text>
-        <Text style={styles.subtitle}>
-          プロフィール、Premium、設定をここから確認できます。
-        </Text>
-      </View>
-
-      {loggedIn ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>アカウント</Text>
-          <MyPageCard
-            title={accountUsername ?? LOGOUT_MESSAGES.signedInFallbackName}
-            description="ログイン中です。別のアカウントに入り直すときは、ログアウトしてください。"
-            iconText="人"
-            actionLabel="ログアウト"
-            onPress={confirmAndLogout}
-          />
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.eyebrow}>MY PAGE</Text>
+          <Text style={styles.title}>マイページ</Text>
+          <Text style={styles.subtitle}>
+            プロフィール、Premium、設定をここから確認できます。
+          </Text>
         </View>
-      ) : (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>アカウント</Text>
-          <MyPageCard
-            title="ログイン"
-            description="記録や相談履歴を保存して、あとから見返せます。"
-            iconText="入"
-            actionLabel="ログイン"
-            onPress={() => router.push("/login")}
-          />
-          <MyPageCard
-            title="新規登録"
-            description="アカウントをお持ちでない方はこちらから作成できます。"
-            iconText="新"
-            actionLabel="登録"
-            onPress={() => router.push("/signup")}
-          />
-        </View>
-      )}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>プロフィール</Text>
-        <MyPageCard
-          title="プロフィールカード"
-          description="生年月日や出生情報、参拝スタイルを設定できます。"
-          meta="入力内容は神社提案の補助情報として使われます。"
-          iconText="人"
-          actionLabel="確認"
-          onPress={() => router.push("/profile")}
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>利用状況</Text>
-        <View style={styles.usageGrid}>
-          <UsageStat
-            label="お気に入り"
-            value={favoriteCount === null ? "..." : `${favoriteCount}`}
-            helper="保存した神社"
-          />
-          <UsageStat
-            label="参拝回数"
-            value={visitCount === null ? "..." : `${visitCount}`}
-            helper="記録された参拝"
-          />
-          <UsageStat
-            label="最近見た神社"
-            value={recentCount === null ? "..." : `${recentCount}`}
-            helper="閲覧履歴"
-          />
-          <UsageStat
-            label="御朱印"
-            value="0"
-            helper="次フェーズで連携"
-          />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>相談</Text>
-        <MyPageCard
-          title="相談履歴"
-          description="これまでの相談と、当時推薦された神社を見返せます。"
-          iconText="談"
-          actionLabel="開く"
-          onPress={() => {
-            trackConsultationHistoryEntryClicked();
-            router.push("/consultation-history");
-          }}
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Premium</Text>
-        <MyPageCard
-          title="Premium"
-          description="前回比較、深い振り返り、保存した相談の整理を使えるようにします。"
-          meta={describePremiumMeta(premiumMeta)}
-          iconText="P"
-          actionLabel="確認"
-          onPress={() => router.push("/premium")}
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>設定・サポート</Text>
-        <MyPageCard
-          title="設定"
-          description="通知や表示設定を確認する場所です。"
-          meta="準備中"
-          iconText="設"
-          actionLabel="開く"
-        />
         {loggedIn ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>アカウント</Text>
+            <MyPageCard
+              title={accountUsername ?? LOGOUT_MESSAGES.signedInFallbackName}
+              description="ログイン中です。別のアカウントに入り直すときは、ログアウトしてください。"
+              icon="person"
+              actionLabel="ログアウト"
+              onPress={confirmAndLogout}
+            />
+          </View>
+        ) : (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>アカウント</Text>
+            <MyPageCard
+              title="ログイン"
+              description="記録や相談履歴を保存して、あとから見返せます。"
+              icon="log-in"
+              actionLabel="ログイン"
+              onPress={() => router.push("/login")}
+            />
+            <MyPageCard
+              title="新規登録"
+              description="アカウントをお持ちでない方はこちらから作成できます。"
+              icon="person-add"
+              actionLabel="登録"
+              onPress={() => router.push("/signup")}
+            />
+          </View>
+        )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>プロフィール</Text>
           <MyPageCard
-            title="退会する"
-            description="アカウントと記録を削除します。この操作は取り消せません。"
-            meta={deletingAccount ? "退会処理中..." : "Premiumをご利用中の場合、購読も停止されます。"}
-            iconText="退"
-            actionLabel="退会"
-            onPress={deletingAccount ? undefined : confirmAccountDeletion}
+            title="プロフィールカード"
+            description="生年月日や出生情報、参拝スタイルを設定できます。"
+            meta="入力内容は神社提案の補助情報として使われます。"
+            icon="id-card"
+            actionLabel="確認"
+            onPress={() => router.push("/profile")}
           />
-        ) : null}
-        <MyPageCard
-          title="利用規約"
-          description="アプリの利用条件を確認できます。"
-          iconText="規"
-          actionLabel="確認"
-        />
-        <MyPageCard
-          title="お問い合わせ"
-          description="不具合や相談がある場合の連絡先です。"
-          iconText="問"
-          actionLabel="送る"
-          onPress={openContactMail}
-        />
-      </View>
-    </ScrollView>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>利用状況</Text>
+          <View style={styles.usageGrid}>
+            <UsageStat
+              label="お気に入り"
+              value={favoriteCount === null ? "..." : `${favoriteCount}`}
+              helper="保存した神社"
+              onPress={() => router.push("/favorites")}
+            />
+            <UsageStat
+              label="参拝回数"
+              value={visitCount === null ? "..." : `${visitCount}`}
+              helper="記録された参拝"
+              onPress={() => router.push("/visit-history")}
+            />
+            <UsageStat
+              label="最近見た神社"
+              value={recentCount === null ? "..." : `${recentCount}`}
+              helper="閲覧履歴"
+              onPress={() => router.push("/recently-viewed")}
+            />
+            <UsageStat
+              label="御朱印"
+              value={stampCount === null ? "..." : `${stampCount}`}
+              helper="登録した御朱印"
+              onPress={() => router.push("/goshuin")}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>相談</Text>
+          <MyPageCard
+            title="相談履歴"
+            description="これまでの相談と、当時推薦された神社を見返せます。"
+            icon="chatbubbles"
+            actionLabel="開く"
+            onPress={() => {
+              trackConsultationHistoryEntryClicked();
+              router.push("/consultation-history");
+            }}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Premium</Text>
+          <MyPageCard
+            title="Premium"
+            description="前回比較、深い振り返り、保存した相談の整理を使えるようにします。"
+            meta={describePremiumMeta(premiumMeta)}
+            icon="diamond"
+            actionLabel="確認"
+            onPress={() => router.push("/premium")}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>設定・サポート</Text>
+          {loggedIn ? (
+            <MyPageCard
+              title="退会する"
+              description="アカウントと記録を削除します。この操作は取り消せません。"
+              meta={deletingAccount ? "退会処理中..." : "Premiumをご利用中の場合、購読も停止されます。"}
+              icon="trash"
+              actionLabel="退会"
+              onPress={deletingAccount ? undefined : confirmAccountDeletion}
+            />
+          ) : null}
+          <MyPageCard
+            title={LEGAL_LABELS.terms}
+            description="アプリの利用条件を確認できます。"
+            icon="document-text"
+            actionLabel="開く"
+            onPress={openTerms}
+          />
+          <MyPageCard
+            title={LEGAL_LABELS.privacy}
+            description="取得する情報と取り扱いを確認できます。"
+            icon="shield-checkmark"
+            actionLabel="開く"
+            onPress={openPrivacy}
+          />
+          <MyPageCard
+            title="お問い合わせ"
+            description="不具合や相談がある場合の連絡先です。"
+            icon="mail"
+            actionLabel="送る"
+            onPress={openContactMail}
+          />
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -394,7 +438,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.background,
   },
   content: {
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: CONTENT_TOP_PADDING,
     paddingBottom: 48,
     gap: 22,
   },
@@ -402,31 +447,23 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   eyebrow: {
-    color: theme.goldSoft,
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 1.4,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   title: {
-    color: theme.gold,
-    fontSize: 26,
-    fontWeight: "900",
-    letterSpacing: 0.4,
+    ...typography.display,
+    color: theme.accent,
   },
   subtitle: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
   },
   section: {
     gap: 12,
   },
   sectionTitle: {
-    color: theme.goldSoft,
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 0.6,
+    ...typography.title,
+    color: theme.accentSoft,
   },
   usageGrid: {
     flexDirection: "row",
@@ -445,22 +482,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   statValue: {
-    color: theme.gold,
+    color: theme.accent,
     fontSize: 26,
     fontWeight: "900",
     letterSpacing: 0.2,
   },
   statLabel: {
+    ...typography.footnoteStrong,
     color: theme.text,
-    fontSize: 13,
-    fontWeight: "900",
     marginTop: 8,
   },
   statHelper: {
+    ...typography.caption,
     color: theme.muted,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: "600",
     marginTop: 4,
   },
   card: {
@@ -482,47 +516,36 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: theme.surfaceSoft,
-  },
-  iconText: {
-    color: theme.gold,
-    fontSize: 18,
-    fontWeight: "900",
   },
   cardBody: {
     flex: 1,
     gap: 4,
   },
   cardTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 15,
-    fontWeight: "900",
   },
   cardDescription: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: "600",
   },
   cardMeta: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: "600",
   },
   cardAction: {
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   cardActionText: {
-    color: theme.gold,
-    fontSize: 11,
-    fontWeight: "800",
+    ...typography.caption,
+    color: theme.accent,
   },
 });

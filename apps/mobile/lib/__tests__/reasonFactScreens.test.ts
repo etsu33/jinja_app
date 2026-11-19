@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 describe.each([
-  ["相談結果画面", "app/concierge/index.tsx"],
+  ["相談結果画面", "app/(tabs)/concierge/index.tsx"],
   ["神社詳細画面", "app/shrines/[id].tsx"],
 ])("%s の根拠一覧", (_name, path) => {
   const source = readFileSync(resolve(mobileRoot, path), "utf8");

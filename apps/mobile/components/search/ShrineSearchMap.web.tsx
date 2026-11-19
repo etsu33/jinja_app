@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View, type ViewInstance } from "react-nati
 import { MapLibreMap, Marker, type ErrorEvent } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { radius } from "../../design/radius";
 import { spacing } from "../../design/spacing";
 import {
@@ -14,6 +14,7 @@ import {
   type ShrineSearchMapProps,
 } from "../../lib/shrineMap";
 import { trackMapMarkerSelect } from "../../lib/searchAnalytics";
+import { typography } from "../../design/typography";
 
 // 公開クライアント用のstyle URL。secretはコードへ直書きせず、未設定時は
 // Mapを生成せず既存の一覧fallbackを表示する。domain制限・使用量制限は
@@ -23,7 +24,7 @@ const STYLE_URL = process.env.EXPO_PUBLIC_WEB_MAP_STYLE_URL;
 function applyMarkerSelectedState(element: HTMLElement, selected: boolean): void {
   element.setAttribute("aria-pressed", selected ? "true" : "false");
   element.style.transform = selected ? "scale(1.35)" : "scale(1)";
-  element.style.boxShadow = selected ? `0 0 0 3px ${theme.gold}` : "none";
+  element.style.boxShadow = selected ? `0 0 0 3px ${theme.accent}` : "none";
   element.style.zIndex = selected ? "1" : "0";
 }
 
@@ -40,7 +41,7 @@ function createMarkerElement(
   element.style.width = "16px";
   element.style.height = "16px";
   element.style.borderRadius = "999px";
-  element.style.backgroundColor = theme.gold;
+  element.style.backgroundColor = theme.accent;
   element.style.border = `2px solid ${theme.background}`;
   element.style.boxSizing = "border-box";
   element.style.cursor = "pointer";
@@ -236,10 +237,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surfaceSoft,
   },
   notice: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
   list: {
     gap: spacing.tightGap,
@@ -253,7 +252,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.tightGap,
   },
   itemSelected: {
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
   },
   itemPressed: {
     opacity: 0.74,
@@ -265,19 +264,16 @@ const styles = StyleSheet.create({
     gap: spacing.tightGap,
   },
   itemName: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 14,
-    fontWeight: "800",
   },
   itemSelectedBadge: {
-    color: theme.gold,
-    fontSize: 11,
-    fontWeight: "800",
+    ...typography.caption,
+    color: theme.accent,
   },
   itemAddress: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "600",
     marginTop: 2,
   },
 });

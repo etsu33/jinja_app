@@ -5,17 +5,18 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const source = readFileSync(resolve(mobileRoot, "app/mypage/index.tsx"), "utf8");
+const source = readFileSync(resolve(mobileRoot, "app/(tabs)/mypage/index.tsx"), "utf8");
 
 describe("MyPage 退会導線", () => {
-  it("「設定・サポート」セクションの設定カードの直後に「退会する」カードを置く", () => {
+  it("「設定・サポート」セクションの先頭に「退会する」カードを置き、規約類より前に出す", () => {
+    // 「設定」カードは中身の無い「準備中」表示だったため削除した
+    // (App Store Review Guideline 2.1 / 4.2)。退会がセクションの先頭になる。
     const section = source.slice(source.indexOf("設定・サポート"));
-    const settingsIndex = section.indexOf('title="設定"');
     const deleteIndex = section.indexOf('title="退会する"');
-    const termsIndex = section.indexOf('title="利用規約"');
+    const termsIndex = section.indexOf("LEGAL_LABELS.terms");
 
-    expect(settingsIndex).toBeGreaterThan(-1);
-    expect(deleteIndex).toBeGreaterThan(settingsIndex);
+    expect(section).not.toContain('title="設定"');
+    expect(deleteIndex).toBeGreaterThan(-1);
     expect(deleteIndex).toBeLessThan(termsIndex);
   });
 
