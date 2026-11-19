@@ -102,60 +102,64 @@ export const kamimusubiDark = {
 // 金茶 (borderAccent) だけは 2.49 で文字に使えないため、線専用とする。
 // ────────────────────────────────────────────────────────────────
 export const kamimusubiLight = {
-  // ---- Foundation: 生成りの紙 ----
-  // 明度は outside < surfaceSoft < background < surface < surfaceRaised の単調増加。
-  // 暗基調と同じく、奥行きは明度差で作る。明地では影も機能する。
-  background: "#F5F1E8",
-  surfaceSoft: "#EDE7DA",
-  surface: "#FBF8F2",
+  // ---- Foundation: 生成りの紙と、その上に置く白い紙 ----
+  // 明度は outside < surfaceSoft < background < surface の単調増加。
+  // カードは純白にし、地はわずかに沈めた。白と地の比は 1.18 で、
+  // 線や影に頼らなくても「紙の上に紙が乗っている」と読める差をつける。
+  background: "#F1ECE1",
+  surfaceSoft: "#E7E0D1",
+  surface: "#FFFFFF",
   surfaceRaised: "#FFFFFF",
 
   // ---- Border ----
-  // 区切りの線は主張させない。borderStrong だけは入力欄など
-  // 状態を示す境界に使うため、地に対して 3.27 を確保する (WCAG 1.4.11)。
-  borderSoft: "#E4DCCB",
-  borderHeader: "#DCD3C0",
-  borderMuted: "#D5CBB8",
-  border: "#CFC6B5",
+  // 区切りの線は主張させない。borderStrong だけは入力欄など状態を示す
+  // 境界に使うため、白に対して 3.69 を確保する (WCAG 1.4.11)。
+  borderSoft: "#DCD3C0",
+  borderHeader: "#D4CAB6",
+  borderMuted: "#CFC6B5",
+  border: "#C7BCA6",
   borderStrong: "#8E8472",
-  // 金茶。格式の記号として枠にだけ使う。文字には使わない (地に対して 2.49)。
+  // 金茶。格式の記号として枠にだけ使う。文字には使わない。
   borderAccent: "#B39665",
   borderAccentDark: "#9A7F4E",
 
-  // ---- Accent: 朱 ----
-  // 鳥居と朱印の朱。1画面に1つだけ差す。面には広げない。
-  accent: "#B53A2D",
-  // 押下は淡くせず濃くする。明地では濃い方が「押された」に見える。
-  accentSoft: "#9E3127",
-  // Premium は深藍で格を示す。金茶は文字に使えないため採らない。
+  // ---- Accent: 深藍 ----
+  // 旧 Dark Forest の gold が担っていた「静かな強調」の位置。見出し・
+  // アイコン・選択状態・副次ボタンに広く使う。40箇所以上から参照される。
+  // ここを朱にすると画面が赤だらけになり、安売りの広告に見える。
+  accent: "#172A40",
+  accentSoft: "#2E4056",
   premiumAccent: "#172A40",
+
+  // ---- Vermilion: 朱 ----
+  // 鳥居と朱印の朱。1画面に1つだけ、主アクションの塗りにのみ使う。
+  // 文字色には使わない (地に対して 4.43 で AA に届かない)。
+  vermilion: "#B53A2D",
+  vermilionDeep: "#9E3127",
 
   // ---- Support: 杉緑 ----
   cedar: "#3F6B4A",
   cedarBorder: "#B8CDBB",
-  cedarSurface: "#E8EFE6",
+  cedarSurface: "#E6EDE4",
 
   // ---- Text: 墨 ----
-  // mutedDark が最も薄い。沈み面の上で 4.63 と余裕が無いため、
+  // mutedDark が最も薄い。沈み面の上で 4.75 と余裕が無いため、
   // これより薄い文字色を足さない。
   text: "#242424",
-  mutedSoft: "#5B5750",
-  muted: "#635E56",
-  mutedDark: "#6B665D",
-  navMuted: "#6B665D",
+  mutedSoft: "#55514A",
+  muted: "#5F5A52",
+  mutedDark: "#656057",
+  navMuted: "#656057",
 
   // ---- Status ----
-  // action が朱のため、error は朱暗で受ける (決定: 案A)。
-  // 主アクションは「朱の塗り + 白文字」、error は「朱暗の文字 + 淡い面」と
-  // 形で分ける。
-  warning: "#8A5A12",
+  // 主アクションが朱の塗りなので、error は朱暗の文字 + 淡い面で分ける (案A)。
+  warning: "#7E520F",
   error: "#8E2018",
-  errorSurface: "#F7E9E6",
+  errorSurface: "#F6E7E4",
 
   // ---- Outside ----
   // 幅広画面で本文カラム(max-width 430)の外側に出る余白色。
-  // 地より一段沈め、紙のカラムが浮いて見える構図にする。
-  outside: "#E6E0D3",
+  outside: "#E0D8C6",
 } as const;
 
 export type KamimusubiLightColorKey = keyof typeof kamimusubiLight;
@@ -235,9 +239,9 @@ export const kamimusubiLightSemanticTheme: PlatformColorTheme = {
   "text.inverse": kamimusubiLight.background,
   "border.default": kamimusubiLight.border,
   "border.strong": kamimusubiLight.borderStrong,
-  "border.focus": kamimusubiLight.accent,
-  "action.primary": kamimusubiLight.accent,
-  "action.primaryHover": kamimusubiLight.accentSoft,
+  "border.focus": kamimusubiLight.vermilion,
+  "action.primary": kamimusubiLight.vermilion,
+  "action.primaryHover": kamimusubiLight.vermilionDeep,
   "action.primaryText": kamimusubiLight.background,
   "action.disabled": kamimusubiLight.mutedDark,
   "status.success": kamimusubiLight.cedar,

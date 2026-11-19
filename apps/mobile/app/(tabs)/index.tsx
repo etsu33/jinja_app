@@ -396,14 +396,15 @@ const styles = StyleSheet.create({
   },
 
   // 主CTA
+  // 画面でただ一つの朱。ここ以外は深藍で受ける。
   primaryCta: {
     height: 54,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.accent,
+    backgroundColor: theme.vermilion,
     marginTop: 20,
-    shadowColor: theme.accent,
+    shadowColor: theme.vermilion,
     ...shadows.goldCta,
   },
   primaryCtaText: {

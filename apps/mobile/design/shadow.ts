@@ -2,32 +2,36 @@
 // lib/tokens/*には対応する重複定義は存在しない。
 // 2026-07時点で card / softCard / goldCta が app/index.tsx・app/concierge/index.tsx から
 // 実際に参照されている。lightCard / skeleton は現時点でどこからも未参照。
+// 2026-11-19: 明基調への切り替えに合わせて影を引き締めた。
+// 旧値は暗基調向けで opacity 0.25〜0.28。近黒の地では見えなかったが、
+// 生成りの地にそのまま出すと黒く濁る。明地では弱い影がよく効く。
 export const shadows = {
   card: {
     shadowColor: "#000",
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
   softCard: {
     shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
     elevation: 3,
   },
+  // 主CTAの下に落とす色付きの影。shadowColor は呼び出し側が朱を渡す。
   goldCta: {
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
     elevation: 4,
   },
   lightCard: {
     shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
   skeleton: {
