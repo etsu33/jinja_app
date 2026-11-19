@@ -7,6 +7,11 @@ import { pushStamp } from "../../lib/storage";
 import Button from "../../components/ui/Button";
 import { appColors as theme } from "../../design/theme";
 import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// ボタンと空状態の印。グリフの □ は端末のフォント次第で豆腐になる。
+const PICK_ICON_SIZE = 22;
+const PLACEHOLDER_ICON_SIZE = 32;
 
 function showSaveFailure() {
   Alert.alert("保存できませんでした", "時間をおいて、もう一度お試しください。");
@@ -86,7 +91,7 @@ export default function GoshuinUpload() {
           accessibilityRole="button"
           accessibilityLabel="カメラで御朱印を撮影する"
         >
-          <Text style={styles.pickBtnIcon}>□</Text>
+          <Ionicons name="camera-outline" size={PICK_ICON_SIZE} color={theme.accent} />
           <Text style={styles.pickBtnText}>カメラ</Text>
         </Pressable>
         <Pressable
@@ -95,7 +100,7 @@ export default function GoshuinUpload() {
           accessibilityRole="button"
           accessibilityLabel="アルバムから御朱印画像を選択する"
         >
-          <Text style={styles.pickBtnIcon}>□</Text>
+          <Ionicons name="images-outline" size={PICK_ICON_SIZE} color={theme.accent} />
           <Text style={styles.pickBtnText}>アルバム</Text>
         </Pressable>
       </View>
@@ -119,7 +124,7 @@ export default function GoshuinUpload() {
         </View>
       ) : (
         <View style={styles.placeholder}>
-          <Text style={styles.placeholderIcon}>□</Text>
+          <Ionicons name="image-outline" size={PLACEHOLDER_ICON_SIZE} color={theme.muted} />
           <Text style={styles.placeholderTitle}>画像を選択してください</Text>
           <Text style={styles.placeholderText}>結んだご縁を、あとから振り返れる形で残します。</Text>
         </View>
@@ -171,11 +176,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
   },
-  pickBtnIcon: {
-    color: theme.accent,
-    fontSize: 24,
-    fontWeight: "900",
-  },
   pickBtnText: {
     ...typography.label,
     color: theme.text,
@@ -205,11 +205,6 @@ const styles = StyleSheet.create({
     borderColor: theme.borderSoft,
     borderStyle: "dashed",
     backgroundColor: theme.surface,
-  },
-  placeholderIcon: {
-    color: theme.accent,
-    fontSize: 34,
-    fontWeight: "900",
   },
   placeholderTitle: {
     ...typography.title,

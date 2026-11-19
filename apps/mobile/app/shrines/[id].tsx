@@ -646,14 +646,12 @@ export default function ShrineDetail() {
     <>
       <Stack.Screen options={{ title: shrine.name }} />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        {/* ヒーロー画像 */}
+        {/* ヒーロー画像。出典と権利を確認した写真がある場合だけ出す。
+            無い間は帯ごと出さず、名前から始める。16:10の空の帯に絵文字を置くと、
+            写真が無いことを画面いっぱいに見せることになる。 */}
         {shrine.imageUrl ? (
           <Image source={{ uri: shrine.imageUrl }} style={styles.heroImage} />
-        ) : (
-          <View style={styles.heroPlaceholder}>
-            <Text style={styles.heroPlaceholderText}>⛩</Text>
-          </View>
-        )}
+        ) : null}
 
         {/* ヘッダー（お気に入り）。戻るはネイティブヘッダーが持つ。 */}
         <View style={styles.headerBar}>
@@ -911,18 +909,6 @@ const styles = StyleSheet.create({
   heroImage: {
     width: "100%",
     aspectRatio: 16 / 10,
-  },
-  heroPlaceholder: {
-    width: "100%",
-    aspectRatio: 16 / 10,
-    backgroundColor: theme.surface,
-    alignItems: "center",
-    justifyContent: "center",
-    borderBottomWidth: cardSizes.borderWidth,
-    borderBottomColor: theme.border,
-  },
-  heroPlaceholderText: {
-    fontSize: 48,
   },
 
   // ヘッダーバー

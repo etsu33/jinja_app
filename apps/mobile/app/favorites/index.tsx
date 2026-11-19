@@ -126,22 +126,7 @@ function FavoriteCard({
           source={{ uri: shrine.photo_url }}
           style={{ width: cardSizes.imageSm, height: cardSizes.imageSm, borderRadius: radius.xs }}
         />
-      ) : (
-        <View
-          style={{
-            width: cardSizes.imageSm,
-            height: cardSizes.imageSm,
-            borderRadius: radius.xs,
-            backgroundColor: theme.surfaceSoft,
-            borderWidth: cardSizes.borderWidth,
-            borderColor: theme.border,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ fontSize: 28 }}>⛩</Text>
-        </View>
-      )}
+      ) : null}
 
       <View style={{ flex: 1, gap: spacing.tightGap }}>
         <Text style={{ ...typography.title, color: theme.text }}>

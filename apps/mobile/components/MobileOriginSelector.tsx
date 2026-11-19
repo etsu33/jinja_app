@@ -11,6 +11,10 @@ import {
 import { PREFECTURE_ORIGINS, prefectureOrigin, type OriginMode, type UserOrigin } from "../../../packages/shared/userOrigin";
 import { trackMobileDirection } from "../lib/directionEvents";
 import { typography } from "../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// 選択中の印。グリフの ✓ は端末のフォント次第で字形が変わるため Ionicons を使う。
+const CHECK_ICON_SIZE = 15;
 
 type Candidate = { place_id: string; name: string | null; lat: number; lng: number; type?: string };
 const modes: Array<[OriginMode, string]> = [
@@ -94,7 +98,12 @@ export function MobileOriginSelector({
               accessibilityLabel={label}
               accessibilityState={{ checked: selected, disabled: !!disabled }}
             >
-              <Text style={[styles.text, selected && styles.activeText]}>{selected ? `✓ ${label}` : label}</Text>
+              <>
+                {selected ? (
+                  <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={theme.accent} />
+                ) : null}
+                <Text style={[styles.text, selected && styles.activeText]}>{label}</Text>
+              </>
             </Pressable>
           );
         })}
@@ -171,7 +180,8 @@ export function MobileOriginSelector({
 const styles = StyleSheet.create({
   wrap: { gap: 10 },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  button: { minHeight: 44, minWidth: "47%", flexGrow: 1, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 10, justifyContent: "center" },
+  // 選択中は印(Ionicons)と文字が横に並ぶ。
+  button: { minHeight: 44, minWidth: "47%", flexGrow: 1, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 4, justifyContent: "center" },
   active: { borderWidth: 2, borderColor: theme.accentSoft, backgroundColor: theme.surfaceSoft },
   pressed: { opacity: 0.72 },
   text: { ...typography.body, color: theme.text },
