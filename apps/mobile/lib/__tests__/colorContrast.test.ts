@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
-import { kamimusubiLight as light } from "../../design/theme";
+import { dawn, kamimusubiLight as light } from "../../design/theme";
 
 function channel(value: number): number {
   const c = value / 255;
@@ -146,5 +146,72 @@ describe("朱の使い方", () => {
     );
 
     expect(users).toEqual(["app/(tabs)/index.tsx", "app/consultation/index.tsx"]);
+  });
+});
+
+describe("和の朝焼け（区切りの画面のグラデーション）", () => {
+  // 線形補間でグラデ上の任意位置の色を出す。
+  function colorAt(position: number): string {
+    const { colors, locations } = dawn;
+    for (let i = 0; i < locations.length - 1; i += 1) {
+      const [a, b] = [locations[i], locations[i + 1]];
+      if (position < a || position > b) continue;
+
+      const t = b > a ? (position - a) / (b - a) : 0;
+      const from = colors[i].replace("#", "");
+      const to = colors[i + 1].replace("#", "");
+      const channel = (offset: number) => {
+        const x = parseInt(from.slice(offset, offset + 2), 16);
+        const y = parseInt(to.slice(offset, offset + 2), 16);
+        return Math.round(x + (y - x) * t);
+      };
+      return `#${[0, 2, 4].map((o) => channel(o).toString(16).padStart(2, "0")).join("")}`;
+    }
+    return colors[colors.length - 1];
+  }
+
+  it("上から下へ、色が6段で定義されている", () => {
+    expect(dawn.colors).toHaveLength(dawn.locations.length);
+    expect(dawn.locations[0]).toBe(0);
+    expect(dawn.locations[dawn.locations.length - 1]).toBe(1);
+
+    // 位置は単調増加。空の向きを反転させない。
+    for (let i = 1; i < dawn.locations.length; i += 1) {
+      expect(dawn.locations[i]).toBeGreaterThan(dawn.locations[i - 1]);
+    }
+  });
+
+  it("白文字を置ける上限までは AA を満たす", () => {
+    for (let p = 0; p <= dawn.safeTextLimit; p += 0.04) {
+      expect(contrast("#FFFFFF", colorAt(p)), `上から ${Math.round(p * 100)}%`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("上限より下は白文字が読めないことを明示する", () => {
+    // 50% の薄縹で 4.46。ここに白文字を置く変更をテストで止める。
+    expect(contrast("#FFFFFF", colorAt(0.5))).toBeLessThan(4.5);
+  });
+
+  it("焼けの帯には墨文字なら置ける", () => {
+    for (const p of [0.86, 0.95]) {
+      expect(contrast(light.text, colorAt(p)), `上から ${Math.round(p * 100)}%`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("Splash のロゴが、白文字を置ける範囲にある", () => {
+    const source = readFileSync(resolve(mobileRoot, "components/common/DawnSplash.tsx"), "utf8");
+    const markTop = Number(source.match(/const MARK_TOP = "(\d+)%"/)?.[1]) / 100;
+
+    expect(markTop).toBeLessThanOrEqual(dawn.safeTextLimit);
+    expect(contrast("#FFFFFF", colorAt(markTop))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("グラデーションを使う画面を区切りの画面に限る", () => {
+    // 40節の Gradient 禁止は、区切りの4画面を除いて有効。
+    const users = globSync(["app/**/*.tsx", "components/**/*.tsx"], { cwd: mobileRoot })
+      .filter((file) => readFileSync(resolve(mobileRoot, file), "utf8").includes("LinearGradient"))
+      .sort();
+
+    expect(users).toEqual(["components/common/DawnSplash.tsx"]);
   });
 });

@@ -137,8 +137,11 @@ Splash → Brand Intro → 利用目的 → 相談テーマ → 参拝スタイ�
 
 ロゴのみを基本とする。余計なコピー・ボタン・機能説明を置かない。
 
-- 案A：生成り背景に `KAMI MUSUBI`
-- 案B：深藍背景に `KAMI MUSUBI`
+> **実装（2026-11-19）**：和の朝焼けのグラデーション（濃藍 → 藍鉄 → 薄縹 → 白群 → 東雲色 → 鳥の子色）に
+> 白の文字組を置く。実体は `apps/mobile/components/common/DawnSplash.tsx`、色は `design/theme.ts` の `dawn`。
+> ロゴは上から32%の位置（地の色 `#334663`、白文字とのコントラスト 9.56）。
+> **白文字を置けるのは上から44%まで**で、50%の薄縹では 4.46 となり AA を割る。
+> 焼けの帯（東雲色・曙色）に文字を置くなら墨文字にする。
 
 ## 11 Brand Intro
 
@@ -348,6 +351,11 @@ Shadow使用対象：Modal / Bottom Sheet / Floating CTA / Elevated Surface。**
 説明ではなく問いを中心にする。文章は短くするが、意味を削りすぎない。
 
 ## 40 禁止事項
+
+> **Gradient の例外（2026-11-19）**：和の朝焼けを表すグラデーションは、**区切りの画面に限って**使ってよい。
+> 対象は Splash / Brand Intro / Immersive Photo Moment の Overlay / Completion Transition の4つ。
+> 通常画面（Home / 相談 / 記録 / マイページ / 神社詳細 / Premium）の地は単色のまま。
+> 向きは上から下への一方向のみ。斜め・放射状は使わない。
 
 Gradient / Neon / Gold Text / Glow / 強いGlassmorphism / 全面Dark UI / 多色Icon / 大量の装飾 / 鳥居Iconの反復 / 全CardへのShadow / 1画面複数Primary CTA / 1画面8個以上の選択肢 / SpinnerだけのLoading / 初回直後の強制Premium / 神秘性を演出する抽象CG / 意味のない写真
 

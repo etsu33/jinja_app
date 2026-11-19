@@ -165,6 +165,22 @@ export const kamimusubiLight = {
   outside: "#E0D8C6",
 } as const;
 
+// 和の朝焼け。夜明け前の濃藍から地平の光へ、上から下へ一方向。
+// 使ってよいのは「区切りの画面」だけ (Splash / Brand Intro /
+// Immersive Photo Moment の Overlay / Completion Transition)。
+// 通常画面の地は単色のまま。ios-ui-spec-v2.md 40節の Gradient 禁止は、
+// この4つを除いて有効とする。
+//
+// 白文字を置けるのは上から 44% まで (50% の薄縹では 4.46 で AA を割る)。
+// 焼けの帯 (東雲色・曙色) の上に文字を置くなら墨文字にする。
+// 曙色・東雲色は文字色・アイコン色には使わない (地に対して 1.81)。
+export const dawn = {
+  colors: ["#16213C", "#26354F", "#5A7A9E", "#B9D4DC", "#F8B88B", "#F5EEDC"],
+  locations: [0, 0.26, 0.5, 0.68, 0.86, 1],
+  // 白文字を置ける下限。これより下へ文字を置かない。
+  safeTextLimit: 0.44,
+} as const;
+
 export type KamimusubiLightColorKey = keyof typeof kamimusubiLight;
 
 // 画面が参照する実値。配色を切り替えるときはここだけを差し替える。

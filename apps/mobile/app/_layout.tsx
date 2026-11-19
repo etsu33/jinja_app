@@ -1,9 +1,15 @@
 import * as React from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as SplashScreen from "expo-splash-screen";
+import { DawnSplash } from "../components/common/DawnSplash";
 import { appColors as theme } from "../design/theme";
 import { typography } from "../design/typography";
 import { initAnalyticsProvider } from "../lib/posthogAnalyticsProvider";
+
+// 自前の Splash (DawnSplash) が出るまでネイティブのSplashを維持する。
+// 白い瞬きを挟まないため。失敗しても起動を止めないよう握りつぶす。
+void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 // 深いリンク(/premium など)で直接起動したときも、Stack の下に (tabs) を敷く。
 // これが無いと戻る先が無くなり、ネイティブの戻るボタンもスワイプバックも出ない。
@@ -34,6 +40,9 @@ const SCREEN_TITLES: Record<string, string> = {
 };
 
 export default function Root() {
+  const [splashDone, setSplashDone] = React.useState(false);
+  const finishSplash = React.useCallback(() => setSplashDone(true), []);
+
   // Analytics Provider初期化: アプリ起動中に一度だけ行う(initAnalyticsProvider内部で多重呼び出しをガード)
   React.useEffect(() => {
     initAnalyticsProvider();
@@ -69,6 +78,8 @@ export default function Root() {
           <Stack.Screen key={name} name={name} options={{ title }} />
         ))}
       </Stack>
+      {/* ios-ui-spec-v2.md 10節 / 和の朝焼け。起動のたびに一度だけ出して消える。 */}
+      {splashDone ? null : <DawnSplash onDone={finishSplash} />}
     </>
   );
 }
