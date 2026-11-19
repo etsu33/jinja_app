@@ -11,6 +11,10 @@ import { spacing } from "../../design/spacing";
 import { typography } from "../../design/typography";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// お気に入りの印。旧実装は "♡"/"♥" のグリフだった。
+const HEART_ICON_SIZE = 18;
 
 type FavoriteHeartButtonProps = {
   favored: boolean;
@@ -46,9 +50,13 @@ function FavoriteHeartButton({ favored, onPress }: FavoriteHeartButtonProps) {
       style={[styles.heartBtn, favored && styles.heartBtnFav]}
       hitSlop={spacing.smGap}
     >
-      <Animated.Text style={[styles.heartText, favored && styles.heartTextFav, { transform: [{ scale }] }]}>
-        {favored ? "♥" : "♡"}
-      </Animated.Text>
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Ionicons
+          name={favored ? "heart" : "heart-outline"}
+          size={HEART_ICON_SIZE}
+          color={favored ? kamimusubiDark.background : kamimusubiDark.mutedSoft}
+        />
+      </Animated.View>
     </Pressable>
   );
 }
@@ -231,12 +239,5 @@ const styles = StyleSheet.create({
   heartBtnFav: {
     borderColor: kamimusubiDark.gold,
     backgroundColor: kamimusubiDark.gold,
-  },
-  heartText: {
-    fontSize: 16,
-    color: kamimusubiDark.mutedSoft,
-  },
-  heartTextFav: {
-    color: kamimusubiDark.background,
   },
 });

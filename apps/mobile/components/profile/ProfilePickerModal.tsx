@@ -2,6 +2,10 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { kamimusubiDark as theme } from "../../design/theme";
 import { radius } from "../../design/radius";
 import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// 選択済みの印。旧実装は "✓" のグリフだった。
+const CHECK_SIZE = 20;
 
 type Option = { label: string; value: string };
 
@@ -51,7 +55,7 @@ export function ProfilePickerModal({
                   }}
                 >
                   <Text style={[styles.optionText, selected && styles.optionTextSelected]}>{option.label}</Text>
-                  {selected ? <Text style={styles.check}>✓</Text> : null}
+                  {selected ? <Ionicons name="checkmark" size={CHECK_SIZE} color={theme.gold} /> : null}
                 </Pressable>
               );
             })}
@@ -77,5 +81,4 @@ const styles = StyleSheet.create({
   optionSelected: { backgroundColor: "rgba(221, 178, 82, 0.12)" },
   optionText: { ...typography.label, color: theme.text },
   optionTextSelected: { color: theme.gold, fontWeight: "600" },
-  check: { color: theme.gold, fontSize: 18, fontWeight: "900" },
 });

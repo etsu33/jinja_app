@@ -6,6 +6,10 @@ import { ProfilePickerModal } from "./profile/ProfilePickerModal";
 import { MobileOriginSelector } from "./MobileOriginSelector";
 import type { UserOrigin } from "../../../packages/shared/userOrigin";
 import { typography } from "../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// リストの送り記号。旧実装は "›" のグリフだった。
+const CHEVRON_SIZE = 20;
 
 // Home画面・Concierge結果画面で共通の条件レイヤー入力（誕生日・参拝スタイル・ご利益・補助条件）
 export type ConditionFieldsCardProps = {
@@ -96,7 +100,7 @@ export function ConditionFieldsCard({
         </View>
         <Pressable onPress={openDatePicker} disabled={disabled} style={styles.selectInput} accessibilityRole="button" accessibilityLabel="参拝予定日を選択" accessibilityValue={{ text: plannedVisitDate || "未選択" }} accessibilityState={{ disabled: !!disabled }}>
           <Text style={plannedVisitDate ? styles.selectInputText : styles.selectPlaceholder}>{plannedVisitDate || "日付を選択"}</Text>
-          <Text style={styles.selectChevron}>›</Text>
+          <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.gold} />
         </Pressable>
         {plannedVisitDate ? <Pressable onPress={() => onChangePlannedVisitDate("")} style={styles.clearButton} accessibilityRole="button" accessibilityLabel="予定日を解除"><Text style={styles.clearText}>予定日を解除</Text></Pressable> : null}
       </View>
@@ -236,7 +240,6 @@ const styles = StyleSheet.create({
   selectInput: { minHeight: 44, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   selectInputText: { ...typography.bodyStrong, color: theme.text },
   selectPlaceholder: { ...typography.label, color: theme.mutedDark },
-  selectChevron: { color: theme.gold, fontSize: 22 },
   clearText: { ...typography.label, color: theme.muted, alignSelf: "flex-end" },
   clearButton: { minHeight: 44, alignSelf: "flex-end", justifyContent: "center", paddingHorizontal: 8 },
   locationButton: { minHeight: 44, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: theme.surface },

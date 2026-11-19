@@ -34,6 +34,10 @@ import {
 import { buildShrineFactViewModel, type ShrineDeity, type ShrineHistory } from "../../lib/shrineKnowledgeFact";
 import { track } from "../../lib/analytics";
 import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// お気に入りの印。旧実装は "♡" のグリフを文字列に混ぜていた。
+const FAV_ICON_SIZE = 18;
 import {
   buildReasonFactItems,
   findPrimaryReasonFact,
@@ -660,8 +664,13 @@ export default function ShrineDetail() {
             accessibilityLabel="お気に入りの切り替え"
             accessibilityState={{ selected: fav }}
           >
+            <Ionicons
+              name={fav ? "heart" : "heart-outline"}
+              size={FAV_ICON_SIZE}
+              color={fav ? theme.gold : theme.muted}
+            />
             <Text style={[styles.favBtnText, fav && styles.favBtnTextActive]}>
-              {fav ? "♡ 登録済み" : "♡ お気に入り"}
+              {fav ? "登録済み" : "お気に入り"}
             </Text>
           </Pressable>
         </View>
@@ -926,6 +935,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.smGap,
   },
   favBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.tightGap + 2,
     paddingVertical: ctaSizes.pillPaddingY,
     paddingHorizontal: cardSizes.cardPaddingMd,
     borderRadius: radius.pill,

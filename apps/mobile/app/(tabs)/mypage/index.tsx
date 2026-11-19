@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { LEGAL_LABELS, openLegalDocument } from "../../../lib/legalLinks";
 import { kamimusubiDark as theme } from "../../../design/theme";
@@ -66,7 +67,10 @@ type MyPageCardProps = {
   title: string;
   description: string;
   meta?: string;
-  iconText: string;
+  // 旧実装は円の中に漢字1文字(人・規・私・退…)を置いていた。意味の読み解きが要り、
+  // Premium だけ "P" とラテン文字が混ざって体系が壊れていたため、タブバーと同じ
+  // Ionicons へ揃える。
+  icon: React.ComponentProps<typeof Ionicons>["name"];
   actionLabel?: string;
   onPress?: () => void;
 };
@@ -78,7 +82,7 @@ type UsageStatProps = {
   onPress: () => void;
 };
 
-function MyPageCard({ title, description, meta, iconText, actionLabel, onPress }: MyPageCardProps) {
+function MyPageCard({ title, description, meta, icon, actionLabel, onPress }: MyPageCardProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -87,7 +91,7 @@ function MyPageCard({ title, description, meta, iconText, actionLabel, onPress }
       accessibilityRole={onPress ? "button" : undefined}
     >
       <View style={styles.iconBox}>
-        <Text style={styles.iconText}>{iconText}</Text>
+        <Ionicons name={icon} size={CARD_ICON_SIZE} color={theme.gold} />
       </View>
       <View style={styles.cardBody}>
         <Text style={styles.cardTitle}>{title}</Text>
@@ -119,6 +123,9 @@ function UsageStat({ label, value, helper, onPress }: UsageStatProps) {
     </Pressable>
   );
 }
+
+// カード左のアイコン。iconBox(46pt)の中に置く。
+const CARD_ICON_SIZE = 22;
 
 // 画面内コンテンツの上余白。safe area inset の内側に置く。
 const CONTENT_TOP_PADDING = 24;
@@ -293,7 +300,7 @@ export default function MyPageScreen() {
             <MyPageCard
               title={accountUsername ?? LOGOUT_MESSAGES.signedInFallbackName}
               description="ログイン中です。別のアカウントに入り直すときは、ログアウトしてください。"
-              iconText="人"
+              icon="person"
               actionLabel="ログアウト"
               onPress={confirmAndLogout}
             />
@@ -304,14 +311,14 @@ export default function MyPageScreen() {
             <MyPageCard
               title="ログイン"
               description="記録や相談履歴を保存して、あとから見返せます。"
-              iconText="入"
+              icon="log-in"
               actionLabel="ログイン"
               onPress={() => router.push("/login")}
             />
             <MyPageCard
               title="新規登録"
               description="アカウントをお持ちでない方はこちらから作成できます。"
-              iconText="新"
+              icon="person-add"
               actionLabel="登録"
               onPress={() => router.push("/signup")}
             />
@@ -324,7 +331,7 @@ export default function MyPageScreen() {
             title="プロフィールカード"
             description="生年月日や出生情報、参拝スタイルを設定できます。"
             meta="入力内容は神社提案の補助情報として使われます。"
-            iconText="人"
+            icon="id-card"
             actionLabel="確認"
             onPress={() => router.push("/profile")}
           />
@@ -365,7 +372,7 @@ export default function MyPageScreen() {
           <MyPageCard
             title="相談履歴"
             description="これまでの相談と、当時推薦された神社を見返せます。"
-            iconText="談"
+            icon="chatbubbles"
             actionLabel="開く"
             onPress={() => {
               trackConsultationHistoryEntryClicked();
@@ -380,7 +387,7 @@ export default function MyPageScreen() {
             title="Premium"
             description="前回比較、深い振り返り、保存した相談の整理を使えるようにします。"
             meta={describePremiumMeta(premiumMeta)}
-            iconText="P"
+            icon="diamond"
             actionLabel="確認"
             onPress={() => router.push("/premium")}
           />
@@ -393,7 +400,7 @@ export default function MyPageScreen() {
               title="退会する"
               description="アカウントと記録を削除します。この操作は取り消せません。"
               meta={deletingAccount ? "退会処理中..." : "Premiumをご利用中の場合、購読も停止されます。"}
-              iconText="退"
+              icon="trash"
               actionLabel="退会"
               onPress={deletingAccount ? undefined : confirmAccountDeletion}
             />
@@ -401,21 +408,21 @@ export default function MyPageScreen() {
           <MyPageCard
             title={LEGAL_LABELS.terms}
             description="アプリの利用条件を確認できます。"
-            iconText="規"
+            icon="document-text"
             actionLabel="開く"
             onPress={openTerms}
           />
           <MyPageCard
             title={LEGAL_LABELS.privacy}
             description="取得する情報と取り扱いを確認できます。"
-            iconText="私"
+            icon="shield-checkmark"
             actionLabel="開く"
             onPress={openPrivacy}
           />
           <MyPageCard
             title="お問い合わせ"
             description="不具合や相談がある場合の連絡先です。"
-            iconText="問"
+            icon="mail"
             actionLabel="送る"
             onPress={openContactMail}
           />
@@ -513,11 +520,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: theme.surfaceSoft,
-  },
-  iconText: {
-    color: theme.gold,
-    fontSize: 18,
-    fontWeight: "900",
   },
   cardBody: {
     flex: 1,

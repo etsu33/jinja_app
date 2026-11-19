@@ -9,6 +9,10 @@ import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
 import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// リストの送り記号。旧実装は "›" のグリフだった。
+const CHEVRON_SIZE = 20;
 
 export default function RecentlyViewedScreen() {
   const router = useRouter();
@@ -80,7 +84,7 @@ function RecentlyViewedCard({
         {!!shrine.address && <Text style={styles.cardAddress}>{shrine.address}</Text>}
       </View>
 
-      <Text accessibilityElementsHidden style={styles.chevron}>›</Text>
+      <Ionicons accessibilityElementsHidden name="chevron-forward" size={CHEVRON_SIZE} color={theme.gold} />
     </Pressable>
   );
 }
@@ -168,10 +172,5 @@ const styles = StyleSheet.create({
   cardAddress: {
     ...typography.subhead,
     color: theme.muted,
-  },
-  chevron: {
-    color: theme.muted,
-    fontSize: 24,
-    fontWeight: "600",
   },
 });

@@ -19,6 +19,10 @@ import { fetchPopularShrines, type PopularShrine } from "../../lib/popularShrine
 import { trackSearchScreenView, trackShrineCardClick } from "../../lib/searchAnalytics";
 import { filterShrines, parseSearchFilters } from "../../lib/searchFilters";
 import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// リストの送り記号。旧実装は "›" のグリフだった。
+const CHEVRON_SIZE = 20;
 
 // Androidの地図可否はAPIキー実値ではなく、app.config.tsが生成したbooleanを
 // Constants.expoConfig経由で参照する(process.env.EXPO_PUBLIC_*はEAS BuildのGradle
@@ -152,9 +156,12 @@ export default function SearchPage() {
                         ))}
                       </View>
                     </View>
-                    <Text accessibilityElementsHidden style={styles.chevron}>
-                      ›
-                    </Text>
+                    <Ionicons
+                      accessibilityElementsHidden
+                      name="chevron-forward"
+                      size={CHEVRON_SIZE}
+                      color={theme.gold}
+                    />
                   </Pressable>
 
                   {isMapSectionAvailable ? (
@@ -256,9 +263,12 @@ export default function SearchPage() {
                     </Text>
                   ) : null}
                 </View>
-                <Text accessibilityElementsHidden style={styles.chevron}>
-                  ›
-                </Text>
+                <Ionicons
+                  accessibilityElementsHidden
+                  name="chevron-forward"
+                  size={CHEVRON_SIZE}
+                  color={theme.gold}
+                />
               </Pressable>
             ))}
           </View>
@@ -480,10 +490,5 @@ const styles = StyleSheet.create({
   miniTagText: {
     ...typography.caption,
     color: theme.goldSoft,
-  },
-  chevron: {
-    color: theme.gold,
-    fontSize: 22,
-    fontWeight: "800",
   },
 });

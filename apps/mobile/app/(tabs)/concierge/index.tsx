@@ -39,6 +39,10 @@ import { getOriginSession } from "../../../lib/originSession";
 import { trackMobileDirection } from "../../../lib/directionEvents";
 import { track } from "../../../lib/analytics";
 import { typography } from "../../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// 送信ボタンの矢印。旧実装は "↑" のグリフだった。
+const SEND_ICON_SIZE = 22;
 import {
   buildRecommendationImpressionDedupKey,
   buildRecommendationResultSetId,
@@ -1030,7 +1034,7 @@ export default function ConciergeScreen() {
           style={[styles.sendBtn, isSendDisabled && styles.sendBtnDisabled]}
           disabled={isSendDisabled}
         >
-          <Text style={styles.sendText}>↑</Text>
+          <Ionicons name="arrow-up" size={SEND_ICON_SIZE} color={theme.background} />
         </Pressable>
       </View>
     </KeyboardAvoidingView>
@@ -1405,10 +1409,5 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: {
     opacity: 0.4,
-  },
-  sendText: {
-    color: theme.background,
-    fontSize: 22,
-    fontWeight: "900",
   },
 });

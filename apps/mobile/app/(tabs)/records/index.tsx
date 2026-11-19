@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { kamimusubiDark } from "../../../design/theme";
 import { spacing } from "../../../design/spacing";
@@ -18,9 +19,15 @@ type RecordItemConfig = {
   title: string;
   description: string;
   meta: string;
-  iconText: string;
+  // 旧実装は円の中に漢字1文字(歩・朱)と記号(♡)を混ぜていた。タブバーと同じ
+  // Ionicons へ揃える。
+  icon: React.ComponentProps<typeof Ionicons>["name"];
   routeLabel: string;
 };
+
+// カード左のアイコン(48ptの枠の中)と、右端の送り記号。
+const CARD_ICON_SIZE = 22;
+const CHEVRON_SIZE = 20;
 
 type RecordCardProps = RecordItemConfig & {
   onPress: (routeLabel: string) => void;
@@ -31,21 +38,21 @@ const recordItems: readonly RecordItemConfig[] = [
     title: "ご縁の歩み",
     description: "相談から提案、参拝、振り返りまでを時系列で見返す",
     meta: "時系列の記録",
-    iconText: "歩",
+    icon: "footsteps",
     routeLabel: "journey",
   },
   {
     title: "保存した神社",
     description: "あとで訪れたい神社を見返す",
     meta: "あとで行きたい場所",
-    iconText: "♡",
+    icon: "heart",
     routeLabel: "favorites",
   },
   {
     title: "御朱印",
     description: "登録した御朱印を確認する",
     meta: "参拝の記録",
-    iconText: "朱",
+    icon: "images",
     routeLabel: "goshuin",
   },
 ];
@@ -56,7 +63,7 @@ const ROUTE_MAP: Record<string, string> = {
   goshuin: "/goshuin",
 };
 
-function RecordCard({ title, description, meta, iconText, routeLabel, onPress }: RecordCardProps) {
+function RecordCard({ title, description, meta, icon, routeLabel, onPress }: RecordCardProps) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const animateScale = (toValue: number) => {
@@ -98,15 +105,7 @@ function RecordCard({ title, description, meta, iconText, routeLabel, onPress }:
             width: 48,
           }}
         >
-          <Text
-            style={{
-              color: kamimusubiDark.gold,
-              fontSize: 22,
-              fontWeight: "700",
-            }}
-          >
-            {iconText}
-          </Text>
+          <Ionicons name={icon} size={CARD_ICON_SIZE} color={kamimusubiDark.gold} />
         </View>
 
         <View style={{ flex: 1 }}>
@@ -115,9 +114,12 @@ function RecordCard({ title, description, meta, iconText, routeLabel, onPress }:
           <Text style={{ ...typography.footnote, color: kamimusubiDark.muted, marginTop: 5 }}>{meta}</Text>
         </View>
 
-        <Text accessibilityElementsHidden style={{ color: kamimusubiDark.muted, fontSize: 20 }}>
-          ›
-        </Text>
+        <Ionicons
+          accessibilityElementsHidden
+          name="chevron-forward"
+          size={CHEVRON_SIZE}
+          color={kamimusubiDark.muted}
+        />
       </Pressable>
     </Animated.View>
   );

@@ -13,6 +13,10 @@ import { setOriginSession } from "../../lib/originSession";
 import { trackSearchEntryClick } from "../../lib/searchAnalytics";
 import { buildSearchFilters } from "../../lib/searchFilters";
 import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// 送信ボタンの矢印。旧実装は "↑" のグリフだった。
+const SEND_ICON_SIZE = 22;
 
 const THEMES = [
   "疲れを整えたい",
@@ -166,7 +170,7 @@ export default function Home() {
               onPress={openConcierge}
               style={styles.sendButton}
             >
-              <Text style={styles.sendButtonText}>↑</Text>
+              <Ionicons name="arrow-up" size={SEND_ICON_SIZE} color={theme.background} />
             </Pressable>
           </View>
         </View>
@@ -330,11 +334,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.gold,
     alignItems: "center",
     justifyContent: "center",
-  },
-  sendButtonText: {
-    color: theme.background,
-    fontSize: 22,
-    fontWeight: "900",
   },
 
   // テーマチップ

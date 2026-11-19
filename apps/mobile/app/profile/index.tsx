@@ -8,6 +8,10 @@ import { useProfileStore } from "../../store/profileStore";
 import { normalizeBirthday } from "../../lib/profile";
 import { ProfilePickerModal } from "../../components/profile/ProfilePickerModal";
 import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// リストの送り記号。旧実装は "›" のグリフだった。
+const CHEVRON_SIZE = 20;
 
 const PREFECTURES = ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"];
 type PickerKind = "year" | "month" | "day" | "time" | "place" | null;
@@ -64,7 +68,7 @@ export default function ProfileScreen() {
             <Text style={[styles.selectText, !normalizedBirthday && styles.placeholder]}>
               {normalizedBirthday ? `${birthdayParts[0]}年${Number(birthdayParts[1])}月${Number(birthdayParts[2])}日` : "選択してください"}
             </Text>
-            <Text style={styles.chevron}>›</Text>
+            <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.gold} />
           </Pressable>
         </View>
 
@@ -72,7 +76,7 @@ export default function ProfileScreen() {
           <Text style={styles.label}>出生時間</Text>
           <Pressable style={styles.selectButton} onPress={() => setPicker("time")} accessibilityRole="button">
             <Text style={[styles.selectText, !userProfile.birthTime && styles.placeholder]}>{userProfile.birthTime || "不明・未設定"}</Text>
-            <Text style={styles.chevron}>›</Text>
+            <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.gold} />
           </Pressable>
         </View>
 
@@ -80,7 +84,7 @@ export default function ProfileScreen() {
           <Text style={styles.label}>出生地</Text>
           <Pressable style={styles.selectButton} onPress={() => setPicker("place")} accessibilityRole="button">
             <Text style={[styles.selectText, !userProfile.birthPlace && styles.placeholder]}>{userProfile.birthPlace || "都道府県を選択"}</Text>
-            <Text style={styles.chevron}>›</Text>
+            <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.gold} />
           </Pressable>
         </View>
       </View>
@@ -176,7 +180,6 @@ const styles = StyleSheet.create({
   selectButton: { minHeight: 44, minWidth: 180, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8, paddingVertical: 8 },
   selectText: { ...typography.label, color: theme.text },
   placeholder: { color: theme.muted },
-  chevron: { color: theme.gold, fontSize: 22, lineHeight: 22 },
   label: {
     ...typography.label,
     color: theme.text,

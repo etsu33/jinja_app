@@ -8,6 +8,10 @@ import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
 import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// 空状態の印。旧実装は "♡" のグリフだった。
+const EMPTY_ICON_SIZE = 40;
 
 export default function FavoritesScreen() {
   const router = useRouter();
@@ -74,10 +78,10 @@ export default function FavoritesScreen() {
         </View>
       ) : items.length === 0 ? (
         <View style={{ alignItems: "center", marginTop: spacing.bottomSpace + spacing.sectionTop, gap: spacing.lgGap }}>
-          <Text style={{ fontSize: 40 }}>♡</Text>
+          <Ionicons name="heart-outline" size={EMPTY_ICON_SIZE} color={theme.mutedDark} />
           <Text style={{ ...typography.body, color: theme.muted }}>お気に入りの神社はまだありません</Text>
           <Text style={{ ...typography.footnote, color: theme.mutedDark, textAlign: "center" }}>
-            神社詳細ページから「♡ お気に入り」を押すと保存されます
+            神社詳細ページの「お気に入り」を押すと保存されます
           </Text>
         </View>
       ) : (
