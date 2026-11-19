@@ -179,6 +179,16 @@ export default function ConsultationScreen() {
     else openConcierge();
   };
 
+  // 相談内容を書き換えたのに、前の相談で選んだご縁がそのまま残っている状態。
+  // 消さずに知らせるだけにする(誤字の修正でも選択が消えるのは煩わしいため)。
+  // 相談文とご縁の「意味が合っているか」は判定しない。それは推薦側の領分で、
+  // ここで判断すると Mobile が推薦の意味を作ることになる。
+  // 見ているのは「params で受け取った文章から変わったか」という事実だけ。
+  const incomingGoriyaku = params.goriyaku || undefined;
+  const topicChanged = consultation.trim() !== (params.q ?? "").trim();
+  const showGoriyakuNotice =
+    topicChanged && Boolean(incomingGoriyaku) && selectedGoriyaku === incomingGoriyaku;
+
   const isLast = step === TOTAL - 1;
   const current = STEPS[step];
 
@@ -256,6 +266,15 @@ export default function ConsultationScreen() {
 
         {step === 2 ? (
           <View style={styles.group}>
+            {showGoriyakuNotice ? (
+              <View accessibilityRole="alert" style={styles.notice}>
+                <Ionicons name="information-circle-outline" size={18} color={theme.warning} />
+                <Text style={styles.noticeText}>
+                  「{incomingGoriyaku}」は、前の相談で選んだものです。相談内容を書き直したので、
+                  必要なら選び直してください。もう一度押すと外せます。
+                </Text>
+              </View>
+            ) : null}
             {GORIYAKU_OPTIONS.map((item) => (
               <SelectionCard
                 key={item}
@@ -373,6 +392,25 @@ const styles = StyleSheet.create({
     marginTop: spacing.lgGap,
     marginBottom: spacing.sectionTop + spacing.smGap,
   },
+  // 注意書き。warning #7E520F は沈み面に対して 5.25 で AA を満たす(実測)。
+  // 左罫は Concierge の条件サマリと同じ文法。朱は主アクション専用なので使わない。
+  notice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: theme.surfaceSoft,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.warning,
+    borderRadius: radius.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  noticeText: {
+    ...typography.footnote,
+    color: theme.warning,
+    flex: 1,
+  },
+
   group: {
     gap: spacing.mdGap,
   },
