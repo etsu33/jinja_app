@@ -99,11 +99,18 @@ export default function ConsultationScreen() {
     visitStyle?: string;
     goriyaku?: string;
     support?: string;
+    topicDone?: string;
   }>();
 
   const restoredOrigin = React.useRef<UserOrigin | null>(getOriginSession()).current;
 
-  const [step, setStep] = React.useState(0);
+  // ホームの自由入力は STEP 1 そのものなので、書いてあれば STEP 1 を飛ばす。
+  // Concierge の「条件を変える」からは topicDone を渡さない。渡すと相談文を
+  // 直す手段が無くなるため、あちらからは STEP 1 を残す。
+  const topicDone = params.topicDone === "1" && Boolean((params.q ?? "").trim());
+  const firstStep = topicDone ? 1 : 0;
+
+  const [step, setStep] = React.useState(firstStep);
   const [consultation, setConsultation] = React.useState(params.q ?? "");
   const [selectedTheme, setSelectedTheme] = React.useState<string | null>(params.theme || null);
   const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>(params.visitStyle || undefined);
@@ -157,8 +164,9 @@ export default function ConsultationScreen() {
   };
 
   // 22節: 各ステップで戻れる。最初のステップではホームへ戻る。
+  // STEP 1 を飛ばしている場合、戻り先はホーム(相談文を書いた場所)。
   const goBack = () => {
-    if (step > 0) {
+    if (step > firstStep) {
       setStep((current) => current - 1);
       return;
     }
@@ -183,7 +191,7 @@ export default function ConsultationScreen() {
       <View style={styles.topBar}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={step > 0 ? "前のステップへ戻る" : "相談をやめて戻る"}
+          accessibilityLabel={step > firstStep ? "前のステップへ戻る" : "相談をやめて戻る"}
           hitSlop={12}
           onPress={goBack}
           style={styles.backButton}
