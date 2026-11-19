@@ -24,7 +24,7 @@ const STYLE_URL = process.env.EXPO_PUBLIC_WEB_MAP_STYLE_URL;
 function applyMarkerSelectedState(element: HTMLElement, selected: boolean): void {
   element.setAttribute("aria-pressed", selected ? "true" : "false");
   element.style.transform = selected ? "scale(1.35)" : "scale(1)";
-  element.style.boxShadow = selected ? `0 0 0 3px ${theme.gold}` : "none";
+  element.style.boxShadow = selected ? `0 0 0 3px ${theme.accent}` : "none";
   element.style.zIndex = selected ? "1" : "0";
 }
 
@@ -41,7 +41,7 @@ function createMarkerElement(
   element.style.width = "16px";
   element.style.height = "16px";
   element.style.borderRadius = "999px";
-  element.style.backgroundColor = theme.gold;
+  element.style.backgroundColor = theme.accent;
   element.style.border = `2px solid ${theme.background}`;
   element.style.boxSizing = "border-box";
   element.style.cursor = "pointer";
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.tightGap,
   },
   itemSelected: {
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
   },
   itemPressed: {
     opacity: 0.74,
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   },
   itemSelectedBadge: {
     ...typography.caption,
-    color: theme.gold,
+    color: theme.accent,
   },
   itemAddress: {
     ...typography.footnote,

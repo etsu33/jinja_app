@@ -1077,7 +1077,7 @@ const styles = StyleSheet.create({
   consultationCard: {
     backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -1085,7 +1085,7 @@ const styles = StyleSheet.create({
   },
   consultationLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   consultationText: {
     ...typography.body,
@@ -1113,7 +1113,7 @@ const styles = StyleSheet.create({
   },
   conditionLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   conditionTitle: {
     ...typography.title,
@@ -1121,13 +1121,13 @@ const styles = StyleSheet.create({
   },
   conditionSummaryRow: {
     borderLeftWidth: 2,
-    borderLeftColor: theme.borderGold,
+    borderLeftColor: theme.borderAccent,
     paddingLeft: 10,
     gap: 3,
   },
   conditionSummaryLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   conditionSummaryText: {
     ...typography.subhead,
@@ -1164,7 +1164,7 @@ const styles = StyleSheet.create({
   },
   resultsLabel: {
     ...typography.label,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   resultsLead: {
     ...typography.footnote,
@@ -1176,7 +1176,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     paddingHorizontal: 18,
     paddingTop: 16,
     paddingBottom: 18,
@@ -1194,7 +1194,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: theme.gold,
+    backgroundColor: theme.accent,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1206,7 +1206,7 @@ const styles = StyleSheet.create({
   },
   rankLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   rankLine: {
     flex: 1,
@@ -1229,13 +1229,13 @@ const styles = StyleSheet.create({
 
   connectionBlock: {
     borderLeftWidth: 2,
-    borderLeftColor: theme.borderGold,
+    borderLeftColor: theme.borderAccent,
     paddingLeft: 10,
     gap: 4,
   },
   connectionLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   connectionText: {
     ...typography.body,
@@ -1254,7 +1254,7 @@ const styles = StyleSheet.create({
   },
   reasonLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   cardReason: {
     ...typography.subhead,
@@ -1271,7 +1271,7 @@ const styles = StyleSheet.create({
   },
   reasonFactsLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   reasonFactItem: {
     gap: 3,
@@ -1295,7 +1295,7 @@ const styles = StyleSheet.create({
   },
   directionReferenceLabel: {
     ...typography.label,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   directionReferenceText: {
     ...typography.body,
@@ -1320,7 +1320,7 @@ const styles = StyleSheet.create({
   },
   actionV4Label: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   actionV4SubLabel: {
     ...typography.eyebrow,
@@ -1340,7 +1340,7 @@ const styles = StyleSheet.create({
   },
   actionV4ItemLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   actionV4Title: {
     ...typography.title,
@@ -1367,7 +1367,7 @@ const styles = StyleSheet.create({
   },
   tagText: {
     ...typography.caption,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
 
   // 入力バー
@@ -1405,7 +1405,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 25,
-    backgroundColor: theme.gold,
+    backgroundColor: theme.accent,
   },
   sendBtnDisabled: {
     opacity: 0.4,

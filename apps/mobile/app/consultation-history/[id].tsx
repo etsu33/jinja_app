@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.heading,
-    color: theme.gold,
+    color: theme.accent,
   },
   subtitle: {
     ...typography.footnote,
@@ -298,14 +298,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...typography.title,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   list: {
     gap: spacing.mdGap,
   },
   recommendationCard: {
     backgroundColor: theme.surface,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: radius.lg,
     borderWidth: cardSizes.borderWidth,
     padding: cardSizes.cardPaddingLg,
@@ -320,18 +320,18 @@ const styles = StyleSheet.create({
   recommendationName: {
     ...typography.title,
     flex: 1,
-    color: theme.gold,
+    color: theme.accent,
   },
   actionBadge: {
     borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   actionBadgeText: {
     ...typography.caption,
-    color: theme.gold,
+    color: theme.accent,
   },
   recommendationAddress: {
     ...typography.footnote,
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
   },
   detailLinkText: {
     ...typography.label,
-    color: theme.gold,
+    color: theme.accent,
     textDecorationLine: "underline",
   },
   messageBubble: {

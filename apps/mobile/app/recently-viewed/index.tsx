@@ -84,7 +84,7 @@ function RecentlyViewedCard({
         {!!shrine.address && <Text style={styles.cardAddress}>{shrine.address}</Text>}
       </View>
 
-      <Ionicons accessibilityElementsHidden name="chevron-forward" size={CHEVRON_SIZE} color={theme.gold} />
+      <Ionicons accessibilityElementsHidden name="chevron-forward" size={CHEVRON_SIZE} color={theme.accent} />
     </Pressable>
   );
 }

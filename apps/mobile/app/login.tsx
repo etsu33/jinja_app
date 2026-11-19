@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     ...typography.eyebrow,
-    color: theme.gold,
+    color: theme.accent,
   },
   title: {
     ...typography.display,
@@ -171,6 +171,6 @@ const styles = StyleSheet.create({
   },
   linkButtonText: {
     ...typography.label,
-    color: theme.gold,
+    color: theme.accent,
   },
 });

@@ -667,7 +667,7 @@ export default function ShrineDetail() {
             <Ionicons
               name={fav ? "heart" : "heart-outline"}
               size={FAV_ICON_SIZE}
-              color={fav ? theme.gold : theme.muted}
+              color={fav ? theme.accent : theme.muted}
             />
             <Text style={[styles.favBtnText, fav && styles.favBtnTextActive]}>
               {fav ? "登録済み" : "お気に入り"}
@@ -946,15 +946,15 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   favBtnActive: {
-    borderColor: theme.borderGold,
-    backgroundColor: theme.borderGoldDark,
+    borderColor: theme.borderAccent,
+    backgroundColor: theme.borderAccentDark,
   },
   favBtnText: {
     ...typography.footnoteStrong,
     color: theme.muted,
   },
   favBtnTextActive: {
-    color: theme.gold,
+    color: theme.accent,
   },
 
   // 神社名・所在地
@@ -986,12 +986,12 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: radius.pill,
     borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     backgroundColor: "transparent",
   },
   tagText: {
     ...typography.footnoteStrong,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
 
   // v2カード共通
@@ -1001,7 +1001,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surfaceSoft,
     borderRadius: radius.xl,
     borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     padding: cardSizes.cardPaddingLg,
     gap: spacing.smGap,
   },
@@ -1031,17 +1031,17 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderRadius: radius.xl,
     borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     padding: cardSizes.cardPaddingLg,
     gap: spacing.smGap,
   },
   meaningActionLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   cardEyebrow: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   cardTitle: {
     ...typography.title,
@@ -1057,7 +1057,7 @@ const styles = StyleSheet.create({
   },
   actionV4SubTitle: {
     ...typography.subhead,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   actionV4SecondaryBlock: {
     marginTop: spacing.smGap,
@@ -1075,7 +1075,7 @@ const styles = StyleSheet.create({
   },
   reasonFactsLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   reasonFactItem: {
     gap: spacing.tightGap,
@@ -1121,7 +1121,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderRadius: radius.xl,
     borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     padding: cardSizes.cardPaddingLg,
     gap: spacing.mdGap,
   },

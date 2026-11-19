@@ -125,7 +125,7 @@ export default function ConsultationHistoryScreen() {
         style={styles.screen}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.gold} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />}
       >
         <View style={styles.header}>
           <Text style={styles.subtitle}>
@@ -232,14 +232,14 @@ const styles = StyleSheet.create({
   },
   groupLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   list: {
     gap: spacing.mdGap,
   },
   consultationCard: {
     backgroundColor: theme.surface,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: radius.lg,
     borderWidth: cardSizes.borderWidth,
     padding: cardSizes.cardPaddingLg,
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   },
   threadTitle: {
     ...typography.title,
-    color: theme.gold,
+    color: theme.accent,
   },
   createdAt: {
     ...typography.footnote,

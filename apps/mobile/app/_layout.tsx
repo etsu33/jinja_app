@@ -46,7 +46,7 @@ export default function Root() {
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: theme.background },
-          headerTintColor: theme.gold,
+          headerTintColor: theme.accent,
           // headerTitleStyle は lineHeight / letterSpacing を受け付けないため、
           // Tokenの実値のうちネイティブヘッダーが解釈する2つだけを渡す。
           headerTitleStyle: {

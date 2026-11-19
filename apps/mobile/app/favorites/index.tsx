@@ -163,10 +163,10 @@ function FavoriteCard({
           paddingHorizontal: 10,
           borderRadius: radius.pill,
           borderWidth: cardSizes.borderWidth,
-          borderColor: theme.borderGold,
+          borderColor: theme.borderAccent,
         }}
       >
-        <Text style={{ ...typography.footnoteStrong, color: theme.gold }}>
+        <Text style={{ ...typography.footnoteStrong, color: theme.accent }}>
           解除
         </Text>
       </Pressable>

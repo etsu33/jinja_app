@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
   },
   pickBtnIcon: {
-    color: theme.gold,
+    color: theme.accent,
     fontSize: 24,
     fontWeight: "900",
   },
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
   },
   placeholderIcon: {
-    color: theme.gold,
+    color: theme.accent,
     fontSize: 34,
     fontWeight: "900",
   },

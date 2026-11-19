@@ -60,7 +60,7 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.gold,
+        tabBarActiveTintColor: theme.accent,
         tabBarInactiveTintColor: theme.muted,
         tabBarLabelStyle: {
           fontSize: bottomNavigationSizes.labelFontSize,

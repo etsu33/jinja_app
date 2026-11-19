@@ -51,14 +51,14 @@ export const kamimusubiDark = {
   // 関係が逆転していた。default より明るい段階をここで用意する。
   borderStrong: "#465043",
   // 金枠は「褪せた鎮守の金具」。彩度を落とし、装飾ではなく格式の記号として扱う。
-  borderGold: "#7A6438",
-  borderGoldDark: "#5C4B2A",
+  borderAccent: "#7A6438",
+  borderAccentDark: "#5C4B2A",
 
   // ---- Accent: restrained shrine-gold ----
   // 旧 gold(#E0B963) は彩度が高くラグジュアリー寄りだったため落ち着かせる。
   // goldは「重要なアクションにのみ差す光」であり、面や装飾には広げない。
-  gold: "#C9A96A",
-  goldSoft: "#DCC28A",
+  accent: "#C9A96A",
+  accentSoft: "#DCC28A",
   // Premium は同じ世界の「より深く、より静かで、わずかに発光する」層。
   // action.primary と同値にせず (旧実装の値衝突を再発させない)、明度のみ上げる。
   premiumAccent: "#E4C88F",
@@ -120,10 +120,10 @@ export const kamimusubiDarkSemanticTheme: PlatformColorTheme = {
   // 旧実装の borderHeader は border.default より暗く強弱が逆転していたため、
   // default より明るい borderStrong を割り当てる。
   "border.strong": kamimusubiDark.borderStrong,
-  "border.focus": kamimusubiDark.gold,
+  "border.focus": kamimusubiDark.accent,
   // Primary Action は「重要な操作にだけ差す光」としての shrine-gold。
-  "action.primary": kamimusubiDark.gold,
-  "action.primaryHover": kamimusubiDark.goldSoft,
+  "action.primary": kamimusubiDark.accent,
+  "action.primaryHover": kamimusubiDark.accentSoft,
   "action.primaryText": kamimusubiDark.background,
   "action.disabled": kamimusubiDark.mutedDark,
   // Status: 旧実装は success / warning / premium / action がいずれも gold 系で、
@@ -144,7 +144,7 @@ export const kamimusubiDarkSemanticTheme: PlatformColorTheme = {
   // Premium は同じ森の「より深く、より静かで、わずかに発光する」層。
   "premium.accent": kamimusubiDark.premiumAccent,
   "premium.surface": kamimusubiDark.surfaceRaised,
-  "premium.border": kamimusubiDark.borderGold,
+  "premium.border": kamimusubiDark.borderAccent,
   // overlay は背景 (#0A0F0C) に合わせた森影。旧値は Navy 由来 (7,16,31)。
   "overlay.default": "rgba(6, 10, 8, 0.82)",
 };

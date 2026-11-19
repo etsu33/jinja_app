@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: theme.surface,
     borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: radius.lg,
     padding: cardSizes.cardPaddingMd,
     gap: spacing.mdGap,

@@ -115,7 +115,7 @@ export default function RankingPage() {
       style={{ flex: 1, backgroundColor: kamimusubiDark.background }}
       contentContainerStyle={{ padding: spacing.screenX, paddingBottom: spacing.bottomSpace }}
     >
-      <Text style={{ ...typography.heading, color: kamimusubiDark.gold }}>人気神社ランキング</Text>
+      <Text style={{ ...typography.heading, color: kamimusubiDark.accent }}>人気神社ランキング</Text>
       <Text
         style={{
           ...typography.body,
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lgGap,
   },
   cardFav: {
-    borderColor: kamimusubiDark.gold,
+    borderColor: kamimusubiDark.accent,
     backgroundColor: kamimusubiDark.surfaceSoft,
   },
   rank: {
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     height: cardSizes.rankBadgeSize,
     borderRadius: radius.pill,
     backgroundColor: kamimusubiDark.surfaceSoft,
-    color: kamimusubiDark.gold,
+    color: kamimusubiDark.accent,
     textAlign: "center",
     textAlignVertical: "center",
     fontWeight: "700",
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     backgroundColor: kamimusubiDark.surfaceSoft,
   },
   heartBtnFav: {
-    borderColor: kamimusubiDark.gold,
-    backgroundColor: kamimusubiDark.gold,
+    borderColor: kamimusubiDark.accent,
+    backgroundColor: kamimusubiDark.accent,
   },
 });

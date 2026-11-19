@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   emptyIcon: {
-    color: theme.gold,
+    color: theme.accent,
     fontSize: 28,
     fontWeight: "900",
     marginBottom: 6,

@@ -131,7 +131,7 @@ export default function VisitHistoryScreen() {
       style={styles.screen}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.gold} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />}
     >
       <View style={styles.header}>
         <Text style={styles.subtitle}>
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     backgroundColor: theme.surface,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: radius.lg,
     borderWidth: cardSizes.borderWidth,
     padding: cardSizes.cardPaddingLg,
@@ -211,10 +211,10 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   summaryValue: {
-    color: theme.gold,
+    color: theme.accent,
     fontSize: 44,
     fontWeight: "900",
   },
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   },
   groupLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   list: {
     gap: 0,
@@ -245,14 +245,14 @@ const styles = StyleSheet.create({
     width: 18,
   },
   timelineDot: {
-    backgroundColor: theme.gold,
+    backgroundColor: theme.accent,
     borderRadius: 7,
     height: 14,
     marginTop: 18,
     width: 14,
   },
   timelineLine: {
-    backgroundColor: theme.borderGold,
+    backgroundColor: theme.borderAccent,
     flex: 1,
     opacity: 0.45,
     width: 1,
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   },
   shrineName: {
     ...typography.title,
-    color: theme.gold,
+    color: theme.accent,
   },
   visitedAt: {
     ...typography.footnote,
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   },
   noteLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   noteText: {
     ...typography.subhead,

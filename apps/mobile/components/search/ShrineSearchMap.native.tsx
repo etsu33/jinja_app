@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.tightGap,
   },
   noCoordItemSelected: {
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
   },
   noCoordItemPressed: {
     opacity: 0.74,

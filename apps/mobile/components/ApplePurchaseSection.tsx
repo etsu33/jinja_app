@@ -191,8 +191,8 @@ const styles = StyleSheet.create({
   section: { marginTop: spacing.smGap, gap: spacing.smGap },
   notice: { ...typography.footnote, color: theme.mutedDark, marginTop: spacing.smGap },
   legalRow: { flexDirection: "row", alignItems: "center", gap: spacing.tightGap },
-  legalLinkText: { ...typography.footnoteStrong, color: theme.gold },
+  legalLinkText: { ...typography.footnoteStrong, color: theme.accent },
   legalSeparator: { ...typography.footnote, color: theme.mutedDark },
   helper: { ...typography.subhead, color: theme.mutedSoft },
-  message: { ...typography.footnote, color: theme.gold },
+  message: { ...typography.footnote, color: theme.accent },
 });

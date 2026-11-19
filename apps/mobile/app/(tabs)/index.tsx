@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: theme.gold,
+    backgroundColor: theme.accent,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -357,8 +357,8 @@ const styles = StyleSheet.create({
     borderColor: theme.borderMuted,
   },
   themePillActive: {
-    backgroundColor: theme.gold,
-    borderColor: theme.gold,
+    backgroundColor: theme.accent,
+    borderColor: theme.accent,
   },
   themePillText: {
     ...typography.footnoteStrong,
@@ -401,9 +401,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.gold,
+    backgroundColor: theme.accent,
     marginTop: 20,
-    shadowColor: theme.gold,
+    shadowColor: theme.accent,
     ...shadows.goldCta,
   },
   primaryCtaText: {

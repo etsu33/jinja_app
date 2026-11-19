@@ -160,7 +160,7 @@ export default function SearchPage() {
                       accessibilityElementsHidden
                       name="chevron-forward"
                       size={CHEVRON_SIZE}
-                      color={theme.gold}
+                      color={theme.accent}
                     />
                   </Pressable>
 
@@ -267,7 +267,7 @@ export default function SearchPage() {
                   accessibilityElementsHidden
                   name="chevron-forward"
                   size={CHEVRON_SIZE}
-                  color={theme.gold}
+                  color={theme.accent}
                 />
               </Pressable>
             ))}
@@ -379,13 +379,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: theme.surfaceSoft,
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   tagText: {
     ...typography.footnoteStrong,
-    color: theme.gold,
+    color: theme.accent,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -399,11 +399,11 @@ const styles = StyleSheet.create({
   },
   sectionLink: {
     ...typography.footnoteStrong,
-    color: theme.gold,
+    color: theme.accent,
   },
   sectionCount: {
     ...typography.footnoteStrong,
-    color: theme.gold,
+    color: theme.accent,
   },
   popularSection: {
     marginBottom: 26,
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: 18,
     padding: 12,
     gap: 12,
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 999,
     backgroundColor: theme.surfaceSoft,
-    color: theme.gold,
+    color: theme.accent,
     fontSize: 13,
     fontWeight: "900",
     lineHeight: 28,
@@ -489,6 +489,6 @@ const styles = StyleSheet.create({
   },
   miniTagText: {
     ...typography.caption,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
 });

@@ -55,7 +55,7 @@ export function ProfilePickerModal({
                   }}
                 >
                   <Text style={[styles.optionText, selected && styles.optionTextSelected]}>{option.label}</Text>
-                  {selected ? <Ionicons name="checkmark" size={CHECK_SIZE} color={theme.gold} /> : null}
+                  {selected ? <Ionicons name="checkmark" size={CHECK_SIZE} color={theme.accent} /> : null}
                 </Pressable>
               );
             })}
@@ -74,11 +74,11 @@ const styles = StyleSheet.create({
   // HIGの最小タップ領域44pt。余白をTextに持たせると37ptにしかならないため、
   // Pressable側で高さを確保する。
   closeButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
-  close: { ...typography.label, color: theme.gold },
+  close: { ...typography.label, color: theme.accent },
   options: { flexGrow: 0 },
   optionsContent: { paddingBottom: 24 },
   option: { minHeight: 48, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: theme.borderHeader },
   optionSelected: { backgroundColor: "rgba(221, 178, 82, 0.12)" },
   optionText: { ...typography.label, color: theme.text },
-  optionTextSelected: { color: theme.gold, fontWeight: "600" },
+  optionTextSelected: { color: theme.accent, fontWeight: "600" },
 });

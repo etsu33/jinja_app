@@ -97,7 +97,7 @@ function RecordCard({ title, description, meta, icon, routeLabel, onPress }: Rec
         <View
           style={{
             alignItems: "center",
-            borderColor: kamimusubiDark.borderGold,
+            borderColor: kamimusubiDark.borderAccent,
             borderRadius: radius.sm,
             borderWidth: cardSizes.borderWidth,
             height: 48,
@@ -105,11 +105,11 @@ function RecordCard({ title, description, meta, icon, routeLabel, onPress }: Rec
             width: 48,
           }}
         >
-          <Ionicons name={icon} size={CARD_ICON_SIZE} color={kamimusubiDark.gold} />
+          <Ionicons name={icon} size={CARD_ICON_SIZE} color={kamimusubiDark.accent} />
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={{ ...typography.subheading, color: kamimusubiDark.gold }}>{title}</Text>
+          <Text style={{ ...typography.subheading, color: kamimusubiDark.accent }}>{title}</Text>
           <Text style={{ ...typography.body, color: kamimusubiDark.text, marginTop: 5 }}>{description}</Text>
           <Text style={{ ...typography.footnote, color: kamimusubiDark.muted, marginTop: 5 }}>{meta}</Text>
         </View>
@@ -185,7 +185,7 @@ export default function RecordsScreen() {
         }}
       >
         <View style={{ marginBottom: spacing.lgGap }}>
-          <Text style={{ ...typography.display, color: kamimusubiDark.gold }}>記録</Text>
+          <Text style={{ ...typography.display, color: kamimusubiDark.accent }}>記録</Text>
           <Text style={{ ...typography.subhead, color: kamimusubiDark.text, marginTop: spacing.mdGap }}>
             相談から育ったご縁や、保存した神社、御朱印をここから振り返れます。
           </Text>

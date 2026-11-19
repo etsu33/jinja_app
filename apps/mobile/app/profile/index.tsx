@@ -68,7 +68,7 @@ export default function ProfileScreen() {
             <Text style={[styles.selectText, !normalizedBirthday && styles.placeholder]}>
               {normalizedBirthday ? `${birthdayParts[0]}年${Number(birthdayParts[1])}月${Number(birthdayParts[2])}日` : "選択してください"}
             </Text>
-            <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.gold} />
+            <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.accent} />
           </Pressable>
         </View>
 
@@ -76,7 +76,7 @@ export default function ProfileScreen() {
           <Text style={styles.label}>出生時間</Text>
           <Pressable style={styles.selectButton} onPress={() => setPicker("time")} accessibilityRole="button">
             <Text style={[styles.selectText, !userProfile.birthTime && styles.placeholder]}>{userProfile.birthTime || "不明・未設定"}</Text>
-            <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.gold} />
+            <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.accent} />
           </Pressable>
         </View>
 
@@ -84,7 +84,7 @@ export default function ProfileScreen() {
           <Text style={styles.label}>出生地</Text>
           <Pressable style={styles.selectButton} onPress={() => setPicker("place")} accessibilityRole="button">
             <Text style={[styles.selectText, !userProfile.birthPlace && styles.placeholder]}>{userProfile.birthPlace || "都道府県を選択"}</Text>
-            <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.gold} />
+            <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.accent} />
           </Pressable>
         </View>
       </View>
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     color: theme.text,
   },
   saveNotice: { alignSelf: "flex-start", backgroundColor: "rgba(221, 178, 82, 0.1)", borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8 },
-  saveNoticeText: { ...typography.footnote, color: theme.goldSoft },
+  saveNoticeText: { ...typography.footnote, color: theme.accentSoft },
   sectionCard: {
     backgroundColor: theme.surface,
     borderWidth: cardSizes.borderWidth,
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...typography.title,
-    color: theme.gold,
+    color: theme.accent,
     marginBottom: spacing.tightGap,
   },
   row: {

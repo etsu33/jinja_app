@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     ...typography.subheading,
-    color: theme.gold,
+    color: theme.accent,
   },
   statusHelper: {
     ...typography.subhead,
@@ -336,6 +336,6 @@ const styles = StyleSheet.create({
   },
   checkoutErrorText: {
     ...typography.footnote,
-    color: theme.gold,
+    color: theme.accent,
   },
 });

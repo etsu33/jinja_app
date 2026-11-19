@@ -91,7 +91,7 @@ function MyPageCard({ title, description, meta, icon, actionLabel, onPress }: My
       accessibilityRole={onPress ? "button" : undefined}
     >
       <View style={styles.iconBox}>
-        <Ionicons name={icon} size={CARD_ICON_SIZE} color={theme.gold} />
+        <Ionicons name={icon} size={CARD_ICON_SIZE} color={theme.accent} />
       </View>
       <View style={styles.cardBody}>
         <Text style={styles.cardTitle}>{title}</Text>
@@ -448,11 +448,11 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   title: {
     ...typography.display,
-    color: theme.gold,
+    color: theme.accent,
   },
   subtitle: {
     ...typography.body,
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...typography.title,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   usageGrid: {
     flexDirection: "row",
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   statValue: {
-    color: theme.gold,
+    color: theme.accent,
     fontSize: 26,
     fontWeight: "900",
     letterSpacing: 0.2,
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: theme.surfaceSoft,
@@ -539,13 +539,13 @@ const styles = StyleSheet.create({
   },
   cardAction: {
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   cardActionText: {
     ...typography.caption,
-    color: theme.gold,
+    color: theme.accent,
   },
 });

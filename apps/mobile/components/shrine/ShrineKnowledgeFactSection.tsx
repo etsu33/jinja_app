@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   },
   factSubLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   factDeityRow: {
     flexDirection: "row",

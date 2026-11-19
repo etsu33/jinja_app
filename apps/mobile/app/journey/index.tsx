@@ -330,7 +330,7 @@ export default function JourneyScreen() {
       style={styles.screen}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.gold} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />}
     >
       <View style={styles.header}>
         <Text style={styles.subtitle}>
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
   },
   groupLabel: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   list: {},
   timelineRow: {
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     marginTop: 10,
-    backgroundColor: theme.gold,
+    backgroundColor: theme.accent,
   },
   timelineConnector: {
     flex: 1,
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   },
   typePill: {
     alignSelf: "flex-start",
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: radius.pill,
     borderWidth: cardSizes.borderWidth,
     paddingHorizontal: 10,
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   },
   typePillText: {
     ...typography.footnoteStrong,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   typePillMuted: {
     alignSelf: "flex-start",
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
   },
   moodText: {
     ...typography.footnote,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   reasonBlock: {
     borderTopColor: theme.borderHeader,
@@ -513,14 +513,14 @@ const styles = StyleSheet.create({
   },
   benefitChipText: {
     ...typography.caption,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   contextSection: {
     gap: spacing.tightGap,
   },
   sectionHeading: {
     ...typography.eyebrow,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
   },
   actionSuggestionBlock: {
     gap: spacing.tightGap,
@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
   },
   actionItemLabel: {
     ...typography.label,
-    color: theme.gold,
+    color: theme.accent,
   },
   actionItemDescription: {
     ...typography.footnote,
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
   },
   reflectionPromptText: {
     ...typography.footnote,
-    color: theme.goldSoft,
+    color: theme.accentSoft,
     fontStyle: "italic",
   },
   occurredAt: {
@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
   },
   shrineName: {
     ...typography.title,
-    color: theme.gold,
+    color: theme.accent,
   },
   descriptionText: {
     ...typography.subhead,

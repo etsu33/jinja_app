@@ -100,7 +100,7 @@ export function ConditionFieldsCard({
         </View>
         <Pressable onPress={openDatePicker} disabled={disabled} style={styles.selectInput} accessibilityRole="button" accessibilityLabel="参拝予定日を選択" accessibilityValue={{ text: plannedVisitDate || "未選択" }} accessibilityState={{ disabled: !!disabled }}>
           <Text style={plannedVisitDate ? styles.selectInputText : styles.selectPlaceholder}>{plannedVisitDate || "日付を選択"}</Text>
-          <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.gold} />
+          <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.accent} />
         </Pressable>
         {plannedVisitDate ? <Pressable onPress={() => onChangePlannedVisitDate("")} style={styles.clearButton} accessibilityRole="button" accessibilityLabel="予定日を解除"><Text style={styles.clearText}>予定日を解除</Text></Pressable> : null}
       </View>
@@ -203,12 +203,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   introBadge: {
-    color: theme.goldSoft,
+    color: theme.accentSoft,
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 0.5,
     borderWidth: 1,
-    borderColor: theme.borderGoldDark,
+    borderColor: theme.borderAccentDark,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   clearText: { ...typography.label, color: theme.muted, alignSelf: "flex-end" },
   clearButton: { minHeight: 44, alignSelf: "flex-end", justifyContent: "center", paddingHorizontal: 8 },
   locationButton: { minHeight: 44, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: theme.surface },
-  locationButtonReady: { borderColor: theme.borderGold, backgroundColor: theme.gold },
+  locationButtonReady: { borderColor: theme.borderAccent, backgroundColor: theme.accent },
   locationButtonText: { ...typography.label, color: theme.text },
   locationButtonTextReady: { color: theme.background },
   locationError: { ...typography.footnote, color: "#ef8f8f" },
@@ -281,8 +281,8 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   pillActive: {
-    borderColor: theme.borderGold,
-    backgroundColor: theme.gold,
+    borderColor: theme.borderAccent,
+    backgroundColor: theme.accent,
   },
   pillText: {
     ...typography.footnoteStrong,

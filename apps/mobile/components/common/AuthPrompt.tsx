@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 360,
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: radius.cardLg,
     backgroundColor: theme.surface,
     padding: spacing.contentX,
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.subheading,
-    color: theme.gold,
+    color: theme.accent,
   },
   description: {
     ...typography.body,
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   },
   signupButtonText: {
     ...typography.label,
-    color: theme.gold,
+    color: theme.accent,
   },
   closeButton: {
     minHeight: 44,
