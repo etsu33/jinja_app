@@ -19,6 +19,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "KAMI MUSUBI",
   slug: "jinja-app",
+  // アプリアイコン。1024x1024 / アルファ無し / 角丸無しで置く。
+  // 角丸はOSがマスクする(iOSは連続角丸、Androidはランチャー依存)ため自分では付けない。
+  // アルファを含むとApp Store Connectのアップロードで弾かれる。
+  // 図柄は注連縄の円に水引の蝶結び。地は紺(#010E28)で、画面の骨格色である
+  // 深藍(#172A40)と同系。決定記録: docs/design/color-direction-v1.md
+  icon: "./assets/icon.png",
   scheme: "ai-sanpai-navi",
   // App Storeに表示されるバージョン。機能の追加・修正を出すたびに上げる。
   // ビルド番号(ios.buildNumber)はEASのautoIncrementが上げるため、ここでは触らない。
@@ -63,6 +69,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: "com.morietsu.kamimusubi",
+    // Androidのアダプティブアイコンは、108dpのうち中央72dp(66%)しか必ず見える保証が
+    // 無い。元画像は紋が81%を占めるため、そのまま使うと縁が切れる。
+    // assets/adaptive-icon.png は画像全体を76%へ縮めて紋を約62%に収めてある。
+    adaptiveIcon: {
+      foregroundImage: "./assets/adaptive-icon.png",
+      backgroundColor: "#010E28",
+    },
     permissions: ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
   },
   extra: {
