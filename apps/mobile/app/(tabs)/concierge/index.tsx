@@ -12,9 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Location from "expo-location";
 import { appColors as theme } from "../../../design/theme";
-import { ConditionFieldsCard } from "../../../components/ConditionFieldsCard";
 import Button from "../../../components/ui/Button";
 import {
   buildConditionFilters,
@@ -42,6 +40,9 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 
 // 送信ボタンの矢印。旧実装は "↑" のグリフだった。
 const SEND_ICON_SIZE = 22;
+
+// 相談文が空で条件だけが入っているときに送る既定文。従来と同じ文字列。
+const CONSULTATION_FALLBACK = "条件から合う神社を知りたい";
 import {
   buildRecommendationImpressionDedupKey,
   buildRecommendationResultSetId,
@@ -185,6 +186,17 @@ function normalizeRecommendationReasonDetail(raw: unknown): RecommendationReason
 
   return detail.heroMeaningCopy || detail.consultationSummary || detail.shrineMeaning || detail.actionMeaning ? detail : null;
 }
+
+// 1回の送信に効かせる条件。state とレンダーのタイミングをずらさずに submit へ渡すため、
+// 値の組として扱う。項目は従来の payload と同じで、増減させていない。
+type ConditionInputs = {
+  birthdate: string;
+  plannedVisitDate: string;
+  visitStyle?: string;
+  goriyaku?: string;
+  supportText: string;
+  origin: UserOrigin | null;
+};
 
 type ConciergeChatResponse = {
   data?: {
@@ -673,7 +685,7 @@ export default function ConciergeScreen() {
   const { userProfile: globalUserProfile } = useProfileStore();
 
   const initialQuery = [params.q, params.theme].filter(Boolean).join(" ").trim();
-  // Homeの条件レイヤーで入力済みの場合、相談文が空でも初回送信できるようにする
+  // 相談画面の条件だけが入力されている場合、相談文が空でも初回送信できるようにする
   const initialHasCondition = Boolean(params.birthdate || params.plannedVisitDate || params.visitStyle || params.goriyaku || params.support);
 
   const [input, setInput] = React.useState(initialQuery);
@@ -688,7 +700,6 @@ export default function ConciergeScreen() {
   const [plannedVisitDate, setPlannedVisitDate] = React.useState(params.plannedVisitDate ?? "");
   const initialOrigin: UserOrigin | null = getOriginSession() ?? (params.originLat && params.originLng ? { latitude: Number(params.originLat), longitude: Number(params.originLng), source: "device", displayName: "現在地", accuracy: "precise" } : null);
   const [origin, setOrigin] = React.useState<UserOrigin | null>(initialOrigin);
-  const [locationStatus, setLocationStatus] = React.useState<"idle" | "loading" | "ready" | "error">(initialOrigin ? "ready" : "idle");
   const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>(params.goriyaku || undefined);
   const [supportText, setSupportText] = React.useState(params.support ?? "");
   const hasAnyCondition = Boolean(selectedVisitStyle || birthdate.trim() || plannedVisitDate.trim() || selectedGoriyaku || supportText.trim());
@@ -731,23 +742,72 @@ export default function ConciergeScreen() {
   }, [results]);
   const lastInitialQueryRef = React.useRef<string | null>(null);
 
-  // Homeからの相談内容・条件が変わったら自動送信する
+  // 相談画面から戻ってきたかどうかの判定キー。
+  // 相談文だけでなく条件も含める。この画面はタブなので、相談画面が replace で戻ると
+  // 同じインスタンスが生き残る。相談文が同じで条件だけ変わった場合に再送信されない
+  // (= 条件の変更が結果に反映されない)のを防ぐ。
+  const paramsKey = [
+    params.q,
+    params.theme,
+    params.birthdate,
+    params.plannedVisitDate,
+    params.visitStyle,
+    params.goriyaku,
+    params.support,
+  ]
+    .map((value) => value ?? "")
+    .join("\u0001");
+
+  // 相談画面で確定した相談内容・条件を受け取ったら自動送信する
   React.useEffect(() => {
-    const autoSubmitKey = initialQuery || (initialHasCondition ? "__condition_only__" : "");
-    if (!autoSubmitKey || lastInitialQueryRef.current === autoSubmitKey) return;
+    if (!initialQuery && !initialHasCondition) return;
+    if (lastInitialQueryRef.current === paramsKey) return;
 
-    lastInitialQueryRef.current = autoSubmitKey;
+    lastInitialQueryRef.current = paramsKey;
+
+    // 同じインスタンスが生き残るため、params から state を揃え直す。
+    // state の反映はこのレンダー内では見えないので、送信には同じ値を直接渡す。
+    const incoming: ConditionInputs = {
+      birthdate: params.birthdate ?? "",
+      plannedVisitDate: params.plannedVisitDate ?? "",
+      visitStyle: params.visitStyle || undefined,
+      goriyaku: params.goriyaku || undefined,
+      supportText: params.support ?? "",
+      origin: getOriginSession() ?? initialOrigin,
+    };
+    setBirthdate(incoming.birthdate);
+    setPlannedVisitDate(incoming.plannedVisitDate);
+    setSelectedVisitStyle(incoming.visitStyle);
+    setSelectedGoriyaku(incoming.goriyaku);
+    setSupportText(incoming.supportText);
+    setOrigin(incoming.origin);
+
     setInput(initialQuery);
-    void submit(initialQuery);
-    // submitはこの画面内の状態更新関数だけを使うため、initialQuery / initialHasConditionの変更だけを監視する
+    void submit(initialQuery, incoming);
+    // submitはこの画面内の状態更新関数だけを使うため、受け取った値の変化だけを監視する
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialQuery, initialHasCondition]);
+  }, [paramsKey]);
 
-  const submit = async (text: string) => {
+  const submit = async (text: string, override?: ConditionInputs) => {
+    const applied: ConditionInputs = override ?? {
+      birthdate,
+      plannedVisitDate,
+      visitStyle: selectedVisitStyle,
+      goriyaku: selectedGoriyaku,
+      supportText,
+      origin,
+    };
+    const appliedHasCondition = Boolean(
+      applied.visitStyle ||
+        applied.goriyaku ||
+        applied.birthdate.trim() ||
+        applied.plannedVisitDate.trim() ||
+        applied.supportText.trim(),
+    );
     const trimmed = text.trim();
-    if (!trimmed && !hasAnyCondition) return;
-    const queryText = trimmed || "条件から合う神社を知りたい";
-    trackMobileDirection("direction_condition_submitted", { has_visit_date: !!plannedVisitDate, has_origin: !!origin });
+    if (!trimmed && !appliedHasCondition) return;
+    const queryText = trimmed || CONSULTATION_FALLBACK;
+    trackMobileDirection("direction_condition_submitted", { has_visit_date: !!applied.plannedVisitDate, has_origin: !!applied.origin });
 
     setConsultationText(queryText);
     setInput("");
@@ -756,14 +816,14 @@ export default function ConciergeScreen() {
     setErrorMessage(null);
 
     try {
-      const goriyakuTagIds = await resolveGoriyakuTagIds(selectedGoriyaku);
+      const goriyakuTagIds = await resolveGoriyakuTagIds(applied.goriyaku);
       const condition: ConditionState = {
-        birthdate,
-        plannedVisitDate,
-        visitStyleLabel: selectedVisitStyle,
-        goriyakuLabel: selectedGoriyaku,
+        birthdate: applied.birthdate,
+        plannedVisitDate: applied.plannedVisitDate,
+        visitStyleLabel: applied.visitStyle,
+        goriyakuLabel: applied.goriyaku,
         goriyakuTagIds,
-        supportText,
+        supportText: applied.supportText,
       };
       const conditionFilters = buildConditionFilters(condition);
       const profileContext = buildConditionProfileContext({ condition, globalUserProfile });
@@ -771,8 +831,8 @@ export default function ConciergeScreen() {
         consultation: queryText,
         conditionFilters,
         profileContext,
-        plannedVisitDate: plannedVisitDate.trim() || undefined,
-        location: toOriginPayload(origin),
+        plannedVisitDate: applied.plannedVisitDate.trim() || undefined,
+        location: toOriginPayload(applied.origin),
       });
       setResults(recommendations);
       AccessibilityInfo.announceForAccessibility(
@@ -788,23 +848,18 @@ export default function ConciergeScreen() {
 
   const handleSend = () => void submit(input);
 
-  const useCurrentLocation = async () => {
-    setLocationStatus("loading");
-    const permission = await Location.requestForegroundPermissionsAsync();
-    if (permission.status !== "granted") { setLocationStatus("error"); trackMobileDirection("direction_origin_result", { origin_type: "device", result: "denied" }); return; }
-    try {
-      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setOrigin({ latitude: current.coords.latitude, longitude: current.coords.longitude, source: "device", displayName: "現在地", accuracy: "precise" }); trackMobileDirection("direction_origin_result", { origin_type: "device", result: "success" });
-      setLocationStatus("ready");
-    } catch { setLocationStatus("error"); trackMobileDirection("direction_origin_result", { origin_type: "device", result: "failed" }); }
-  };
-
-  const handleChangeConditions = () => {
-    setInput(consultationText);
-  };
-
-  const handleResuggest = () => {
-    void submit(consultationText);
+  // 条件の編集は相談画面(/consultation)が持つ。ここからは今の値を渡して送り出すだけ。
+  const openConsultation = () => {
+    const query = new URLSearchParams();
+    const topic = consultationText === CONSULTATION_FALLBACK ? "" : consultationText.trim();
+    if (topic) query.set("q", topic);
+    if (birthdate.trim()) query.set("birthdate", birthdate.trim());
+    if (plannedVisitDate.trim()) query.set("plannedVisitDate", plannedVisitDate.trim());
+    if (selectedVisitStyle) query.set("visitStyle", selectedVisitStyle);
+    if (selectedGoriyaku) query.set("goriyaku", selectedGoriyaku);
+    if (supportText.trim()) query.set("support", supportText.trim());
+    const search = query.toString();
+    router.push(search ? `/consultation?${search}` : "/consultation");
   };
 
   const handleActionEvent = ({
@@ -866,6 +921,17 @@ export default function ConciergeScreen() {
     });
   };
 
+  // 効いている条件の読み上げ用。入力ではないので、値が無い項目は行ごと出さない。
+  const hasConsultation = Boolean(consultationText);
+  const appliedConditions = [
+    { label: "参拝スタイル", value: selectedVisitStyle ?? "" },
+    { label: "願うご縁", value: selectedGoriyaku ?? "" },
+    { label: "参拝予定日", value: plannedVisitDate.trim() },
+    { label: "誕生日", value: birthdate.trim() },
+    { label: "出発地点", value: origin?.displayName ?? "" },
+    { label: "その他", value: supportText.trim() },
+  ].filter((item) => item.value.length > 0);
+
   const handleDetail = (card: RecommendationCard, rank: number) => {
     if (card.directionReference?.matched) trackMobileDirection("direction_match_detail_opened", { matched: true, recommendation_rank: rank });
     if (!card.shrineId) return;
@@ -916,58 +982,48 @@ export default function ConciergeScreen() {
           <View style={styles.consultationCard}>
             <Text style={styles.consultationLabel}>相談内容</Text>
             <Text style={styles.consultationText}>
-              {consultationText || "ホームで選んだ相談内容をもとに、おすすめの神社を表示します。"}
+              {consultationText || "まだ相談がありません。4つの質問に答えると、ご縁のある神社を提案します。"}
             </Text>
           </View>
 
+          {/* docs/design/ios-ui-spec-v2.md 08節: 1画面1テーマ。
+              旧実装はここに ConditionFieldsCard を丸ごと置いており、相談画面の
+              STEP 2〜4 と同じ入力が2箇所にあった。この画面は結果を読む場所なので、
+              効いている条件は読むだけにし、編集は相談画面へ返す。 */}
           <View style={styles.conditionCard}>
             <View style={styles.conditionHeaderRow}>
               <View style={styles.conditionTitleBlock}>
-                <Text style={styles.conditionLabel}>条件レイヤー</Text>
-                <Text style={styles.conditionTitle}>今回の相談に反映する条件</Text>
+                <Text style={styles.conditionLabel}>
+                  {hasConsultation ? "この提案に効いている条件" : "相談の条件"}
+                </Text>
               </View>
               <Button
-                title="条件を変える"
-                variant="outline"
+                title={hasConsultation ? "条件を変える" : "相談を始める"}
+                variant={hasConsultation ? "outline" : "primary"}
                 size="compact"
-                onPress={handleChangeConditions}
-                accessibilityLabel="相談条件を変更する"
+                onPress={openConsultation}
+                accessibilityLabel={hasConsultation ? "相談条件を変更する" : "相談を始める"}
               />
             </View>
 
-            <View style={styles.conditionSummaryRow}>
-              <Text style={styles.conditionSummaryLabel}>相談テーマ</Text>
-              <Text style={styles.conditionSummaryText} numberOfLines={2}>
-                {consultationText || "未入力"}
+            {appliedConditions.length > 0 ? (
+              <View style={styles.conditionList}>
+                {appliedConditions.map((item) => (
+                  <View key={item.label} style={styles.conditionSummaryRow}>
+                    <Text style={styles.conditionSummaryLabel}>{item.label}</Text>
+                    <Text style={styles.conditionSummaryText} numberOfLines={2}>
+                      {item.value}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.conditionEmptyText}>
+                {hasConsultation
+                  ? "条件は加えていません。相談内容だけで提案しています。"
+                  : "まだ条件はありません。"}
               </Text>
-            </View>
-
-            <ConditionFieldsCard
-              birthdate={birthdate}
-              onChangeBirthdate={setBirthdate}
-              plannedVisitDate={plannedVisitDate}
-              onChangePlannedVisitDate={(value)=>{setPlannedVisitDate(value);if(value)trackMobileDirection("direction_visit_date_set");}}
-              locationStatus={locationStatus}
-              onUseCurrentLocation={() => void useCurrentLocation()}
-              origin={origin}
-              onChangeOrigin={(value)=>{setOrigin(value);if(value)trackMobileDirection("direction_origin_result",{origin_type:value.source,result:"selected"});}}
-              selectedVisitStyle={selectedVisitStyle}
-              onSelectVisitStyle={setSelectedVisitStyle}
-              selectedGoriyaku={selectedGoriyaku}
-              onSelectGoriyaku={setSelectedGoriyaku}
-              supportText={supportText}
-              onChangeSupportText={setSupportText}
-              disabled={loading}
-            />
-
-            <Button
-              title="この条件で再提案する"
-              variant="primary"
-              onPress={handleResuggest}
-              loading={loading}
-              disabled={!consultationText && !hasAnyCondition}
-              accessibilityLabel="この条件で再提案する"
-            />
+            )}
           </View>
 
           {loading ? (
@@ -1114,9 +1170,12 @@ const styles = StyleSheet.create({
     ...typography.eyebrow,
     color: theme.accentSoft,
   },
-  conditionTitle: {
-    ...typography.title,
-    color: theme.text,
+  conditionList: {
+    gap: 10,
+  },
+  conditionEmptyText: {
+    ...typography.subhead,
+    color: theme.muted,
   },
   conditionSummaryRow: {
     borderLeftWidth: 2,

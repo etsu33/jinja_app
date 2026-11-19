@@ -13,7 +13,7 @@ import { ctaSizes } from "../../design/ctaSizes";
 import { cardSizes } from "../../design/cardSizes";
 import { ConditionFieldsCard } from "../../components/ConditionFieldsCard";
 import { resolveGoriyakuTagIds, VISIT_STYLE_OPTIONS, GORIYAKU_OPTIONS } from "../../lib/conditionPayload";
-import { setOriginSession } from "../../lib/originSession";
+import { getOriginSession, setOriginSession } from "../../lib/originSession";
 import type { UserOrigin } from "../../../../packages/shared/userOrigin";
 
 // docs/design/ios-ui-spec-v2.md 08節: 相談の入力を段階化する。
@@ -89,18 +89,32 @@ function SelectionCard({ label, selected, onPress }: SelectionCardProps) {
 export default function ConsultationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ q?: string }>();
+  // Concierge の「条件を変える」から戻ってくる場合、入力済みの値をそのまま復元する。
+  // 受け取るキーは openConcierge が組み立てるクエリと同じもの。項目は増減させていない。
+  const params = useLocalSearchParams<{
+    q?: string;
+    theme?: string;
+    birthdate?: string;
+    plannedVisitDate?: string;
+    visitStyle?: string;
+    goriyaku?: string;
+    support?: string;
+  }>();
+
+  const restoredOrigin = React.useRef<UserOrigin | null>(getOriginSession()).current;
 
   const [step, setStep] = React.useState(0);
   const [consultation, setConsultation] = React.useState(params.q ?? "");
-  const [selectedTheme, setSelectedTheme] = React.useState<string | null>(null);
-  const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>();
-  const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>();
-  const [birthdate, setBirthdate] = React.useState("");
-  const [plannedVisitDate, setPlannedVisitDate] = React.useState("");
-  const [supportText, setSupportText] = React.useState("");
-  const [origin, setOrigin] = React.useState<UserOrigin | null>(null);
-  const [locationStatus, setLocationStatus] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [selectedTheme, setSelectedTheme] = React.useState<string | null>(params.theme || null);
+  const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>(params.visitStyle || undefined);
+  const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>(params.goriyaku || undefined);
+  const [birthdate, setBirthdate] = React.useState(params.birthdate ?? "");
+  const [plannedVisitDate, setPlannedVisitDate] = React.useState(params.plannedVisitDate ?? "");
+  const [supportText, setSupportText] = React.useState(params.support ?? "");
+  const [origin, setOrigin] = React.useState<UserOrigin | null>(restoredOrigin);
+  const [locationStatus, setLocationStatus] = React.useState<"idle" | "loading" | "ready" | "error">(
+    restoredOrigin ? "ready" : "idle",
+  );
 
   const useCurrentLocation = async () => {
     setLocationStatus("loading");
