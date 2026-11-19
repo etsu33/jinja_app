@@ -563,7 +563,7 @@ function ResultCard({
 
       {reasonFactItems.length > 0 ? (
         <View style={styles.reasonFactsCard}>
-          <Text style={styles.reasonFactsLabel}>根拠として見ている情報</Text>
+          <Text style={styles.reasonFactsLabel}>相談と重なったもの</Text>
           {reasonFactItems.slice(0, 3).map((item) => (
             <View key={item.key} style={styles.reasonFactItem}>
               <Text style={styles.reasonFactLabel}>{item.label}</Text>

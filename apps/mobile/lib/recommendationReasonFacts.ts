@@ -66,15 +66,25 @@ export function findPrimaryReasonFact(
   return facts?.find((fact) => fact.is_primary === true) ?? null;
 }
 
+// 画面に出す表示名。Backend の type(内部の分類名)を、アプリ内で既に使っている
+// 言葉へ置き換える。
+//
+// 旧実装は「ご利益・意味」「神社固有の文脈」「相談との一致」といった分類名を
+// そのまま出していた。利用者の言葉ではなく、悩みを整理しに来た人からは
+// 分析されているように読める。
+//
+// 相談画面と条件サマリが使っている語(願うご縁 / 参拝スタイル / 選んだ条件)に
+// 揃える。visit_style は Backend の値も「参拝スタイル」なので、表示名を同じに
+// すると値が畳まれて1行になる(同じ語を2回並べない既存の規約)。
 const DISPLAY_LABEL_BY_TYPE: Record<string, string> = {
   element: "生年月日との相性",
-  need_tag: "相談との一致",
-  user_selected_tag: "明示した条件",
-  goriyaku_tag: "ご利益・意味",
-  history_theme: "神社固有の文脈",
-  text_hint: "ご利益・意味",
-  visit_style: "参拝との相性",
-  fallback: "参考情報",
+  need_tag: "相談の言葉",
+  user_selected_tag: "選んだ条件",
+  goriyaku_tag: "願うご縁",
+  history_theme: "この神社の背景",
+  text_hint: "願うご縁",
+  visit_style: "参拝スタイル",
+  fallback: "参考にした情報",
 };
 
 export type ReasonFactItem = {
