@@ -19,7 +19,7 @@ describe("Expo Router structure", () => {
     // initialRouteNameが無いと、深いリンクで直接開いたときに戻り先が無くなり、
     // ネイティブの戻るボタンもスワイプバックも出ない。
     expect(rootLayout).toMatch(/<Stack\b/);
-    expect(rootLayout).toMatch(/export const unstable_settings = \{\s*initialRouteName: "\(tabs\)",\s*\};/);
+    expect(rootLayout).toMatch(/export const unstable_settings = \{\s*anchor: "\(tabs\)",\s*\};/);
     expect(rootLayout).toContain('<Stack.Screen name="(tabs)" options={{ headerShown: false }} />');
   });
 

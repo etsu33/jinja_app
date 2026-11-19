@@ -8,7 +8,7 @@ import { initAnalyticsProvider } from "../lib/posthogAnalyticsProvider";
 // 深いリンク(/premium など)で直接起動したときも、Stack の下に (tabs) を敷く。
 // これが無いと戻る先が無くなり、ネイティブの戻るボタンもスワイプバックも出ない。
 export const unstable_settings = {
-  initialRouteName: "(tabs)",
+  anchor: "(tabs)",
 };
 
 // 下層画面のネイティブヘッダー。旧実装は各画面が「← 戻る」を手書きしており、

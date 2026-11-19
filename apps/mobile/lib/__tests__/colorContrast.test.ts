@@ -80,3 +80,15 @@ describe("明基調パレットのコントラスト", () => {
     }
   });
 });
+
+describe("Theme の export", () => {
+  it("画面が参照する appColors / appSemanticTheme が実体を持つ", async () => {
+    // 参照名を変えたとき、型は通るのに実行時だけ undefined になる事故を止める。
+    const theme = await import("../../design/theme");
+
+    expect(theme.appColors).toBeDefined();
+    expect(theme.appColors.background).toBe("#F5F1E8");
+    expect(theme.appSemanticTheme).toBeDefined();
+    expect(theme.appSemanticTheme["action.primary"]).toBe("#B53A2D");
+  });
+});
