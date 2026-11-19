@@ -109,14 +109,14 @@ export default function Home() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.content}>
-        {/* ブランドヘッダー */}
+        {/* ブランドヘッダー。ロゴマークはまだ素材が無い。
+            絵文字の鳥居は端末のフォント次第で字形が変わり、ブランドの同一性を
+            保てないため置かず、文字組だけで見せる。マークが用意できたら
+            brandBlock の前に差し込む。 */}
         <View style={styles.header}>
-          <View style={styles.brandRow}>
-            <Text style={styles.logoMark}>⛩️</Text>
-            <View>
-              <Text style={styles.brandName}>神結び</Text>
-              <Text style={styles.brandRuby}>kami musubi</Text>
-            </View>
+          <View style={styles.brandBlock}>
+            <Text style={styles.brandName}>神結び</Text>
+            <Text style={styles.brandRuby}>kami musubi</Text>
           </View>
         </View>
 
@@ -263,13 +263,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 28,
   },
-  brandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  logoMark: {
-    fontSize: 22,
+  brandBlock: {
+    justifyContent: "center",
   },
   brandName: {
     color: theme.text,

@@ -22,7 +22,6 @@ const GLYPH_STYLE_KEYS = new Set([
   "heroPlaceholderText",
   "imagePlaceholderText",
   "introBadge",
-  "logoMark",
   "pickBtnIcon",
   "placeholderIcon",
   "popularRank",
