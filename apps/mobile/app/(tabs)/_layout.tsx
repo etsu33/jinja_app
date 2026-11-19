@@ -1,7 +1,7 @@
 import * as React from "react";
-import { View, type ColorValue } from "react-native";
+import { type ColorValue } from "react-native";
 import { Tabs } from "expo-router";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { kamimusubiDark as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
@@ -12,9 +12,6 @@ import { cardSizes } from "../../design/cardSizes";
 // (旧実装は height: 64 固定でこの状態だった)。
 const bottomNavigationSizes = {
   labelFontSize: 11,
-  featuredIconSize: 28,
-  featuredIconContainer: 54,
-  featuredIconOffsetTop: -18,
 } as const;
 
 // タブの色(ColorValue)はアイコンの color が受け付けない null / number も型上は含むため、
@@ -22,6 +19,37 @@ const bottomNavigationSizes = {
 function toIconColor(color: ColorValue): string | Exclude<ColorValue, string | number | null> | undefined {
   if (color === null || typeof color === "number") return undefined;
   return color;
+}
+
+// アイコンは Ionicons に統一する。
+// 旧実装は MaterialIcons で、iOSにAndroidのイディオムが出ていた。
+// SF Symbols (expo-symbols) はApple純正だが iOS 専用で、Android用に別の
+// アイコン定義を持ち続けることになる。タブ4つのためにその二重管理は負わない。
+// 差し替えるならこのファイルだけで済む。
+//
+// 非選択は線画(outline)、選択は塗り。iOSのタブバーの標準的な区別。
+const TAB_ICONS = {
+  home: "home",
+  concierge: "sparkles",
+  records: "book",
+  mypage: "person",
+} as const;
+
+type TabIconKey = keyof typeof TAB_ICONS;
+
+function tabIcon(key: TabIconKey) {
+  return function TabBarIcon({
+    color,
+    size,
+    focused,
+  }: {
+    color: ColorValue;
+    size: number;
+    focused: boolean;
+  }) {
+    const name = focused ? TAB_ICONS[key] : (`${TAB_ICONS[key]}-outline` as const);
+    return <Ionicons name={name} size={size} color={toIconColor(color)} />;
+  };
 }
 
 // 下層画面は root の Stack (app/_layout.tsx) が持つ。
@@ -46,52 +74,14 @@ export default function TabsLayout() {
         },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "ホーム",
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="home" size={size} color={toIconColor(color)} />,
-        }}
-      />
-      <Tabs.Screen
-        name="concierge/index"
-        options={{
-          title: "相談",
-          tabBarIcon: () => (
-            <View
-              style={{
-                width: bottomNavigationSizes.featuredIconContainer,
-                height: bottomNavigationSizes.featuredIconContainer,
-                borderRadius: bottomNavigationSizes.featuredIconContainer / 2,
-                backgroundColor: theme.gold,
-                alignItems: "center",
-                justifyContent: "center",
-                marginTop: bottomNavigationSizes.featuredIconOffsetTop,
-              }}
-            >
-              <MaterialIcons
-                name="auto-awesome"
-                size={bottomNavigationSizes.featuredIconSize}
-                color={theme.background}
-              />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="records/index"
-        options={{
-          title: "記録",
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="book" size={size} color={toIconColor(color)} />,
-        }}
-      />
-      <Tabs.Screen
-        name="mypage/index"
-        options={{
-          title: "マイページ",
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="person" size={size} color={toIconColor(color)} />,
-        }}
-      />
+      <Tabs.Screen name="index" options={{ title: "ホーム", tabBarIcon: tabIcon("home") }} />
+      {/* 旧実装では中央だけ 54pt の円形ボタン(他アイコンの2.25倍)を marginTop: -18 で
+          浮かせていた。Material の FAB パターンで iOS のタブバーには無い形であり、
+          はみ出した上側はタブボタンの当たり判定の外で押せなかった。4つを同じ寸法に揃える。
+          「相談」への強調は、ホームの主要CTA「この相談からご縁を見る」が引き受ける。 */}
+      <Tabs.Screen name="concierge/index" options={{ title: "相談", tabBarIcon: tabIcon("concierge") }} />
+      <Tabs.Screen name="records/index" options={{ title: "記録", tabBarIcon: tabIcon("records") }} />
+      <Tabs.Screen name="mypage/index" options={{ title: "マイページ", tabBarIcon: tabIcon("mypage") }} />
     </Tabs>
   );
 }

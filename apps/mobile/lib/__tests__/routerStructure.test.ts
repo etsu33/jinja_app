@@ -7,6 +7,13 @@ const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const rootLayout = readFileSync(resolve(mobileRoot, "app/_layout.tsx"), "utf8");
 const tabsLayout = readFileSync(resolve(mobileRoot, "app/(tabs)/_layout.tsx"), "utf8");
 
+/** コメントを除いたコード本体。旧実装の名前は説明として残すため、検査からは外す。 */
+function withoutComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+}
+
+const tabsLayoutCode = withoutComments(tabsLayout);
+
 describe("Expo Router structure", () => {
   it("rootはStackで、(tabs)を初期routeにする", () => {
     // initialRouteNameが無いと、深いリンクで直接開いたときに戻り先が無くなり、
@@ -30,6 +37,28 @@ describe("Expo Router structure", () => {
       expect(source).not.toContain("tabBarButton: () => null");
       expect(source).not.toContain('tabBarItemStyle: { display: "none" }');
     }
+  });
+
+  it("アイコンをIoniconsに統一し、MaterialIconsを使わない", () => {
+    // 旧実装は MaterialIcons で、iOSにAndroidのイディオムが出ていた。
+    expect(tabsLayoutCode).toContain('import Ionicons from "@expo/vector-icons/Ionicons";');
+    expect(tabsLayoutCode).not.toContain("MaterialIcons");
+  });
+
+  it("非選択は線画、選択は塗りで区別する", () => {
+    expect(tabsLayoutCode).toMatch(/focused \? TAB_ICONS\[key\] : \(`\$\{TAB_ICONS\[key\]\}-outline`/);
+  });
+
+  it("中央タブだけを大きくしたり浮かせたりしない", () => {
+    // 旧実装は中央に 54pt の円を marginTop: -18 で浮かせており、他アイコン(24pt)の
+    // 2.25倍かつ、はみ出した部分がタブボタンの当たり判定の外で押せなかった。
+    expect(tabsLayoutCode).not.toMatch(/marginTop: -/);
+    expect(tabsLayoutCode).not.toMatch(/borderRadius:.*\/ 2/);
+    expect(tabsLayoutCode).not.toContain("featuredIcon");
+
+    // 4タブとも同じ生成関数からアイコンを受け取る。
+    const icons = [...tabsLayoutCode.matchAll(/tabBarIcon: (\w+)\(/g)].map(([, fn]) => fn);
+    expect(icons).toEqual(["tabIcon", "tabIcon", "tabIcon", "tabIcon"]);
   });
 
   it("タブバーの高さを固定しない(ホームインジケータのinsetを潰さないため)", () => {
