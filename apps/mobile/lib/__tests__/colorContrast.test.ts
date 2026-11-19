@@ -125,16 +125,19 @@ describe("朱の使い方", () => {
   // 安売りの広告のような見え方になった。静かな強調は深藍(accent)が受け持つ。
   const screens = globSync(["app/**/*.tsx", "components/**/*.tsx"], { cwd: mobileRoot }).sort();
 
-  it.each(screens)("%s で朱を2箇所以上の要素に使わない", (file) => {
+  it.each(screens)("%s で朱の塗りを2つ以上置かない", (file) => {
     const source = readFileSync(resolve(mobileRoot, file), "utf8");
     const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
 
-    // backgroundColor と shadowColor の対は1つの要素なので、style キーの数で数える。
-    const keys = new Set(
-      [...code.matchAll(/\n {2}([A-Za-z0-9_]+): \{[^{}]*theme\.vermilion/g)].map(([, key]) => key),
+    // 数えるのは面を塗っているものだけ。15節は小さな朱の印(チェックなど)を許す。
+    // 押下状態 (*Pressed) は同じ要素の別状態なので1つとして数える。
+    const filled = new Set(
+      [...code.matchAll(/\n {2}([A-Za-z0-9_]+): \{[^{}]*backgroundColor: theme\.vermilion/g)].map(([, key]) =>
+        key.replace(/Pressed$/, ""),
+      ),
     );
 
-    expect([...keys].length).toBeLessThanOrEqual(1);
+    expect([...filled].length).toBeLessThanOrEqual(1);
   });
 
   it("朱を使う画面がアプリ全体で限られている", () => {
@@ -142,6 +145,6 @@ describe("朱の使い方", () => {
       readFileSync(resolve(mobileRoot, file), "utf8").includes("theme.vermilion"),
     );
 
-    expect(users).toEqual(["app/(tabs)/index.tsx"]);
+    expect(users).toEqual(["app/(tabs)/index.tsx", "app/consultation/index.tsx"]);
   });
 });

@@ -17,9 +17,12 @@ const MINIMUM = 44;
 // 画像や複数行を含むカード(popularCard, actionV4Item など)は中身で44ptを超えるため対象外。
 // hitSlopで領域を足している要素(ranking の heartBtn)も対象外。
 const SIZED_TARGETS: [string, string][] = [
-  ["app/(tabs)/index.tsx", "themePill"],
-  ["app/(tabs)/index.tsx", "accordionToggle"],
   ["app/(tabs)/index.tsx", "primaryCta"],
+  // 相談フロー (ios-ui-spec-v2.md 08節)。テーマ選択はここへ移した。
+  ["app/consultation/index.tsx", "card"],
+  ["app/consultation/index.tsx", "backButton"],
+  ["app/consultation/index.tsx", "cta"],
+  ["app/consultation/index.tsx", "secondary"],
   ["app/profile/index.tsx", "selectButton"],
   ["components/profile/ProfilePickerModal.tsx", "closeButton"],
   ["components/profile/ProfilePickerModal.tsx", "option"],

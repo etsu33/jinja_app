@@ -14,6 +14,7 @@
 
 export const SEMANTIC_TYPOGRAPHY_KEYS = [
   "display",
+  "question",
   "heading",
   "subheading",
   "title",
@@ -43,6 +44,9 @@ export type PlatformTypographyTheme = Record<SemanticTypographyKey, TextStyleTok
 export const typography: PlatformTypographyTheme = {
   // 画面最上位の大見出し。1画面に1つまで。
   display: { fontSize: 32, fontWeight: "700", lineHeight: 42, letterSpacing: 0.2 },
+  // Guided Journey の質問見出し (ios-ui-spec-v2.md 13節: 24〜30px /
+  // Medium〜Semibold / Line Height 1.35〜1.5)。質問文を画面の主役にする。
+  question: { fontSize: 26, fontWeight: "600", lineHeight: 38 },
   // セクションの大見出し (HIG Title2)。
   heading: { fontSize: 22, fontWeight: "700", lineHeight: 30 },
   // セクション見出し (HIG Title3)。

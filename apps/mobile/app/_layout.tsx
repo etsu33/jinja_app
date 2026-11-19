@@ -61,6 +61,10 @@ export default function Root() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        {/* 相談入力は Guided Journey (ios-ui-spec-v2.md 41節)。
+            22節に従い画面内に小さな戻るを持つため、ネイティブヘッダーは出さない。
+            (tabs) の外にあるので、32節のタブバー非表示も自動的に満たす。 */}
+        <Stack.Screen name="consultation/index" options={{ headerShown: false }} />
         {Object.entries(SCREEN_TITLES).map(([name, title]) => (
           <Stack.Screen key={name} name={name} options={{ title }} />
         ))}

@@ -75,3 +75,60 @@ describe("画面の到達性", () => {
     expect(screenSources).not.toContain("/reflection-history");
   });
 });
+
+describe("相談フロー (ios-ui-spec-v2.md 08節)", () => {
+  const source = read("app/consultation/index.tsx");
+
+  it("4ステップに分かれている", () => {
+    const steps = [...source.matchAll(/^ {4}title: "/gm)];
+
+    expect(steps).toHaveLength(4);
+    expect(source).toContain("const TOTAL = STEPS.length;");
+  });
+
+  it("入力項目を1つも減らしていない", () => {
+    // Concierge へ渡す値は旧ホームの openConcierge と同じ契約を保つ。
+    for (const key of ["q", "theme", "birthdate", "plannedVisitDate", "visitStyle", "goriyaku", "support"]) {
+      expect(source).toContain(`query.set("${key}"`);
+    }
+    expect(source).toContain("setOriginSession(origin)");
+    expect(source).toContain("resolveGoriyakuTagIds(selectedGoriyaku)");
+  });
+
+  it("ホームは相談フローへ渡すだけで、条件入力を持たない", () => {
+    const home = read("app/(tabs)/index.tsx");
+
+    expect(home).toContain('router.push(text ? `/consultation?q=');
+    expect(home).not.toContain("ConditionFieldsCard");
+    expect(home).not.toContain("selectedVisitStyle");
+    expect(home).not.toContain("selectedGoriyaku");
+  });
+
+  it("タブバーの外に置き、ネイティブヘッダーも出さない", () => {
+    // 32節: Guided Journey 中はタブバーを原則非表示。
+    // 22節: Navigation Header を大きく作らない(画面内に小さな戻るを持つ)。
+    const rootLayout = read("app/_layout.tsx");
+    const tabsLayout = read("app/(tabs)/_layout.tsx");
+
+    expect(rootLayout).toContain('<Stack.Screen name="consultation/index" options={{ headerShown: false }} />');
+    expect(tabsLayout).not.toContain("consultation");
+  });
+
+  it("1ステップの選択肢を6個以下に保つ", () => {
+    // 40節: 1画面8個以上の選択肢を置かない。17節: 最大6程度。
+    const options = read("lib/conditionPayload.ts");
+    const lists: [string, string][] = [
+      ["THEMES", source],
+      ["VISIT_STYLE_OPTIONS", options],
+      ["GORIYAKU_OPTIONS", options],
+    ];
+
+    for (const [name, from] of lists) {
+      const body = from.match(new RegExp(`const ${name} = \\[([^\\]]*)\\]`))?.[1] ?? "";
+      const items = body.match(/"[^"]+"/g) ?? [];
+
+      expect(items.length, name).toBeGreaterThan(0);
+      expect(items.length, name).toBeLessThanOrEqual(6);
+    }
+  });
+});
