@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View, type ViewInstance } from "react-nati
 import { MapLibreMap, Marker, type ErrorEvent } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { radius } from "../../design/radius";
 import { spacing } from "../../design/spacing";
 import {

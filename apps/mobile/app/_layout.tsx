@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { kamimusubiDark as theme } from "../design/theme";
+import { appColors as theme } from "../design/theme";
 import { typography } from "../design/typography";
 import { initAnalyticsProvider } from "../lib/posthogAnalyticsProvider";
 
@@ -41,8 +41,8 @@ export default function Root() {
 
   return (
     <>
-      {/* 背景が near-black (#0A0F0C) のため、ステータスバーの文字は明色で固定する。 */}
-      <StatusBar style="light" />
+      {/* 地が生成り (#F5F1E8) のため、ステータスバーの文字は暗色で固定する。 */}
+      <StatusBar style="dark" />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: theme.background },

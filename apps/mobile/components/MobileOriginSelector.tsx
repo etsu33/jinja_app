@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { get } from "../lib/http";
-import { kamimusubiDark as theme } from "../design/theme";
+import { appColors as theme } from "../design/theme";
 import { ProfilePickerModal } from "./profile/ProfilePickerModal";
 import {
   originSearchAnnouncement,
@@ -179,8 +179,8 @@ const styles = StyleSheet.create({
   input: { ...typography.bodyStrong, minHeight: 44, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, color: theme.text, justifyContent: "center" },
   result: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 10, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: theme.borderSoft },
   note: { ...typography.body, color: theme.muted },
-  error: { ...typography.body, color: "#fecaca" },
-  errorBox: { gap: 8, borderWidth: 1, borderColor: "#fca5a5", borderRadius: 12, padding: 10 },
+  error: { ...typography.body, color: theme.error },
+  errorBox: { gap: 8, borderWidth: 1, borderColor: theme.error, borderRadius: 12, padding: 10 },
   fallbackButton: { minHeight: 44, borderWidth: 1, borderColor: theme.accentSoft, borderRadius: 10, paddingHorizontal: 12, justifyContent: "center" },
   fallbackText: { ...typography.body, color: theme.accentSoft },
   selected: { ...typography.label, color: theme.accentSoft },

@@ -26,9 +26,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   // 本文カラムは max-width 430 の1カラムで、横向きのレイアウトを持たない。
   // 未指定だと全向き許容になり、横向きで左右が余白色で埋まる。
   orientation: "portrait",
-  // 画面はDark基調(kamimusubiDark)のみ。これを指定しないと、OSが用意する
-  // キーボード・アラート・アクションシートだけがライト表示になる。
-  userInterfaceStyle: "dark",
+  // 画面は明基調(kamimusubiLight)のみ。これを指定しないと、端末をダークに
+  // している利用者で、OSが用意するキーボード・アラート・アクションシートだけが
+  // 暗く出る。決定記録: docs/design/color-direction-v1.md
+  userInterfaceStyle: "light",
   plugins: [
     "expo-router",
     [

@@ -3,7 +3,7 @@ import { Animated, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { kamimusubiDark } from "../../../design/theme";
+import { appColors as theme } from "../../../design/theme";
 import { spacing } from "../../../design/spacing";
 import { cardSizes } from "../../../design/cardSizes";
 import { radius } from "../../../design/radius";
@@ -84,8 +84,8 @@ function RecordCard({ title, description, meta, icon, routeLabel, onPress }: Rec
         onPressOut={() => animateScale(1)}
         style={{
           alignItems: "center",
-          backgroundColor: kamimusubiDark.surface,
-          borderColor: kamimusubiDark.borderHeader,
+          backgroundColor: theme.surface,
+          borderColor: theme.borderHeader,
           borderRadius: radius.md,
           borderWidth: cardSizes.borderWidth,
           flexDirection: "row",
@@ -97,7 +97,7 @@ function RecordCard({ title, description, meta, icon, routeLabel, onPress }: Rec
         <View
           style={{
             alignItems: "center",
-            borderColor: kamimusubiDark.borderAccent,
+            borderColor: theme.borderAccent,
             borderRadius: radius.sm,
             borderWidth: cardSizes.borderWidth,
             height: 48,
@@ -105,20 +105,20 @@ function RecordCard({ title, description, meta, icon, routeLabel, onPress }: Rec
             width: 48,
           }}
         >
-          <Ionicons name={icon} size={CARD_ICON_SIZE} color={kamimusubiDark.accent} />
+          <Ionicons name={icon} size={CARD_ICON_SIZE} color={theme.accent} />
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={{ ...typography.subheading, color: kamimusubiDark.accent }}>{title}</Text>
-          <Text style={{ ...typography.body, color: kamimusubiDark.text, marginTop: 5 }}>{description}</Text>
-          <Text style={{ ...typography.footnote, color: kamimusubiDark.muted, marginTop: 5 }}>{meta}</Text>
+          <Text style={{ ...typography.subheading, color: theme.accent }}>{title}</Text>
+          <Text style={{ ...typography.body, color: theme.text, marginTop: 5 }}>{description}</Text>
+          <Text style={{ ...typography.footnote, color: theme.muted, marginTop: 5 }}>{meta}</Text>
         </View>
 
         <Ionicons
           accessibilityElementsHidden
           name="chevron-forward"
           size={CHEVRON_SIZE}
-          color={kamimusubiDark.muted}
+          color={theme.muted}
         />
       </Pressable>
     </Animated.View>
@@ -176,7 +176,7 @@ export default function RecordsScreen() {
 
   return (
     <>
-    <View style={{ backgroundColor: kamimusubiDark.background, flex: 1, paddingTop: insets.top }}>
+    <View style={{ backgroundColor: theme.background, flex: 1, paddingTop: insets.top }}>
       <ScrollView
         contentContainerStyle={{
           gap: spacing.lgGap,
@@ -185,8 +185,8 @@ export default function RecordsScreen() {
         }}
       >
         <View style={{ marginBottom: spacing.lgGap }}>
-          <Text style={{ ...typography.display, color: kamimusubiDark.accent }}>記録</Text>
-          <Text style={{ ...typography.subhead, color: kamimusubiDark.text, marginTop: spacing.mdGap }}>
+          <Text style={{ ...typography.display, color: theme.accent }}>記録</Text>
+          <Text style={{ ...typography.subhead, color: theme.text, marginTop: spacing.mdGap }}>
             相談から育ったご縁や、保存した神社、御朱印をここから振り返れます。
           </Text>
         </View>

@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
@@ -153,8 +153,8 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: theme.text,
   },
-  saveNotice: { alignSelf: "flex-start", backgroundColor: "rgba(221, 178, 82, 0.1)", borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8 },
-  saveNoticeText: { ...typography.footnote, color: theme.accentSoft },
+  saveNotice: { alignSelf: "flex-start", backgroundColor: theme.cedarSurface, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8 },
+  saveNoticeText: { ...typography.footnote, color: theme.cedar },
   sectionCard: {
     backgroundColor: theme.surface,
     borderWidth: cardSizes.borderWidth,

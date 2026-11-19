@@ -66,8 +66,8 @@ export const kamimusubiDark = {
   // ---- Support: soft cedar-green ----
   // 杉と苔の支援色。成功など「静かな肯定」に用い、goldとは責務を分ける。
   cedar: "#8FAE84",
-  cedarDeep: "#3E5142",
-  cedarDim: "#222E25",
+  cedarBorder: "#3E5142",
+  cedarSurface: "#222E25",
 
   // ---- Text: warm mist-ivory -> sage ----
   // 主文字は霧を含んだ暖かい生成り。副次はセージ寄りに寄せ、森の空気に馴染ませる。
@@ -89,6 +89,79 @@ export const kamimusubiDark = {
   // background より一段深くし、本文カラムが木漏れ日で浮かぶ構図にする。
   outside: "#070A08",
 } as const;
+
+// ────────────────────────────────────────────────────────────────
+// Visual Direction: 和のエディトリアル — 生成りの紙に、深藍の骨格と朱の印。
+// 決定記録: docs/design/color-direction-v1.md (2026-11-19)
+//
+// kamimusubiDark (上) は旧方向の記録として残す。画面が参照するのは
+// 下の appColors で、そこを差し替えれば全画面が切り替わる。
+//
+// 文字色はすべて、最も暗い面 (surfaceSoft #EDE7DA) に対しても
+// WCAG AA (4.5) を満たすことを実測で確認している。
+// 金茶 (borderAccent) だけは 2.49 で文字に使えないため、線専用とする。
+// ────────────────────────────────────────────────────────────────
+export const kamimusubiLight = {
+  // ---- Foundation: 生成りの紙 ----
+  // 明度は outside < surfaceSoft < background < surface < surfaceRaised の単調増加。
+  // 暗基調と同じく、奥行きは明度差で作る。明地では影も機能する。
+  background: "#F5F1E8",
+  surfaceSoft: "#EDE7DA",
+  surface: "#FBF8F2",
+  surfaceRaised: "#FFFFFF",
+
+  // ---- Border ----
+  // 区切りの線は主張させない。borderStrong だけは入力欄など
+  // 状態を示す境界に使うため、地に対して 3.27 を確保する (WCAG 1.4.11)。
+  borderSoft: "#E4DCCB",
+  borderHeader: "#DCD3C0",
+  borderMuted: "#D5CBB8",
+  border: "#CFC6B5",
+  borderStrong: "#8E8472",
+  // 金茶。格式の記号として枠にだけ使う。文字には使わない (地に対して 2.49)。
+  borderAccent: "#B39665",
+  borderAccentDark: "#9A7F4E",
+
+  // ---- Accent: 朱 ----
+  // 鳥居と朱印の朱。1画面に1つだけ差す。面には広げない。
+  accent: "#B53A2D",
+  // 押下は淡くせず濃くする。明地では濃い方が「押された」に見える。
+  accentSoft: "#9E3127",
+  // Premium は深藍で格を示す。金茶は文字に使えないため採らない。
+  premiumAccent: "#172A40",
+
+  // ---- Support: 杉緑 ----
+  cedar: "#3F6B4A",
+  cedarBorder: "#B8CDBB",
+  cedarSurface: "#E8EFE6",
+
+  // ---- Text: 墨 ----
+  // mutedDark が最も薄い。沈み面の上で 4.63 と余裕が無いため、
+  // これより薄い文字色を足さない。
+  text: "#242424",
+  mutedSoft: "#5B5750",
+  muted: "#635E56",
+  mutedDark: "#6B665D",
+  navMuted: "#6B665D",
+
+  // ---- Status ----
+  // action が朱のため、error は朱暗で受ける (決定: 案A)。
+  // 主アクションは「朱の塗り + 白文字」、error は「朱暗の文字 + 淡い面」と
+  // 形で分ける。
+  warning: "#8A5A12",
+  error: "#8E2018",
+  errorSurface: "#F7E9E6",
+
+  // ---- Outside ----
+  // 幅広画面で本文カラム(max-width 430)の外側に出る余白色。
+  // 地より一段沈め、紙のカラムが浮いて見える構図にする。
+  outside: "#E6E0D3",
+} as const;
+
+export type KamimusubiLightColorKey = keyof typeof kamimusubiLight;
+
+// 画面が参照する実値。配色を切り替えるときはここだけを差し替える。
+export const appColors = kamimusubiLight;
 
 export type AppColorKey = keyof typeof colors;
 export type KamimusubiDarkColorKey = keyof typeof kamimusubiDark;
@@ -135,8 +208,8 @@ export const kamimusubiDarkSemanticTheme: PlatformColorTheme = {
   // として、色相・明度の双方で分離する。
   "status.success": kamimusubiDark.cedar,
   "status.successText": kamimusubiDark.cedar,
-  "status.successSurface": kamimusubiDark.cedarDim,
-  "status.successBorder": kamimusubiDark.cedarDeep,
+  "status.successSurface": kamimusubiDark.cedarSurface,
+  "status.successBorder": kamimusubiDark.cedarBorder,
   "status.warning": kamimusubiDark.warning,
   // 旧実装は login.tsx 由来の直書き値 (#FCA5A5) だった。Primitive へ昇格させる。
   "status.error": kamimusubiDark.error,
@@ -148,3 +221,37 @@ export const kamimusubiDarkSemanticTheme: PlatformColorTheme = {
   // overlay は背景 (#0A0F0C) に合わせた森影。旧値は Navy 由来 (7,16,31)。
   "overlay.default": "rgba(6, 10, 8, 0.82)",
 };
+
+// 明基調の Platform Theme。26キーの網羅は PlatformColorTheme 型が tsc で強制する。
+// 決定記録: docs/design/color-direction-v1.md
+export const kamimusubiLightSemanticTheme: PlatformColorTheme = {
+  "background.base": kamimusubiLight.background,
+  "background.subtle": kamimusubiLight.surfaceSoft,
+  "surface.default": kamimusubiLight.surface,
+  "surface.elevated": kamimusubiLight.surfaceRaised,
+  "text.primary": kamimusubiLight.text,
+  "text.secondary": kamimusubiLight.muted,
+  "text.muted": kamimusubiLight.mutedDark,
+  "text.inverse": kamimusubiLight.background,
+  "border.default": kamimusubiLight.border,
+  "border.strong": kamimusubiLight.borderStrong,
+  "border.focus": kamimusubiLight.accent,
+  "action.primary": kamimusubiLight.accent,
+  "action.primaryHover": kamimusubiLight.accentSoft,
+  "action.primaryText": kamimusubiLight.background,
+  "action.disabled": kamimusubiLight.mutedDark,
+  "status.success": kamimusubiLight.cedar,
+  "status.successText": kamimusubiLight.cedar,
+  "status.successSurface": kamimusubiLight.cedarSurface,
+  "status.successBorder": kamimusubiLight.cedarBorder,
+  "status.warning": kamimusubiLight.warning,
+  "status.error": kamimusubiLight.error,
+  "status.info": kamimusubiLight.muted,
+  "premium.accent": kamimusubiLight.premiumAccent,
+  "premium.surface": kamimusubiLight.surfaceRaised,
+  "premium.border": kamimusubiLight.borderAccent,
+  "overlay.default": "rgba(36, 36, 36, 0.45)",
+};
+
+// UI Component が参照する Semantic Theme。配色の切り替えはここ1行。
+export const appSemanticTheme: PlatformColorTheme = kamimusubiLightSemanticTheme;

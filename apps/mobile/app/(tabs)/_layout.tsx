@@ -2,7 +2,7 @@ import * as React from "react";
 import { type ColorValue } from "react-native";
 import { Tabs } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 

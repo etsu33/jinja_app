@@ -2,7 +2,7 @@ import * as React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme, appSemanticTheme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { radius } from "../../design/radius";
 import Button from "../ui/Button";
@@ -66,7 +66,7 @@ export function AuthPrompt({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(7, 16, 31, 0.72)",
+    backgroundColor: appSemanticTheme["overlay.default"],
     alignItems: "center",
     justifyContent: "center",
     padding: spacing.screenX,

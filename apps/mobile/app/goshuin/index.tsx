@@ -3,7 +3,7 @@ import * as React from "react";
 import { View, Text, Image, StyleSheet, ScrollView, Dimensions } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { getStamps } from "../../lib/storage";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import Button from "../../components/ui/Button";
 import { typography } from "../../design/typography";
 
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
     borderRadius: 24,
     padding: 16,
-    shadowColor: "#000",
+    shadowColor: theme.text,
     shadowOpacity: 0.28,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },

@@ -1,5 +1,5 @@
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme, appSemanticTheme } from "../../design/theme";
 import { radius } from "../../design/radius";
 import { typography } from "../../design/typography";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -67,7 +67,7 @@ export function ProfilePickerModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.68)", justifyContent: "flex-end" },
+  backdrop: { flex: 1, backgroundColor: appSemanticTheme["overlay.default"], justifyContent: "flex-end" },
   sheet: { maxHeight: "72%", backgroundColor: theme.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: 20 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
   title: { ...typography.subheading, color: theme.text },
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   options: { flexGrow: 0 },
   optionsContent: { paddingBottom: 24 },
   option: { minHeight: 48, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: theme.borderHeader },
-  optionSelected: { backgroundColor: "rgba(221, 178, 82, 0.12)" },
+  optionSelected: { backgroundColor: theme.surfaceSoft },
   optionText: { ...typography.label, color: theme.text },
   optionTextSelected: { color: theme.accent, fontWeight: "600" },
 });

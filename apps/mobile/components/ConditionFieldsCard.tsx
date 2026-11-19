@@ -1,6 +1,6 @@
 import * as React from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
-import { kamimusubiDark as theme } from "../design/theme";
+import { appColors as theme } from "../design/theme";
 import { VISIT_STYLE_OPTIONS, GORIYAKU_OPTIONS } from "../lib/conditionPayload";
 import { ProfilePickerModal } from "./profile/ProfilePickerModal";
 import { MobileOriginSelector } from "./MobileOriginSelector";
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   locationButtonReady: { borderColor: theme.borderAccent, backgroundColor: theme.accent },
   locationButtonText: { ...typography.label, color: theme.text },
   locationButtonTextReady: { color: theme.background },
-  locationError: { ...typography.footnote, color: "#ef8f8f" },
+  locationError: { ...typography.footnote, color: theme.error },
   textarea: {
     minHeight: 76,
     textAlignVertical: "top",

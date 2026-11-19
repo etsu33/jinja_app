@@ -2,7 +2,7 @@ import * as React from "react";
 import { useRouter } from "expo-router";
 import { ScrollView, View, Text, TextInput, StyleSheet, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { shadows } from "../../design/shadow";
 import { ConditionFieldsCard } from "../../components/ConditionFieldsCard";
 import Button from "../../components/ui/Button";

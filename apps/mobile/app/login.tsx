@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { post } from "../lib/http";
 import Button from "../components/ui/Button";
 import { setTokens } from "../lib/authTokens";
-import { kamimusubiDark as theme } from "../design/theme";
+import { appColors as theme } from "../design/theme";
 import { spacing } from "../design/spacing";
 import { radius } from "../design/radius";
 import { typography } from "../design/typography";
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     ...typography.subhead,
-    color: "#FCA5A5",
+    color: theme.error,
   },
   linkButton: {
     minHeight: 44,

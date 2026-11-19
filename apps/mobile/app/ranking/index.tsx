@@ -6,7 +6,7 @@ import { fetchPopularShrines, type PopularShrine } from "../../lib/popularShrine
 import { getFavorites, toggleFavorite } from "../../lib/storage";
 import { StateCard } from "../../components/common/StateCard";
 import Button from "../../components/ui/Button";
-import { kamimusubiDark } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { typography } from "../../design/typography";
 import { cardSizes } from "../../design/cardSizes";
@@ -54,7 +54,7 @@ function FavoriteHeartButton({ favored, onPress }: FavoriteHeartButtonProps) {
         <Ionicons
           name={favored ? "heart" : "heart-outline"}
           size={HEART_ICON_SIZE}
-          color={favored ? kamimusubiDark.background : kamimusubiDark.mutedSoft}
+          color={favored ? theme.background : theme.mutedSoft}
         />
       </Animated.View>
     </Pressable>
@@ -112,14 +112,14 @@ export default function RankingPage() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: kamimusubiDark.background }}
+      style={{ flex: 1, backgroundColor: theme.background }}
       contentContainerStyle={{ padding: spacing.screenX, paddingBottom: spacing.bottomSpace }}
     >
-      <Text style={{ ...typography.heading, color: kamimusubiDark.accent }}>人気神社ランキング</Text>
+      <Text style={{ ...typography.heading, color: theme.accent }}>人気神社ランキング</Text>
       <Text
         style={{
           ...typography.body,
-          color: kamimusubiDark.text,
+          color: theme.text,
           marginTop: spacing.smGap,
           marginBottom: spacing.xlGap,
         }}
@@ -135,7 +135,7 @@ export default function RankingPage() {
           size="compact"
           onPress={() => setFavOnly((v) => !v)}
         />
-        <Text style={{ ...typography.footnote, marginLeft: spacing.smGap, color: kamimusubiDark.muted }}>
+        <Text style={{ ...typography.footnote, marginLeft: spacing.smGap, color: theme.muted }}>
           保存 {favSet.size}
         </Text>
       </View>
@@ -192,23 +192,23 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: kamimusubiDark.surface,
+    backgroundColor: theme.surface,
     borderWidth: cardSizes.borderWidth,
-    borderColor: kamimusubiDark.borderHeader,
+    borderColor: theme.borderHeader,
     borderRadius: radius.md,
     padding: cardSizes.cardPaddingSm,
     marginBottom: spacing.lgGap,
   },
   cardFav: {
-    borderColor: kamimusubiDark.accent,
-    backgroundColor: kamimusubiDark.surfaceSoft,
+    borderColor: theme.accent,
+    backgroundColor: theme.surfaceSoft,
   },
   rank: {
     width: cardSizes.rankBadgeSize,
     height: cardSizes.rankBadgeSize,
     borderRadius: radius.pill,
-    backgroundColor: kamimusubiDark.surfaceSoft,
-    color: kamimusubiDark.accent,
+    backgroundColor: theme.surfaceSoft,
+    color: theme.accent,
     textAlign: "center",
     textAlignVertical: "center",
     fontWeight: "700",
@@ -216,16 +216,16 @@ const styles = StyleSheet.create({
   },
   name: {
     ...typography.title,
-    color: kamimusubiDark.text,
+    color: theme.text,
   },
   sub: {
     ...typography.footnote,
-    color: kamimusubiDark.muted,
+    color: theme.muted,
     marginTop: 3,
   },
   savedHint: {
     ...typography.caption,
-    color: kamimusubiDark.mutedSoft,
+    color: theme.mutedSoft,
     marginTop: 6,
   },
   heartBtn: {
@@ -233,11 +233,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.mdGap,
     borderRadius: radius.pill,
     borderWidth: cardSizes.borderWidth,
-    borderColor: kamimusubiDark.borderHeader,
-    backgroundColor: kamimusubiDark.surfaceSoft,
+    borderColor: theme.borderHeader,
+    backgroundColor: theme.surfaceSoft,
   },
   heartBtnFav: {
-    borderColor: kamimusubiDark.accent,
-    backgroundColor: kamimusubiDark.accent,
+    borderColor: theme.accent,
+    backgroundColor: theme.accent,
   },
 });

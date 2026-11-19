@@ -9,7 +9,7 @@ import {
   validateSignupInput,
   type SignupFieldErrors,
 } from "../lib/signup";
-import { kamimusubiDark as theme } from "../design/theme";
+import { appColors as theme } from "../design/theme";
 import { spacing } from "../design/spacing";
 import { radius } from "../design/radius";
 import { typography } from "../design/typography";
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     ...typography.subhead,
-    color: "#FCA5A5",
+    color: theme.error,
   },
   linkButton: {
     minHeight: 44,

@@ -2,7 +2,7 @@
 import * as React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
 import { spacing } from "../../design/spacing";

@@ -5,7 +5,7 @@ import { View, Text, Pressable, Image, StyleSheet, Alert, ScrollView } from "rea
 import { useRouter } from "expo-router";
 import { pushStamp } from "../../lib/storage";
 import Button from "../../components/ui/Button";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { typography } from "../../design/typography";
 
 function showSaveFailure() {
