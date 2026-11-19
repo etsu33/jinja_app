@@ -99,11 +99,18 @@ export default function ConsultationScreen() {
     visitStyle?: string;
     goriyaku?: string;
     support?: string;
+    topicDone?: string;
   }>();
 
   const restoredOrigin = React.useRef<UserOrigin | null>(getOriginSession()).current;
 
-  const [step, setStep] = React.useState(0);
+  // ホームの自由入力は STEP 1 そのものなので、書いてあれば STEP 1 を飛ばす。
+  // Concierge の「条件を変える」からは topicDone を渡さない。渡すと相談文を
+  // 直す手段が無くなるため、あちらからは STEP 1 を残す。
+  const topicDone = params.topicDone === "1" && Boolean((params.q ?? "").trim());
+  const firstStep = topicDone ? 1 : 0;
+
+  const [step, setStep] = React.useState(firstStep);
   const [consultation, setConsultation] = React.useState(params.q ?? "");
   const [selectedTheme, setSelectedTheme] = React.useState<string | null>(params.theme || null);
   const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>(params.visitStyle || undefined);
@@ -157,8 +164,9 @@ export default function ConsultationScreen() {
   };
 
   // 22節: 各ステップで戻れる。最初のステップではホームへ戻る。
+  // STEP 1 を飛ばしている場合、戻り先はホーム(相談文を書いた場所)。
   const goBack = () => {
-    if (step > 0) {
+    if (step > firstStep) {
       setStep((current) => current - 1);
       return;
     }
@@ -170,6 +178,16 @@ export default function ConsultationScreen() {
     if (step < TOTAL - 1) setStep((current) => current + 1);
     else openConcierge();
   };
+
+  // 相談内容を書き換えたのに、前の相談で選んだご縁がそのまま残っている状態。
+  // 消さずに知らせるだけにする(誤字の修正でも選択が消えるのは煩わしいため)。
+  // 相談文とご縁の「意味が合っているか」は判定しない。それは推薦側の領分で、
+  // ここで判断すると Mobile が推薦の意味を作ることになる。
+  // 見ているのは「params で受け取った文章から変わったか」という事実だけ。
+  const incomingGoriyaku = params.goriyaku || undefined;
+  const topicChanged = consultation.trim() !== (params.q ?? "").trim();
+  const showGoriyakuNotice =
+    topicChanged && Boolean(incomingGoriyaku) && selectedGoriyaku === incomingGoriyaku;
 
   const isLast = step === TOTAL - 1;
   const current = STEPS[step];
@@ -183,7 +201,7 @@ export default function ConsultationScreen() {
       <View style={styles.topBar}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={step > 0 ? "前のステップへ戻る" : "相談をやめて戻る"}
+          accessibilityLabel={step > firstStep ? "前のステップへ戻る" : "相談をやめて戻る"}
           hitSlop={12}
           onPress={goBack}
           style={styles.backButton}
@@ -248,6 +266,15 @@ export default function ConsultationScreen() {
 
         {step === 2 ? (
           <View style={styles.group}>
+            {showGoriyakuNotice ? (
+              <View accessibilityRole="alert" style={styles.notice}>
+                <Ionicons name="information-circle-outline" size={18} color={theme.warning} />
+                <Text style={styles.noticeText}>
+                  「{incomingGoriyaku}」は、前の相談で選んだものです。相談内容を書き直したので、
+                  必要なら選び直してください。もう一度押すと外せます。
+                </Text>
+              </View>
+            ) : null}
             {GORIYAKU_OPTIONS.map((item) => (
               <SelectionCard
                 key={item}
@@ -365,6 +392,25 @@ const styles = StyleSheet.create({
     marginTop: spacing.lgGap,
     marginBottom: spacing.sectionTop + spacing.smGap,
   },
+  // 注意書き。warning #7E520F は沈み面に対して 5.25 で AA を満たす(実測)。
+  // 左罫は Concierge の条件サマリと同じ文法。朱は主アクション専用なので使わない。
+  notice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: theme.surfaceSoft,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.warning,
+    borderRadius: radius.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  noticeText: {
+    ...typography.footnote,
+    color: theme.warning,
+    flex: 1,
+  },
+
   group: {
     gap: spacing.mdGap,
   },

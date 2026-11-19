@@ -38,6 +38,20 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   userInterfaceStyle: "light",
   plugins: [
     "expo-router",
+    // SDK 58 では expo-font / expo-splash-screen / expo-status-bar が config plugin を
+    // 持つようになり、`expo install --fix` がここへの明示を要求する。
+    // app.config.ts は動的configのためCLIが自動で書けず、非ゼロ終了していた。
+    "expo-font",
+    [
+      "expo-splash-screen",
+      {
+        // plugin の既定は #ffffff。素のまま足すとネイティブの起動画面に白が焼き込まれ、
+        // 直後に出る DawnSplash(濃藍から始まる朝焼け)との間で白が一瞬差し込む。
+        // design/theme.ts の dawn.colors[0] と同値にして、継ぎ目を無くす。
+        backgroundColor: "#16213C",
+      },
+    ],
+    "expo-status-bar",
     [
       "expo-location",
       {

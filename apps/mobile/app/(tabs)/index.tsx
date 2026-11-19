@@ -28,10 +28,16 @@ export default function Home() {
   };
 
   // 相談の入力は Guided Journey へ移した (ios-ui-spec-v2.md 08節)。
-  // ここで書いた文章は STEP 1 へ引き継ぐ。
+  // ここの自由入力は STEP 1「今、どんなことを整理したいですか？」そのものなので、
+  // 書いてあれば topicDone を付けて STEP 1 を飛ばす。同じ問いを二度出さない。
+  // 空のまま進んだ場合は STEP 1 で選ぶ。
   const openConsultation = () => {
     const text = consultation.trim();
-    router.push(text ? `/consultation?q=${encodeURIComponent(text)}` : "/consultation");
+    if (!text) {
+      router.push("/consultation");
+      return;
+    }
+    router.push(`/consultation?q=${encodeURIComponent(text)}&topicDone=1`);
   };
 
   return (
@@ -70,7 +76,11 @@ export default function Home() {
             multiline
             textAlignVertical="top"
           />
-          <Text style={styles.aiHint}>このあと4つの質問で、相談を整えます。</Text>
+          <Text style={styles.aiHint}>
+            {consultation.trim()
+              ? "このあと3つの質問で、相談を整えます。"
+              : "このあと4つの質問で、相談を整えます。"}
+          </Text>
         </View>
 
         {/* 主CTA。19節: 1画面に1つ。 */}
