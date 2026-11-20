@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ScrollView, View, Text, TextInput, StyleSheet, Pressable } from "react-native";
+import { ScrollView, View, Text, TextInput, StyleSheet, Pressable, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { setStatusBarStyle } from "expo-status-bar";
 import { appColors as theme, dawnNight } from "../../design/theme";
@@ -27,6 +27,7 @@ export default function Home() {
   // タブ画面はネイティブヘッダーを持たないため、Dynamic Island / ステータスバーの
   // 高さを自分で避ける(下層画面はStackのヘッダーが避けている)。
   const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
   const [consultation, setConsultation] = React.useState("");
 
   // 画面上端が深藍の帯なので、この画面だけステータスバーを明色にする。
@@ -64,31 +65,23 @@ export default function Home() {
   return (
     <View style={styles.screen}>
       <View style={styles.column}>
-        {/* 深藍の帯。アイコン(紺地に金の紋)と起動画面(濃藍から始まる朝焼け)から、
-            本編の生成りへ降りる間を受け持つ。深藍は89箇所で文字色として使われて
-            いるが、面として立つ場所がほとんど無かった。
+        {/* 画面全体を藍の地にする。起動画面(濃藍から始まる朝焼け) → ホーム →
+            相談フローで色が繋がる。
             ロゴマークはまだ素材が無い。絵文字の鳥居は端末のフォント次第で字形が
             変わるため置かず、文字組だけで見せる。マークが用意できたら
-            brandName の前に差し込む。
-            スクロールさせない。帯が流れると生成りが明色のステータスバーの下へ
-            来てしまう。 */}
-        <View
-          style={[
-            styles.masthead,
-            { paddingTop: insets.top + MASTHEAD_TOP_PADDING },
-          ]}
-        >
-          {/* 地は相談フローと同じ藍。起動画面 → 帯 → 相談フローで色が繋がる。 */}
-          <LinearGradient
-            colors={[dawnNight.colors[0], dawnNight.colors[1]]}
-            start={{ x: 0.1, y: 0 }}
-            end={{ x: 0.9, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-          {/* 帯は低いので下の縁だけ。上はステータスバーとロゴが来る。 */}
-          <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            <WaPattern height={MASTHEAD_PATTERN_HEIGHT} top={false} />
-          </View>
+            brandName の前に差し込む。 */}
+        <LinearGradient
+          colors={dawnNight.colors}
+          locations={dawnNight.locations}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <WaPattern height={screenHeight} />
+        </View>
+
+        <View style={[styles.masthead, { paddingTop: insets.top + MASTHEAD_TOP_PADDING }]}>
           <Text style={styles.brandName}>神結び</Text>
           <Text style={styles.brandRuby}>kami musubi</Text>
           <Text style={styles.heroLead}>今の相談を、神社とのご縁につなげる</Text>
@@ -106,7 +99,7 @@ export default function Home() {
           <TextInput
             accessibilityLabel="相談内容"
             placeholder="例: 迷いを整理して、前に進むきっかけがほしい"
-            placeholderTextColor={theme.mutedDark}
+            placeholderTextColor="rgba(245, 238, 220, 0.52)"
             style={styles.chatInput}
             value={consultation}
             onChangeText={setConsultation}
@@ -137,6 +130,7 @@ export default function Home() {
           onPress={openSearch}
           accessibilityLabel="神社を探す"
           style={styles.searchEntryCta}
+          textStyle={{ color: dawnNight.text }}
         />
 
         </ScrollView>
@@ -148,15 +142,16 @@ export default function Home() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: theme.outside,
+    backgroundColor: dawnNight.colors[0],
   },
-  // 帯とスクロール領域を同じ幅の柱に収める。
+  // 内容を同じ幅の柱に収める。地は LinearGradient が敷く。
   column: {
     flex: 1,
     width: "100%",
     maxWidth: 430,
     alignSelf: "center",
-    backgroundColor: theme.background,
+    backgroundColor: dawnNight.colors[0],
+    overflow: "hidden",
   },
   content: {
     paddingHorizontal: 20,
@@ -164,81 +159,82 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
   },
 
-  // 深藍の帯
-  // 文字はすべて生成り。紺の面に対して 12.59 で、UI部品の 3.0 も本文の 4.5 も満たす。
+  // ブランド。文字はすべて生成り。藍の地に対して 14.76 / 10.78 / 6.82(実測)。
   masthead: {
-    // 実際の地は LinearGradient。読み込み前の下地として同系色を置く。
-    backgroundColor: dawnNight.colors[0],
-    overflow: "hidden",
     paddingHorizontal: 20,
     paddingBottom: MASTHEAD_BOTTOM_PADDING,
     gap: 2,
   },
   brandName: {
-    color: theme.background,
+    color: dawnNight.text,
     fontSize: 20,
     fontWeight: "900",
     letterSpacing: 1,
   },
   brandRuby: {
     ...typography.caption,
-    color: theme.background,
+    color: dawnNight.text,
     opacity: 0.68,
     letterSpacing: 4,
   },
   heroLead: {
     ...typography.subheading,
-    color: theme.background,
+    color: dawnNight.text,
     marginTop: 14,
   },
   heroSub: {
     ...typography.subhead,
-    color: theme.mutedSoft,
+    color: dawnNight.text,
+    opacity: 0.76,
   },
 
-  // 入力カード
+  // 入力カード。藍の地の上なので、相談フローの選択カードと同じ薄い膜にする。
   chatCard: {
     minHeight: 154,
     borderRadius: 22,
-    backgroundColor: theme.surface,
+    backgroundColor: "rgba(245, 238, 220, 0.10)",
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: "rgba(245, 238, 220, 0.22)",
     marginTop: 24,
     padding: 16,
   },
   chatInput: {
     ...typography.bodyStrong,
     minHeight: 78,
-    color: theme.text,
+    color: dawnNight.text,
     padding: 0,
   },
   aiHint: {
     ...typography.footnote,
     flex: 1,
-    color: theme.mutedDark,
+    color: dawnNight.text,
+    opacity: 0.6,
   },
 
 
 
-  // 主CTA
-  // 画面でただ一つの朱。ここ以外は深藍で受ける。
+  // 主CTA。藍の地の上では朱が使えない(面と地の差が 1.55 で、WCAG 1.4.11 が
+  // UI部品に求める 3.0 を割る)。相談フローと同じ曙色にする(面と地 9.94 /
+  // 文字 9.94)。これでアプリから朱が消えるが、見えない色を残す意味は無い。
   primaryCta: {
     height: ctaSizes.primaryHeight,
     borderRadius: ctaSizes.primaryRadius,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.vermilion,
+    backgroundColor: dawnNight.ctaSurface,
     marginTop: 20,
   },
   primaryCtaPressed: {
-    backgroundColor: theme.vermilionDeep,
+    opacity: 0.82,
   },
   primaryCtaText: {
     ...typography.button,
-    color: theme.background,
+    color: dawnNight.ctaText,
   },
   searchEntryCta: {
     marginTop: 12,
+    borderColor: "rgba(245, 238, 220, 0.34)",
+    backgroundColor: "transparent",
   },
 
 });

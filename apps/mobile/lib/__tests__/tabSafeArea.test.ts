@@ -55,18 +55,19 @@ describe("タブ画面の上部セーフエリア", () => {
   });
 });
 
-describe("ホームの帯がステータスバーの下まで伸びる条件", () => {
+describe("ホームの地がステータスバーの下まで伸びる条件", () => {
   const home = read(BANDED_SCREEN);
 
   it("帯の中身は inset に余白を足して下げる", () => {
     expect(home).toMatch(/paddingTop: insets\.top \+ MASTHEAD_TOP_PADDING/);
   });
 
-  it("帯は藍で塗られている", () => {
-    // 塗りが無いと、ただ文字がステータスバーへ潜るだけになる。
-    // 実際の地は LinearGradient。読み込み前の下地として同系色を置く。
-    expect(home).toMatch(/masthead: \{[\s\S]*?backgroundColor: dawnNight\.colors\[0\]/);
-    expect(home).toMatch(/<LinearGradient[\s\S]{0,200}?dawnNight\.colors\[0\]/);
+  it("画面の地が藍である", () => {
+    // 地が暗くないと、ただ文字がステータスバーへ潜るだけになる。
+    // 画面全体を dawnNight のグラデーションで敷く。
+    expect(home).toMatch(/<LinearGradient[\s\S]{0,160}?colors=\{dawnNight\.colors\}/);
+    // 読み込み前の下地も同系色にする(白が一瞬差し込まないように)。
+    expect(home).toMatch(/column: \{[\s\S]*?backgroundColor: dawnNight\.colors\[0\]/);
   });
 
   it("この画面にいる間だけステータスバーを明色にする", () => {

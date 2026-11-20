@@ -2,7 +2,7 @@ import * as React from "react";
 import { type ColorValue } from "react-native";
 import { Tabs } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { appColors as theme } from "../../design/theme";
+import { appColors as theme, dawnNight } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 
@@ -60,16 +60,17 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        // 選択中は深藍。朱はホームの主CTAだけに残す。
-        tabBarActiveTintColor: theme.accent,
-        tabBarInactiveTintColor: theme.muted,
+        // タブバーは藍の地。生成りのままだと、暗地の画面との継ぎ目が壊れて見える。
+        // 選択中は曙色(藍の地に対して 9.94)、非選択は生成りを落とす(14.76)。
+        tabBarActiveTintColor: dawnNight.mark,
+        tabBarInactiveTintColor: "rgba(245, 238, 220, 0.62)",
         tabBarLabelStyle: {
           fontSize: bottomNavigationSizes.labelFontSize,
           fontWeight: "600",
         },
         tabBarStyle: {
-          backgroundColor: theme.background,
-          borderTopColor: theme.borderHeader,
+          backgroundColor: dawnNight.colors[0],
+          borderTopColor: "rgba(245, 238, 220, 0.16)",
           borderTopWidth: cardSizes.borderWidth,
           paddingTop: spacing.inlineGap - 1,
         },

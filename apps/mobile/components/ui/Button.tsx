@@ -1,5 +1,5 @@
 // apps/mobile/components/ui/Button.tsx
-import { ActivityIndicator, Pressable, StyleSheet, Text, type ViewStyle } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, type TextStyle, type ViewStyle } from "react-native";
 
 import { ctaSizes } from "../../design/ctaSizes";
 import { semanticRadius } from "../../design/radius";
@@ -12,6 +12,8 @@ type Props = {
   variant?: "primary" | "accent" | "neutral" | "outline" | "success";
   size?: "default" | "compact";
   style?: ViewStyle;
+  /** 文字色の上書き。暗地の画面で使う(variant の色は明地前提のため)。 */
+  textStyle?: TextStyle;
   onPress?: () => void;
   disabled?: boolean;
   loading?: boolean;
@@ -23,6 +25,7 @@ export default function Button({
   variant = "neutral",
   size = "default",
   style,
+  textStyle: textStyleOverride,
   onPress,
   disabled = false,
   loading = false,
@@ -85,7 +88,7 @@ export default function Button({
       {loading ? (
         <ActivityIndicator color={indicatorColor} />
       ) : (
-        <Text style={[styles.btnTextBase, size === "compact" ? styles.btnTextCompact : null, textStyle]}>{title}</Text>
+        <Text style={[styles.btnTextBase, size === "compact" ? styles.btnTextCompact : null, textStyle, textStyleOverride]}>{title}</Text>
       )}
     </Pressable>
   );

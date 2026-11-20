@@ -149,15 +149,25 @@ describe("朱の使い方", () => {
     expect([...filled].length).toBeLessThanOrEqual(1);
   });
 
-  it("朱を使う画面がアプリ全体で限られている", () => {
+  it("朱は明地の画面でしか使わない", () => {
+    // 朱の面は藍の地に対して 1.55 で、WCAG 1.4.11 がUI部品に求める 3.0 を
+    // 大きく割る。暗地の画面では使えない。
+    //
+    // ホームと相談フローが藍の地になったため、現在どの画面でも使っていない。
+    // トークン自体は残す(明地の画面へ戻すときのため)。暗地の画面へ入れたら
+    // この検査で落ちる。
+    const DARK_SCREENS = ["app/(tabs)/index.tsx", "app/consultation/index.tsx"];
+
     const users = screens.filter((file) =>
       readFileSync(resolve(mobileRoot, file), "utf8").includes("theme.vermilion"),
     );
 
-    // 相談フローは夜明け前の暗地になったため、朱を使わない。朱の面と最も明るい
-    // 地の差は 1.55 で、WCAG 1.4.11 がUI部品に求める 3.0 を大きく割る。
-    // 主ボタンは曙色(dawnNight.ctaSurface)へ移した。
-    expect(users).toEqual(["app/(tabs)/index.tsx"]);
+    for (const file of users) {
+      expect(DARK_SCREENS, `${file} は暗地なので朱を使えない`).not.toContain(file);
+    }
+
+    // 藍の地に対して成立しないことを数値でも固定する。
+    expect(contrast(light.vermilion, dawnNight.colors[2])).toBeLessThan(3);
   });
 });
 
