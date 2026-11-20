@@ -646,14 +646,12 @@ export default function ShrineDetail() {
     <>
       <Stack.Screen options={{ title: shrine.name }} />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        {/* ヒーロー画像 */}
+        {/* ヒーロー画像。出典と権利を確認した写真がある場合だけ出す。
+            無い間は帯ごと出さず、名前から始める。16:10の空の帯に絵文字を置くと、
+            写真が無いことを画面いっぱいに見せることになる。 */}
         {shrine.imageUrl ? (
           <Image source={{ uri: shrine.imageUrl }} style={styles.heroImage} />
-        ) : (
-          <View style={styles.heroPlaceholder}>
-            <Text style={styles.heroPlaceholderText}>⛩</Text>
-          </View>
-        )}
+        ) : null}
 
         {/* ヘッダー（お気に入り）。戻るはネイティブヘッダーが持つ。 */}
         <View style={styles.headerBar}>
@@ -773,34 +771,20 @@ export default function ShrineDetail() {
           </View>
         ) : null}
 
-        {/* action suggestion */}
+        {/* 参拝前の問い。
+            旧実装はここに「参拝前にできること」として、まずやること・次にできること・
+            参拝前の問いを並べていた。同じ3つが推薦結果にも出ており、内容がほぼ同じ
+            まま2画面に重複していた。しかも1つめは「まず詳細を見て…」で、詳細を
+            開いている画面で言うことではない。
+            推薦結果は次の一歩へ導く場所、ここは参拝そのものへ向かう場所なので、
+            持って行く問いだけを残す。英語の見出し(NEXT ACTION)もやめた。 */}
         {shouldShowActionSuggestionV4 ? (
-          <View style={styles.actionCard}>
-            <Text style={styles.cardEyebrow}>NEXT ACTION</Text>
-            <Text style={styles.cardTitle}>参拝前にできること</Text>
-            {asTrimmedString(primaryAction?.label) ? (
-              <Text style={styles.actionV4Title}>{primaryAction?.label}</Text>
-            ) : null}
-            {asTrimmedString(primaryAction?.description) ? (
-              <Text style={styles.cardBody}>{primaryAction?.description}</Text>
-            ) : null}
-            {asTrimmedString(secondaryAction?.label) || asTrimmedString(secondaryAction?.description) ? (
-              <View style={styles.actionV4SecondaryBlock}>
-                {asTrimmedString(secondaryAction?.label) ? (
-                  <Text style={styles.actionV4SubTitle}>{secondaryAction?.label}</Text>
-                ) : null}
-                {asTrimmedString(secondaryAction?.description) ? (
-                  <Text style={styles.cardBody}>{secondaryAction?.description}</Text>
-                ) : null}
-              </View>
-            ) : null}
-            {asTrimmedString(reflectionPrompt?.question) ? (
-              <View style={styles.actionV4SecondaryBlock}>
-                <Text style={styles.meaningActionLabel}>参拝前の問い</Text>
-                <Text style={styles.cardBody}>{reflectionPrompt?.question}</Text>
-              </View>
-            ) : null}
-          </View>
+          asTrimmedString(reflectionPrompt?.question) ? (
+            <View style={styles.actionCard}>
+              <Text style={styles.cardTitle}>参拝前の問い</Text>
+              <Text style={styles.cardBody}>{reflectionPrompt?.question}</Text>
+            </View>
+          ) : null
         ) : (
           <View style={styles.actionCard}>
             <Text style={styles.cardTitle}>参拝前にできること</Text>
@@ -911,18 +895,6 @@ const styles = StyleSheet.create({
   heroImage: {
     width: "100%",
     aspectRatio: 16 / 10,
-  },
-  heroPlaceholder: {
-    width: "100%",
-    aspectRatio: 16 / 10,
-    backgroundColor: theme.surface,
-    alignItems: "center",
-    justifyContent: "center",
-    borderBottomWidth: cardSizes.borderWidth,
-    borderBottomColor: theme.border,
-  },
-  heroPlaceholderText: {
-    fontSize: 48,
   },
 
   // ヘッダーバー
@@ -1035,14 +1007,6 @@ const styles = StyleSheet.create({
     padding: cardSizes.cardPaddingLg,
     gap: spacing.smGap,
   },
-  meaningActionLabel: {
-    ...typography.eyebrow,
-    color: theme.accentSoft,
-  },
-  cardEyebrow: {
-    ...typography.eyebrow,
-    color: theme.accentSoft,
-  },
   cardTitle: {
     ...typography.title,
     color: theme.text,
@@ -1050,18 +1014,6 @@ const styles = StyleSheet.create({
   cardBody: {
     ...typography.body,
     color: theme.mutedSoft,
-  },
-  actionV4Title: {
-    ...typography.title,
-    color: theme.text,
-  },
-  actionV4SubTitle: {
-    ...typography.subhead,
-    color: theme.accentSoft,
-  },
-  actionV4SecondaryBlock: {
-    marginTop: spacing.smGap,
-    gap: spacing.tightGap,
   },
   reasonFactsCard: {
     marginHorizontal: spacing.screenX,

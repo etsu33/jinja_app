@@ -500,11 +500,8 @@ function ResultCard({
   React.useEffect(() => { if (!card.directionReference || directionImpressed.current) return; directionImpressed.current = true; trackMobileDirection("direction_match_impression", { matched: card.directionReference.matched, recommendation_rank: rank }); }, [card.directionReference, rank]);
   return (
     <View style={styles.card}>
-      {/* ランクバッジ */}
+      {/* 順位。塗りの丸バッジと「ご縁1」で同じ数字を2回出していたため、見出しだけにする。 */}
       <View style={styles.rankRow}>
-        <View style={styles.rankBadge}>
-          <Text style={styles.rankBadgeText}>{rank}</Text>
-        </View>
         <Text style={styles.rankLabel}>ご縁{rank}</Text>
         <View style={styles.rankLine} />
       </View>
@@ -563,7 +560,7 @@ function ResultCard({
 
       {reasonFactItems.length > 0 ? (
         <View style={styles.reasonFactsCard}>
-          <Text style={styles.reasonFactsLabel}>根拠として見ている情報</Text>
+          <Text style={styles.reasonFactsLabel}>相談と重なったもの</Text>
           {reasonFactItems.slice(0, 3).map((item) => (
             <View key={item.key} style={styles.reasonFactItem}>
               <Text style={styles.reasonFactLabel}>{item.label}</Text>
@@ -1247,20 +1244,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  rankBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: theme.accent,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rankBadgeText: {
-    color: theme.background,
-    fontSize: 12,
-    fontWeight: "900",
-    lineHeight: 14,
-  },
   rankLabel: {
     ...typography.eyebrow,
     color: theme.accentSoft,
@@ -1300,13 +1283,13 @@ const styles = StyleSheet.create({
   },
 
   // 推薦理由
+  // 27/28節: 読み物にする。カードの中に箱を積まない。
+  // 旧実装は card > 塗りの箱 > 塗りの箱 の3段で、1件の結果に箱が5つ以上並んでいた。
+  // 節の区切りは細い罫と余白で作り、塗りと枠は使わない。
   reasonBlock: {
-    backgroundColor: theme.surfaceSoft,
-    borderWidth: 1,
-    borderColor: theme.borderSoft,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: theme.borderSoft,
+    paddingTop: 12,
     gap: 5,
   },
   reasonLabel: {
@@ -1318,12 +1301,9 @@ const styles = StyleSheet.create({
     color: theme.mutedSoft,
   },
   reasonFactsCard: {
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.borderSoft,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: theme.borderSoft,
+    paddingTop: 12,
     gap: 9,
   },
   reasonFactsLabel: {
@@ -1342,12 +1322,9 @@ const styles = StyleSheet.create({
     color: theme.mutedSoft,
   },
   directionReferenceCard: {
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.borderSoft,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: theme.borderSoft,
+    paddingTop: 12,
     gap: 4,
   },
   directionReferenceLabel: {
@@ -1364,12 +1341,9 @@ const styles = StyleSheet.create({
   },
 
   actionV4Card: {
-    backgroundColor: theme.surfaceSoft,
-    borderWidth: 1,
-    borderColor: theme.borderSoft,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: theme.borderSoft,
+    paddingTop: 12,
     gap: 10,
   },
   actionV4Header: {
@@ -1384,12 +1358,11 @@ const styles = StyleSheet.create({
     color: theme.muted,
   },
   actionV4Item: {
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.borderSoft,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    // 押せる項目なので、左罫で並びであることを示す(条件サマリと同じ文法)。
+    borderLeftWidth: 2,
+    borderLeftColor: theme.borderAccent,
+    paddingLeft: 10,
+    paddingVertical: 6,
     gap: 4,
   },
   actionV4ItemPressed: {

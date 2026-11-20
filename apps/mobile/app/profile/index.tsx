@@ -10,6 +10,9 @@ import { ProfilePickerModal } from "../../components/profile/ProfilePickerModal"
 import { typography } from "../../design/typography";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+// 保存済みの印。グリフの ✓ は端末のフォント次第で字形が変わるため Ionicons を使う。
+const SAVE_ICON_SIZE = 16;
+
 // リストの送り記号。旧実装は "›" のグリフだった。
 const CHEVRON_SIZE = 20;
 
@@ -54,7 +57,8 @@ export default function ProfileScreen() {
           あなたの基本情報を入力すると、神社提案に活用されます。
         </Text>
         <View style={styles.saveNotice}>
-          <Text style={styles.saveNoticeText}>✓ 入力内容はこの端末に自動保存されます</Text>
+          <Ionicons name="checkmark-circle-outline" size={SAVE_ICON_SIZE} color={theme.cedar} />
+          <Text style={styles.saveNoticeText}>入力内容はこの端末に自動保存されます</Text>
         </View>
       </View>
 
@@ -153,7 +157,8 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: theme.text,
   },
-  saveNotice: { alignSelf: "flex-start", backgroundColor: theme.cedarSurface, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8 },
+  // 印(Ionicons)と文字が横に並ぶ。
+  saveNotice: { alignSelf: "flex-start", backgroundColor: theme.cedarSurface, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 6 },
   saveNoticeText: { ...typography.footnote, color: theme.cedar },
   sectionCard: {
     backgroundColor: theme.surface,

@@ -20,11 +20,7 @@ export function SelectedShrineMapCard({ shrine, onDetail }: Props) {
     <View style={styles.card} accessibilityLabel={`選択中の神社: ${shrine.name}`}>
       {shrine.imageUrl ? (
         <Image source={{ uri: shrine.imageUrl }} style={styles.image} />
-      ) : (
-        <View style={styles.imagePlaceholder}>
-          <Text style={styles.imagePlaceholderText}>⛩</Text>
-        </View>
-      )}
+      ) : null}
 
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>
@@ -66,17 +62,6 @@ const styles = StyleSheet.create({
     height: cardSizes.imageSm,
     borderRadius: radius.xs,
     backgroundColor: theme.surfaceSoft,
-  },
-  imagePlaceholder: {
-    width: cardSizes.imageSm,
-    height: cardSizes.imageSm,
-    borderRadius: radius.xs,
-    backgroundColor: theme.surfaceSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  imagePlaceholderText: {
-    fontSize: 26,
   },
   body: {
     flex: 1,

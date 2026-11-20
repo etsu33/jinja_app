@@ -144,7 +144,9 @@ export default function SearchPage() {
                     }}
                     style={({ pressed }) => [styles.cardMain, pressed && styles.cardPressed]}
                   >
-                    <Image source={{ uri: s.imageUrl }} style={styles.cardImage} />
+                    {/* 写真は、出典と使用権利を確認したものがある場合だけ出す。
+                        無い間は枠ごと出さない(灰色の箱や無関係な画像を置かない)。 */}
+                    {s.imageUrl ? <Image source={{ uri: s.imageUrl }} style={styles.cardImage} /> : null}
                     <View style={styles.cardBody}>
                       <Text style={styles.cardName}>{s.name}</Text>
                       <Text style={styles.cardArea}>{s.prefecture}</Text>

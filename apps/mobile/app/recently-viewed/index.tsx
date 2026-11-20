@@ -11,6 +11,9 @@ import { radius } from "../../design/radius";
 import { typography } from "../../design/typography";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+// 空状態の印の大きさ。
+const EMPTY_ICON_SIZE = 32;
+
 // リストの送り記号。旧実装は "›" のグリフだった。
 const CHEVRON_SIZE = 20;
 
@@ -45,7 +48,7 @@ export default function RecentlyViewedScreen() {
         <Text style={styles.loadingText}>読み込み中…</Text>
       ) : items.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>⛩</Text>
+          <Ionicons name="time-outline" size={EMPTY_ICON_SIZE} color={theme.muted} />
           <Text style={styles.emptyTitle}>最近見た神社はまだありません</Text>
           <Text style={styles.emptyText}>神社詳細を見ると、ここに閲覧履歴として表示されます。</Text>
         </View>
@@ -73,11 +76,7 @@ function RecentlyViewedCard({
     <Pressable onPress={onPress} style={styles.card}>
       {shrine.photo_url ? (
         <Image source={{ uri: shrine.photo_url }} style={styles.cardImage} />
-      ) : (
-        <View style={styles.cardPlaceholder}>
-          <Text style={styles.cardPlaceholderText}>⛩</Text>
-        </View>
-      )}
+      ) : null}
 
       <View style={styles.cardBody}>
         <Text style={styles.cardTitle}>{shrine.name}</Text>
@@ -121,9 +120,6 @@ const styles = StyleSheet.create({
     padding: cardSizes.cardPaddingLg,
     marginTop: spacing.sectionTop,
   },
-  emptyIcon: {
-    fontSize: 40,
-  },
   emptyTitle: {
     ...typography.title,
     color: theme.text,
@@ -147,19 +143,6 @@ const styles = StyleSheet.create({
     width: cardSizes.imageSm,
     height: cardSizes.imageSm,
     borderRadius: radius.xs,
-  },
-  cardPlaceholder: {
-    width: cardSizes.imageSm,
-    height: cardSizes.imageSm,
-    borderRadius: radius.xs,
-    backgroundColor: theme.surfaceSoft,
-    borderWidth: cardSizes.borderWidth,
-    borderColor: theme.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardPlaceholderText: {
-    fontSize: 28,
   },
   cardBody: {
     flex: 1,

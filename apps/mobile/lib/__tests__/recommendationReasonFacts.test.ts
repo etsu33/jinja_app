@@ -16,13 +16,13 @@ const fact = (type: string, label: string, isPrimary = true) => ({
 
 describe("Mobile Recommendation Reason Facts contract", () => {
   it.each([
-    ["need_tag Primary", "need_tag", "仕事", "相談との一致"],
-    ["history_theme Primary", "history_theme", "再出発", "神社固有の文脈"],
-    ["goriyaku Primary", "goriyaku_tag", "厄除け", "ご利益・意味"],
-    ["Explicit Constraint", "user_selected_tag", "駅から近い", "明示した条件"],
+    ["need_tag Primary", "need_tag", "仕事", "相談の言葉"],
+    ["history_theme Primary", "history_theme", "再出発", "この神社の背景"],
+    ["goriyaku Primary", "goriyaku_tag", "厄除け", "願うご縁"],
+    ["Explicit Constraint", "user_selected_tag", "駅から近い", "選んだ条件"],
     ["Personalization", "element", "火", "生年月日との相性"],
-    ["visit_style", "visit_style", "静かに参拝", "参拝との相性"],
-    ["fallback", "fallback", "条件に近い候補", "参考情報"],
+    ["visit_style", "visit_style", "静かに参拝", "参拝スタイル"],
+    ["fallback", "fallback", "条件に近い候補", "参考にした情報"],
   ])("%sをBackend指定のPrimaryとして保持する", (_case, type, label, displayLabel) => {
     const raw = [fact("need_tag", "先頭だが非Primary", false), fact(type, label)];
 
@@ -111,7 +111,7 @@ describe("buildReasonFactItems: 表示名と値が同じ根拠をまとめる", 
   it("表示名＋labelが同じ根拠は1行にまとめ、keyが重複しない", () => {
     const items = buildReasonFactItems(normalizeRecommendationReasonFacts([goriyakuMoney, textHintMoney]));
 
-    expect(items).toEqual([{ key: "ご利益・意味-money", label: "ご利益・意味", value: "金運" }]);
+    expect(items).toEqual([{ key: "願うご縁-money", label: "願うご縁", value: "金運" }]);
     expect(new Set(items.map((item) => item.key)).size).toBe(items.length);
   });
 
@@ -123,8 +123,8 @@ describe("buildReasonFactItems: 表示名と値が同じ根拠をまとめる", 
     ]);
 
     expect(buildReasonFactItems(facts)).toEqual([
-      { key: "ご利益・意味-money", label: "ご利益・意味", value: "金運（説明文）" },
-      { key: "相談との一致-love", label: "相談との一致", value: "恋愛" },
+      { key: "願うご縁-money", label: "願うご縁", value: "金運（説明文）" },
+      { key: "相談の言葉-love", label: "相談の言葉", value: "恋愛" },
     ]);
   });
 
@@ -144,8 +144,8 @@ describe("buildReasonFactItems: 表示名と値が同じ根拠をまとめる", 
     ]);
 
     expect(buildReasonFactItems(facts).map((item) => item.key)).toEqual([
-      "ご利益・意味-money",
-      "ご利益・意味-money_alt",
+      "願うご縁-money",
+      "願うご縁-money_alt",
     ]);
   });
 
@@ -179,13 +179,26 @@ describe("buildReasonFactItems: 表示名と値が同じ根拠をまとめる", 
     ]);
   });
 
-  it("値と表示名が違う語なら、意味が近くても値を出す（visit_style）", () => {
+  it("表示名と値が同じ語なら1行に畳む（visit_style）", () => {
+    // Backend の label_ja は「参拝スタイル」で、どのスタイルかまでは返さない。
+    // 表示名もアプリ内の語に揃えて「参拝スタイル」にしたため、同じ語が2回
+    // 並ばないよう value を落とす。
     const facts = normalizeRecommendationReasonFacts([
       { type: "visit_style", label: "visit_style", label_ja: "参拝スタイル", evidence: [], score: 1 },
     ]);
 
     expect(buildReasonFactItems(facts)).toEqual([
-      { key: "参拝との相性-visit_style", label: "参拝との相性", value: "参拝スタイル" },
+      { key: "参拝スタイル-visit_style", label: "参拝スタイル", value: null },
+    ]);
+  });
+
+  it("表示名と値が違う語なら値を出す（goriyaku_tag）", () => {
+    const facts = normalizeRecommendationReasonFacts([
+      { type: "goriyaku_tag", label: "money", label_ja: "金運", evidence: [], score: 1 },
+    ]);
+
+    expect(buildReasonFactItems(facts)).toEqual([
+      { key: "願うご縁-money", label: "願うご縁", value: "金運" },
     ]);
   });
 
