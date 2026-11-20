@@ -64,6 +64,7 @@ import {
   resolveActionEventHistoryTheme,
   type ConciergeReasonFacts,
 } from "../../../lib/recommendationReasonFacts";
+import { goriyakuColor } from "../../../design/goriyakuColors";
 
 // ────────────────────────────────────────────
 // 型
@@ -641,11 +642,14 @@ function ResultCard({
       {/* タグ */}
       {card.tags.length > 0 ? (
         <View style={styles.tagRow}>
-          {card.tags.slice(0, 2).map((tag) => (
-            <View key={tag} style={styles.tagPill}>
-              <Text style={styles.tagText}>{tag}</Text>
-            </View>
-          ))}
+          {card.tags.slice(0, 2).map((tag) => {
+            const tone = goriyakuColor(tag);
+            return (
+              <View key={tag} style={[styles.tagPill, { backgroundColor: tone.surface }]}>
+                <Text style={[styles.tagText, { color: tone.text }]}>{tag}</Text>
+              </View>
+            );
+          })}
         </View>
       ) : null}
 
@@ -1387,13 +1391,11 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 6,
   },
+  // 面と文字の色は goriyakuColor が渡す。枠線は置かない。
   tagPill: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.borderSoft,
-    backgroundColor: theme.surfaceSoft,
   },
   tagText: {
     ...typography.caption,

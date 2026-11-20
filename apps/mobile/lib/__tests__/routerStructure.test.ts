@@ -90,6 +90,7 @@ describe("Expo Router structure", () => {
     expect(readdirSync(resolve(mobileRoot, "design")).sort()).toEqual([
       "cardSizes.ts",
       "ctaSizes.ts",
+      "goriyakuColors.ts",
       "radius.ts",
       "semanticColorTokens.ts",
       "shadow.ts",

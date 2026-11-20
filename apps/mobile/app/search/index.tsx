@@ -20,6 +20,7 @@ import { trackSearchScreenView, trackShrineCardClick } from "../../lib/searchAna
 import { filterShrines, parseSearchFilters } from "../../lib/searchFilters";
 import { typography } from "../../design/typography";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { goriyakuColor } from "../../design/goriyakuColors";
 
 // リストの送り記号。旧実装は "›" のグリフだった。
 const CHEVRON_SIZE = 20;
@@ -150,12 +151,17 @@ export default function SearchPage() {
                     <View style={styles.cardBody}>
                       <Text style={styles.cardName}>{s.name}</Text>
                       <Text style={styles.cardArea}>{s.prefecture}</Text>
+                      {/* ご利益の札。複数の神社を見比べる画面なので、色で拾えるようにする。
+                          一覧に無いご利益は既定の見た目へ落ちる。 */}
                       <View style={styles.miniTagRow}>
-                        {s.tags.slice(0, 3).map((t) => (
-                          <View key={t} style={styles.miniTag}>
-                            <Text style={styles.miniTagText}>{t}</Text>
-                          </View>
-                        ))}
+                        {s.tags.slice(0, 3).map((t) => {
+                          const tone = goriyakuColor(t);
+                          return (
+                            <View key={t} style={[styles.miniTag, { backgroundColor: tone.surface }]}>
+                              <Text style={[styles.miniTagText, { color: tone.text }]}>{t}</Text>
+                            </View>
+                          );
+                        })}
                       </View>
                     </View>
                     <Ionicons
@@ -481,11 +487,9 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 4,
   },
+  // 面と文字の色は goriyakuColor が渡す。枠線は置かない(色が付くと輪郭が二重になる)。
   miniTag: {
     borderRadius: 999,
-    backgroundColor: theme.surfaceSoft,
-    borderWidth: 1,
-    borderColor: theme.borderSoft,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
