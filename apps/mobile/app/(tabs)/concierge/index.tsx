@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
   AccessibilityInfo,
+  type TextLayoutEvent,
   KeyboardAvoidingView,
   Platform,
   View,
@@ -471,6 +472,62 @@ async function fetchConciergeRecommendations({
 // ────────────────────────────────────────────
 // 推薦結果カード
 // ────────────────────────────────────────────
+// 理由文の節。3行で切り、切れているときだけ「続きを読む」を出す。
+//
+// 以前は numberOfLines={3} で切りっぱなしで、続きがあることが分からなかった。
+// 全文は神社詳細で読めるが、そこへ行く手がかりが無い状態だった。
+//
+// Backend へ送る内容も、返ってきた文章も変えない。表示だけを畳む。
+const REASON_COLLAPSED_LINES = 3;
+
+function ReasonSection({ label, text }: { label: string; text: string }) {
+  const [expanded, setExpanded] = React.useState(false);
+  // null = まだ測っていない。実際の行数を測ってから「続きを読む」の要否を決める。
+  // 文字数で決めると、短いが折り返す文と、長いが収まる文を取り違える。
+  const [truncatable, setTruncatable] = React.useState<boolean | null>(null);
+
+  const handleMeasure = React.useCallback(
+    (event: TextLayoutEvent) => {
+      setTruncatable((current) =>
+        current === null ? event.nativeEvent.lines.length > REASON_COLLAPSED_LINES : current,
+      );
+    },
+    [],
+  );
+
+  return (
+    <View style={styles.reasonBlock}>
+      <Text style={styles.reasonLabel}>{label}</Text>
+      <Text style={styles.cardReason} numberOfLines={expanded ? undefined : REASON_COLLAPSED_LINES}>
+        {text}
+      </Text>
+
+      {/* 行数を測るためだけの写し。測り終えたら消える。読み上げには乗せない。 */}
+      {truncatable === null ? (
+        <Text
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          onTextLayout={handleMeasure}
+          style={[styles.cardReason, styles.reasonMeasure]}
+        >
+          {text}
+        </Text>
+      ) : null}
+
+      {truncatable ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={expanded ? `${label}を折りたたむ` : `${label}の続きを読む`}
+          onPress={() => setExpanded((value) => !value)}
+          style={styles.readMore}
+        >
+          <Text style={styles.readMoreText}>{expanded ? "閉じる" : "続きを読む"}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 function ResultCard({
   card,
   rank,
@@ -517,26 +574,17 @@ function ResultCard({
         <>
           {/* この神社について */}
           {reasonV4Sections.factText ? (
-            <View style={styles.reasonBlock}>
-              <Text style={styles.reasonLabel}>この神社について</Text>
-              <Text style={styles.cardReason} numberOfLines={3}>{reasonV4Sections.factText}</Text>
-            </View>
+            <ReasonSection label="この神社について" text={reasonV4Sections.factText} />
           ) : null}
 
           {/* 今の相談とのつながり */}
           {reasonV4Sections.interpretationText ? (
-            <View style={styles.reasonBlock}>
-              <Text style={styles.reasonLabel}>今の相談とのつながり</Text>
-              <Text style={styles.cardReason} numberOfLines={3}>{reasonV4Sections.interpretationText}</Text>
-            </View>
+            <ReasonSection label="今の相談とのつながり" text={reasonV4Sections.interpretationText} />
           ) : null}
 
           {/* 参拝前にできること */}
           {reasonV4Sections.actionText ? (
-            <View style={styles.reasonBlock}>
-              <Text style={styles.reasonLabel}>参拝前にできること</Text>
-              <Text style={styles.cardReason} numberOfLines={3}>{reasonV4Sections.actionText}</Text>
-            </View>
+            <ReasonSection label="参拝前にできること" text={reasonV4Sections.actionText} />
           ) : null}
         </>
       ) : (
@@ -551,10 +599,7 @@ function ResultCard({
 
           {/* 推薦理由 */}
           {reasonV4Sections.fallbackText ? (
-            <View style={styles.reasonBlock}>
-              <Text style={styles.reasonLabel}>この神社を選んだ理由</Text>
-              <Text style={styles.cardReason} numberOfLines={3}>{reasonV4Sections.fallbackText}</Text>
-            </View>
+            <ReasonSection label="この神社を選んだ理由" text={reasonV4Sections.fallbackText} />
           ) : null}
         </>
       )}
@@ -1295,6 +1340,24 @@ const styles = StyleSheet.create({
     borderTopColor: theme.borderSoft,
     paddingTop: 12,
     gap: 5,
+  },
+  // 行数を測るための写し。画面には出さない。
+  reasonMeasure: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    opacity: 0,
+    zIndex: -1,
+  },
+  // 44pt のタップ領域を確保する(HIG)。
+  readMore: {
+    minHeight: 44,
+    justifyContent: "center",
+    alignSelf: "flex-start",
+  },
+  readMoreText: {
+    ...typography.label,
+    color: theme.accent,
   },
   reasonLabel: {
     ...typography.eyebrow,
