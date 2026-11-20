@@ -7,6 +7,8 @@ import * as Location from "expo-location";
 
 import { appColors as theme, dawnNight } from "../../design/theme";
 import { LinearGradient } from "expo-linear-gradient";
+import { useWindowDimensions } from "react-native";
+import { WaPattern } from "../../components/common/WaPattern";
 import { setStatusBarStyle } from "expo-status-bar";
 import { typography } from "../../design/typography";
 import { spacing } from "../../design/spacing";
@@ -91,6 +93,7 @@ function SelectionCard({ label, selected, onPress }: SelectionCardProps) {
 export default function ConsultationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
   // Concierge の「条件を変える」から戻ってくる場合、入力済みの値をそのまま復元する。
   // 受け取るキーは openConcierge が組み立てるクエリと同じもの。項目は増減させていない。
   const params = useLocalSearchParams<{
@@ -218,6 +221,11 @@ export default function ConsultationScreen() {
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
+      {/* 和の文様。上端に青海波を薄く敷き、下へ向けて消す。下部に流水。
+          文字の下には柄を残さない。 */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <WaPattern height={screenHeight} />
+      </View>
       <View style={{ paddingTop: insets.top }} />
       {/* 22節: Navigation Header を大きく作らない。21節: Progress を主役にしない。 */}
       <View style={styles.topBar}>

@@ -219,18 +219,36 @@ describe("和の朝焼け（区切りの画面のグラデーション）", () =
   });
 
   it("グラデーションを使う画面を限る", () => {
-    // 40節の Gradient 禁止には例外を2つだけ置く。
+    // 40節の Gradient 禁止には、ブランドの面だけ例外を置く。
     //
     //  1. 起動画面(DawnSplash) — 区切りの画面。dawn をそのまま使う
-    //  2. 相談フロー — 選択肢が主役で長文が無い。dawnNight(夜明け前だけ)を使う
+    //  2. 相談フロー — 選択肢が主役で長文が無い。dawnNight を画面いっぱいに
+    //  3. ホームの帯 — アイコンから本編へ降りる間。dawnNight の上2点
     //
-    // 読み物である推薦結果と神社詳細は明地のまま。「長文の可読性は明地が優位」
-    // (docs/design/color-direction-v1.md) は今も有効。
+    // 読み物である推薦結果と神社詳細は明地の単色のまま。「長文の可読性は
+    // 明地が優位」(docs/design/color-direction-v1.md) は今も有効。
+    // 判定は expo-linear-gradient の import に限る。react-native-svg の
+    // LinearGradient は文様のマスク用で、画面の地ではない。
     const users = globSync(["app/**/*.tsx", "components/**/*.tsx"], { cwd: mobileRoot })
-      .filter((file) => readFileSync(resolve(mobileRoot, file), "utf8").includes("LinearGradient"))
+      .filter((file) =>
+        readFileSync(resolve(mobileRoot, file), "utf8").includes('from "expo-linear-gradient"'),
+      )
       .sort();
 
-    expect(users).toEqual(["app/consultation/index.tsx", "components/common/DawnSplash.tsx"]);
+    expect(users).toEqual([
+      "app/(tabs)/index.tsx",
+      "app/consultation/index.tsx",
+      "components/common/DawnSplash.tsx",
+    ]);
+  });
+
+  it("和の文様を敷く場所を、ブランドの面だけに限る", () => {
+    // 文様は読み物の下に敷かない。長文の可読性を落とすため。
+    const users = globSync(["app/**/*.tsx", "components/**/*.tsx"], { cwd: mobileRoot })
+      .filter((file) => /<WaPattern/.test(readFileSync(resolve(mobileRoot, file), "utf8")))
+      .sort();
+
+    expect(users).toEqual(["app/(tabs)/index.tsx", "app/consultation/index.tsx"]);
   });
 
   it("夜明け前の地の上で、使う3色がどこでも読める", () => {

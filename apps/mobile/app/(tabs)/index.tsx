@@ -3,7 +3,9 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { ScrollView, View, Text, TextInput, StyleSheet, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { setStatusBarStyle } from "expo-status-bar";
-import { appColors as theme } from "../../design/theme";
+import { appColors as theme, dawnNight } from "../../design/theme";
+import { LinearGradient } from "expo-linear-gradient";
+import { WaPattern } from "../../components/common/WaPattern";
 import { ctaSizes } from "../../design/ctaSizes";
 import Button from "../../components/ui/Button";
 import { trackSearchEntryClick } from "../../lib/searchAnalytics";
@@ -13,6 +15,8 @@ import { typography } from "../../design/typography";
 // 帯は深藍の面なので、ステータスバーの下まで伸ばしてよい。文字は inset の
 // 内側に収める。
 const MASTHEAD_TOP_PADDING = 10;
+// 帯に敷く文様の描画高さ。帯の実寸よりやや大きく取り、途中で切れて見えないようにする。
+const MASTHEAD_PATTERN_HEIGHT = 220;
 const MASTHEAD_BOTTOM_PADDING = 24;
 
 // 帯の下、本文側の上余白。
@@ -74,6 +78,17 @@ export default function Home() {
             { paddingTop: insets.top + MASTHEAD_TOP_PADDING },
           ]}
         >
+          {/* 地は相談フローと同じ藍。起動画面 → 帯 → 相談フローで色が繋がる。 */}
+          <LinearGradient
+            colors={[dawnNight.colors[0], dawnNight.colors[1]]}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 0.9, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          {/* 帯は低いので流水は出さず、青海波だけ。 */}
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            <WaPattern height={MASTHEAD_PATTERN_HEIGHT} withStream={false} />
+          </View>
           <Text style={styles.brandName}>神結び</Text>
           <Text style={styles.brandRuby}>kami musubi</Text>
           <Text style={styles.heroLead}>今の相談を、神社とのご縁につなげる</Text>
@@ -152,7 +167,9 @@ const styles = StyleSheet.create({
   // 深藍の帯
   // 文字はすべて生成り。紺の面に対して 12.59 で、UI部品の 3.0 も本文の 4.5 も満たす。
   masthead: {
-    backgroundColor: theme.accent,
+    // 実際の地は LinearGradient。読み込み前の下地として同系色を置く。
+    backgroundColor: dawnNight.colors[0],
+    overflow: "hidden",
     paddingHorizontal: 20,
     paddingBottom: MASTHEAD_BOTTOM_PADDING,
     gap: 2,

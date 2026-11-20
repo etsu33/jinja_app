@@ -48,7 +48,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         // plugin の既定は #ffffff。素のまま足すとネイティブの起動画面に白が焼き込まれ、
         // 直後に出る DawnSplash(濃藍から始まる朝焼け)との間で白が一瞬差し込む。
         // design/theme.ts の dawn.colors[0] と同値にして、継ぎ目を無くす。
-        backgroundColor: "#16213C",
+        backgroundColor: "#0B1A3D",
       },
     ],
     "expo-status-bar",

@@ -62,9 +62,11 @@ describe("ホームの帯がステータスバーの下まで伸びる条件", (
     expect(home).toMatch(/paddingTop: insets\.top \+ MASTHEAD_TOP_PADDING/);
   });
 
-  it("帯は深藍で塗られている", () => {
+  it("帯は藍で塗られている", () => {
     // 塗りが無いと、ただ文字がステータスバーへ潜るだけになる。
-    expect(home).toMatch(/masthead: \{[^}]*backgroundColor: theme\.accent/);
+    // 実際の地は LinearGradient。読み込み前の下地として同系色を置く。
+    expect(home).toMatch(/masthead: \{[\s\S]*?backgroundColor: dawnNight\.colors\[0\]/);
+    expect(home).toMatch(/<LinearGradient[\s\S]{0,200}?dawnNight\.colors\[0\]/);
   });
 
   it("この画面にいる間だけステータスバーを明色にする", () => {
