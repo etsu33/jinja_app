@@ -282,4 +282,7 @@ DISABLE_GIS_FOR_TESTS=1 USE_GIS=0 python -m pytest \
 
 最終結果: Web **83 passed**、Mobile **94 passed**、Backend **93 passed**、
 Web/Mobile typecheck **PASS**。新規テストの ESLint / Ruff も PASS。
-全 repository suite / build / full Backend mypy は未実行。
+追加で `.husky/pre-push` も実行し、OpenAPI lint は error なし、Web 契約テスト全体は
+**249 files / 2403 passed / 10 expected fail**。ローカル pnpm の既定 Node 20.19.5 は
+root engines (>=22.13.0) に対する警告を出した。Node 22.23.4 を明示した Web 新規17件・
+Mobile 関連94件・両 typecheck も PASS。全 repository suite / build / full Backend mypy は未実行。
