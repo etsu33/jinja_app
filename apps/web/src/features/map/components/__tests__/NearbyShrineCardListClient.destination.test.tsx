@@ -60,6 +60,35 @@ describe("/map 経路案内CTAのdestination縮退", () => {
     expect(cta.getAttribute("href")).toContain("destination=35.681236%2C139.767125");
   });
 
+  it("登録済み神社で座標が両方欠損なら、住所があっても経路CTAを出さない", async () => {
+    await renderWith([
+      { shrine_id: 42, name: "登録神社", address: "徳島県阿南市吉井町宮ノ前87-3", lat: null, lng: null },
+    ]);
+
+    await waitFor(() => expect(screen.getByText("登録神社")).toBeInTheDocument());
+    expect(screen.queryByRole("link", { name: "経路案内" })).not.toBeInTheDocument();
+  });
+
+  it("登録済み神社で片側欠損・範囲外でも、名称への経路fallbackを許さない", async () => {
+    await renderWith([
+      { shrine_id: 43, name: "片側欠損", address: "徳島県", lat: 35, lng: null },
+      { shrine_id: 44, name: "範囲外", address: "徳島県", lat: 999, lng: 139 },
+    ]);
+
+    await waitFor(() => expect(screen.getByText("範囲外")).toBeInTheDocument());
+    expect(screen.queryByRole("link", { name: "経路案内" })).not.toBeInTheDocument();
+  });
+
+  it("登録済み神社の有効座標では従来どおり経路CTAを残す", async () => {
+    await renderWith([
+      { shrine_id: 45, name: "有効登録神社", address: "徳島県", lat: 34.1, lng: 134.5 },
+    ]);
+
+    const route = await screen.findByRole("link", { name: "経路案内" });
+    expect(route.getAttribute("href")).toContain("destination=34.1%2C134.5");
+  });
+
+  // Google Places-only 候補の住所/神社名fallbackは既存動作を維持する。
   it("座標が無効なら住所destinationへ落ちる", async () => {
     await renderWith([{ place_id: "p2", name: "座標なし神社", address: "東京都港区2-2", lat: null, lng: null }]);
 
