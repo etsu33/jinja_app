@@ -17,15 +17,8 @@ const screenFiles = globSync(["app/**/*.tsx", "components/**/*.tsx"], { cwd: mob
 const GLYPH_STYLE_KEYS = new Set([
   "brandName",
   "brandRuby",
-  "cardPlaceholderText",
-  "emptyIcon",
-  "heroPlaceholderText",
-  "imagePlaceholderText",
   "introBadge",
-  "pickBtnIcon",
-  "placeholderIcon",
   "popularRank",
-  "rankBadgeText",
   "statValue",
   "summaryValue",
 ]);
