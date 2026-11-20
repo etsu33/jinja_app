@@ -1,11 +1,13 @@
 import * as React from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Location from "expo-location";
 
-import { appColors as theme } from "../../design/theme";
+import { appColors as theme, dawnNight } from "../../design/theme";
+import { LinearGradient } from "expo-linear-gradient";
+import { setStatusBarStyle } from "expo-status-bar";
 import { typography } from "../../design/typography";
 import { spacing } from "../../design/spacing";
 import { radius } from "../../design/radius";
@@ -81,7 +83,7 @@ function SelectionCard({ label, selected, onPress }: SelectionCardProps) {
       style={({ pressed }) => [styles.card, selected && styles.cardSelected, pressed && styles.cardPressed]}
     >
       <Text style={[styles.cardText, selected && styles.cardTextSelected]}>{label}</Text>
-      {selected ? <Ionicons name="checkmark" size={18} color={theme.vermilion} /> : null}
+      {selected ? <Ionicons name="checkmark" size={18} color={dawnNight.mark} /> : null}
     </Pressable>
   );
 }
@@ -101,6 +103,14 @@ export default function ConsultationScreen() {
     support?: string;
     topicDone?: string;
   }>();
+
+  // 画面全体が夜明け前の地なので、この画面だけステータスバーを明色にする。
+  useFocusEffect(
+    React.useCallback(() => {
+      setStatusBarStyle("light");
+      return () => setStatusBarStyle("dark");
+    }, []),
+  );
 
   const restoredOrigin = React.useRef<UserOrigin | null>(getOriginSession()).current;
 
@@ -194,9 +204,21 @@ export default function ConsultationScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.screen, { paddingTop: insets.top }]}
+      style={styles.screen}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      {/* 夜明け前の地。起動画面の朝焼けのうち、白と生成りがどこでも読める
+          範囲だけを使う(design/theme.ts の dawnNight)。
+          選択肢が主役で長文が無い画面なので暗地が機能する。読み物である
+          推薦結果と神社詳細は明地のまま。 */}
+      <LinearGradient
+        colors={dawnNight.colors}
+        locations={dawnNight.locations}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={{ paddingTop: insets.top }} />
       {/* 22節: Navigation Header を大きく作らない。21節: Progress を主役にしない。 */}
       <View style={styles.topBar}>
         <Pressable
@@ -206,7 +228,7 @@ export default function ConsultationScreen() {
           onPress={goBack}
           style={styles.backButton}
         >
-          <Ionicons name="chevron-back" size={24} color={theme.accent} />
+          <Ionicons name="chevron-back" size={24} color={dawnNight.text} />
         </Pressable>
         <Text style={styles.stepLabel}>相談</Text>
         <Text style={styles.stepCount}>
@@ -241,7 +263,7 @@ export default function ConsultationScreen() {
             <TextInput
               accessibilityLabel="相談内容"
               placeholder="自分の言葉で書いてもかまいません"
-              placeholderTextColor={theme.mutedDark}
+              placeholderTextColor="rgba(245, 238, 220, 0.52)"
               style={styles.freeText}
               value={consultation}
               onChangeText={setConsultation}
@@ -268,7 +290,7 @@ export default function ConsultationScreen() {
           <View style={styles.group}>
             {showGoriyakuNotice ? (
               <View accessibilityRole="alert" style={styles.notice}>
-                <Ionicons name="information-circle-outline" size={18} color={theme.warning} />
+                <Ionicons name="information-circle-outline" size={18} color={dawnNight.mark} />
                 <Text style={styles.noticeText}>
                   「{incomingGoriyaku}」は、前の相談で選んだものです。相談内容を書き直したので、
                   必要なら選び直してください。もう一度押すと外せます。
@@ -339,9 +361,10 @@ export default function ConsultationScreen() {
 const CONTENT_X = spacing.contentX;
 
 const styles = StyleSheet.create({
+  // 地は LinearGradient が敷く。
   screen: {
     flex: 1,
-    backgroundColor: theme.background,
+    backgroundColor: dawnNight.colors[0],
   },
   topBar: {
     flexDirection: "row",
@@ -359,23 +382,25 @@ const styles = StyleSheet.create({
   },
   stepLabel: {
     ...typography.label,
-    color: theme.mutedSoft,
+    color: dawnNight.text,
+    opacity: 0.78,
     flex: 1,
   },
   stepCount: {
     ...typography.footnoteStrong,
-    color: theme.mutedSoft,
+    color: dawnNight.text,
+    opacity: 0.64,
   },
   progressTrack: {
     flexDirection: "row",
     height: 3,
     marginHorizontal: CONTENT_X,
     borderRadius: radius.pill,
-    backgroundColor: theme.border,
+    backgroundColor: "rgba(245, 238, 220, 0.20)",
     overflow: "hidden",
   },
   progressFill: {
-    backgroundColor: theme.accent,
+    backgroundColor: dawnNight.mark,
   },
   content: {
     paddingHorizontal: CONTENT_X,
@@ -384,30 +409,31 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.question,
-    color: theme.accent,
+    color: dawnNight.text,
   },
   support: {
     ...typography.subhead,
-    color: theme.mutedSoft,
+    color: dawnNight.text,
+    opacity: 0.74,
     marginTop: spacing.lgGap,
     marginBottom: spacing.sectionTop + spacing.smGap,
   },
-  // 注意書き。warning #7E520F は沈み面に対して 5.25 で AA を満たす(実測)。
-  // 左罫は Concierge の条件サマリと同じ文法。朱は主アクション専用なので使わない。
+  // 注意書き。暗地なので、淡い面(warning の組)ではなく薄い膜と曙色の罫で示す。
+  // 曙色は最も明るい地に対して 5.24 で AA を満たす(実測)。
   notice: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
-    backgroundColor: theme.surfaceSoft,
+    backgroundColor: "rgba(245, 238, 220, 0.09)",
     borderLeftWidth: 3,
-    borderLeftColor: theme.warning,
+    borderLeftColor: dawnNight.mark,
     borderRadius: radius.sm,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   noticeText: {
     ...typography.footnote,
-    color: theme.warning,
+    color: dawnNight.mark,
     flex: 1,
   },
 
@@ -424,34 +450,34 @@ const styles = StyleSheet.create({
     paddingVertical: cardSizes.cardPaddingMd,
     borderRadius: radius.xl,
     borderWidth: cardSizes.borderWidth,
-    borderColor: theme.border,
-    backgroundColor: theme.surface,
+    borderColor: "rgba(245, 238, 220, 0.22)",
+    backgroundColor: "rgba(245, 238, 220, 0.10)",
   },
   cardSelected: {
     borderWidth: 2,
-    borderColor: theme.accent,
-    backgroundColor: theme.selectedSurface,
+    borderColor: dawnNight.mark,
+    backgroundColor: "rgba(248, 184, 139, 0.16)",
   },
   cardPressed: {
     opacity: 0.8,
   },
   cardText: {
     ...typography.body,
-    color: theme.accent,
+    color: dawnNight.text,
     flex: 1,
   },
   cardTextSelected: {
     ...typography.bodyStrong,
-    color: theme.accent,
+    color: "#FFFFFF",
   },
   freeText: {
     ...typography.body,
     minHeight: 96,
-    color: theme.text,
-    backgroundColor: theme.surface,
+    color: dawnNight.text,
+    backgroundColor: "rgba(245, 238, 220, 0.10)",
     borderRadius: radius.xl,
     borderWidth: cardSizes.borderWidth,
-    borderColor: theme.border,
+    borderColor: "rgba(245, 238, 220, 0.22)",
     paddingHorizontal: cardSizes.cardPaddingLg,
     paddingVertical: cardSizes.cardPaddingMd,
   },
@@ -460,22 +486,25 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lgGap,
     gap: spacing.lgGap,
     borderTopWidth: cardSizes.borderWidth,
-    borderTopColor: theme.borderSoft,
-    backgroundColor: theme.background,
+    borderTopColor: "rgba(245, 238, 220, 0.16)",
   },
+  // 主ボタン。この地の上では朱が使えない(面と最も明るい地の差が 1.55 で、
+  // WCAG 1.4.11 がUI部品に求める 3.0 を大きく割る)。曙色の面に濃藍の文字とする
+  // (面と地 5.24 / 文字 9.28)。「主アクションは朱」の目的は目立つことなので、
+  // 目立たない地では目的を優先する。
   cta: {
     height: ctaSizes.primaryHeight,
     borderRadius: ctaSizes.primaryRadius,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.vermilion,
+    backgroundColor: dawnNight.ctaSurface,
   },
   ctaPressed: {
-    backgroundColor: theme.vermilionDeep,
+    opacity: 0.82,
   },
   ctaText: {
     ...typography.button,
-    color: theme.surfaceRaised,
+    color: dawnNight.ctaText,
   },
   secondary: {
     minHeight: 44,
@@ -484,6 +513,7 @@ const styles = StyleSheet.create({
   },
   secondaryText: {
     ...typography.label,
-    color: theme.accent,
+    color: dawnNight.text,
+    opacity: 0.8,
   },
 });

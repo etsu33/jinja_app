@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { get } from "../lib/http";
-import { appColors as theme } from "../design/theme";
+import { dawnNight } from "../design/theme";
 import { ProfilePickerModal } from "./profile/ProfilePickerModal";
 import {
   originSearchAnnouncement,
@@ -100,7 +100,7 @@ export function MobileOriginSelector({
             >
               <>
                 {selected ? (
-                  <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={theme.accentSoft} />
+                  <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={dawnNight.mark} />
                 ) : null}
                 <Text style={[styles.text, selected && styles.activeText]}>{label}</Text>
               </>
@@ -117,7 +117,7 @@ export function MobileOriginSelector({
             value={query}
             onChangeText={(value) => { setQuery(value); onChange(null); }}
             placeholder="駅名または住所を入力"
-            placeholderTextColor={theme.mutedDark}
+            placeholderTextColor="rgba(245, 238, 220, 0.52)"
             style={styles.input}
           />
           {searchAnnouncement ? <Text accessibilityLiveRegion="polite" style={status === "error" ? styles.error : styles.note}>{searchAnnouncement}</Text> : null}
@@ -177,21 +177,25 @@ export function MobileOriginSelector({
   );
 }
 
+// 相談フローの地(夜明け前)の上に置く。利用者は相談画面だけ。
+const ORIGIN_SURFACE = "rgba(245, 238, 220, 0.10)";
+const ORIGIN_BORDER = "rgba(245, 238, 220, 0.22)";
+
 const styles = StyleSheet.create({
   wrap: { gap: 10 },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   // 選択中は印(Ionicons)と文字が横に並ぶ。
-  button: { minHeight: 44, minWidth: "47%", flexGrow: 1, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 4, justifyContent: "center" },
-  active: { borderWidth: 2, borderColor: theme.accentSoft, backgroundColor: theme.surfaceSoft },
+  button: { minHeight: 44, minWidth: "47%", flexGrow: 1, borderWidth: 1, borderColor: ORIGIN_BORDER, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 4, justifyContent: "center", backgroundColor: ORIGIN_SURFACE },
+  active: { borderWidth: 2, borderColor: dawnNight.mark, backgroundColor: "rgba(248, 184, 139, 0.16)" },
   pressed: { opacity: 0.72 },
-  text: { ...typography.body, color: theme.text },
-  activeText: { color: theme.accentSoft, fontWeight: "600" },
-  input: { ...typography.bodyStrong, minHeight: 44, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, color: theme.text, justifyContent: "center" },
-  result: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 10, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: theme.borderSoft },
-  note: { ...typography.body, color: theme.muted },
-  error: { ...typography.body, color: theme.error },
-  errorBox: { gap: 8, borderWidth: 1, borderColor: theme.error, borderRadius: 12, padding: 10 },
-  fallbackButton: { minHeight: 44, borderWidth: 1, borderColor: theme.accentSoft, borderRadius: 10, paddingHorizontal: 12, justifyContent: "center" },
-  fallbackText: { ...typography.body, color: theme.accentSoft },
-  selected: { ...typography.label, color: theme.accentSoft },
+  text: { ...typography.body, color: dawnNight.text },
+  activeText: { color: dawnNight.mark, fontWeight: "600" },
+  input: { ...typography.bodyStrong, minHeight: 44, borderWidth: 1, borderColor: ORIGIN_BORDER, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, color: dawnNight.text, backgroundColor: ORIGIN_SURFACE, justifyContent: "center" },
+  result: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 10, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: ORIGIN_BORDER },
+  note: { ...typography.body, color: dawnNight.text, opacity: 0.72 },
+  error: { ...typography.body, color: dawnNight.mark },
+  errorBox: { gap: 8, borderWidth: 1, borderColor: dawnNight.mark, borderRadius: 12, padding: 10 },
+  fallbackButton: { minHeight: 44, borderWidth: 1, borderColor: ORIGIN_BORDER, borderRadius: 10, paddingHorizontal: 12, justifyContent: "center", backgroundColor: ORIGIN_SURFACE },
+  fallbackText: { ...typography.body, color: dawnNight.text },
+  selected: { ...typography.label, color: dawnNight.mark },
 });

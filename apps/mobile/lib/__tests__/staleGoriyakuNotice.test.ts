@@ -54,8 +54,9 @@ describe("前の相談のご縁が残っているときの注意書き", () => {
 
   it("読み上げに乗せ、朱は使わない", () => {
     expect(consultation).toMatch(/accessibilityRole="alert"[\s\S]{0,200}styles\.notice/);
-    // 朱は主アクションの塗り専用。注意書きには warning を使う。
-    expect(consultation).toContain("color: theme.warning");
+    // 相談フローは夜明け前の暗地。朱も warning(朱系の琥珀)も地に沈むため、
+    // 曙色で示す。最も明るい地に対して 5.24。
+    expect(consultation).toContain("color: dawnNight.mark");
     expect(consultation).not.toMatch(/notice:[\s\S]{0,300}theme\.vermilion/);
   });
 

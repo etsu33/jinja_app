@@ -1,6 +1,6 @@
 import * as React from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
-import { appColors as theme } from "../design/theme";
+import { dawnNight } from "../design/theme";
 import { VISIT_STYLE_OPTIONS, GORIYAKU_OPTIONS } from "../lib/conditionPayload";
 import { ProfilePickerModal } from "./profile/ProfilePickerModal";
 import { MobileOriginSelector } from "./MobileOriginSelector";
@@ -88,7 +88,7 @@ export function ConditionFieldsCard({
           value={birthdate}
           onChangeText={onChangeBirthdate}
           placeholder="例: 1984-05-15"
-          placeholderTextColor={theme.mutedDark}
+          placeholderTextColor={FIELD_PLACEHOLDER}
           style={styles.input}
           editable={!disabled}
         />
@@ -103,7 +103,7 @@ export function ConditionFieldsCard({
         </View>
         <Pressable onPress={openDatePicker} disabled={disabled} style={styles.selectInput} accessibilityRole="button" accessibilityLabel="参拝予定日を選択" accessibilityValue={{ text: plannedVisitDate || "未選択" }} accessibilityState={{ disabled: !!disabled }}>
           <Text style={plannedVisitDate ? styles.selectInputText : styles.selectPlaceholder}>{plannedVisitDate || "日付を選択"}</Text>
-          <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.accent} />
+          <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={FIELD_PLACEHOLDER} />
         </Pressable>
         {plannedVisitDate ? <Pressable onPress={() => onChangePlannedVisitDate("")} style={styles.clearButton} accessibilityRole="button" accessibilityLabel="予定日を解除"><Text style={styles.clearText}>予定日を解除</Text></Pressable> : null}
       </View>
@@ -142,7 +142,7 @@ export function ConditionFieldsCard({
               >
                 <>
                   {active ? (
-                    <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={theme.background} />
+                    <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={dawnNight.mark} />
                   ) : null}
                   <Text style={[styles.pillText, active && styles.pillTextActive]}>{option}</Text>
                 </>
@@ -174,7 +174,7 @@ export function ConditionFieldsCard({
               >
                 <>
                   {active ? (
-                    <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={theme.background} />
+                    <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={dawnNight.mark} />
                   ) : null}
                   <Text style={[styles.pillText, active && styles.pillTextActive]}>{option}</Text>
                 </>
@@ -196,7 +196,7 @@ export function ConditionFieldsCard({
           value={supportText}
           onChangeText={onChangeSupportText}
           placeholder="例: 駅から近い場所、静かな場所、短時間で行ける場所"
-          placeholderTextColor={theme.mutedDark}
+          placeholderTextColor={FIELD_PLACEHOLDER}
           style={[styles.input, styles.textarea]}
           multiline
           editable={!disabled}
@@ -205,6 +205,13 @@ export function ConditionFieldsCard({
     </View>
   );
 }
+
+// 相談フローの地(夜明け前)の上に置く。この部品の利用者は相談画面だけ。
+// 明地向けの値を残しておくと、どちらで使われているか分からなくなるため直接塗り替える。
+const FIELD_SURFACE = "rgba(245, 238, 220, 0.10)";
+const FIELD_BORDER = "rgba(245, 238, 220, 0.22)";
+const FIELD_PLACEHOLDER = "rgba(245, 238, 220, 0.52)";
+const FIELD_DIVIDER = "rgba(245, 238, 220, 0.16)";
 
 const styles = StyleSheet.create({
   wrap: {
@@ -216,12 +223,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   introBadge: {
-    color: theme.accentSoft,
+    color: dawnNight.mark,
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 0.5,
     borderWidth: 1,
-    borderColor: theme.borderAccentDark,
+    borderColor: dawnNight.mark,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -230,11 +237,12 @@ const styles = StyleSheet.create({
   introText: {
     ...typography.footnote,
     flex: 1,
-    color: theme.muted,
+    color: dawnNight.text,
+    opacity: 0.74,
   },
   divider: {
     height: 1,
-    backgroundColor: theme.borderSoft,
+    backgroundColor: FIELD_DIVIDER,
   },
   inputBlock: {
     gap: 8,
@@ -242,24 +250,25 @@ const styles = StyleSheet.create({
   input: {
     ...typography.bodyStrong,
     minHeight: 44,
-    backgroundColor: theme.surface,
+    backgroundColor: FIELD_SURFACE,
     borderWidth: 1,
-    borderColor: theme.borderSoft,
+    borderColor: FIELD_BORDER,
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: theme.text,
+    color: dawnNight.text,
   },
-  selectInput: { minHeight: 44, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  selectInputText: { ...typography.bodyStrong, color: theme.text },
-  selectPlaceholder: { ...typography.label, color: theme.mutedDark },
-  clearText: { ...typography.label, color: theme.muted, alignSelf: "flex-end" },
+  selectInput: { minHeight: 44, backgroundColor: FIELD_SURFACE, borderWidth: 1, borderColor: FIELD_BORDER, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  selectInputText: { ...typography.bodyStrong, color: dawnNight.text },
+  selectPlaceholder: { ...typography.label, color: FIELD_PLACEHOLDER },
+  clearText: { ...typography.label, color: dawnNight.text, opacity: 0.72, alignSelf: "flex-end" },
   clearButton: { minHeight: 44, alignSelf: "flex-end", justifyContent: "center", paddingHorizontal: 8 },
-  locationButton: { minHeight: 44, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: theme.surface },
-  locationButtonReady: { borderColor: theme.borderAccent, backgroundColor: theme.accent },
-  locationButtonText: { ...typography.label, color: theme.text },
-  locationButtonTextReady: { color: theme.background },
-  locationError: { ...typography.footnote, color: theme.error },
+  locationButton: { minHeight: 44, borderWidth: 1, borderColor: FIELD_BORDER, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: FIELD_SURFACE },
+  locationButtonReady: { borderColor: dawnNight.mark, backgroundColor: "rgba(248, 184, 139, 0.16)" },
+  locationButtonText: { ...typography.label, color: dawnNight.text },
+  locationButtonTextReady: { color: dawnNight.mark },
+  // エラーは朱暗だと地に沈むため、曙色で示す(最も明るい地に対して 5.24)。
+  locationError: { ...typography.footnote, color: dawnNight.mark },
   textarea: {
     minHeight: 76,
     textAlignVertical: "top",
@@ -272,11 +281,13 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.eyebrow,
-    color: theme.mutedSoft,
+    color: dawnNight.text,
+    opacity: 0.74,
   },
   caption: {
     ...typography.caption,
-    color: theme.mutedDark,
+    color: dawnNight.text,
+    opacity: 0.6,
   },
   row: {
     flexDirection: "row",
@@ -286,7 +297,7 @@ const styles = StyleSheet.create({
   pill: {
     minHeight: 44,
     borderWidth: 1,
-    borderColor: theme.borderSoft,
+    borderColor: FIELD_BORDER,
     borderRadius: 999,
     paddingHorizontal: 11,
     paddingVertical: 10,
@@ -295,17 +306,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
     justifyContent: "center",
-    backgroundColor: "transparent",
+    backgroundColor: FIELD_SURFACE,
   },
   pillActive: {
-    borderColor: theme.borderAccent,
-    backgroundColor: theme.accent,
+    borderColor: dawnNight.mark,
+    backgroundColor: "rgba(248, 184, 139, 0.16)",
   },
   pillText: {
     ...typography.footnoteStrong,
-    color: theme.mutedSoft,
+    color: dawnNight.text,
+    opacity: 0.82,
   },
   pillTextActive: {
-    color: theme.background,
+    color: dawnNight.mark,
+    opacity: 1,
   },
 });

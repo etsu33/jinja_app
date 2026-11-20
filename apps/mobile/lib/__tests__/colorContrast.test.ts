@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
-import { dawn, kamimusubiLight as light } from "../../design/theme";
+import { dawn, dawnNight, kamimusubiLight as light } from "../../design/theme";
 
 function channel(value: number): number {
   const c = value / 255;
@@ -154,7 +154,10 @@ describe("朱の使い方", () => {
       readFileSync(resolve(mobileRoot, file), "utf8").includes("theme.vermilion"),
     );
 
-    expect(users).toEqual(["app/(tabs)/index.tsx", "app/consultation/index.tsx"]);
+    // 相談フローは夜明け前の暗地になったため、朱を使わない。朱の面と最も明るい
+    // 地の差は 1.55 で、WCAG 1.4.11 がUI部品に求める 3.0 を大きく割る。
+    // 主ボタンは曙色(dawnNight.ctaSurface)へ移した。
+    expect(users).toEqual(["app/(tabs)/index.tsx"]);
   });
 });
 
@@ -215,12 +218,39 @@ describe("和の朝焼け（区切りの画面のグラデーション）", () =
     expect(contrast("#FFFFFF", colorAt(markTop))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("グラデーションを使う画面を区切りの画面に限る", () => {
-    // 40節の Gradient 禁止は、区切りの4画面を除いて有効。
+  it("グラデーションを使う画面を限る", () => {
+    // 40節の Gradient 禁止には例外を2つだけ置く。
+    //
+    //  1. 起動画面(DawnSplash) — 区切りの画面。dawn をそのまま使う
+    //  2. 相談フロー — 選択肢が主役で長文が無い。dawnNight(夜明け前だけ)を使う
+    //
+    // 読み物である推薦結果と神社詳細は明地のまま。「長文の可読性は明地が優位」
+    // (docs/design/color-direction-v1.md) は今も有効。
     const users = globSync(["app/**/*.tsx", "components/**/*.tsx"], { cwd: mobileRoot })
       .filter((file) => readFileSync(resolve(mobileRoot, file), "utf8").includes("LinearGradient"))
       .sort();
 
-    expect(users).toEqual(["components/common/DawnSplash.tsx"]);
+    expect(users).toEqual(["app/consultation/index.tsx", "components/common/DawnSplash.tsx"]);
+  });
+
+  it("夜明け前の地の上で、使う3色がどこでも読める", () => {
+    // dawnNight は dawn の濃藍側だけを取り出したもの。画面いっぱいに敷くため、
+    // グラデの全区間で本文・強調・見出しが AA を満たす必要がある。
+    for (const ground of dawnNight.colors) {
+      expect(contrast(dawnNight.text, ground), `本文 on ${ground}`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(dawnNight.mark, ground), `強調 on ${ground}`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast("#FFFFFF", ground), `見出し on ${ground}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("夜明け前の主ボタンが、面としても文字としても成立する", () => {
+    const lightestGround = dawnNight.colors[dawnNight.colors.length - 1];
+
+    // 面と地: UI部品の輪郭 3.0
+    expect(contrast(dawnNight.ctaSurface, lightestGround)).toBeGreaterThanOrEqual(3);
+    // 文字と面: 本文 4.5
+    expect(contrast(dawnNight.ctaText, dawnNight.ctaSurface)).toBeGreaterThanOrEqual(4.5);
+    // 朱では成立しないことも固定しておく(戻したら気づけるように)
+    expect(contrast(light.vermilion, lightestGround)).toBeLessThan(3);
   });
 });

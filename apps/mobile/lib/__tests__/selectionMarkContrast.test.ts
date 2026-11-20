@@ -12,7 +12,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { kamimusubiLight as light } from "../../design/theme";
+import { dawnNight, kamimusubiLight as light } from "../../design/theme";
 
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -33,10 +33,14 @@ function contrast(a: string, b: string): number {
 }
 
 // 選択中の面と、その上に置く印。WCAG 1.4.11 のUI部品の基準 3.0 を満たすこと。
+// 相談フローは夜明け前の暗地になった。薄い膜(10%)の上なので、面の実効色は
+// グラデの地にほぼ等しい。最も明るい地で見えれば、どこでも見える。
+const DARK_GROUND = dawnNight.colors[dawnNight.colors.length - 1];
+
 const MARK_ON_SURFACE: [string, string, string][] = [
-  ["条件のピル", light.accent, light.background],
-  ["出発地点の選択", light.surfaceSoft, light.accentSoft],
-  ["相談のカード", light.selectedSurface, light.vermilion],
+  ["条件のピル(相談フロー)", DARK_GROUND, dawnNight.mark],
+  ["出発地点の選択(相談フロー)", DARK_GROUND, dawnNight.mark],
+  ["相談のカード(相談フロー)", DARK_GROUND, dawnNight.mark],
 ];
 
 describe("選択中の印が面の上で見える", () => {
@@ -51,12 +55,19 @@ describe("選択中の印が面の上で見える", () => {
   });
 
   it("コードが期待どおりの色を渡している", () => {
-    const pills = readFileSync(resolve(mobileRoot, "components/ConditionFieldsCard.tsx"), "utf8");
-    // 面が theme.accent なので、印は文字と同じ theme.background。
-    expect(pills).toContain('name="checkmark" size={CHECK_ICON_SIZE} color={theme.background}');
-    expect(pills).not.toContain('name="checkmark" size={CHECK_ICON_SIZE} color={theme.accent}');
-
-    const origin = readFileSync(resolve(mobileRoot, "components/MobileOriginSelector.tsx"), "utf8");
-    expect(origin).toContain('name="checkmark" size={CHECK_ICON_SIZE} color={theme.accentSoft}');
+    // 以前は面が theme.accent(紺)で、印にも theme.accent を渡していたため
+    // コントラスト 1.00 で見えなかった。暗地になった今は曙色で示す。
+    for (const file of [
+      "components/ConditionFieldsCard.tsx",
+      "components/MobileOriginSelector.tsx",
+      "app/consultation/index.tsx",
+    ]) {
+      const source = readFileSync(resolve(mobileRoot, file), "utf8");
+      expect(source, `${file} の印`).toMatch(/name="checkmark"[^/]*color=\{dawnNight\.mark\}/);
+      // 地と同系の色を印に使わない。
+      expect(source, `${file} が地と同じ色の印を持つ`).not.toMatch(
+        /name="checkmark"[^/]*color=\{theme\.accent\}/,
+      );
+    }
   });
 });
