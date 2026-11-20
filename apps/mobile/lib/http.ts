@@ -1,4 +1,4 @@
-import { getAccessToken, getRefreshToken, isExpiringSoon, setAccessToken } from "./authTokens";
+import { clearTokens, getAccessToken, getRefreshToken, isExpiringSoon, setAccessToken } from "./authTokens";
 const BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 
@@ -36,9 +36,22 @@ type TokenRefreshResponse = {
   access: string;
 };
 
-async function refreshAccessToken(): Promise<string | null> {
+// リフレッシュの結果は3通りあり、区別しないと利用者を不当にログアウトさせる。
+//
+//   "refreshed" … 新しいアクセストークンが取れた
+//   "rejected"  … サーバーがこのリフレッシュトークンを明確に拒んだ(401/400)。
+//                 期限切れか失効。もう使えないので捨ててよい。
+//   "unreachable" … 届かなかった(5xx など)。トークンの正否は分からない。
+//                 Render の無料枠は一定時間で眠るため、これは普通に起きる。
+//                 ここで捨てると、サーバーが眠っていただけでログアウトになる。
+type RefreshOutcome =
+  | { kind: "refreshed"; access: string }
+  | { kind: "rejected" }
+  | { kind: "unreachable" };
+
+async function refreshAccessToken(): Promise<RefreshOutcome> {
   const refresh = await getRefreshToken();
-  if (!refresh) return null;
+  if (!refresh) return { kind: "rejected" };
 
   const res = await fetch(`${BASE_URL}/auth/jwt/refresh/`, {
     method: "POST",
@@ -46,13 +59,15 @@ async function refreshAccessToken(): Promise<string | null> {
     body: JSON.stringify({ refresh }),
   });
 
-  if (!res.ok) return null;
+  if (!res.ok) {
+    return res.status === 401 || res.status === 400 ? { kind: "rejected" } : { kind: "unreachable" };
+  }
 
   const data = (await res.json()) as TokenRefreshResponse;
-  if (!data.access) return null;
+  if (!data.access) return { kind: "unreachable" };
 
   await setAccessToken(data.access);
-  return data.access;
+  return { kind: "refreshed", access: data.access };
 }
 
 async function getValidAccessToken(): Promise<string> {
@@ -62,10 +77,13 @@ async function getValidAccessToken(): Promise<string> {
     return access;
   }
 
-  const refreshed = await refreshAccessToken();
-  if (refreshed) return refreshed;
+  const outcome = await refreshAccessToken();
+  if (outcome.kind === "refreshed") return outcome.access;
 
+  // 届かなかっただけなら、手元のトークンで投げてみる価値がある。
   if (access) return access;
+
+  if (outcome.kind === "rejected") await clearTokens();
 
   throw new UnauthenticatedError();
 }
@@ -117,15 +135,21 @@ async function requestAuth<T>(path: string, init: RequestInit): Promise<T> {
     return readAuthBody<T>(first);
   }
 
-  const refreshed = await refreshAccessToken();
-  if (!refreshed) {
+  // ここに来た時点で、サーバーはアクセストークンを401で拒んでいる。
+  const outcome = await refreshAccessToken();
+  if (outcome.kind !== "refreshed") {
+    // 拒まれたのなら、この組み合わせはもう使えない。残しておくと
+    // isLoggedIn() が「ログイン中」と言い続け、利用者は自分でログアウトを
+    // 探す以外に復帰できなくなる。届かなかっただけのときは残す。
+    if (outcome.kind === "rejected") await clearTokens();
+
     throw new UnauthenticatedError("Authentication token expired");
   }
 
   const retryHeaders = mergeHeaders(
     {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${refreshed}`,
+      Authorization: `Bearer ${outcome.access}`,
     },
     init.headers,
   );

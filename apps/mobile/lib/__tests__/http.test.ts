@@ -4,12 +4,14 @@ const getAccessTokenMock = vi.fn();
 const getRefreshTokenMock = vi.fn();
 const isExpiringSoonMock = vi.fn();
 const setAccessTokenMock = vi.fn();
+const clearTokensMock = vi.fn();
 
 vi.mock("../authTokens", () => ({
   getAccessToken: (...args: unknown[]) => getAccessTokenMock(...args),
   getRefreshToken: (...args: unknown[]) => getRefreshTokenMock(...args),
   isExpiringSoon: (...args: unknown[]) => isExpiringSoonMock(...args),
   setAccessToken: (...args: unknown[]) => setAccessTokenMock(...args),
+  clearTokens: (...args: unknown[]) => clearTokensMock(...args),
 }));
 
 import { HttpError, UnauthenticatedError, deleteAuth, get, getAuth, isHttpError, isUnauthenticatedError } from "../http";
@@ -131,6 +133,53 @@ describe("http", () => {
         .mockResolvedValueOnce({ ok: false, status: 401, statusText: "Unauthorized", text: async () => "" } as Response);
 
       await expect(getAuth("/concierge-threads/")).rejects.toBeInstanceOf(UnauthenticatedError);
+      fetchSpy.mockRestore();
+    });
+
+    // サーバーに拒まれたのか、届かなかったのかを分ける。
+    // ここを一緒くたにすると、Render が眠っていただけで利用者がログアウトする。
+    it("refreshが401で拒まれたら、トークンを捨てる", async () => {
+      getAccessTokenMock.mockResolvedValue("expired-token");
+      isExpiringSoonMock.mockReturnValue(false);
+      getRefreshTokenMock.mockResolvedValue("refresh-token");
+
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: "Unauthorized", text: async () => "" } as Response)
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: "Unauthorized", text: async () => "" } as Response);
+
+      await expect(getAuth("/concierge-threads/")).rejects.toBeInstanceOf(UnauthenticatedError);
+      expect(clearTokensMock).toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    it("refreshが502で届かなかったときは、トークンを捨てない", async () => {
+      getAccessTokenMock.mockResolvedValue("expired-token");
+      isExpiringSoonMock.mockReturnValue(false);
+      getRefreshTokenMock.mockResolvedValue("refresh-token");
+
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: "Unauthorized", text: async () => "" } as Response)
+        .mockResolvedValueOnce({ ok: false, status: 502, statusText: "Bad Gateway", text: async () => "" } as Response);
+
+      await expect(getAuth("/concierge-threads/")).rejects.toBeInstanceOf(UnauthenticatedError);
+      expect(clearTokensMock).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    it("期限切れ間近でrefreshが届かなかったら、手元のtokenで投げてみる", async () => {
+      getAccessTokenMock.mockResolvedValue("expiring-token");
+      isExpiringSoonMock.mockReturnValue(true);
+      getRefreshTokenMock.mockResolvedValue("refresh-token");
+
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValueOnce({ ok: false, status: 503, statusText: "Service Unavailable", text: async () => "" } as Response)
+        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ id: 3 }) } as Response);
+
+      await expect(getAuth<{ id: number }>("/concierge-threads/3/")).resolves.toEqual({ id: 3 });
+      expect(clearTokensMock).not.toHaveBeenCalled();
       fetchSpy.mockRestore();
     });
 

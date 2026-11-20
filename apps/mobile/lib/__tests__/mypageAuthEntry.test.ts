@@ -14,10 +14,10 @@ describe("MyPage ログイン・新規登録の入口", () => {
     expect(body).toMatch(/\) : \(\s*<View style=\{styles\.section\}>\s*<Text style=\{styles\.sectionTitle\}>アカウント<\/Text>/);
   });
 
-  it("ログイン中は、ユーザー名(取れなければ「ログイン中」)と「ログアウト」を出し、ログイン・新規登録は出さない", () => {
+  it("ログイン中は、ユーザー名と「ログアウト」を出し、ログイン・新規登録は出さない", () => {
     const loggedInBranch = body.slice(body.indexOf("{loggedIn ? ("), body.indexOf(") : (", body.indexOf("{loggedIn ? (")));
 
-    expect(loggedInBranch).toContain("title={accountUsername ?? LOGOUT_MESSAGES.signedInFallbackName}");
+    expect(loggedInBranch).toContain("title={account.title}");
     expect(loggedInBranch).toContain('actionLabel="ログアウト"');
     expect(loggedInBranch).toContain("onPress={confirmAndLogout}");
     expect(loggedInBranch).not.toContain('title="ログイン"');
@@ -35,11 +35,30 @@ describe("MyPage ログイン・新規登録の入口", () => {
 
   it("「ログアウト」は確認を出してから処理し、終わったらその場で表示を切り替える", () => {
     expect(source).toMatch(/confirmLogout\(Alert\.alert, \(\) => \{\s*void runLogout\(\);/);
-    expect(source).toMatch(/await logout\(\);\s*setLoggedIn\(false\);\s*setAccountUsername\(null\);/);
+    expect(source).toMatch(/await logout\(\);\s*setLoggedIn\(false\);\s*setAccountName\(\{ kind: "loading" \}\);/);
   });
 
   it("ログイン中だけユーザー名を取りにいく", () => {
-    expect(source).toMatch(/if \(!value\) \{\s*setAccountUsername\(null\);\s*return;\s*\}[\s\S]*fetchAccountUsername\(\)/);
+    expect(source).toMatch(/if \(!value\) \{\s*setAccountName\(\{ kind: "loading" \}\);\s*return;\s*\}[\s\S]*fetchAccountUsername\(\)/);
+  });
+
+  // 失敗を成功と同じ見た目にすると、通信が死んでいることに画面から気づけない。
+  it("ユーザー名が取れなかったことを、取れたことと区別して持つ", () => {
+    expect(source).toMatch(/setAccountName\(username \? \{ kind: "ready", username \} : \{ kind: "unavailable" \}\)/);
+  });
+
+  it("ユーザー名が取れなかったときは、その旨を説明に出す", () => {
+    const unavailable = source.slice(source.indexOf('state.kind === "unavailable"'));
+
+    expect(unavailable.slice(0, 400)).toContain("取得できませんでした");
+  });
+
+  // ログイン状態だけを取り直して、Premium と利用状況を一度きりにしていたため、
+  // ログイン後に戻っても Premium が古い表示のまま再起動まで直らなかった。
+  it("Premium と利用状況も、画面に戻るたび取り直す", () => {
+    expect(source).not.toContain("React.useEffect(");
+    expect(source).toMatch(/useFocusEffect\(\s*React\.useCallback\(\(\) => \{[\s\S]*?getAuthenticatedBillingStatus\(\)/);
+    expect(source).toMatch(/useFocusEffect\(\s*React\.useCallback\(\(\) => \{[\s\S]*?getFavoriteShrines\(\)/);
   });
 
   it("「アカウント」セクションを、プロフィールより上(マイページのいちばん上)に置く", () => {

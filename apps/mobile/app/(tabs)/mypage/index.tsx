@@ -51,6 +51,31 @@ function openPrivacy() {
   openLegalDocument("privacy", Linking.openURL);
 }
 
+const SIGNED_IN_DESCRIPTION = "ログイン中です。別のアカウントに入り直すときは、ログアウトしてください。";
+
+// ユーザー名が取れなかったことを、取れたときと同じ見た目にしない。
+// 以前は失敗も成功も「ログイン中」と出ていたため、通信が死んでいることに
+// 画面から気づけず、「ログイン中なのに何も開けない」という見え方になっていた。
+type AccountNameState =
+  | { kind: "loading" }
+  | { kind: "ready"; username: string }
+  | { kind: "unavailable" };
+
+function describeAccount(state: AccountNameState): { title: string; description: string } {
+  if (state.kind === "ready") {
+    return { title: state.username, description: SIGNED_IN_DESCRIPTION };
+  }
+
+  if (state.kind === "unavailable") {
+    return {
+      title: LOGOUT_MESSAGES.signedInFallbackName,
+      description: "アカウント情報を取得できませんでした。通信の状況をご確認ください。ログアウトして入り直すこともできます。",
+    };
+  }
+
+  return { title: LOGOUT_MESSAGES.signedInFallbackName, description: SIGNED_IN_DESCRIPTION };
+}
+
 type PremiumMetaState =
   | { kind: "loading" }
   | { kind: "unauthenticated" }
@@ -144,7 +169,7 @@ export default function MyPageScreen() {
   const [stampCount, setStampCount] = React.useState<number | null>(null);
   const [premiumMeta, setPremiumMeta] = React.useState<PremiumMetaState>({ kind: "loading" });
   const [loggedIn, setLoggedIn] = React.useState(false);
-  const [accountUsername, setAccountUsername] = React.useState<string | null>(null);
+  const [accountName, setAccountName] = React.useState<AccountNameState>({ kind: "loading" });
   const [deletingAccount, setDeletingAccount] = React.useState(false);
   const deletingAccountRef = React.useRef(false);
 
@@ -152,26 +177,28 @@ export default function MyPageScreen() {
   // ログイン状態を取り直せるよう、画面が表示されるたびに確認する。
   useFocusEffect(
     React.useCallback(() => {
-      let mounted = true;
-      isLoggedIn()
-        .then((value) => {
-          if (!mounted) return;
-          setLoggedIn(value);
-          if (!value) {
-            setAccountUsername(null);
-            return;
-          }
-          // ログイン中だけ、アカウントの欄に出すユーザー名を取りにいく(取れなければ「ログイン中」)。
-          void fetchAccountUsername().then((username) => {
-            if (mounted) setAccountUsername(username);
+        let mounted = true;
+        isLoggedIn()
+          .then((value) => {
+            if (!mounted) return;
+            setLoggedIn(value);
+            if (!value) {
+              setAccountName({ kind: "loading" });
+              return;
+            }
+            // ログイン中だけ、アカウントの欄に出すユーザー名を取りにいく。
+            // 取れなかったことは、取れたことと区別して出す(describeAccount)。
+            void fetchAccountUsername().then((username) => {
+              if (!mounted) return;
+              setAccountName(username ? { kind: "ready", username } : { kind: "unavailable" });
+            });
+          })
+          .catch(() => {
+            if (mounted) setLoggedIn(false);
           });
-        })
-        .catch(() => {
-          if (mounted) setLoggedIn(false);
-        });
-      return () => {
-        mounted = false;
-      };
+        return () => {
+          mounted = false;
+        };
     }, []),
   );
 
@@ -180,7 +207,7 @@ export default function MyPageScreen() {
   const runLogout = React.useCallback(async () => {
     await logout();
     setLoggedIn(false);
-    setAccountUsername(null);
+    setAccountName({ kind: "loading" });
   }, []);
 
   const confirmAndLogout = React.useCallback(() => {
@@ -232,59 +259,70 @@ export default function MyPageScreen() {
     ]);
   }, [runAccountDeletion]);
 
-  React.useEffect(() => {
-    let mounted = true;
+  // Premium の登録状況も、ログイン状態と同じく画面に戻るたび取り直す。
+  // 一度きりにしていたため、ログイン前にこのタブを開いていると、ログインして
+  // 戻っても「ログインすると確認できます」のまま、アプリを再起動するまで
+  // 直らなかった。ログイン欄だけが更新されて、Premium欄が取り残されていた。
+  useFocusEffect(
+    React.useCallback(() => {
+      let mounted = true;
 
-    getAuthenticatedBillingStatus()
-      .then((status) => {
-        if (!mounted) return;
-        setPremiumMeta(status ? { kind: "ready", status } : { kind: "error" });
-      })
-      .catch((error) => {
-        if (!mounted) return;
-        setPremiumMeta(isUnauthenticatedError(error) ? { kind: "unauthenticated" } : { kind: "error" });
-      });
+      getAuthenticatedBillingStatus()
+        .then((status) => {
+          if (!mounted) return;
+          setPremiumMeta(status ? { kind: "ready", status } : { kind: "error" });
+        })
+        .catch((error) => {
+          if (!mounted) return;
+          setPremiumMeta(isUnauthenticatedError(error) ? { kind: "unauthenticated" } : { kind: "error" });
+        });
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
+      return () => {
+        mounted = false;
+      };
+    }, []),
+  );
 
-  React.useEffect(() => {
-    let mounted = true;
+  // 利用状況の数字も、参拝や保存をしてから戻ってきたときに古いままにしない。
+  useFocusEffect(
+    React.useCallback(() => {
+      let mounted = true;
 
-    getFavoriteShrines()
-      .then((items) => {
-        if (mounted) setFavoriteCount(items.length);
-      })
-      .catch(() => {
-        if (mounted) setFavoriteCount(0);
-      });
+      getFavoriteShrines()
+        .then((items) => {
+          if (mounted) setFavoriteCount(items.length);
+        })
+        .catch(() => {
+          if (mounted) setFavoriteCount(0);
+        });
 
-    getRecentViewed(20)
-      .then((items) => {
-        if (mounted) setRecentCount(items.length);
-      })
-      .catch(() => {
-        if (mounted) setRecentCount(0);
-      });
+      getRecentViewed(20)
+        .then((items) => {
+          if (mounted) setRecentCount(items.length);
+        })
+        .catch(() => {
+          if (mounted) setRecentCount(0);
+        });
 
-    getCounts()
-      .then(({ visits, stamps }) => {
-        if (!mounted) return;
-        setVisitCount(visits);
-        setStampCount(stamps);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setVisitCount(0);
-        setStampCount(0);
-      });
+      getCounts()
+        .then(({ visits, stamps }) => {
+          if (!mounted) return;
+          setVisitCount(visits);
+          setStampCount(stamps);
+        })
+        .catch(() => {
+          if (!mounted) return;
+          setVisitCount(0);
+          setStampCount(0);
+        });
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
+      return () => {
+        mounted = false;
+      };
+    }, []),
+  );
+
+  const account = describeAccount(accountName);
 
   return (
     <View style={styles.screen}>
@@ -314,8 +352,8 @@ export default function MyPageScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>アカウント</Text>
             <MyPageCard
-              title={accountUsername ?? LOGOUT_MESSAGES.signedInFallbackName}
-              description="ログイン中です。別のアカウントに入り直すときは、ログアウトしてください。"
+              title={account.title}
+              description={account.description}
               icon="person"
               actionLabel="ログアウト"
               onPress={confirmAndLogout}

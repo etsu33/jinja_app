@@ -31,9 +31,22 @@ export async function clearTokens(): Promise<void> {
   ]);
 }
 
+// 文字列が残っているかではなく、まだ使えるかで判定する。
+//
+// 期限切れを見ていなかったため、ログインが切れたあとも画面は「ログイン中」と
+// 出し続け、記録もPremiumも開けないのに理由が分からない状態になっていた。
+// サーバー側のリフレッシュトークンの寿命は1日(simplejwtの既定値)なので、
+// これは放っておくと全利用者が毎日踏む。
+//
+// アクセスが切れていても、リフレッシュが生きていれば続けられる(http.ts が
+// 取り直す)。両方切れて初めて、ログインが切れたことになる。
 export async function isLoggedIn(): Promise<boolean> {
   const [access, refresh] = await Promise.all([getAccessToken(), getRefreshToken()]);
-  return Boolean(access || refresh);
+
+  if (access && !isExpired(access)) return true;
+  if (refresh && !isExpired(refresh)) return true;
+
+  return false;
 }
 
 // ---- JWT helpers ----
@@ -57,6 +70,16 @@ export function readJwtExp(token: string): number | null {
   } catch {
     return null;
   }
+}
+
+// 期限を読んだうえで、すでに過ぎているか。
+// 読めない形のトークンを「切れている」と決めつけると、こちらの都合で利用者を
+// ログアウトさせてしまうため、読めないときは切れていないものとして扱う。
+export function isExpired(token: string): boolean {
+  const exp = readJwtExp(token);
+  if (exp === null) return false;
+
+  return exp <= Math.floor(Date.now() / 1000);
 }
 
 export function isExpiringSoon(token: string, skewSeconds = 60): boolean {
