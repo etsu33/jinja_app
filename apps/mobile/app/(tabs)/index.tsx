@@ -85,9 +85,9 @@ export default function Home() {
             end={{ x: 0.9, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          {/* 帯は低いので流水は出さず、青海波だけ。 */}
+          {/* 帯は低いので下の縁だけ。上はステータスバーとロゴが来る。 */}
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            <WaPattern height={MASTHEAD_PATTERN_HEIGHT} withStream={false} />
+            <WaPattern height={MASTHEAD_PATTERN_HEIGHT} top={false} />
           </View>
           <Text style={styles.brandName}>神結び</Text>
           <Text style={styles.brandRuby}>kami musubi</Text>

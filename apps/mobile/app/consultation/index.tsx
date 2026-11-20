@@ -221,8 +221,7 @@ export default function ConsultationScreen() {
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      {/* 和の文様。上端に青海波を薄く敷き、下へ向けて消す。下部に流水。
-          文字の下には柄を残さない。 */}
+      {/* 和の文様。流水を上下の縁に置く。中央は文字が来るので空ける。 */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <WaPattern height={screenHeight} />
       </View>
