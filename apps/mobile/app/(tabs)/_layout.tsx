@@ -63,14 +63,14 @@ export default function TabsLayout() {
         // タブバーは藍の地。生成りのままだと、暗地の画面との継ぎ目が壊れて見える。
         // 選択中は曙色(藍の地に対して 9.94)、非選択は生成りを落とす(14.76)。
         tabBarActiveTintColor: dawnNight.mark,
-        tabBarInactiveTintColor: "rgba(245, 238, 220, 0.62)",
+        tabBarInactiveTintColor: dawnNight.placeholder,
         tabBarLabelStyle: {
           fontSize: bottomNavigationSizes.labelFontSize,
           fontWeight: "600",
         },
         tabBarStyle: {
           backgroundColor: dawnNight.colors[0],
-          borderTopColor: "rgba(245, 238, 220, 0.16)",
+          borderTopColor: dawnNight.divider,
           borderTopWidth: cardSizes.borderWidth,
           paddingTop: spacing.inlineGap - 1,
         },

@@ -117,7 +117,7 @@ export function MobileOriginSelector({
             value={query}
             onChangeText={(value) => { setQuery(value); onChange(null); }}
             placeholder="駅名または住所を入力"
-            placeholderTextColor="rgba(245, 238, 220, 0.52)"
+            placeholderTextColor={dawnNight.placeholder}
             style={styles.input}
           />
           {searchAnnouncement ? <Text accessibilityLiveRegion="polite" style={status === "error" ? styles.error : styles.note}>{searchAnnouncement}</Text> : null}
@@ -178,24 +178,22 @@ export function MobileOriginSelector({
 }
 
 // 相談フローの地(夜明け前)の上に置く。利用者は相談画面だけ。
-const ORIGIN_SURFACE = "rgba(245, 238, 220, 0.10)";
-const ORIGIN_BORDER = "rgba(245, 238, 220, 0.22)";
 
 const styles = StyleSheet.create({
   wrap: { gap: 10 },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   // 選択中は印(Ionicons)と文字が横に並ぶ。
-  button: { minHeight: 44, minWidth: "47%", flexGrow: 1, borderWidth: 1, borderColor: ORIGIN_BORDER, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 4, justifyContent: "center", backgroundColor: ORIGIN_SURFACE },
-  active: { borderWidth: 2, borderColor: dawnNight.mark, backgroundColor: "rgba(248, 184, 139, 0.16)" },
-  pressed: { opacity: 0.72 },
+  button: { minHeight: 44, minWidth: "47%", flexGrow: 1, borderWidth: 1, borderColor: dawnNight.border, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 4, justifyContent: "center", backgroundColor: dawnNight.surface },
+  active: { borderWidth: 2, borderColor: dawnNight.mark, backgroundColor: dawnNight.selectedSurface },
+  pressed: { opacity: dawnNight.textMuted },
   text: { ...typography.body, color: dawnNight.text },
   activeText: { color: dawnNight.mark, fontWeight: "600" },
-  input: { ...typography.bodyStrong, minHeight: 44, borderWidth: 1, borderColor: ORIGIN_BORDER, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, color: dawnNight.text, backgroundColor: ORIGIN_SURFACE, justifyContent: "center" },
-  result: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 10, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: ORIGIN_BORDER },
-  note: { ...typography.body, color: dawnNight.text, opacity: 0.72 },
+  input: { ...typography.bodyStrong, minHeight: 44, borderWidth: 1, borderColor: dawnNight.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, color: dawnNight.text, backgroundColor: dawnNight.surface, justifyContent: "center" },
+  result: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 10, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: dawnNight.border },
+  note: { ...typography.body, color: dawnNight.text, opacity: dawnNight.textMuted },
   error: { ...typography.body, color: dawnNight.mark },
   errorBox: { gap: 8, borderWidth: 1, borderColor: dawnNight.mark, borderRadius: 12, padding: 10 },
-  fallbackButton: { minHeight: 44, borderWidth: 1, borderColor: ORIGIN_BORDER, borderRadius: 10, paddingHorizontal: 12, justifyContent: "center", backgroundColor: ORIGIN_SURFACE },
+  fallbackButton: { minHeight: 44, borderWidth: 1, borderColor: dawnNight.border, borderRadius: 10, paddingHorizontal: 12, justifyContent: "center", backgroundColor: dawnNight.surface },
   fallbackText: { ...typography.body, color: dawnNight.text },
   selected: { ...typography.label, color: dawnNight.mark },
 });

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Pressable, ScrollView, Text, View } from "react-native";
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { appColors as theme } from "../../../design/theme";
+import { LinearGradient } from "expo-linear-gradient";
+import { WaPattern } from "../../../components/common/WaPattern";
+import { dawnNight } from "../../../design/theme";
 import { spacing } from "../../../design/spacing";
 import { cardSizes } from "../../../design/cardSizes";
 import { radius } from "../../../design/radius";
@@ -84,8 +86,8 @@ function RecordCard({ title, description, meta, icon, routeLabel, onPress }: Rec
         onPressOut={() => animateScale(1)}
         style={{
           alignItems: "center",
-          backgroundColor: theme.surface,
-          borderColor: theme.borderHeader,
+          backgroundColor: dawnNight.surface,
+          borderColor: dawnNight.border,
           borderRadius: radius.md,
           borderWidth: cardSizes.borderWidth,
           flexDirection: "row",
@@ -97,7 +99,7 @@ function RecordCard({ title, description, meta, icon, routeLabel, onPress }: Rec
         <View
           style={{
             alignItems: "center",
-            borderColor: theme.borderAccent,
+            borderColor: dawnNight.mark,
             borderRadius: radius.sm,
             borderWidth: cardSizes.borderWidth,
             height: 48,
@@ -105,20 +107,20 @@ function RecordCard({ title, description, meta, icon, routeLabel, onPress }: Rec
             width: 48,
           }}
         >
-          <Ionicons name={icon} size={CARD_ICON_SIZE} color={theme.accent} />
+          <Ionicons name={icon} size={CARD_ICON_SIZE} color={dawnNight.mark} />
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={{ ...typography.subheading, color: theme.accent }}>{title}</Text>
-          <Text style={{ ...typography.body, color: theme.text, marginTop: 5 }}>{description}</Text>
-          <Text style={{ ...typography.footnote, color: theme.muted, marginTop: 5 }}>{meta}</Text>
+          <Text style={{ ...typography.subheading, color: dawnNight.text }}>{title}</Text>
+          <Text style={{ ...typography.body, color: dawnNight.text, opacity: dawnNight.textBody, marginTop: 5 }}>{description}</Text>
+          <Text style={{ ...typography.footnote, color: dawnNight.text, opacity: dawnNight.textMuted, marginTop: 5 }}>{meta}</Text>
         </View>
 
         <Ionicons
           accessibilityElementsHidden
           name="chevron-forward"
           size={CHEVRON_SIZE}
-          color={theme.muted}
+          color={dawnNight.placeholder}
         />
       </Pressable>
     </Animated.View>
@@ -130,6 +132,7 @@ export default function RecordsScreen() {
   // タブ画面はネイティブヘッダーを持たないため、Dynamic Island / ステータスバーの
   // 高さを自分で避ける(下層画面はStackのヘッダーが避けている)。
   const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
   const [favCount, setFavCount] = useState<number | null>(null);
   const [authPromptVisible, setAuthPromptVisible] = useState(false);
 
@@ -176,7 +179,19 @@ export default function RecordsScreen() {
 
   return (
     <>
-    <View style={{ backgroundColor: theme.background, flex: 1, paddingTop: insets.top }}>
+    <View style={{ backgroundColor: dawnNight.colors[0], flex: 1 }}>
+      {/* 地は相談フロー・ホームと同じ藍。タブ4画面で揃える。 */}
+      <LinearGradient
+        colors={dawnNight.colors}
+        locations={dawnNight.locations}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <WaPattern height={screenHeight} />
+      </View>
+      <View style={{ paddingTop: insets.top }} />
       <ScrollView
         contentContainerStyle={{
           gap: spacing.lgGap,
@@ -185,8 +200,8 @@ export default function RecordsScreen() {
         }}
       >
         <View style={{ marginBottom: spacing.lgGap }}>
-          <Text style={{ ...typography.display, color: theme.accent }}>記録</Text>
-          <Text style={{ ...typography.subhead, color: theme.text, marginTop: spacing.mdGap }}>
+          <Text style={{ ...typography.display, color: dawnNight.text }}>記録</Text>
+          <Text style={{ ...typography.subhead, color: dawnNight.text, opacity: dawnNight.textBody, marginTop: spacing.mdGap }}>
             相談から育ったご縁や、保存した神社、御朱印をここから振り返れます。
           </Text>
         </View>

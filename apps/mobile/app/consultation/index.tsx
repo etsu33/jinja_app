@@ -270,7 +270,7 @@ export default function ConsultationScreen() {
             <TextInput
               accessibilityLabel="相談内容"
               placeholder="自分の言葉で書いてもかまいません"
-              placeholderTextColor="rgba(245, 238, 220, 0.52)"
+              placeholderTextColor={dawnNight.placeholder}
               style={styles.freeText}
               value={consultation}
               onChangeText={setConsultation}
@@ -390,20 +390,20 @@ const styles = StyleSheet.create({
   stepLabel: {
     ...typography.label,
     color: dawnNight.text,
-    opacity: 0.78,
+    opacity: dawnNight.textBody,
     flex: 1,
   },
   stepCount: {
     ...typography.footnoteStrong,
     color: dawnNight.text,
-    opacity: 0.64,
+    opacity: dawnNight.textMuted,
   },
   progressTrack: {
     flexDirection: "row",
     height: 3,
     marginHorizontal: CONTENT_X,
     borderRadius: radius.pill,
-    backgroundColor: "rgba(245, 238, 220, 0.20)",
+    backgroundColor: dawnNight.divider,
     overflow: "hidden",
   },
   progressFill: {
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   support: {
     ...typography.subhead,
     color: dawnNight.text,
-    opacity: 0.74,
+    opacity: dawnNight.textMuted,
     marginTop: spacing.lgGap,
     marginBottom: spacing.sectionTop + spacing.smGap,
   },
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
-    backgroundColor: "rgba(245, 238, 220, 0.09)",
+    backgroundColor: dawnNight.surface,
     borderLeftWidth: 3,
     borderLeftColor: dawnNight.mark,
     borderRadius: radius.sm,
@@ -457,16 +457,16 @@ const styles = StyleSheet.create({
     paddingVertical: cardSizes.cardPaddingMd,
     borderRadius: radius.xl,
     borderWidth: cardSizes.borderWidth,
-    borderColor: "rgba(245, 238, 220, 0.22)",
-    backgroundColor: "rgba(245, 238, 220, 0.10)",
+    borderColor: dawnNight.border,
+    backgroundColor: dawnNight.surface,
   },
   cardSelected: {
     borderWidth: 2,
     borderColor: dawnNight.mark,
-    backgroundColor: "rgba(248, 184, 139, 0.16)",
+    backgroundColor: dawnNight.selectedSurface,
   },
   cardPressed: {
-    opacity: 0.8,
+    opacity: dawnNight.textBody,
   },
   cardText: {
     ...typography.body,
@@ -481,10 +481,10 @@ const styles = StyleSheet.create({
     ...typography.body,
     minHeight: 96,
     color: dawnNight.text,
-    backgroundColor: "rgba(245, 238, 220, 0.10)",
+    backgroundColor: dawnNight.surface,
     borderRadius: radius.xl,
     borderWidth: cardSizes.borderWidth,
-    borderColor: "rgba(245, 238, 220, 0.22)",
+    borderColor: dawnNight.border,
     paddingHorizontal: cardSizes.cardPaddingLg,
     paddingVertical: cardSizes.cardPaddingMd,
   },
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lgGap,
     gap: spacing.lgGap,
     borderTopWidth: cardSizes.borderWidth,
-    borderTopColor: "rgba(245, 238, 220, 0.16)",
+    borderTopColor: dawnNight.divider,
   },
   // 主ボタン。この地の上では朱が使えない(面と最も明るい地の差が 1.55 で、
   // WCAG 1.4.11 がUI部品に求める 3.0 を大きく割る)。曙色の面に濃藍の文字とする
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     backgroundColor: dawnNight.ctaSurface,
   },
   ctaPressed: {
-    opacity: 0.82,
+    opacity: dawnNight.textBody,
   },
   ctaText: {
     ...typography.button,
@@ -521,6 +521,6 @@ const styles = StyleSheet.create({
   secondaryText: {
     ...typography.label,
     color: dawnNight.text,
-    opacity: 0.8,
+    opacity: dawnNight.textBody,
   },
 });

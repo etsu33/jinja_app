@@ -232,11 +232,12 @@ describe("和の朝焼け（区切りの画面のグラデーション）", () =
     // 40節の Gradient 禁止には、ブランドの面だけ例外を置く。
     //
     //  1. 起動画面(DawnSplash) — 区切りの画面。dawn をそのまま使う
-    //  2. 相談フロー — 選択肢が主役で長文が無い。dawnNight を画面いっぱいに
-    //  3. ホームの帯 — アイコンから本編へ降りる間。dawnNight の上2点
+    //  2. 相談フロー — 選択肢が主役で長文が無い
+    //  3. タブ画面(ホーム・記録・マイページ) — 世界観を揃える
     //
-    // 読み物である推薦結果と神社詳細は明地の単色のまま。「長文の可読性は
-    // 明地が優位」(docs/design/color-direction-v1.md) は今も有効。
+    // 推薦結果・検索・神社詳細はまだ明地。長文があるため、畳みかたを確かめて
+    // から順に移す。「長文の可読性は明地が優位」
+    // (docs/design/color-direction-v1.md) は今も有効。
     // 判定は expo-linear-gradient の import に限る。react-native-svg の
     // LinearGradient は文様のマスク用で、画面の地ではない。
     const users = globSync(["app/**/*.tsx", "components/**/*.tsx"], { cwd: mobileRoot })
@@ -247,18 +248,37 @@ describe("和の朝焼け（区切りの画面のグラデーション）", () =
 
     expect(users).toEqual([
       "app/(tabs)/index.tsx",
+      "app/(tabs)/mypage/index.tsx",
+      "app/(tabs)/records/index.tsx",
       "app/consultation/index.tsx",
       "components/common/DawnSplash.tsx",
     ]);
   });
 
-  it("和の文様を敷く場所を、ブランドの面だけに限る", () => {
-    // 文様は読み物の下に敷かない。長文の可読性を落とすため。
+  it("和の文様は藍の地の画面にだけ敷く", () => {
+    // 文様は明地に敷かない。藍の地に生成りを薄くかける前提の濃さで引いており、
+    // 生成りの地の上では線が見えないか、見えても濁る。
     const users = globSync(["app/**/*.tsx", "components/**/*.tsx"], { cwd: mobileRoot })
       .filter((file) => /<WaPattern/.test(readFileSync(resolve(mobileRoot, file), "utf8")))
       .sort();
 
-    expect(users).toEqual(["app/(tabs)/index.tsx", "app/consultation/index.tsx"]);
+    expect(users).toEqual([
+      "app/(tabs)/index.tsx",
+      "app/(tabs)/mypage/index.tsx",
+      "app/(tabs)/records/index.tsx",
+      "app/consultation/index.tsx",
+    ]);
+  });
+
+  it("藍の地の上の文字と面の濃さを、4段だけに限る", () => {
+    // 同じ rgba を各ファイルへ手書きすると濃さがずれる。トークンだけを使う。
+    const handwritten = globSync(["app/**/*.tsx", "components/**/*.tsx"], { cwd: mobileRoot })
+      .filter((file) =>
+        /rgba\(245, 238, 220/.test(readFileSync(resolve(mobileRoot, file), "utf8")),
+      )
+      .sort();
+
+    expect(handwritten).toEqual([]);
   });
 
   it("夜明け前の地の上で、使う3色がどこでも読める", () => {

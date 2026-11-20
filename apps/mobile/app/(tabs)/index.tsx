@@ -99,7 +99,7 @@ export default function Home() {
           <TextInput
             accessibilityLabel="相談内容"
             placeholder="例: 迷いを整理して、前に進むきっかけがほしい"
-            placeholderTextColor="rgba(245, 238, 220, 0.52)"
+            placeholderTextColor={dawnNight.placeholder}
             style={styles.chatInput}
             value={consultation}
             onChangeText={setConsultation}
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   brandRuby: {
     ...typography.caption,
     color: dawnNight.text,
-    opacity: 0.68,
+    opacity: dawnNight.textMuted,
     letterSpacing: 4,
   },
   heroLead: {
@@ -185,16 +185,16 @@ const styles = StyleSheet.create({
   heroSub: {
     ...typography.subhead,
     color: dawnNight.text,
-    opacity: 0.76,
+    opacity: dawnNight.textBody,
   },
 
   // 入力カード。藍の地の上なので、相談フローの選択カードと同じ薄い膜にする。
   chatCard: {
     minHeight: 154,
     borderRadius: 22,
-    backgroundColor: "rgba(245, 238, 220, 0.10)",
+    backgroundColor: dawnNight.surface,
     borderWidth: 1,
-    borderColor: "rgba(245, 238, 220, 0.22)",
+    borderColor: dawnNight.border,
     marginTop: 24,
     padding: 16,
   },
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     ...typography.footnote,
     flex: 1,
     color: dawnNight.text,
-    opacity: 0.6,
+    opacity: dawnNight.textMuted,
   },
 
 
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   primaryCtaPressed: {
-    opacity: 0.82,
+    opacity: dawnNight.textBody,
   },
   primaryCtaText: {
     ...typography.button,
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   },
   searchEntryCta: {
     marginTop: 12,
-    borderColor: "rgba(245, 238, 220, 0.34)",
+    borderColor: dawnNight.border,
     backgroundColor: "transparent",
   },
 

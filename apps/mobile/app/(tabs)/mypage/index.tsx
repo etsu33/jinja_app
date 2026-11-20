@@ -1,12 +1,14 @@
 import * as React from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
+import { LinearGradient } from "expo-linear-gradient";
+import { WaPattern } from "../../../components/common/WaPattern";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { LEGAL_LABELS, openLegalDocument } from "../../../lib/legalLinks";
-import { appColors as theme } from "../../../design/theme";
+import { dawnNight } from "../../../design/theme";
 import { getFavoriteShrines, getRecentViewed } from "../../../lib/shrineStorage";
 import { getCounts } from "../../../lib/storage";
 import { getAuthenticatedBillingStatus, isPremiumStatus, type BillingStatus } from "../../../lib/billing";
@@ -91,7 +93,7 @@ function MyPageCard({ title, description, meta, icon, actionLabel, onPress }: My
       accessibilityRole={onPress ? "button" : undefined}
     >
       <View style={styles.iconBox}>
-        <Ionicons name={icon} size={CARD_ICON_SIZE} color={theme.accent} />
+        <Ionicons name={icon} size={CARD_ICON_SIZE} color={dawnNight.mark} />
       </View>
       <View style={styles.cardBody}>
         <Text style={styles.cardTitle}>{title}</Text>
@@ -135,6 +137,7 @@ export default function MyPageScreen() {
   // タブ画面はネイティブヘッダーを持たないため、Dynamic Island / ステータスバーの
   // 高さを自分で避ける(下層画面はStackのヘッダーが避けている)。
   const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
   const [favoriteCount, setFavoriteCount] = React.useState<number | null>(null);
   const [recentCount, setRecentCount] = React.useState<number | null>(null);
   const [visitCount, setVisitCount] = React.useState<number | null>(null);
@@ -284,10 +287,23 @@ export default function MyPageScreen() {
   }, []);
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
+    <View style={styles.screen}>
+      {/* 地は相談フロー・ホーム・記録と同じ藍。タブ4画面で揃える。 */}
+      <LinearGradient
+        colors={dawnNight.colors}
+        locations={dawnNight.locations}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <WaPattern height={screenHeight} />
+      </View>
+      <View style={{ paddingTop: insets.top }} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>MY PAGE</Text>
+          {/* 英語の小見出し(MY PAGE)はやめた。すぐ下の見出しが同じことを日本語で
+              言っており、他の画面も日本語で揃えている。 */}
           <Text style={styles.title}>マイページ</Text>
           <Text style={styles.subtitle}>
             プロフィール、Premium、設定をここから確認できます。
@@ -435,7 +451,7 @@ export default function MyPageScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: theme.background,
+    backgroundColor: dawnNight.colors[0],
   },
   content: {
     paddingHorizontal: 24,
@@ -446,24 +462,22 @@ const styles = StyleSheet.create({
   header: {
     gap: 8,
   },
-  eyebrow: {
-    ...typography.eyebrow,
-    color: theme.accentSoft,
-  },
   title: {
     ...typography.display,
-    color: theme.accent,
+    color: dawnNight.text,
   },
   subtitle: {
     ...typography.body,
-    color: theme.text,
+    color: dawnNight.text,
+    opacity: dawnNight.textBody,
   },
   section: {
     gap: 12,
   },
   sectionTitle: {
     ...typography.title,
-    color: theme.accentSoft,
+    color: dawnNight.text,
+    opacity: dawnNight.textBody,
   },
   usageGrid: {
     flexDirection: "row",
@@ -473,53 +487,54 @@ const styles = StyleSheet.create({
   statCard: {
     width: "48%",
     minHeight: 104,
-    backgroundColor: theme.surface,
+    backgroundColor: dawnNight.surface,
     borderWidth: 1,
-    borderColor: theme.borderHeader,
+    borderColor: dawnNight.border,
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 14,
     justifyContent: "space-between",
   },
   statValue: {
-    color: theme.accent,
+    color: dawnNight.mark,
     fontSize: 26,
     fontWeight: "900",
     letterSpacing: 0.2,
   },
   statLabel: {
     ...typography.footnoteStrong,
-    color: theme.text,
+    color: dawnNight.text,
     marginTop: 8,
   },
   statHelper: {
     ...typography.caption,
-    color: theme.muted,
+    color: dawnNight.text,
+    opacity: dawnNight.textMuted,
     marginTop: 4,
   },
   card: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: theme.surface,
+    backgroundColor: dawnNight.surface,
     borderWidth: 1,
-    borderColor: theme.borderHeader,
+    borderColor: dawnNight.border,
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 15,
   },
   cardPressed: {
-    opacity: 0.72,
+    opacity: dawnNight.textMuted,
   },
   iconBox: {
     width: 46,
     height: 46,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: theme.borderAccent,
+    borderColor: dawnNight.mark,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.surfaceSoft,
+    backgroundColor: dawnNight.selectedSurface,
   },
   cardBody: {
     flex: 1,
@@ -527,25 +542,27 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...typography.title,
-    color: theme.text,
+    color: dawnNight.text,
   },
   cardDescription: {
     ...typography.subhead,
-    color: theme.mutedSoft,
+    color: dawnNight.text,
+    opacity: dawnNight.textBody,
   },
   cardMeta: {
     ...typography.footnote,
-    color: theme.muted,
+    color: dawnNight.text,
+    opacity: dawnNight.textMuted,
   },
   cardAction: {
     borderWidth: 1,
-    borderColor: theme.borderAccent,
+    borderColor: dawnNight.mark,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   cardActionText: {
     ...typography.caption,
-    color: theme.accent,
+    color: dawnNight.mark,
   },
 });
