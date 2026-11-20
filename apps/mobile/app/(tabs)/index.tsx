@@ -1,14 +1,21 @@
 import * as React from "react";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { ScrollView, View, Text, TextInput, StyleSheet, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { setStatusBarStyle } from "expo-status-bar";
 import { appColors as theme } from "../../design/theme";
 import { ctaSizes } from "../../design/ctaSizes";
 import Button from "../../components/ui/Button";
 import { trackSearchEntryClick } from "../../lib/searchAnalytics";
 import { typography } from "../../design/typography";
 
-// 画面内コンテンツの上余白。safe area inset の内側に置く。
+// 紺の帯(masthead)の上下余白。上は safe area inset に足す。
+// 帯は深藍の面なので、ステータスバーの下まで伸ばしてよい。文字は inset の
+// 内側に収める。
+const MASTHEAD_TOP_PADDING = 10;
+const MASTHEAD_BOTTOM_PADDING = 24;
+
+// 帯の下、本文側の上余白。
 const CONTENT_TOP_PADDING = 22;
 
 export default function Home() {
@@ -17,6 +24,16 @@ export default function Home() {
   // 高さを自分で避ける(下層画面はStackのヘッダーが避けている)。
   const insets = useSafeAreaInsets();
   const [consultation, setConsultation] = React.useState("");
+
+  // 画面上端が深藍の帯なので、この画面だけステータスバーを明色にする。
+  // root の _layout.tsx は地が生成りの前提で "dark" を指定しているため、
+  // 離れるときに戻す。
+  useFocusEffect(
+    React.useCallback(() => {
+      setStatusBarStyle("light");
+      return () => setStatusBarStyle("dark");
+    }, []),
+  );
 
   const openSearch = () => {
     trackSearchEntryClick();
@@ -41,26 +58,31 @@ export default function Home() {
   };
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* ブランドヘッダー。ロゴマークはまだ素材が無い。
-            絵文字の鳥居は端末のフォント次第で字形が変わり、ブランドの同一性を
-            保てないため置かず、文字組だけで見せる。マークが用意できたら
-            brandBlock の前に差し込む。 */}
-        <View style={styles.header}>
-          <View style={styles.brandBlock}>
-            <Text style={styles.brandName}>神結び</Text>
-            <Text style={styles.brandRuby}>kami musubi</Text>
-          </View>
+    <View style={styles.screen}>
+      <View style={styles.column}>
+        {/* 深藍の帯。アイコン(紺地に金の紋)と起動画面(濃藍から始まる朝焼け)から、
+            本編の生成りへ降りる間を受け持つ。深藍は89箇所で文字色として使われて
+            いるが、面として立つ場所がほとんど無かった。
+            ロゴマークはまだ素材が無い。絵文字の鳥居は端末のフォント次第で字形が
+            変わるため置かず、文字組だけで見せる。マークが用意できたら
+            brandName の前に差し込む。
+            スクロールさせない。帯が流れると生成りが明色のステータスバーの下へ
+            来てしまう。 */}
+        <View
+          style={[
+            styles.masthead,
+            { paddingTop: insets.top + MASTHEAD_TOP_PADDING },
+          ]}
+        >
+          <Text style={styles.brandName}>神結び</Text>
+          <Text style={styles.brandRuby}>kami musubi</Text>
+          <Text style={styles.heroLead}>今の相談を、神社とのご縁につなげる</Text>
         </View>
 
-        {/* Hero */}
-        <View style={styles.hero}>
-          <Text style={styles.heroLead}>今の相談を、神社とのご縁につなげる</Text>
+        <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.heroSub}>
             ここでは相談内容だけを整えます。次の画面で、今の相談から結ばれた神社を確認できます。
           </Text>
-        </View>
 
         {/* 相談入力 (ios-ui-spec-v2.md 30節)。テーマ・参拝スタイル・ご利益・
             条件の選択は相談フロー(08節の STEP 1〜4)へ移した。
@@ -102,7 +124,8 @@ export default function Home() {
           style={styles.searchEntryCta}
         />
 
-      </ScrollView>
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -112,53 +135,44 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.outside,
   },
-  content: {
+  // 帯とスクロール領域を同じ幅の柱に収める。
+  column: {
+    flex: 1,
     width: "100%",
     maxWidth: 430,
     alignSelf: "center",
-    minHeight: "100%",
     backgroundColor: theme.background,
+  },
+  content: {
     paddingHorizontal: 20,
     paddingTop: CONTENT_TOP_PADDING,
     paddingBottom: 48,
   },
 
-  // ヘッダー
-  header: {
-    height: 60,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderBottomWidth: 1,
-    borderBottomColor: theme.borderHeader,
-    marginHorizontal: -20,
+  // 深藍の帯
+  // 文字はすべて生成り。紺の面に対して 12.59 で、UI部品の 3.0 も本文の 4.5 も満たす。
+  masthead: {
+    backgroundColor: theme.accent,
     paddingHorizontal: 20,
-    marginBottom: 28,
-  },
-  brandBlock: {
-    justifyContent: "center",
+    paddingBottom: MASTHEAD_BOTTOM_PADDING,
+    gap: 2,
   },
   brandName: {
-    color: theme.text,
+    color: theme.background,
     fontSize: 20,
     fontWeight: "900",
     letterSpacing: 1,
   },
   brandRuby: {
-    color: theme.muted,
-    fontSize: 12,
+    ...typography.caption,
+    color: theme.background,
+    opacity: 0.68,
     letterSpacing: 4,
-    marginTop: 1,
-  },
-
-  // Hero
-  hero: {
-    paddingBottom: 24,
-    gap: 10,
   },
   heroLead: {
     ...typography.subheading,
-    color: theme.text,
+    color: theme.background,
+    marginTop: 14,
   },
   heroSub: {
     ...typography.subhead,
