@@ -142,7 +142,7 @@ export function ConditionFieldsCard({
               >
                 <>
                   {active ? (
-                    <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={theme.accent} />
+                    <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={theme.background} />
                   ) : null}
                   <Text style={[styles.pillText, active && styles.pillTextActive]}>{option}</Text>
                 </>
@@ -174,7 +174,7 @@ export function ConditionFieldsCard({
               >
                 <>
                   {active ? (
-                    <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={theme.accent} />
+                    <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={theme.background} />
                   ) : null}
                   <Text style={[styles.pillText, active && styles.pillTextActive]}>{option}</Text>
                 </>

@@ -100,7 +100,7 @@ export function MobileOriginSelector({
             >
               <>
                 {selected ? (
-                  <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={theme.accent} />
+                  <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={theme.accentSoft} />
                 ) : null}
                 <Text style={[styles.text, selected && styles.activeText]}>{label}</Text>
               </>
