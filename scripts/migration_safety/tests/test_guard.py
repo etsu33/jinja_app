@@ -301,3 +301,60 @@ class TestTemples0095_0098PreflightSqlIsReadonly:
             sql_text = f.read()
         ok, reason = is_readonly_sql(sql_text)
         assert ok is True, reason
+
+
+class TestUsers0011_0015SqlIsReadonly:
+    """No DB, no shell wrapper -- the same check `readonly_query.sh` runs
+    before touching a credential (`guard.py check-readonly-sql`), against the
+    real preflight / post-check SQL files for users migrations 0011-0015.
+    Also pins that their output never includes personal fields: it is saved
+    outside the repo as the recovery pre-image, so it must stay limited to
+    internal ids and billing state."""
+
+    SQL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sql")
+    FILES = ("users_0011_0015_preflight.sql", "users_0011_0015_postcheck.sql")
+    PERSONAL_COLUMNS = (
+        "email",
+        "username",
+        "nickname",
+        "first_name",
+        "last_name",
+        "birthday",
+        "birth_time",
+        "birth_place",
+        "stripe_customer_id",
+        "password",
+    )
+
+    def _read(self, name):
+        with open(os.path.join(self.SQL_DIR, name), encoding="utf-8") as f:
+            return f.read()
+
+    def _sql_without_comments(self, name):
+        return "\n".join(line.split("--", 1)[0] for line in self._read(name).splitlines())
+
+    def test_files_exist(self):
+        for name in self.FILES:
+            assert os.path.isfile(os.path.join(self.SQL_DIR, name)), name
+
+    def test_every_statement_is_readonly(self):
+        for name in self.FILES:
+            ok, reason = is_readonly_sql(self._read(name))
+            assert ok is True, f"{name}: {reason}"
+
+    def test_no_personal_column_is_selected(self):
+        import re
+
+        for name in self.FILES:
+            sql = self._sql_without_comments(name).lower()
+            for column in self.PERSONAL_COLUMNS:
+                assert re.search(rf"\b{column}\b", sql) is None, f"{name} references {column}"
+
+    def test_no_write_statement_file_for_the_rollback_draft(self):
+        # The 0013 rollback DELETE lives only in README.md as a manual,
+        # human-decided write. It must not exist as a runnable SQL file.
+        for name in os.listdir(self.SQL_DIR):
+            if not name.startswith("users_0011_0015"):
+                continue
+            ok, reason = is_readonly_sql(self._read(name))
+            assert ok is True, f"{name}: {reason}"
