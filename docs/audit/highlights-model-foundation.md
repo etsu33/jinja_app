@@ -124,3 +124,19 @@ PR-1の未解決の仕様判断はない。公開可能性、翻訳変更時のr
 コミットメッセージ: `feat: 神社Highlightsのモデル基盤と削除保護を追加`
 
 category修正の追加コミットメッセージ: `fix: Highlightsカテゴリーを母艦承認の6種類に限定`
+
+## 母艦決定：翻訳レビュー状態（3状態）
+
+母艦は `ShrineHighlightTranslation.review_status` に **B案（`draft` / `approved` / `rejected`）** を正式採用することを決定した。従前の4状態案（`draft` / `in_review` / `approved` / `needs_revision`）は採用しない。
+
+| 状態 | 意味 | 一般公開判定 |
+| --- | --- | --- |
+| `draft` | 新規作成中・レビュー待ち・修正中 | 不可 |
+| `approved` | 翻訳内容のレビュー完了 | 候補（Highlight本体のPublication GateとEvidence Gateの通過が別途必要） |
+| `rejected` | 公開対象として不採用 | 不可 |
+
+- `draft` を既定値とし、単なる修正依頼を `rejected` と同義にしない。
+- `approved` には `reviewed_at` を必須とする。Django Choices・DB CHECK `hl_review_valid` / `hl_reviewed_at_required` は現行実装を維持する。
+- 承認済み翻訳の `name`・`description`・`historical_connection` を変更した場合の承認失効（`draft`へ戻すこと、`reviewed_at` のクリア、更新経路の保護）は **PR-3 Publication Gateで実装・検証する未完了要件**。PR-1で実装済みとは扱わない。
+- 本決定は仕様と監査記録の整合のみ。モデル、Migration、既存API、推薦、Meaning Composer、本番DBを変更しない。
+
