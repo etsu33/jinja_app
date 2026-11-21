@@ -1,10 +1,14 @@
 // apps/web/src/components/shrine/detail/ShrineFactSection.tsx
 import type { DetailFactDeity, DetailFactHistoryItem, DetailFactSection } from "@/components/shrine/detail/types";
 import type { ShrineKnowledgeSource } from "@/lib/api/types";
+import ShrineHighlightAnchorLink from "@/components/shrine/detail/ShrineHighlightAnchorLink";
 import { groupShrineHistoryFacts } from "@/lib/shrine/buildShrineFactSection";
+import { shrineHighlightAnchorId, shrineHistoryAnchorId } from "@/lib/shrine/buildShrineHighlightSection";
 
 type Props = {
   section: DetailFactSection;
+  // 見どころへのリンクの計測に使う（Highlights PR-5）。無くても表示は変わらない。
+  shrineId?: number | null;
 };
 
 // disputed Factに付与する状態ラベル。文言はここ1箇所でのみ定義する（PR-C4B2）。
@@ -58,7 +62,7 @@ function collectSectionSources(histories: DetailFactHistoryItem[]): ShrineKnowle
   return collected;
 }
 
-function SourceList({ sources }: { sources: ShrineKnowledgeSource[] }) {
+export function SourceList({ sources }: { sources: ShrineKnowledgeSource[] }) {
   if (sources.length === 0) return null;
 
   return (
@@ -93,9 +97,21 @@ function SourceList({ sources }: { sources: ShrineKnowledgeSource[] }) {
 // sourcesを一切変更せず、どのgroupの下に置くかだけを決める。showTypeLabelは、groupの見出しが
 // 既にhistory_type_labelを示している場合（グルーピング済みFact）にラベルの二重表示を避けるため
 // falseにする。disputedなFact（groupingされない、既存の個別表示のまま）ではtrueのままにする。
-function HistoryCard({ history, showTypeLabel }: { history: DetailFactHistoryItem; showTypeLabel: boolean }) {
+function HistoryCard({
+  history,
+  showTypeLabel,
+  shrineId,
+}: {
+  history: DetailFactHistoryItem;
+  showTypeLabel: boolean;
+  shrineId: number | null;
+}) {
+  const highlightLinks = history.highlightLinks ?? [];
   return (
-    <div className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] p-3">
+    <div
+      id={history.id != null ? shrineHistoryAnchorId(history.id) : undefined}
+      className="scroll-mt-24 rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] p-3"
+    >
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
         {showTypeLabel ? (
           <span className="text-[11px] font-semibold tracking-[0.04em] text-[var(--kt-color-text-muted)]">
@@ -115,6 +131,24 @@ function HistoryCard({ history, showTypeLabel }: { history: DetailFactHistoryIte
           {history.content}
         </p>
       ) : null}
+      {/* Highlights PR-5: この話を境内のどこで確かめられるか。見どころの節へ移る。 */}
+      {highlightLinks.length > 0 ? (
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="text-xs font-semibold text-[var(--kt-color-text-muted)]">現地で見られる場所：</span>
+          {highlightLinks.map((link) => (
+            <ShrineHighlightAnchorLink
+              key={link.id}
+              targetId={shrineHighlightAnchorId(link.id)}
+              shrineId={shrineId}
+              highlightId={link.id}
+              direction="history_to_highlight"
+              className="text-xs text-[var(--kt-color-action-primary)] underline underline-offset-2"
+            >
+              {link.name}
+            </ShrineHighlightAnchorLink>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -126,7 +160,7 @@ function historyCardKey(history: DetailFactHistoryItem, index: number): string {
 // Presentation Grouping（docs/knowledge/shrine-knowledge-contract.md「Presentation Groupingの契約」）:
 // 既存canonical history_typeが完全一致するFact群を、Fact本文・identity・sourcesを一切変えずに
 // 共通見出しの下へ表示する。disputedなFactはグルーピングせず、既存の個別表示のまま残す。
-function HistoryList({ histories }: { histories: DetailFactHistoryItem[] }) {
+function HistoryList({ histories, shrineId }: { histories: DetailFactHistoryItem[]; shrineId: number | null }) {
   const { groups, disputed } = groupShrineHistoryFacts(histories);
 
   return (
@@ -140,7 +174,12 @@ function HistoryList({ histories }: { histories: DetailFactHistoryItem[] }) {
             </h4>
             <div className="mt-2 space-y-3">
               {group.items.map((history, index) => (
-                <HistoryCard key={historyCardKey(history, index)} history={history} showTypeLabel={false} />
+                <HistoryCard
+                  key={historyCardKey(history, index)}
+                  history={history}
+                  showTypeLabel={false}
+                  shrineId={shrineId}
+                />
               ))}
             </div>
           </div>
@@ -148,7 +187,7 @@ function HistoryList({ histories }: { histories: DetailFactHistoryItem[] }) {
         {disputed.length > 0 ? (
           <div className="space-y-3">
             {disputed.map((history, index) => (
-              <HistoryCard key={historyCardKey(history, index)} history={history} showTypeLabel />
+              <HistoryCard key={historyCardKey(history, index)} history={history} showTypeLabel shrineId={shrineId} />
             ))}
           </div>
         ) : null}
@@ -158,7 +197,7 @@ function HistoryList({ histories }: { histories: DetailFactHistoryItem[] }) {
   );
 }
 
-export default function ShrineFactSection({ section }: Props) {
+export default function ShrineFactSection({ section, shrineId = null }: Props) {
   const hasDeities = section.deities.length > 0;
   const hasHistories = section.histories.length > 0;
 
@@ -170,7 +209,7 @@ export default function ShrineFactSection({ section }: Props) {
 
       <div className="mt-4 space-y-4">
         {hasDeities ? <DeityList deities={section.deities} /> : null}
-        {hasHistories ? <HistoryList histories={section.histories} /> : null}
+        {hasHistories ? <HistoryList histories={section.histories} shrineId={shrineId} /> : null}
       </div>
     </section>
   );

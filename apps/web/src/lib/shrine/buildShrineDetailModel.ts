@@ -6,6 +6,7 @@ import type { PublicGoshuinItem } from "@/components/shrine/detail/PublicGoshuin
 import type {
   DetailActionSection,
   DetailFactSection,
+  DetailHighlightSection,
   DetailMeaningItem,
   DetailMeaningSection,
   DetailProposalSection,
@@ -20,6 +21,10 @@ import { buildShrineCardProps } from "@/components/shrine/buildShrineCardProps";
 import { getBenefitLabels } from "@/lib/shrine/getBenefitLabels";
 import { buildShrineExplanation } from "@/lib/shrine/buildShrineExplanation";
 import { buildShrineFactSection } from "@/lib/shrine/buildShrineFactSection";
+import {
+  attachHighlightLinksToFactSection,
+  buildShrineHighlightSection,
+} from "@/lib/shrine/buildShrineHighlightSection";
 import { buildShrineJudge } from "@/lib/shrine/buildShrineJudge";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import {
@@ -1732,7 +1737,10 @@ export function buildShrineDetailModel({
 
   const directionSupportCopy = shrineMeaningPayloadV2?.generated?.directionSupportCopy?.trim() || null;
 
-  const factSection: DetailFactSection | null = buildShrineFactSection(shrine);
+  const baseFactSection: DetailFactSection | null = buildShrineFactSection(shrine);
+  // 見どころ（Highlights PR-5）。由緒・歴史とのリンクは Fact Section に出ているものだけでつなぐ。
+  const highlightSection: DetailHighlightSection | null = buildShrineHighlightSection(shrine, baseFactSection);
+  const factSection: DetailFactSection | null = attachHighlightLinksToFactSection(baseFactSection, highlightSection);
 
   return {
     shrineId: shrine.id,
@@ -1767,5 +1775,6 @@ export function buildShrineDetailModel({
     actionState,
     directionSupportCopy,
     factSection,
+    highlightSection,
   };
 }
