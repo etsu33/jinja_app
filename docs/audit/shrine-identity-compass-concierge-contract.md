@@ -751,3 +751,59 @@ shrines_nearby の削除可否  未決（到達不能な dead code）
 
 実装の詳細と回帰の証跡は
 `docs/audit/place-id-shadow-identity-hardening.md` §14。
+
+## 14. Concierge presentation contract — Mother Ship 2026-11-20
+
+実装更新: 2026-11-21。対象は Web/Mobile Concierge の表示。Backend・Compass・request・誕生日・認証・課金は変更しない。
+
+### Identity and first occurrence
+
+`packages/shared/conciergeCandidates.ts` を両 platform の純粋な表示アダプターとする。
+Backend 配列を走査し、最初の有効な登録 Shrine ID / 外部 Place ID とその元レコード・sourceIndex を保持する。
+距離・人気・登録状態・カード種別による再採点や sort は行わない。
+
+- Shrine authority は `shrine_id`。既存 F-3/F-4 の `registered_compat` で認めた `shrineId` / `shrine.id` も同じ resolver で扱う。
+- resolver 実装を `packages/shared/shrineIdentity.ts` へ移し、Web の既存パスは re-export。既存 policy の挙動は同じ。
+- generic `id`、名前、住所、array index は Shrine authority にしない。invalid / conflicting Shrine は Place fallback も禁止。
+- Shrine が absent/null で、有効な `place_id`（既存 `placeId` alias 可）を持つ候補は外部参考候補。
+- Place ID は前後空白を除いた非空 string。数値を文字列にせず、大文字小文字を変えない。Place aliases の不一致は外部 identity を未確認として除外する。
+- 有効 Shrine の壊れた optional Place link は使わず、確認済み Shrine ID は維持する。
+- 後発重複から reason、explanation、breakdown、trust/history/action、analytics attribution、instance ID を補完・置換しない。
+
+**リンク済み候補の既存互換動作**: 保持された登録レコードの Place ID と同じ外部候補は重複表示しない。
+外部が先に出ても登録レコードの内容へ混ぜず、安定した元順序の配列から reference を抑制する。
+捨てられた後発 Shrine 重複の追加 link を使って別候補を消さない。
+異なる Shrine IDs は同名・同住所・同じ optional Place link でも統合しない。
+これは既存 Web の明示的な linked-place 抑制を維持したもので、新しい推定リンクや merging policy ではない。
+従来の lowercase Place dedupe は、別の確認済み ID を誤って消さないよう廃止し、trim の互換は維持する。
+
+### Groups and rank authority
+
+登録と参考は別セクションにし、それぞれの Backend 相対順を保持する。
+2セクションを画面で並べた結合順が、元の interleaved Backend 配列と同じだとは主張しない。
+`[place A, Shrine 31, Shrine 12, Shrine 31, place B]` は登録 `[31,12]`（rank 1,2）、参考 `[A,B]`。
+参考候補の registered rank は null。登録 Hero の代わりにしない。
+
+Web は最初の登録が既存 Hero、残りが既存 secondary UI、外部は「参考候補」。
+Mobile も既存登録カードと「参考候補」を分ける。React key は canonical identity の名前空間付き ID。
+明示的な空/全 invalid 応答は Web のダミー推薦に戻さず、安全な filter/actions 表示にする。初期 example UI は維持する。
+
+### Navigation and analytics
+
+- Web の登録 detail は Shrine ID、参考 detail は既存の検証済み `/shrines/resolve?place_id=...`。
+- Mobile に検証済みの Place resolve route はない。参考候補には登録用 detail/action/favorite を出さない。
+  登録 detail/action handler でも kind・canonical ID・rank を確認する。
+- 登録候補だけで resultSetId と recommendationRank を作る。外部・不正・重複は登録 funnel に入れない。
+- 既存イベント名を維持。instance ID は最初の Backend record の値を使い、生成・後発補完しない。
+- Impression は既存 shared instance key で重複排除し、再描画は抑制、新 generation は抑制しない。
+- Web completion/filter の source response count は既存どおり。登録順位として使わない。
+  Hero に紐づく history/consultation metadata は最初の登録を参照する。
+
+### Evidence and limits
+
+共有 parity fixture の `presentation_cases` は17ケース。登録/外部/リンク、非隣接重複、競合理由文、
+legacy id-only、欠損/不正/alias conflict、同名別 identity、case を区別する Place ID を含む。
+Web parity テストは両実アダプターと実 Web DOM、Mobile の実表示関数（native primitives のみ DOM stub）を検証。
+Mobile `conciergePresentation.test.ts` は sourceIndex/元レコード参照・最初の内容・登録限定 impression と generation dedup を検証する。
+既存 Web identity / quality / Hero / secondary / action / Premium 回帰も実行する。
+実機の native rendering、OS 権限、live Place resolve API は今回の決定論テストの対象外。

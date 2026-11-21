@@ -601,5 +601,354 @@
         "recommendation_reason_v4": "audit-natureには、仕事運に関する情報があります。自然を感じながら過ごしやすいも確認材料になります。仕事や働き方を見直したい相談として受け取れます。相談の言葉からは、判断に迷う様子が感じられます。次に取る行動として、問いを一つに絞って整理したいことを小さく確認します。"
       }
     ]
-  }
+  },
+  "presentation_cases": [
+    {
+      "name": "registered-order",
+      "records": [
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first",
+          "distance_m": 9999,
+          "popular_score": 0
+        },
+        {
+          "shrine_id": 12,
+          "name": "same name",
+          "reason": "first-12",
+          "recommendation_instance_id": "instance-first",
+          "distance_m": 1,
+          "popular_score": 999
+        },
+        {
+          "shrine_id": 7,
+          "name": "same name",
+          "reason": "first-7",
+          "recommendation_instance_id": "instance-first"
+        }
+      ],
+      "registered": [31, 12, 7],
+      "references": [],
+      "ranks": [1, 2, 3]
+    },
+    {
+      "name": "mixed-and-nonadjacent-duplicates",
+      "records": [
+        {
+          "place_id": "A",
+          "name": "same name",
+          "reason": "external-first"
+        },
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first"
+        },
+        {
+          "shrine_id": 12,
+          "name": "same name",
+          "reason": "first-12",
+          "recommendation_instance_id": "instance-first"
+        },
+        {
+          "shrine_id": 31,
+          "name": "later",
+          "reason": "conflict",
+          "recommendation_instance_id": "later"
+        },
+        {
+          "place_id": "B",
+          "name": "same name",
+          "reason": "external-first"
+        },
+        {
+          "place_id": "A",
+          "name": "same name",
+          "reason": "external-first"
+        }
+      ],
+      "registered": [31, 12],
+      "references": ["A", "B"],
+      "ranks": [1, 2]
+    },
+    {
+      "name": "registered-only",
+      "records": [
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first"
+        }
+      ],
+      "registered": [31],
+      "references": [],
+      "ranks": [1]
+    },
+    {
+      "name": "external-only",
+      "records": [
+        {
+          "place_id": "A",
+          "name": "same name",
+          "reason": "external-first"
+        },
+        {
+          "place_id": "B",
+          "name": "same name",
+          "reason": "external-first"
+        }
+      ],
+      "registered": [],
+      "references": ["A", "B"],
+      "ranks": []
+    },
+    {
+      "name": "empty",
+      "records": [],
+      "registered": [],
+      "references": [],
+      "ranks": []
+    },
+    {
+      "name": "registered-linked",
+      "records": [
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first",
+          "place_id": "A"
+        }
+      ],
+      "registered": [31],
+      "references": [],
+      "ranks": [1]
+    },
+    {
+      "name": "linked-place-first",
+      "records": [
+        {
+          "place_id": "A",
+          "name": "same name",
+          "reason": "external-first"
+        },
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first",
+          "place_id": "A"
+        }
+      ],
+      "registered": [31],
+      "references": [],
+      "ranks": [1]
+    },
+    {
+      "name": "linked-registered-first",
+      "records": [
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first",
+          "place_id": "A"
+        },
+        {
+          "place_id": "A",
+          "name": "same name",
+          "reason": "external-first"
+        }
+      ],
+      "registered": [31],
+      "references": [],
+      "ranks": [1]
+    },
+    {
+      "name": "duplicate-does-not-enrich",
+      "records": [
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first"
+        },
+        {
+          "shrine_id": 31,
+          "place_id": "B",
+          "name": "later",
+          "reason": "later",
+          "recommendation_instance_id": "later"
+        },
+        {
+          "place_id": "B",
+          "name": "same name",
+          "reason": "external-first"
+        }
+      ],
+      "registered": [31],
+      "references": ["B"],
+      "ranks": [1]
+    },
+    {
+      "name": "legacy-id-only",
+      "records": [
+        {
+          "id": 88,
+          "name": "legacy"
+        }
+      ],
+      "registered": [],
+      "references": [],
+      "ranks": []
+    },
+    {
+      "name": "missing-identity",
+      "records": [
+        {
+          "name": "missing"
+        },
+        null,
+        {},
+        "invalid"
+      ],
+      "registered": [],
+      "references": [],
+      "ranks": []
+    },
+    {
+      "name": "invalid-identity",
+      "records": [
+        {
+          "shrine_id": 0,
+          "place_id": "A"
+        },
+        {
+          "shrine_id": true,
+          "place_id": "B"
+        },
+        {
+          "shrine_id": 1.5
+        },
+        {
+          "shrine_id": "bad",
+          "place_id": "C"
+        },
+        {
+          "place_id": 12
+        },
+        {
+          "place_id": " "
+        }
+      ],
+      "registered": [],
+      "references": [],
+      "ranks": []
+    },
+    {
+      "name": "conflicting-aliases",
+      "records": [
+        {
+          "shrine_id": 31,
+          "shrineId": 12,
+          "place_id": "A"
+        },
+        {
+          "place_id": "A",
+          "placeId": "B"
+        }
+      ],
+      "registered": [],
+      "references": [],
+      "ranks": []
+    },
+    {
+      "name": "documented-aliases",
+      "records": [
+        {
+          "shrineId": "31",
+          "name": "alias"
+        },
+        {
+          "shrine": {
+            "id": 12
+          },
+          "name": "nested"
+        }
+      ],
+      "registered": [31, 12],
+      "references": [],
+      "ranks": [1, 2]
+    },
+    {
+      "name": "same-name-distinct-identities",
+      "records": [
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first"
+        },
+        {
+          "shrine_id": 12,
+          "name": "same name",
+          "reason": "first-12",
+          "recommendation_instance_id": "instance-first"
+        },
+        {
+          "place_id": "A",
+          "name": "same name",
+          "reason": "external-first"
+        },
+        {
+          "place_id": "B",
+          "name": "same name",
+          "reason": "external-first"
+        }
+      ],
+      "registered": [31, 12],
+      "references": ["A", "B"],
+      "ranks": [1, 2]
+    },
+    {
+      "name": "opaque-case-sensitive-place-ids",
+      "records": [
+        {
+          "place_id": "A",
+          "name": "same name",
+          "reason": "external-first"
+        },
+        {
+          "place_id": "a",
+          "name": "same name",
+          "reason": "external-first"
+        },
+        {
+          "place_id": " A ",
+          "name": "same name",
+          "reason": "external-first"
+        }
+      ],
+      "registered": [],
+      "references": ["A", "a"],
+      "ranks": []
+    },
+    {
+      "name": "null-shrine-external",
+      "records": [
+        {
+          "shrine_id": null,
+          "place_id": "A",
+          "name": "external"
+        }
+      ],
+      "registered": [],
+      "references": ["A"],
+      "ranks": []
+    }
+  ]
 }
