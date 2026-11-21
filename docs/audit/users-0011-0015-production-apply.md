@@ -103,7 +103,7 @@
 | `BILLING_PROVIDER`（Render Shell） | `stripe`。判定は環境変数ではなく DB の中身で行われる |
 | `get_billing_status` を Render Shell で直接実行（読み取りのみ） | 旧来の期限が有効なアカウント：`premium`、期限は `legacy_premium_until` の値。Pass の期限が切れたアカウント：`free` |
 | Web 本番のマイページ | 旧来の期限が有効なアカウントで `Premium` のバッジが表示された |
-| Render の Logs（直近1時間、04:05〜05:05 UTC ごろ） | `legacy_premium_until`・`does not exist` ともに該当なし。`/api/users/me/` と `/api/billings/status/` は 200 |
+| Render の Logs（直近1時間、03:05〜04:05 UTC ごろ（日本時間 12:05〜13:05）） | `legacy_premium_until`・`does not exist` ともに該当なし。`/api/users/me/` と `/api/billings/status/` は 200 |
 
 - Pass の期限が切れたアカウントは、パスワードが分からず Web でのログインはしていない。
   判定は上の Render Shell の結果で確認済みのため、本番 DB に書き込むパスワード再設定は行わなかった。
@@ -132,7 +132,7 @@
 
 1. バックアップの CSV が保存されているかの確認と、いつ消すかの決定
 2. 適用前に、新しいコードが存在しない列を読んでエラーになっていたか（障害があったか）は
-   確かめていない。確かめた Logs は直近1時間だけで、適用前の時間帯を十分に含んでいない
+   確かめていない。確かめた Logs は直近1時間（03:05 UTC 以降）だけで、適用の時刻（02:52〜03:54 UTC の間）より前を十分に含んでいない
 3. `/billing` ページの有効期限の表示は確かめていない（判定の期限は Render Shell で確認済み）
 4. 本番に、期限が残っている Pass の購入も、Stripe の月額契約も無い。そのため
    「Pass の期限で Premium になる」「月額契約が `PremiumSubscription` に記録される」
