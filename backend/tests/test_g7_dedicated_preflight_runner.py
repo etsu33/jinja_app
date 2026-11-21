@@ -10,10 +10,14 @@ from __future__ import annotations
 import ast
 import hashlib
 import importlib.util
+import os
 import re
+import signal
 import socket
 import subprocess
 import sys
+import threading
+import time
 from datetime import date, timedelta
 from pathlib import Path
 from types import MappingProxyType
@@ -38,6 +42,53 @@ CA_PEM = (
     b"-----BEGIN CERTIFICATE-----\nU1lOVEhFVElDLU5PVC1BLVJFQUwtQ0E=\n-----END CERTIFICATE-----\n"
 )
 SENSITIVE_RELATION = "secret_private_relation_xyz"
+
+
+class InjectedInterrupt(BaseException):
+    """Raised by the test SIGUSR1 handler: a real, signal-originated asynchronous interrupt（Issue #3426）."""
+
+
+def _raise_injected(signum, frame):
+    raise InjectedInterrupt()
+
+
+def inject_interrupt():
+    """Deliver SIGUSR1 to this process now. Unblocked, the handler raises before the next statement runs."""
+    os.kill(os.getpid(), signal.SIGUSR1)
+
+
+@pytest.fixture
+def sigusr1_interrupt():
+    """Install the SIGUSR1 handler for one test; refuse to run silently where it cannot work."""
+    on_linux = sys.platform.startswith("linux")
+    if not (
+        pf.interrupt_deferral_supported() and hasattr(signal, "SIGUSR1") and hasattr(os, "kill")
+    ):
+        if on_linux:
+            pytest.fail("signal deferral must be available on Linux")
+        pytest.skip("POSIX signal deferral unavailable on this platform")
+    if threading.current_thread() is not threading.main_thread():
+        if on_linux:
+            pytest.fail("signal injection tests must run on the main thread")
+        pytest.skip("not on the main thread")
+    previous = signal.signal(signal.SIGUSR1, _raise_injected)
+    try:
+        yield
+    finally:
+        restored = signal.getsignal(signal.SIGUSR1)
+        signal.signal(signal.SIGUSR1, previous)
+        assert restored is _raise_injected  # the runner put the original Python handler back
+        assert signal.SIGUSR1 not in signal.sigpending()  # nothing left pending
+
+
+class _NoDeferral:
+    """Negative control: what the runner would do without signal deferral."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        return False
 
 
 @pytest.fixture(autouse=True)
@@ -161,7 +212,11 @@ class FakeConnection:
         execute_exc=None,
         rollback_exc=None,
         close_exc=None,
+        resource=None,
+        interrupt_in_live_settings=False,
     ):
+        if resource is not None and type(resource) is not FakeResource:
+            raise TypeError("FakeConnection resource must be a FakeResource")
         if type(results) is not dict or not all(type(k) is str for k in results):
             raise TypeError("FakeConnection results must be a plain dict keyed by sub-step id")
         if not (live is None or type(live) in (dict, str) or isinstance(live, Exception)):
@@ -179,11 +234,17 @@ class FakeConnection:
         self._execute_exc = execute_exc
         self._rollback_exc = rollback_exc
         self._close_exc = close_exc
+        self._resource = (
+            resource  # a connector-owned handle this connection wraps（Issue #3426 R2）
+        )
+        self._interrupt_in_live_settings = bool(interrupt_in_live_settings)
         self.executed: list[str] = []
         self.rolled_back = 0
         self.closed = 0
 
     def live_settings(self):
+        if self._interrupt_in_live_settings:
+            inject_interrupt()  # a point after ownership transfer
         if isinstance(self._live, Exception):
             raise self._live
         return self._live
@@ -213,6 +274,8 @@ class FakeConnection:
 
     def close(self):
         self.closed += 1
+        if self._resource is not None:
+            self._resource.release()
         if self._close_exc is not None:
             raise self._close_exc
         if self._close_raises:
@@ -220,13 +283,21 @@ class FakeConnection:
 
 
 class FakeResource:
-    """A connector-owned handle（stands in for a socket or libpq handle the connector opened itself）."""
+    """A connector-owned handle（stands in for a socket or libpq handle the connector opened itself）.
+
+    Deliberately **not** idempotent（Issue #3426 R2）: a second release is counted and raises, so a test can never
+    pass by relying on a driver tolerating double close.
+    """
 
     def __init__(self):
         self.released = 0
+        self.double_releases = 0
 
     def release(self):
         self.released += 1
+        if self.released > 1:
+            self.double_releases += 1
+            raise RuntimeError("double release")
 
 
 class FakeConnector:
@@ -237,29 +308,55 @@ class FakeConnector:
     PREFLIGHT_CONNECTOR_KIND = "offline_test_double"
 
     def __init__(
-        self, conn=None, connect_raises=False, allocate=False, connect_exc=None, release_exc=None
+        self,
+        conn=None,
+        connect_raises=False,
+        allocate=False,
+        connect_exc=None,
+        release_exc=None,
+        wrap=None,
+        interrupt_after_acquire=False,
+        interrupt_before_return=False,
     ):
+        if wrap is not None and (type(wrap) is not tuple or len(wrap) != 2):
+            raise TypeError("FakeConnector wrap must be a (live, results) tuple")
         self.conn = conn
         self.connect_raises = connect_raises
-        self.allocate = allocate
+        self.allocate = allocate or wrap is not None
         self.connect_exc = connect_exc
         self.release_exc = release_exc
+        # `wrap=(live, results)`: return a FakeConnection built here around the connector's own resource, so the
+        # connector release and the runner close would act on the same handle（Issue #3426 R2）.
+        self.wrap = wrap
+        self.interrupt_after_acquire = bool(interrupt_after_acquire)  # R1 point
+        self.interrupt_before_return = bool(interrupt_before_return)  # R2 point
         self.params = []
-        self.allocated: list[FakeResource] = []
-        self._unadopted: list[FakeResource] = []
+        self.allocated: list[FakeResource] = []  # test bookkeeping only, not ownership
+        self._unadopted: list[FakeResource] = []  # ownership registry used by release_unadopted()
         self.release_calls = 0
+        self.last_conn = None
 
     def connect(self, params):
         self.params.append(params)
+        resource = None
         if self.allocate:
             resource = FakeResource()
             self.allocated.append(resource)
-            self._unadopted.append(resource)  # recorded before anything else can fail
+            if self.interrupt_after_acquire:
+                inject_interrupt()  # R1: acquired, not yet registered for release
+            self._unadopted.append(resource)  # registration
         if self.connect_exc is not None:
             raise self.connect_exc
         if self.connect_raises:
             raise RuntimeError(DRIVER_TEXT)
-        return self.conn
+        if self.wrap is not None:
+            self.last_conn = FakeConnection(self.wrap[0], self.wrap[1], resource=resource)
+            returned = self.last_conn
+        else:
+            returned = self.conn
+        if self.interrupt_before_return:
+            inject_interrupt()  # R2: registered, returned object not yet adopted by the runner
+        return returned
 
     def release_unadopted(self):
         """Release only handles this connector allocated; never the returned or injected object."""
@@ -1502,3 +1599,304 @@ def test_ownership_injected_connection_is_not_released_by_connector(ca_file):
     report = _ownership_report(ca_file, connector)
     assert connector.release_calls == 1 and connector.allocated == []
     assert untrusted.calls == [] and report.connector_release == "done"
+
+
+# --------------------------------------------------------------------------- #
+# Issue #3426 PR-A: R1 / R2 interrupt windows（real SIGUSR1, deterministic injection points）
+# --------------------------------------------------------------------------- #
+
+
+def _wrap(ca_file):
+    return (_live(ca_file), _pass_results())
+
+
+def _exactly_once(resource):
+    assert resource.released == 1 and resource.double_releases == 0
+
+
+def test_r0_fake_resource_is_not_idempotent():
+    """Negative control: the fake would expose any double release instead of tolerating it."""
+    resource = FakeResource()
+    resource.release()
+    with pytest.raises(RuntimeError, match="double release"):
+        resource.release()
+    assert resource.double_releases == 1
+
+
+def test_r0_deferral_holds_a_real_signal_until_the_section_ends(sigusr1_interrupt):
+    reached = []
+    with pytest.raises(InjectedInterrupt):
+        with pf._InterruptDeferral():
+            inject_interrupt()
+            reached.append(
+                "after_signal"
+            )  # still inside the section: the signal is pending, not raised
+    assert reached == ["after_signal"]
+
+
+def test_r0_without_deferral_the_same_signal_interrupts_immediately(sigusr1_interrupt):
+    reached = []
+    with pytest.raises(InjectedInterrupt):
+        inject_interrupt()
+        reached.append("after_signal")
+    assert reached == []  # proves the injection point is deterministic
+
+
+def test_r1_interrupt_between_acquire_and_register_is_released_exactly_once(
+    ca_file, sigusr1_interrupt
+):
+    connector = FakeConnector(wrap=_wrap(ca_file), interrupt_after_acquire=True)
+    with pytest.raises(InjectedInterrupt) as excinfo:
+        pf.run_preflight(_config(ca_file), connector)
+    # Deferred to the end of the handoff: the trusted connection was adopted, so the runner closed it.
+    _exactly_once(connector.allocated[0])
+    assert connector.release_calls == 0 and connector.last_conn.closed == 1
+    assert connector.last_conn.executed == []  # interrupted before any SQL
+    _assert_sanitized(excinfo.value, ca_file)
+
+
+def test_r1_interrupt_with_rejected_connection_is_released_by_connector_once(
+    ca_file, sigusr1_interrupt
+):
+    untrusted = CallRecorder(ca_file)
+    connector = FakeConnector(untrusted, allocate=True, interrupt_after_acquire=True)
+    with pytest.raises(InjectedInterrupt):
+        pf.run_preflight(_config(ca_file), connector)
+    _exactly_once(connector.allocated[0])
+    assert connector.release_calls == 1
+    assert untrusted.calls == []  # the rejected object is never touched
+
+
+def test_r1_negative_control_without_deferral_leaks(ca_file, sigusr1_interrupt, monkeypatch):
+    """Without the deferral section the R1 window is real: the acquired handle is never released."""
+    monkeypatch.setattr(pf, "_InterruptDeferral", _NoDeferral)
+    connector = FakeConnector(wrap=_wrap(ca_file), interrupt_after_acquire=True)
+    with pytest.raises(InjectedInterrupt):
+        pf.run_preflight(_config(ca_file), connector)
+    assert connector.allocated[0].released == 0  # leaked
+    assert connector.release_calls == 1  # the release ran, but the handle was never registered
+
+
+def test_r2_interrupt_after_registration_before_adoption_is_released_exactly_once(
+    ca_file, sigusr1_interrupt
+):
+    connector = FakeConnector(wrap=_wrap(ca_file), interrupt_before_return=True)
+    with pytest.raises(InjectedInterrupt):
+        pf.run_preflight(_config(ca_file), connector)
+    _exactly_once(connector.allocated[0])
+    assert connector.release_calls == 0 and connector.last_conn.closed == 1
+
+
+def test_r2_interrupt_during_validation_is_released_exactly_once(
+    ca_file, sigusr1_interrupt, monkeypatch
+):
+    validate = pf._trusted_offline_connection
+
+    def validate_then_interrupt(connector, conn):
+        result = validate(connector, conn)
+        inject_interrupt()  # between validation and the ownership store
+        return result
+
+    monkeypatch.setattr(pf, "_trusted_offline_connection", validate_then_interrupt)
+    connector = FakeConnector(wrap=_wrap(ca_file))
+    with pytest.raises(InjectedInterrupt):
+        pf.run_preflight(_config(ca_file), connector)
+    _exactly_once(connector.allocated[0])
+    assert connector.release_calls == 0 and connector.last_conn.closed == 1
+
+
+@pytest.mark.parametrize("point", ["before_return", "during_validation"])
+def test_r2_single_marker_releases_exactly_once_even_without_deferral(
+    ca_file, sigusr1_interrupt, monkeypatch, point
+):
+    """The single ownership store leaves no both / neither state: before it the connector releases, never both."""
+    monkeypatch.setattr(pf, "_InterruptDeferral", _NoDeferral)
+    if point == "during_validation":
+        validate = pf._trusted_offline_connection
+
+        def validate_then_interrupt(connector, conn):
+            result = validate(connector, conn)
+            inject_interrupt()
+            return result
+
+        monkeypatch.setattr(pf, "_trusted_offline_connection", validate_then_interrupt)
+    connector = FakeConnector(
+        wrap=_wrap(ca_file), interrupt_before_return=(point == "before_return")
+    )
+    with pytest.raises(InjectedInterrupt):
+        pf.run_preflight(_config(ca_file), connector)
+    _exactly_once(connector.allocated[0])
+    assert connector.release_calls == 1 and connector.last_conn.closed == 0
+
+
+def test_r2_interrupt_after_transfer_is_released_by_runner_once(
+    ca_file, sigusr1_interrupt, monkeypatch
+):
+    original = FakeConnection.__init__
+
+    def init_with_hook(self, *args, **kwargs):
+        kwargs["interrupt_in_live_settings"] = True
+        original(self, *args, **kwargs)
+
+    monkeypatch.setattr(FakeConnection, "__init__", init_with_hook)
+    connector = FakeConnector(wrap=_wrap(ca_file))
+    with pytest.raises(InjectedInterrupt):
+        pf.run_preflight(_config(ca_file), connector)
+    _exactly_once(connector.allocated[0])
+    assert connector.release_calls == 0 and connector.last_conn.closed == 1
+
+
+def test_r2_successful_run_releases_exactly_once(ca_file):
+    connector = FakeConnector(wrap=_wrap(ca_file))
+    report = pf.run_preflight(_config(ca_file), connector)
+    assert report.stopped_at == "PF-16"
+    _exactly_once(connector.allocated[0])
+    assert connector.release_calls == 0 and report.connector_release == "not_needed"
+
+
+def test_cleanup_end_session_is_idempotent(ca_file):
+    resource = FakeResource()
+    conn = FakeConnection(_live(ca_file), _pass_results(), resource=resource)
+    report = pf.PreflightReport(transaction_opened=True)
+    assert pf._end_session(conn, report) is None
+    assert pf._end_session(conn, report) is None
+    assert conn.rolled_back == 1 and conn.closed == 1
+    _exactly_once(resource)
+
+
+def test_release_unadopted_is_at_most_once(ca_file):
+    connector = FakeConnector(allocate=True)
+    type(connector).connect(connector, None)
+    report = pf.PreflightReport()
+    pf._release_unadopted(connector, report)
+    pf._release_unadopted(connector, report)
+    assert connector.release_calls == 1
+    _exactly_once(connector.allocated[0])
+
+
+class _DeferralInterruptingCleanup:
+    """Wraps the real deferral; interrupts the cleanup section（the second section of a run）at `when`."""
+
+    when = "enter"
+    created = 0
+
+    def __init__(self):
+        type(self).created += 1
+        self._index = type(self).created
+        self._inner = _REAL_DEFERRAL()
+
+    def __enter__(self):
+        if self._index == 2 and self.when == "enter":
+            raise InjectedInterrupt()  # a signal handled before the cleanup mask took effect
+        self._inner.__enter__()
+        return self
+
+    def __exit__(self, *exc_info):
+        self._inner.__exit__(*exc_info)
+        if self._index == 2 and self.when == "exit":
+            raise InjectedInterrupt()  # a signal delivered when the cleanup mask is lifted
+        return False
+
+
+_REAL_DEFERRAL = pf._InterruptDeferral
+
+
+@pytest.mark.parametrize("when", ["enter", "exit"])
+def test_cleanup_retry_releases_exactly_once_when_interrupted_at_the_section_edge(
+    ca_file, monkeypatch, when
+):
+    monkeypatch.setattr(_DeferralInterruptingCleanup, "when", when)
+    monkeypatch.setattr(_DeferralInterruptingCleanup, "created", 0)
+    monkeypatch.setattr(pf, "_InterruptDeferral", _DeferralInterruptingCleanup)
+    connector = FakeConnector(wrap=_wrap(ca_file))
+    with pytest.raises(InjectedInterrupt):
+        pf.run_preflight(_config(ca_file), connector)
+    _exactly_once(connector.allocated[0])
+    assert connector.last_conn.closed == 1 and connector.last_conn.rolled_back == 1
+
+
+def test_deferral_unavailable_stops_before_connecting(ca_file, monkeypatch):
+    monkeypatch.delattr(pf.signal, "valid_signals")
+    connector = FakeConnector(wrap=_wrap(ca_file))
+    report = pf.run_preflight(_config(ca_file), connector)
+    assert (report.stopped_at, report.stop_reason) == ("CONNECT", "interrupt_deferral_unavailable")
+    assert connector.params == [] and connector.allocated == []
+    assert "preflight_overall=STOP" in report.render()
+
+
+def test_handoff_interrupt_cannot_produce_all_pass(ca_file, sigusr1_interrupt):
+    connector = FakeConnector(wrap=_wrap(ca_file), interrupt_before_return=True)
+    config = _full_config(ca_file)
+    with pytest.raises(InjectedInterrupt):
+        pf.run_preflight(config, connector, AcceptingInventoryPolicy())
+    assert connector.last_conn.executed == []  # no registry SQL after the interrupt
+
+
+@pytest.fixture
+def background_thread():
+    """Make the process multi-threaded: the condition under which a per-thread signal mask fails（pytest-xdist）."""
+    stop = threading.Event()
+    thread = threading.Thread(target=stop.wait, args=(30,), daemon=True)
+    thread.start()
+    try:
+        yield thread
+    finally:
+        stop.set()
+        thread.join(5)
+
+
+def test_r0_deferral_holds_in_a_multi_threaded_process(sigusr1_interrupt, background_thread):
+    reached = []
+    with pytest.raises(InjectedInterrupt):
+        with pf._InterruptDeferral():
+            inject_interrupt()
+            for _ in range(1000):  # many eval-breaker checks inside the section
+                pass
+            reached.append("after_signal")
+    assert reached == ["after_signal"]
+
+
+def test_r0_per_thread_mask_is_not_enough_in_a_multi_threaded_process(
+    sigusr1_interrupt, background_thread
+):
+    """Negative control for the rejected mechanism: a thread mask does not defer a process-directed signal."""
+    reached = []
+    previous = signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGUSR1])
+    try:
+        with pytest.raises(InjectedInterrupt):
+            inject_interrupt()
+            # The kernel hands the signal to the unmasked thread; the main thread then runs the Python handler.
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                time.sleep(0.01)
+            reached.append("after_signal")
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous)
+    assert reached == []
+
+
+def test_r1_multi_threaded_process_still_releases_exactly_once(
+    ca_file, sigusr1_interrupt, background_thread
+):
+    connector = FakeConnector(wrap=_wrap(ca_file), interrupt_after_acquire=True)
+    with pytest.raises(InjectedInterrupt):
+        pf.run_preflight(_config(ca_file), connector)
+    _exactly_once(connector.allocated[0])
+    assert connector.release_calls == 0 and connector.last_conn.closed == 1
+
+
+def test_r0_nested_sections_deliver_only_at_the_outer_exit(sigusr1_interrupt):
+    reached = []
+    with pytest.raises(InjectedInterrupt):
+        with pf._InterruptDeferral():
+            with pf._InterruptDeferral():
+                inject_interrupt()
+            reached.append("after_inner_exit")  # re-dispatched to the outer recorder, not raised
+    assert reached == ["after_inner_exit"]
+
+
+def test_r0_run_restores_every_python_signal_handler(ca_file):
+    before = {s: signal.getsignal(s) for s in pf._python_handled_signals()}
+    connector = FakeConnector(wrap=_wrap(ca_file))
+    pf.run_preflight(_config(ca_file), connector)
+    assert {s: signal.getsignal(s) for s in pf._python_handled_signals()} == before
