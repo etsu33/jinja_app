@@ -325,7 +325,9 @@ Steps (record times, counts and verdicts in the audit doc):
 2. SQL Editor: `SELECT * FROM users_userprofile ORDER BY id` and
    `SELECT * FROM users_premiumpasspurchase ORDER BY id`, Export -> CSV each,
    save outside the repo, confirm row counts equal the preflight's
-   `profiles total` / `Pass purchases total`. (Supabase Free has no
+   `profiles total` / `Pass purchases total`. Then confirm the files really
+   exist on disk (`wc -l <file>` = rows + 1 header); viewing the result grid
+   is not a backup — on 2026-11-21 no file was actually written. (Supabase Free has no
    Dashboard backup/PITR; these two tables are the only existing data the
    five migrations rewrite.)
 3. Re-run the preflight; `5 expect` must be unchanged.
