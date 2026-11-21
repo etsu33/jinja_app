@@ -28,6 +28,9 @@ def normalized_operations(module):
         if "fields" in kwargs:
             kwargs = dict(kwargs)
             kwargs["fields"] = [(n, f.deconstruct()[1:]) for n, f in kwargs["fields"]]
+        if "field" in kwargs:
+            kwargs = dict(kwargs)
+            kwargs["field"] = kwargs["field"].deconstruct()[1:]
         result.append((name, args, kwargs))
     return result
 
@@ -66,9 +69,19 @@ def test_new_migration_apply_reverse_reapply_preserves_existing_facts(module):
     assert connection.vendor == "postgresql", "This constraint/DDL test requires PostgreSQL"
     loader = MigrationLoader(connection)
     leaf = loader.graph.leaf_nodes("temples")[0]
-    active_migration = loader.disk_migrations[leaf]
+    # 後続のMigration（PR-3の location_hint など）が乗っても、Highlights基盤の
+    # Migrationだけを往復させる。基盤から最新までの鎖を逆順に外し、最後に戻す。
+    foundation_key = next(
+        ("temples", name.rsplit(".", 1)[-1])
+        for name in (MAIN, NOGIS)
+        if ("temples", name.rsplit(".", 1)[-1]) in loader.disk_migrations
+    )
+    plan = loader.graph.forwards_plan(leaf)
+    chain = plan[plan.index(foundation_key) :]
+    active_migration = loader.disk_migrations[foundation_key]
     before = loader.project_state(active_migration.dependencies)
     current = loader.project_state([leaf])
+    states_before = [before] + [loader.project_state([node]) for node in chain[:-1]]
     migration = importlib.import_module(module).Migration("highlights_test", "temples")
     existing = ["temples_shrine", "temples_shrinehistory", "temples_shrineknowledgesource"]
 
@@ -81,9 +94,10 @@ def test_new_migration_apply_reverse_reapply_preserves_existing_facts(module):
             return result
 
     snapshot = counts()
-    # Unapply the active Highlights operations only; never reverse old migrations.
-    with connection.schema_editor() as editor:
-        active_migration.unapply(before.clone(), editor)
+    # Unapply the active Highlights chain only; never reverse old migrations.
+    for node, state in reversed(list(zip(chain, states_before, strict=True))):
+        with connection.schema_editor() as editor:
+            loader.disk_migrations[node].unapply(state.clone(), editor)
     try:
         assert not {f"temples_{name.lower()}" for name in MODELS} & set(
             connection.introspection.table_names()
@@ -111,5 +125,22 @@ def test_new_migration_apply_reverse_reapply_preserves_existing_facts(module):
                 model = current.apps.get_model("temples", name)
                 if model._meta.db_table in tables:
                     editor.delete_model(model)
-        with connection.schema_editor() as editor:
-            active_migration.apply(before.clone(), editor)
+        for node, state in zip(chain, states_before, strict=True):
+            with connection.schema_editor() as editor:
+                loader.disk_migrations[node].apply(state.clone(), editor)
+
+
+LOCATION_HINT_MAIN = "temples.migrations.0124_highlight_translation_location_hint"
+LOCATION_HINT_NOGIS = "temples.migrations_nogis.0023_highlight_translation_location_hint"
+
+
+def test_location_hint_migration_series_match_and_only_add_one_field():
+    assert normalized_operations(LOCATION_HINT_MAIN) == normalized_operations(LOCATION_HINT_NOGIS)
+    for module, parent in [
+        (LOCATION_HINT_MAIN, "0123_highlights_model_foundation"),
+        (LOCATION_HINT_NOGIS, "0022_highlights_model_foundation"),
+    ]:
+        migration = importlib.import_module(module).Migration
+        assert migration.dependencies == [("temples", parent)]
+        assert [type(op) for op in migration.operations] == [migrations.AddField]
+        assert migration.operations[0].name == "location_hint"
