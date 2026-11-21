@@ -150,6 +150,8 @@ class ShrineHighlightTranslation(models.Model):
     name = models.CharField(max_length=255, validators=[_validate_not_blank])
     description = models.TextField(blank=True, default="")
     historical_connection = models.TextField(blank=True, default="")
+    # 境内での位置の目安（例: 鳥居をくぐって右手）。言語で書き方が変わるため翻訳側に持つ。
+    location_hint = models.CharField(max_length=255, blank=True, default="")
     review_status = models.CharField(
         max_length=16, choices=ReviewStatus.choices, default=ReviewStatus.DRAFT
     )
@@ -182,12 +184,39 @@ class ShrineHighlightTranslation(models.Model):
     def __str__(self):
         return f"{self.highlight_id}:{self.language_code}:{self.name}"
 
+    # 承認後に変わったら承認を取り消す項目（PR-3）。利用者に見える文章のすべて。
+    REVIEWED_CONTENT_FIELDS = ("name", "description", "historical_connection", "location_hint")
+
     def clean(self):
         super().clean()
         if self.review_status == self.ReviewStatus.APPROVED and self.reviewed_at is None:
             raise ValidationError({"reviewed_at": "Approved translations require reviewed_at."})
 
+    def _invalidate_approval_if_content_changed(self) -> None:
+        """保存済みの状態がapprovedで、文章が変わっていたらdraftへ戻す。
+
+        同じ保存で文章を変えて承認し直すことはできない（承認は文章を変えない保存で行う）。
+        QuerySet.update / bulk_update / raw SQLはsaveを通らないため対象外。
+        """
+        if self.pk is None:
+            return
+        stored = (
+            type(self)
+            .objects.filter(pk=self.pk)
+            .values("review_status", *self.REVIEWED_CONTENT_FIELDS)
+            .first()
+        )
+        if stored is None or stored["review_status"] != self.ReviewStatus.APPROVED:
+            return
+        changed = any(
+            getattr(self, field) != stored[field] for field in self.REVIEWED_CONTENT_FIELDS
+        )
+        if changed:
+            self.review_status = self.ReviewStatus.DRAFT
+            self.reviewed_at = None
+
     def save(self, *args, **kwargs):
+        self._invalidate_approval_if_content_changed()
         self.full_clean()
         return super().save(*args, **kwargs)
 
