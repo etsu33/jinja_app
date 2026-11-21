@@ -914,6 +914,51 @@ describe("ShrineDetailArticle", () => {
       saveActionNode: null,
     };
 
+    it("Highlights PR-5: 見どころは「神社について」の後・解釈レイヤーの前に表示する", () => {
+      render(
+        <ShrineDetailArticle
+          {...baseProps}
+          factSection={{
+            kind: "fact",
+            heading: "神社について",
+            deities: [{ display_name: "明治天皇", sort_order: 0, displayState: "full" }],
+            histories: [],
+          } as any}
+          highlightSection={{
+            kind: "highlight",
+            heading: "ここで見られるもの",
+            items: [
+              {
+                id: 1,
+                categoryLabel: "建築",
+                name: "拝殿の彫刻",
+                description: "正面上部を見る。",
+                historicalConnection: "",
+                locationHint: "",
+                linkedHistories: [],
+                sources: [],
+                observedOnLabel: null,
+              },
+            ],
+          }}
+          freeDisplaySections={[{ tier: "free", layer: "context", section: { kind: "reason" } }] as any}
+          premiumDisplaySections={[]}
+          isPremiumActive={false}
+        />,
+      );
+
+      const fact = screen.getByText("神社について");
+      const highlights = screen.getByText("ここで見られるもの");
+      const reason = screen.getByTestId("shrine-reason-section");
+      expect(fact.compareDocumentPosition(highlights) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(highlights.compareDocumentPosition(reason) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("Highlights PR-5: highlightSectionがnullなら「ここで見られるもの」を表示しない", () => {
+      render(<ShrineDetailArticle {...baseProps} highlightSection={null} />);
+      expect(screen.queryByText("ここで見られるもの")).not.toBeInTheDocument();
+    });
+
     it("factSectionがnullの場合「神社について」を表示しない", () => {
       render(<ShrineDetailArticle {...baseProps} factSection={null} />);
 
