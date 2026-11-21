@@ -1142,3 +1142,53 @@ describe("buildShrineDetailModel - factSection", () => {
     expect(result.factSection).toBeNull();
   });
 });
+
+describe("buildShrineDetailModel - highlightSection（Highlights PR-5）", () => {
+  const history = {
+    id: 10,
+    history_type: "tradition",
+    title: "龍の伝承",
+    content: "本文",
+    period_text: "",
+    event_date: null,
+    sort_order: 0,
+    verification_status: "source_confirmed",
+    confidence: "high",
+    sources: [],
+  };
+  const highlight = {
+    id: 1,
+    category: "architecture",
+    sort_order: 0,
+    name: "龍の彫刻",
+    description: "拝殿の正面上部を見る。",
+    historical_connection: "",
+    location_hint: "",
+    linked_history_ids: [10],
+    sources: [],
+    observed_on: null,
+  };
+
+  it("見どころが無ければ highlightSection は null", () => {
+    const result = buildShrineDetailModel({ shrine: { ...shrineStub }, publicGoshuins: [] });
+    expect(result.highlightSection).toBeNull();
+  });
+
+  it("見どころと由緒・歴史を相互にリンクする", () => {
+    const result = buildShrineDetailModel({
+      shrine: { ...shrineStub, histories: [history], highlights: [highlight] },
+      publicGoshuins: [],
+    });
+    expect(result.highlightSection?.items[0].linkedHistories).toEqual([{ id: 10, title: "龍の伝承" }]);
+    expect(result.factSection?.histories[0].highlightLinks).toEqual([{ id: 1, name: "龍の彫刻" }]);
+  });
+
+  it("由緒・歴史が無い神社でも見どころは出す（リンクは出さない）", () => {
+    const result = buildShrineDetailModel({
+      shrine: { ...shrineStub, deities: [], histories: [], highlights: [highlight] },
+      publicGoshuins: [],
+    });
+    expect(result.factSection).toBeNull();
+    expect(result.highlightSection?.items[0].linkedHistories).toEqual([]);
+  });
+});
