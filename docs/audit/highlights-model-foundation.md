@@ -23,12 +23,20 @@
 
 ### Fieldと通常制約
 
-- `ShrineHighlight`: Shrine FK、全神社を通じ一意のstable_key、自由文字列category、非負sort_order、verification_status、confidence、verified_at、publication_status、created_at / updated_at。
+- `ShrineHighlight`: Shrine FK、全神社を通じ一意のstable_key、固定カテゴリーcategory、非負sort_order、verification_status、confidence、verified_at、publication_status、created_at / updated_at。
 - `ShrineHighlightTranslation`: Highlight FK、ja/en限定language_code、name、description、historical_connection、review_status、reviewed_at、created_at / updated_at。UNIQUE(highlight, language_code)。説明2項目は下書き段階で空を許可する。公開要件としての説明の非空確認はPR-3の責務。
 - `ShrineHighlightSource`: Highlight FKとShrineKnowledgeSource FK。UNIQUE(highlight, source)。Source側はPROTECT。
 - `ShrineHighlightHistory`: Highlight FKとShrineHistory FK、NOT NULLのShrine FK。UNIQUE(highlight, history)。History側はPROTECT。clean/saveでHighlight・History・指定Shrineの同一性を確認。
 
-categoryは**最大50文字**。既存 `backend/temples/models.py` の `GoriyakuTag.category` と長さを合わせたが、そのchoicesは再利用しない。stable_keyと翻訳nameは既存Knowledgeのstable_key / title / display_nameに合わせ最大255文字。statusは既存のverification_status（32文字）とconfidence（8文字）を再利用し、publication / translation reviewは必要な値が収まる16文字とした。
+categoryは母艦決定により**固定カテゴリー・最大50文字**。Highlights専用のTextChoicesを持ち、`GoriyakuTag`のchoices・意味とは共通化しない。長さ50は当初実装の上限を維持する。stable_keyと翻訳nameは既存Knowledgeのstable_key / title / display_nameに合わせ最大255文字。statusは既存のverification_status（32文字）とconfidence（8文字）を再利用し、publication / translation reviewは必要な値が収まる16文字とした。
+
+### 母艦決定：category仕様整合修正
+
+当初の自由文字列方式は、今回の母艦決定によって固定カテゴリーへ置き換えた。許可値を指定された6種類に限定するための修正であり、自由文字列方式は現行仕様として採用しない。新たなカテゴリーの推測追加やGoriyakuTagとの共通化は行わない。
+
+許可値は `architecture` / `cultural_heritage` / `nature` / `ritual_festival` / `historical_site` / `experience` の6種類のみ。
+
+Djangoでは `ShrineHighlight.Category`（TextChoices）をcategory.choicesに指定し、DBでは `hl_category_valid` CHECKで同じ6値に限定する。max_length=50と既存 `hl_category_not_blank` CHECKは維持。両MigrationのCreateModel状態・追加CHECKを一致させる。6値の保存成功6ケース、未定義値のDjango validation・bulk_create・QuerySet.update拒否12ケースを追加し、既存の空白・一意性・日時整合・削除保護テストを維持した。
 
 公開状態は `draft / published / archived`（default draft）、翻訳reviewは `draft / approved / rejected`（default draft）。確認状態source_confirmed/reviewedにはverified_at、翻訳approvedにはreviewed_atを要求する。言語・状態語彙・confidence・非空白・日時整合・一意性はDB制約でも確認する。通常saveはHighlight / Translation / History linkでfull_cleanする。
 
@@ -55,7 +63,17 @@ categoryは**最大50文字**。既存 `backend/temples/models.py` の `Goriyaku
 
 ## Migrationの安全境界
 
-実装前に依存関係を確認したHeadは通常 `0122_shrine_feature_word_en`、NoGIS `0021_shrine_feature_word_en`。それぞれを親として新規Migrationを1件ずつ追加した。既存Migrationは編集していない。
+実装前に依存関係を確認したHeadは通常 `0122_shrine_feature_word_en`、NoGIS `0021_shrine_feature_word_en`。それぞれを親として新規Migrationを1件ずつ追加した。今回のcategory整合修正では、この未マージのPR-1追加Migration 2件だけを更新した。developに存在するMigrationは編集していない。
+
+category修正前の安全確認（2026-11-21 JST）:
+
+- GitHub PR #3504はopen・未マージ、headは `1a5f6e4508e9e68f3ce9e21addb460701897d095`。fetch後もリモートとの追加差分は0。
+- GitHub Deployments APIには当該headのVercel Preview（deployment `7960515564`）が存在したため調査した。Vercel deployment `dpl_FJjWaoAWP9tZ9phsXhSh1r2qMy8f` は `jinja-app-web` / Next.jsであり、buildログは `/vercel/path0/apps/web` の `pnpm run build` → `next build`。確認したログにDjango migrateはない。Preview公開とDB Migration適用を同一視していない。
+- 前回のローカル適用は破棄されるpytestテストDBのみ。専用クラスタを再起動し、`highlights_local` の `to_regclass('public.django_migrations')` がNULL、DB一覧がhighlights_local/postgresのみで、残存テストDBがないことを確認した。
+- `.github/workflows/backend-tests.yml` は一時的なPostgreSQL service上のpytest。リポジトリのdeploy workflowは無効ファイル。確認可能な範囲で、永続DBへ本2件を適用した証拠はない。本番DBには接続していない。記録外の手動適用まで不存在と断定しない。
+- 他環境の永続DBに適用済み・その可能性を示す追加証拠が判明した場合は、この2件の書き換え方式を継続せずSTOPする。
+
+確認した読み取りコマンド: `git fetch origin develop feature/highlights-model-foundation`、`git rev-list --left-right --count HEAD...origin/feature/highlights-model-foundation`、`gh api 'repos/etsu33/jinja_app/deployments?sha=1a5f6e4508e9e68f3ce9e21addb460701897d095'`、`gh api repos/etsu33/jinja_app/deployments/7960515564/statuses`。Vercel metadata / build eventsも接続ツールで読み取り確認した。
 
 両Migrationは同じCreateModel / AddConstraint operationを持ち、既存テーブルのAlterField・data migration・RunSQLは含まない。新4テーブルの期待初期件数は0。FKにはDjango既定のindexが生成される。UNIQUE(id, shrine_id)・複合FK・そのSQLはPR-2まで追加しない。
 
@@ -72,7 +90,7 @@ export GEOS_LIBRARY_PATH=/opt/homebrew/opt/geos/lib/libgeos_c.dylib GDAL_LIBRARY
 
 USE_GIS=0 DISABLE_GIS_FOR_TESTS=1 /Users/morietsu/Desktop/jinja_app/.venv/bin/python -m pytest -c backend/pytest.ini -p no:cacheprovider -p no:rerunfailures --override-ini=addopts='' --maxfail=1 --tb=short backend/temples/tests/test_highlights_foundation.py backend/temples/tests/test_highlights_migrations.py backend/temples/tests/test_models_shrine_knowledge.py backend/temples/tests/serializers/test_shrine_knowledge_serializers.py backend/temples/tests/api/test_shrine_detail_knowledge_api.py backend/temples/tests/services/test_evidence_gate.py backend/temples/tests/services/test_evidence_gate_detail_display_state.py backend/temples/tests/services/test_shared_recommendation_eligibility.py backend/temples/tests/services/test_culture_translation_primary_attribution_guard.py backend/temples/tests/services/test_action_suggestion_grounding_alignment.py backend/temples/tests/test_shrine_meaning_composer.py backend/temples/tests/api/test_shrine_feature_words_en.py
 
-USE_GIS=1 DISABLE_GIS_FOR_TESTS=0 /Users/morietsu/Desktop/jinja_app/.venv/bin/python -m pytest -c backend/pytest.ini -p no:cacheprovider -p no:rerunfailures --override-ini=addopts='' --maxfail=1 --tb=short backend/temples/tests/test_highlights_foundation.py backend/temples/tests/test_highlights_migrations.py
+USE_GIS=1 DISABLE_GIS_FOR_TESTS=0 /Users/morietsu/Desktop/jinja_app/.venv/bin/python -m pytest -c backend/pytest.ini -p no:cacheprovider -p no:rerunfailures --override-ini=addopts='' --maxfail=1 --tb=short backend/temples/tests/test_highlights_foundation.py backend/temples/tests/test_highlights_migrations.py backend/temples/tests/test_models_shrine_knowledge.py backend/temples/tests/serializers/test_shrine_knowledge_serializers.py backend/temples/tests/api/test_shrine_detail_knowledge_api.py backend/temples/tests/services/test_evidence_gate.py backend/temples/tests/services/test_evidence_gate_detail_display_state.py backend/temples/tests/services/test_shared_recommendation_eligibility.py backend/temples/tests/services/test_culture_translation_primary_attribution_guard.py backend/temples/tests/services/test_action_suggestion_grounding_alignment.py backend/temples/tests/test_shrine_meaning_composer.py backend/temples/tests/api/test_shrine_feature_words_en.py
 
 USE_GIS=1 DISABLE_GIS_FOR_TESTS=0 /Users/morietsu/Desktop/jinja_app/.venv/bin/python backend/manage.py check
 USE_GIS=1 DISABLE_GIS_FOR_TESTS=0 /Users/morietsu/Desktop/jinja_app/.venv/bin/python backend/manage.py makemigrations temples --check --dry-run
@@ -91,8 +109,8 @@ DATABASE_URL=postgres://morietsu@127.0.0.1:55471/highlights_local DB_NAME=highli
 
 ### 結果
 
-- NoGIS PostgreSQL回帰: **806 passed**（15.32s）。Knowledge、Detail API、Evidence Gate、Shared Eligibility、culture translation、Action、Meaning Composer、英語特徴語を含む。
-- 通常PostGIS: 新規モデル・Migrationテスト **87 passed**（11.89s）。両系列のoperations往復、空テーブル生成、既存Shrine / History / Source件数不変を含む。
+- NoGIS PostgreSQL回帰: **824 passed**（14.60s）。Knowledge、Detail API、Evidence Gate、Shared Eligibility、culture translation、Action、Meaning Composer、英語特徴語を含む。
+- 通常PostGIS: 関連回帰 **824 passed**（新規105ケースを含む）。両系列のoperations往復、空テーブル生成、既存Shrine / History / Source件数不変を含む。
 - 両系列makemigrations: No changes detected。Django system check、Ruff、Black、git diff --check成功。
 - mypy: Django pluginを使う既存backend/mypy.iniで新規4ファイルを検査し成功。最初のroot .venvでの直接検査はdjango-stubs 1.9.0の古い型定義でエラーとなったため、既存backend .venv（mypy 2.3.0 / django-stubs 6.0.9）と既存設定で再検証した。依存ファイルは変更していない。
 - 初回の単体テストではProtectedError後のtransactionをテスト側でsavepointに分離できておらず失敗した。テストを修正し、最終回帰で再検証した。
@@ -104,3 +122,5 @@ DATABASE_URL=postgres://morietsu@127.0.0.1:55471/highlights_local DB_NAME=highli
 PR-1の未解決の仕様判断はない。公開可能性、翻訳変更時のreview無効化、複合FK、API、UI、本番Migration Gateは未実装であり、PR-1の成功から後続PRの開始・マージ・デプロイ・本番適用を承認しない。直接SQL等の削除保護や同一神社DB強制までPR-1の完了条件に追加する場合は、現在の承認範囲と異なるためSTOPして仕様を再確認する。
 
 コミットメッセージ: `feat: 神社Highlightsのモデル基盤と削除保護を追加`
+
+category修正の追加コミットメッセージ: `fix: Highlightsカテゴリーを母艦承認の6種類に限定`

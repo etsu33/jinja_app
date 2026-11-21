@@ -27,7 +27,7 @@ pytestmark = pytest.mark.django_db
 def highlight():
     shrine = Shrine.objects.create(name_jp="Highlights試験", address="試験所在地")
     return ShrineHighlight.objects.create(
-        shrine=shrine, stable_key="highlight-test", category="建築"
+        shrine=shrine, stable_key="highlight-test", category="architecture"
     )
 
 
@@ -62,6 +62,60 @@ def test_defaults_and_relations(highlight):
     assert highlight.created_at and highlight.updated_at and text.created_at and text.updated_at
 
 
+@pytest.mark.parametrize(
+    "category",
+    [
+        "architecture",
+        "cultural_heritage",
+        "nature",
+        "ritual_festival",
+        "historical_site",
+        "experience",
+    ],
+)
+def test_fixed_categories_are_accepted(highlight, category):
+    item = ShrineHighlight.objects.create(
+        shrine=highlight.shrine, stable_key=f"category-{category}", category=category
+    )
+    item.refresh_from_db()
+    assert item.category == category
+    assert set(ShrineHighlight.Category.values) == {
+        "architecture",
+        "cultural_heritage",
+        "nature",
+        "ritual_festival",
+        "historical_site",
+        "experience",
+    }
+    assert ShrineHighlight._meta.get_field("category").max_length == 50
+
+
+@pytest.mark.parametrize("category", ["建築", "x", "unknown", "ARCHITECTURE"])
+def test_undefined_category_is_rejected_by_django(highlight, category):
+    highlight.category = category
+    with pytest.raises(ValidationError) as error:
+        highlight.save()
+    assert "category" in error.value.message_dict
+
+
+@pytest.mark.parametrize("category", ["建築", "x", "unknown", "ARCHITECTURE"])
+def test_undefined_category_is_rejected_by_bulk_create(highlight, category):
+    with transaction.atomic(), pytest.raises(IntegrityError, match="hl_category_valid"):
+        ShrineHighlight.objects.bulk_create(
+            [
+                ShrineHighlight(
+                    shrine=highlight.shrine, stable_key="invalid-category", category=category
+                )
+            ]
+        )
+
+
+@pytest.mark.parametrize("category", ["建築", "x", "unknown", "ARCHITECTURE"])
+def test_undefined_category_is_rejected_by_queryset_update(highlight, category):
+    with transaction.atomic(), pytest.raises(IntegrityError, match="hl_category_valid"):
+        ShrineHighlight.objects.filter(pk=highlight.pk).update(category=category)
+
+
 @pytest.mark.parametrize("field", ["stable_key", "category"])
 @pytest.mark.parametrize("value", ["", " ", "\t\n", "\u3000"])
 def test_blank_highlight_fields_rejected(highlight, field, value):
@@ -90,7 +144,7 @@ def test_unique_stable_key_and_language(highlight):
     other = Shrine.objects.create(name_jp="別の試験神社")
     with pytest.raises(ValidationError):
         ShrineHighlight.objects.create(
-            shrine=other, stable_key=highlight.stable_key, category="建築"
+            shrine=other, stable_key=highlight.stable_key, category="architecture"
         )
     translation(highlight)
     with pytest.raises(ValidationError):
@@ -196,7 +250,9 @@ def test_uniqueness_survives_bulk_create(highlight):
         ShrineHighlight.objects.bulk_create(
             [
                 ShrineHighlight(
-                    shrine=highlight.shrine, stable_key=highlight.stable_key, category="x"
+                    shrine=highlight.shrine,
+                    stable_key=highlight.stable_key,
+                    category="architecture",
                 )
             ]
         )
@@ -276,7 +332,7 @@ def test_mixed_bulk_delete_rolls_back_drafts(highlight):
     published = ShrineHighlight.objects.create(
         shrine=highlight.shrine,
         stable_key="published-test",
-        category="x",
+        category="architecture",
         publication_status="published",
     )
     with transaction.atomic(), pytest.raises(ProtectedError):

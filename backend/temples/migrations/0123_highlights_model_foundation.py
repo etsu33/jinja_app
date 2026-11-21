@@ -31,7 +31,16 @@ class Migration(migrations.Migration):
                 (
                     "category",
                     models.CharField(
-                        max_length=50, validators=[temples.models._validate_not_blank]
+                        choices=[
+                            ("architecture", "Architecture"),
+                            ("cultural_heritage", "Cultural heritage"),
+                            ("nature", "Nature"),
+                            ("ritual_festival", "Ritual / festival"),
+                            ("historical_site", "Historical site"),
+                            ("experience", "Experience"),
+                        ],
+                        max_length=50,
+                        validators=[temples.models._validate_not_blank],
                     ),
                 ),
                 ("sort_order", models.PositiveIntegerField(default=0)),
@@ -221,6 +230,22 @@ class Migration(migrations.Migration):
                     )
                 ),
                 name="hl_category_not_blank",
+            ),
+        ),
+        migrations.AddConstraint(
+            model_name="shrinehighlight",
+            constraint=models.CheckConstraint(
+                condition=models.Q(
+                    category__in=[
+                        "architecture",
+                        "cultural_heritage",
+                        "nature",
+                        "ritual_festival",
+                        "historical_site",
+                        "experience",
+                    ]
+                ),
+                name="hl_category_valid",
             ),
         ),
         migrations.AddConstraint(

@@ -26,6 +26,14 @@ _HAS_NON_WHITESPACE = (
 
 
 class ShrineHighlight(models.Model):
+    class Category(models.TextChoices):
+        ARCHITECTURE = "architecture", "Architecture"
+        CULTURAL_HERITAGE = "cultural_heritage", "Cultural heritage"
+        NATURE = "nature", "Nature"
+        RITUAL_FESTIVAL = "ritual_festival", "Ritual / festival"
+        HISTORICAL_SITE = "historical_site", "Historical site"
+        EXPERIENCE = "experience", "Experience"
+
     class PublicationStatus(models.TextChoices):
         DRAFT = "draft", "Draft"
         PUBLISHED = "published", "Published"
@@ -35,8 +43,10 @@ class ShrineHighlight(models.Model):
         "temples.Shrine", on_delete=models.CASCADE, related_name="highlights"
     )
     stable_key = models.CharField(max_length=255, unique=True, validators=[_validate_not_blank])
-    # Same maximum as the existing GoriyakuTag.category; no shared taxonomy.
-    category = models.CharField(max_length=50, validators=[_validate_not_blank])
+    # Highlights own this vocabulary; it is independent of GoriyakuTag.
+    category = models.CharField(
+        max_length=50, choices=Category.choices, validators=[_validate_not_blank]
+    )
     sort_order = models.PositiveIntegerField(default=0)
     verification_status = models.CharField(
         max_length=32, choices=KNOWLEDGE_VERIFICATION_STATUS_CHOICES, default="draft"
@@ -59,6 +69,19 @@ class ShrineHighlight(models.Model):
             ),
             models.CheckConstraint(
                 condition=Q(category__regex=_HAS_NON_WHITESPACE), name="hl_category_not_blank"
+            ),
+            models.CheckConstraint(
+                condition=Q(
+                    category__in=[
+                        "architecture",
+                        "cultural_heritage",
+                        "nature",
+                        "ritual_festival",
+                        "historical_site",
+                        "experience",
+                    ]
+                ),
+                name="hl_category_valid",
             ),
             models.CheckConstraint(
                 condition=Q(
