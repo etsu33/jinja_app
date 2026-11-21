@@ -1,3 +1,5 @@
+import { normalizeConciergeCandidates, type ConciergeCandidate } from "../../../../../packages/shared/conciergeCandidates";
+import { trackConciergeResultImpressions } from "../../../lib/conciergePresentation";
 import * as React from "react";
 import {
   AccessibilityInfo,
@@ -44,7 +46,6 @@ const SEND_ICON_SIZE = 22;
 // 相談文が空で条件だけが入っているときに送る既定文。従来と同じ文字列。
 const CONSULTATION_FALLBACK = "条件から合う神社を知りたい";
 import {
-  buildRecommendationImpressionDedupKey,
   buildRecommendationResultSetId,
   normalizeRecommendationInstanceId,
   recommendationAnalyticsProperties,
@@ -86,6 +87,10 @@ type RecommendationReasonDetail = {
 };
 type RecommendationCard = {
   id: string;
+  kind: "registered" | "place";
+  placeId: string | null;
+  sourceIndex: number;
+  recommendationRank: number | null;
   name: string;
   area: string;
   connection: string;
@@ -104,6 +109,8 @@ type RecommendationCard = {
   // reused as-is. Never generated/derived on Mobile.
   recommendationInstanceId: string | null;
 };
+
+type RegisteredRecommendationCard = RecommendationCard & {kind:"registered"; shrineId:string; recommendationRank:number};
 
 type ActionSuggestionV4Action = {
   label: string;
@@ -361,9 +368,9 @@ function resolveRecommendationReason({
   return "相談内容と神社情報をもとに選ばれた神社です。";
 }
 
-function toRecommendationCard(item: RecommendationApiCard, index: number): RecommendationCard {
-  const id = item.id ?? item.shrine_id ?? item.place_id ?? `recommendation-${index + 1}`;
-  const shrineId = item.shrineId ?? item.shrine_id ?? item.id ?? item.place_id;
+function toRecommendationCard(item: RecommendationApiCard, candidate: ConciergeCandidate<RecommendationApiCard>): RecommendationCard {
+  const shrineId = candidate.shrineId;
+  const id = candidate.kind === "registered" ? `shrine:${shrineId}` : `place:${candidate.placeId}`;
   const actionSuggestionV4Preview = normalizeActionSuggestionV4Preview(
     item.action_suggestion_v4_preview ?? item.actionSuggestionV4Preview,
   );
@@ -391,7 +398,11 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
   });
 
   return {
-    id: String(id),
+    id,
+    kind: candidate.kind,
+    placeId: candidate.placeId,
+    sourceIndex: candidate.sourceIndex,
+    recommendationRank: candidate.recommendationRank,
     name: item.display_name ?? item.name ?? "名称未設定の神社",
     area: item.area ?? item.location ?? item.address ?? item.formatted_address ?? "所在地未設定",
     connection: item.connection ?? "今の相談内容と近い意味を持つご縁",
@@ -411,7 +422,7 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
 }
 
 function normalizeRecommendations(items: RecommendationApiCard[]): RecommendationCard[] {
-  return items.map(toRecommendationCard);
+  return normalizeConciergeCandidates(items).ordered.map(c => toRecommendationCard(c.record,c));
 }
 
 function buildActionSuggestionId({
@@ -425,7 +436,7 @@ function buildActionSuggestionId({
   slot: "primary" | "secondary";
   rank: number;
 }) {
-  return [card.shrineId ?? card.id, rank, slot, action.actionType].filter(Boolean).join(":");
+  return [card.shrineId, rank, slot, action.actionType].filter(Boolean).join(":");
 }
 
 async function fetchConciergeRecommendations({
@@ -476,7 +487,7 @@ function ResultCard({
   onDetail,
   onActionEvent,
 }: {
-  card: RecommendationCard;
+  card: RegisteredRecommendationCard;
   rank: number;
   onDetail: () => void;
   onActionEvent: (params: {
@@ -660,6 +671,73 @@ function ResultCard({
   );
 }
 
+/** References have no registered rank, Shrine route, or registered-only actions. */
+function ReferenceCard({ card }: { card: RecommendationCard }) {
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardName}>{card.name}</Text>
+      <Text style={styles.cardArea}>{card.area}</Text>
+      <Text style={styles.cardReason}>{card.reason}</Text>
+    </View>
+  );
+}
+function ConciergeResults({
+  results,
+  onDetail,
+  onActionEvent,
+}: {
+  results: RecommendationCard[];
+  onDetail: (card: RecommendationCard, rank: number) => void;
+  onActionEvent: (params: {
+    card: RecommendationCard;
+    rank: number;
+    actionType: ActionEventActionType;
+    action: ActionSuggestionV4Action;
+    slot: "primary" | "secondary";
+  }) => void;
+}) {
+  const registered = results.filter(
+    (card): card is RegisteredRecommendationCard =>
+      card.kind === "registered" && !!card.shrineId && typeof card.recommendationRank === "number",
+  );
+  const references = results.filter((card) => card.kind === "place");
+  if (!results.length) return null;
+  return (
+    <View style={styles.resultsArea}>
+      {registered.length ? (
+        <>
+          <View style={styles.resultsIntro}>
+            <Text style={styles.resultsLabel}>今の相談から結ばれた神社</Text>
+            <Text style={styles.resultsLead}>必要な時だけ、下の入力欄から条件を変えて再相談できます。</Text>
+          </View>
+          {registered.map((card) => (
+            <ResultCard
+              key={card.id}
+              card={card}
+              rank={card.recommendationRank}
+              onDetail={() => onDetail(card, card.recommendationRank)}
+              onActionEvent={({ actionType, action, slot }) =>
+                onActionEvent({ card, rank: card.recommendationRank, actionType, action, slot })
+              }
+            />
+          ))}
+        </>
+      ) : null}
+      {references.length ? (
+        <View accessibilityLabel="参考候補">
+          <Text accessibilityRole="header" style={styles.resultsLabel}>
+            参考候補
+          </Text>
+          <Text style={styles.resultsLead}>登録神社の推薦とは別に表示しています。</Text>
+          {references.map((card) => (
+            <ReferenceCard key={card.id} card={card} />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 // ────────────────────────────────────────────
 // メイン画面
 // ────────────────────────────────────────────
@@ -703,40 +781,8 @@ export default function ConciergeScreen() {
   const isSendDisabled = loading || (!input.trim() && !hasAnyCondition);
 
   React.useEffect(() => {
-    if (results.length === 0) return;
-    const resultSetId = buildRecommendationResultSetId(
-      null,
-      results.map((card) => ({ shrineId: card.shrineId ?? card.id })),
-    );
-
-    results.forEach((card, index) => {
-      // Recommendation Impression Instance Dedup Contract (docs/audit/
-      // recommendation-strict-funnel-readiness.md §6, §14-2): dedup boundary must be the
-      // Backend-issued recommendationInstanceId, not a single batch-level resultSetId ref
-      // -- the previous single-ref guard suppressed the entire Impression batch for any
-      // new generation sharing the same (always-"unknown"-prefixed on Mobile) shrine
-      // signature, orphaning that generation's Click. Uses the same shared helper as Web
-      // so both platforms dedup with the identical algorithm.
-      const impressionKey = buildRecommendationImpressionDedupKey({
-        recommendationInstanceId: card.recommendationInstanceId,
-        resultSetId,
-        shrineId: card.shrineId ?? card.id,
-        rank: index + 1,
-      });
-      if (trackedImpressionKeysRef.current.has(impressionKey)) return;
-      trackedImpressionKeysRef.current.add(impressionKey);
-
-      track("concierge_result_impression", {
-        source: "concierge_result",
-        platform: "mobile",
-        resultSetId,
-        shrineId: card.shrineId ?? card.id,
-        recommendationRank: index + 1,
-        recommendationInstanceId: card.recommendationInstanceId,
-        ...recommendationAnalyticsProperties(card.analyticsProvenance),
-      });
-    });
-  }, [results]);
+    trackConciergeResultImpressions(results,trackedImpressionKeysRef.current,track);
+  },[results]);
   const lastInitialQueryRef = React.useRef<string | null>(null);
 
   // 相談画面から戻ってきたかどうかの判定キー。
@@ -872,6 +918,7 @@ export default function ConciergeScreen() {
     action: ActionSuggestionV4Action;
     slot: "primary" | "secondary";
   }) => {
+    if (card.kind !== "registered" || !card.shrineId || card.recommendationRank !== rank) return;
     if (action.actionType === "route_open" && card.directionReference?.matched) {
       trackMobileDirection("direction_match_route_clicked", { matched: true, recommendation_rank: rank });
     }
@@ -930,11 +977,12 @@ export default function ConciergeScreen() {
   ].filter((item) => item.value.length > 0);
 
   const handleDetail = (card: RecommendationCard, rank: number) => {
+    if (card.kind !== "registered" || !card.shrineId || card.recommendationRank !== rank) return;
     if (card.directionReference?.matched) trackMobileDirection("direction_match_detail_opened", { matched: true, recommendation_rank: rank });
     if (!card.shrineId) return;
     const resultSetId = buildRecommendationResultSetId(
       null,
-      results.map((result) => ({ shrineId: result.shrineId ?? result.id })),
+      results.filter(result => result.kind === "registered").map((result) => ({ shrineId: result.shrineId })),
     );
     track("shrine_detail_transition", {
       source: "concierge_result",
@@ -1037,31 +1085,7 @@ export default function ConciergeScreen() {
         </View>
 
         {/* 結果カード */}
-        {submitted && results.length > 0 ? (
-          <View style={styles.resultsArea}>
-            <View style={styles.resultsIntro}>
-              <Text style={styles.resultsLabel}>今の相談から結ばれた神社</Text>
-              <Text style={styles.resultsLead}>必要な時だけ、下の入力欄から条件を変えて再相談できます。</Text>
-            </View>
-            {results.map((card, i) => (
-              <ResultCard
-                key={card.id}
-                card={card}
-                rank={i + 1}
-                onDetail={() => handleDetail(card, i + 1)}
-                onActionEvent={({ actionType, action, slot }) =>
-                  handleActionEvent({
-                    card,
-                    rank: i + 1,
-                    actionType,
-                    action,
-                    slot,
-                  })
-                }
-              />
-            ))}
-          </View>
-        ) : null}
+        {submitted ? <ConciergeResults results={results} onDetail={handleDetail} onActionEvent={handleActionEvent}/> : null}
       </ScrollView>
 
       {/* 入力バー */}

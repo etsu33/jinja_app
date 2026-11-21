@@ -1,5 +1,7 @@
 # Concierge Web / Mobile recommendation parity audit
 
+> 更新: 2026-11-21 の表示契約実装は末尾 §11。§1–10 は PR #3499 時点の監査履歴。入力・認証等の範囲外事項は今回変更しない。
+
 監査日: 2026-11-20 (Asia/Tokyo)。対象: 取得時の最新 `origin/develop`
 `f5cd3d2a5a5f52ae8d2fc117b71fbfe941a876ea`。ブランチ:
 `audit/concierge-web-mobile-parity`。
@@ -286,3 +288,62 @@ Web/Mobile typecheck **PASS**。新規テストの ESLint / Ruff も PASS。
 **249 files / 2403 passed / 10 expected fail**。ローカル pnpm の既定 Node 20.19.5 は
 root engines (>=22.13.0) に対する警告を出した。Node 22.23.4 を明示した Web 新規17件・
 Mobile 関連94件・両 typecheck も PASS。全 repository suite / build / full Backend mypy は未実行。
+
+
+## 11. Recommendation order contract implementation — 2026-11-21
+
+Base: `develop e69982870`（PR #3499）。Branch: `fix/concierge-recommendation-order-parity`。
+Mother Ship 2026-11-20 の決定 A/B/C を実装。canonical rule は既存の
+[identity contract §14](shrine-identity-compass-concierge-contract.md#14-concierge-presentation-contract--mother-ship-2026-11-20)
+に集約する。
+
+| 項目 | Web | Mobile |
+| --- | --- | --- |
+| Identity / first-occurrence dedup / partition | shared conciergeCandidates | 同じ shared adapter |
+| 登録順序・rank | Backend 相対順、1から連番 | 同左 |
+| 参考順序 | Backend 相対順、linked reference は既存互換で抑制 | 同左 |
+| 登録 Hero | 最初の登録、残りは既存 secondary UI | 登録カード列の先頭 |
+| 外部表示 | 「参考候補」、登録順位なし | 同左 |
+| 外部詳細 | 既存 Place resolve route | 検証済み route がないため導線なし |
+| 後発 metadata | 補完・置換しない | 同左 |
+| legacy id-only / invalid/conflict | 登録表示・イベントなし | 同左 |
+
+旧 §5 の混在反例は登録 `[31,12]`・参考 `[audit-place]` の同値出力になる。
+2セクションの画面結合順と元の interleaved 配列が同じとは主張しない。
+Web の後発重複からの explanation/instance/history 等の補完を削除し、最初の記録を保持する。
+resolver の共有化は同じ実装の再利用。Backend ranking、Compass、payload、birthday、auth、billing は変更なし。
+
+元の12 request/Backend fixtures は保持し、17 presentation fixtures を追加。
+Web Hero/secondary/reference、Mobile 実表示関数、外部のみ/空の表示、ID/rank/instance、
+impression dedup、quality attribution、detail/action safety を検証する。
+入力・認証など表示以外の全体 parity が PASS になったとは主張しない。
+
+### Validation
+
+Node 22.23.4 / pnpm 9.12.3 で再検証済み。
+
+- Web 全体: **249 files / 2427 passed / 10 expected fail**（既存の期待失敗）。
+- Mobile 全体: **61 files / 785 passed**。
+- Backend 既存 parity replay: **15 passed**（隔離一時 PostgreSQL）。Backend source の差分なし。
+- Web/Mobile `typecheck`: **PASS**。
+- 変更 Web ファイルの既存 ESLint: **PASS**。Mobile/shared は専用 lint script がないため、
+  Web 相当の TS recommended / unused-vars / React hooks ルールを一時 ESLint API 設定で適用し **PASS**。
+- OpenAPI lint: **error なし**。`git diff --check`: **PASS**。
+- 未解決のテスト失敗なし。iOS/Android 実機、live Place resolve、全 Backend suite / mypy / build は未実行。
+
+```bash
+volta run --node 22.23.4 pnpm -C apps/web test:contract
+volta run --node 22.23.4 pnpm -C apps/mobile test
+volta run --node 22.23.4 pnpm -C apps/web typecheck
+volta run --node 22.23.4 pnpm -C apps/mobile typecheck
+volta run --node 22.23.4 pnpm lint:openapi
+DISABLE_GIS_FOR_TESTS=1 USE_GIS=0 python -m pytest \
+  backend/temples/tests/api/test_concierge_web_mobile_parity.py
+```
+
+Backend 検証はテストプロセスの DATABASE_URL を一時DBへ向け、終了後停止した。
+未導入の既存固定依存 `app-store-server-library==3.1.2` は一時 target/PYTHONPATH で補った。
+本番・既存 DB・設定・lockfile・既存 venv は変更していない。
+再開時に `/private/tmp` の未コミット worktree が削除されていたため、永続 worktree へ復元し、
+上記テストをすべて再実行してからコミットした。
+表示以外の input/auth/birthday 等の既知差は、この実装の範囲外として残る。

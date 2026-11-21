@@ -1,3 +1,7 @@
+import * as React from "react";
+import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+import * as candidateAdapter from "../../../../../../packages/shared/conciergeCandidates";
+import { buildRecommendationReasonDisplay } from "../../../../../../packages/shared/recommendationReasonDisplay";
 /** Audit characterization only. No native UI, analytics, or network is executed. */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -43,7 +47,7 @@ const ast = ts.createSourceFile("concierge.tsx", source, ts.ScriptTarget.Latest,
 const declarations = ast.statements
   .filter(
     (node) =>
-      (ts.isFunctionDeclaration(node) && node.name && !["ResultCard", "ConciergeScreen"].includes(node.name.text)) ||
+      (ts.isFunctionDeclaration(node) && node.name && node.name.text !== "ConciergeScreen") ||
       (ts.isVariableStatement(node) &&
         node.declarationList.declarations.some(
           (d) => ts.isIdentifier(d.name) && d.name.text.startsWith("ACTION_SUGGESTION_V4_"),
@@ -52,16 +56,36 @@ const declarations = ast.statements
   .map((node) => node.getText(ast))
   .join("\n");
 const code = ts.transpileModule(declarations, {
-  compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
+  compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None, jsx: ts.JsxEmit.React },
 }).outputText;
 function mobileFunctions(post: (...args: any[]) => any) {
-  const deps = { ...provenance, ...direction, ...facts, ...reasonV4, post };
+  const NativeView = ({ children, accessibilityLabel }: any) =>
+    React.createElement("div", { "aria-label": accessibilityLabel }, children);
+  const NativeText = ({ children }: any) => React.createElement("span", null, children);
+  const NativeButton = ({ title, onPress }: any) => React.createElement("button", { onClick: onPress }, title);
+  const deps = {
+    ...provenance,
+    ...direction,
+    ...facts,
+    ...reasonV4,
+    ...candidateAdapter,
+    post,
+    React,
+    View: NativeView,
+    Text: NativeText,
+    Pressable: NativeView,
+    Button: NativeButton,
+    styles: {},
+    buildRecommendationReasonDisplay,
+    trackMobileDirection: vi.fn(),
+  };
   return new Function(
     ...Object.keys(deps),
-    `${code}\nreturn { fetchConciergeRecommendations, normalizeRecommendations };`,
+    `${code}\nreturn { fetchConciergeRecommendations, normalizeRecommendations, ConciergeResults };`,
   )(...Object.values(deps)) as {
     fetchConciergeRecommendations: (input: any) => Promise<any[]>;
     normalizeRecommendations: (input: any[]) => any[];
+    ConciergeResults: React.ComponentType<any>;
   };
 }
 const wire = (value: unknown) => JSON.parse(JSON.stringify(value));
@@ -72,14 +96,6 @@ function webItems(recs: any[]) {
   );
   return (payload?.sections.find((s) => s.type === "recommendations") as any)?.items ?? [];
 }
-const registered = [31, 12, 24].map((id) => ({
-  id,
-  shrine_id: id,
-  name: `audit-${id}`,
-  reason: "fixture reason",
-  recommendation_reason_v4: "fixture v4",
-  reason_facts: [{ type: "need_tag", label: "career", evidence: ["fixture"], score: 1 }],
-}));
 const metrics = (a: string[], b: string[]) => ({
   idSet: new Set(a.filter((id) => b.includes(id))).size / new Set([...a, ...b]).size,
   rank: a.filter((id, i) => b[i] === id).length / Math.max(a.length, b.length),
@@ -164,27 +180,103 @@ describe("Web/Mobile parity audit: actual request and display functions", () => 
     unmount();
   });
 
-  it("characterizes mixed place/registered ordering and duplicate removal (unresolved product contract)", () => {
-    const recs = [
-      { place_id: "audit-place", name: "place", reason: "fixture" },
-      registered[0],
-      registered[1],
-      registered[0],
-    ];
-    const web = webItems(recs).map((r: any) => String(r.shrineId ?? r.placeId));
-    const mobile = mobileFunctions(vi.fn())
-      .normalizeRecommendations(recs)
-      .map((r) => r.shrineId);
-    expect(web).toEqual(["31", "12", "audit-place"]);
-    expect(mobile).toEqual(["audit-place", "31", "12", "31"]);
-    expect(metrics(web, mobile)).toEqual({ idSet: 1, rank: 0 });
+  it.each(
+    fixture.presentation_cases as Array<{
+      name: string;
+      records: any[];
+      registered: number[];
+      references: string[];
+      ranks: number[];
+    }>,
+  )("$name: Web/Mobile presentation parity", (scenario) => {
+    const web = webItems(scenario.records);
+    const mobile = mobileFunctions(vi.fn()).normalizeRecommendations(scenario.records);
+    expect(web.filter((c: any) => c.kind === "registered").map((c: any) => c.shrineId)).toEqual(scenario.registered);
+    expect(mobile.filter((c) => c.kind === "registered").map((c) => Number(c.shrineId))).toEqual(scenario.registered);
+    expect(web.filter((c: any) => c.kind === "place").map((c: any) => c.placeId)).toEqual(scenario.references);
+    expect(mobile.filter((c) => c.kind === "place").map((c) => c.placeId)).toEqual(scenario.references);
+    expect(mobile.filter((c) => c.kind === "registered").map((c) => c.recommendationRank)).toEqual(scenario.ranks);
+    expect(
+      mobile.filter((c) => c.kind === "place").every((c) => c.shrineId === undefined && c.recommendationRank === null),
+    ).toBe(true);
+    if (scenario.name === "mixed-and-nonadjacent-duplicates") {
+      expect(web.find((c: any) => c.kind === "registered")).toMatchObject({
+        description: "first-31",
+        recommendationInstanceId: "instance-first",
+      });
+      expect(mobile.find((c) => c.kind === "registered")).toMatchObject({
+        reason: "first-31",
+        recommendationInstanceId: "instance-first",
+      });
+    }
   });
 
-  it("characterizes generic id-only response identity divergence", () => {
-    const recs = [{ id: 88, name: "legacy", reason: "fixture" }];
-    expect(webItems(recs)).toEqual([]);
-    expect(mobileFunctions(vi.fn()).normalizeRecommendations(recs)[0].shrineId).toBe("88");
-  });
+  it.each(["mixed-and-nonadjacent-duplicates", "external-only", "registered-only", "empty"])(
+    "%s: Mobile renders separate references and registered-only actions",
+    (name) => {
+      const scenario = fixture.presentation_cases.find((c: any) => c.name === name);
+      const { normalizeRecommendations, ConciergeResults } = mobileFunctions(vi.fn());
+      const onDetail = vi.fn(),
+        onActionEvent = vi.fn();
+      const { container, unmount } = render(
+        <ConciergeResults
+          results={normalizeRecommendations(scenario.records)}
+          onDetail={onDetail}
+          onActionEvent={onActionEvent}
+        />,
+      );
+      expect(screen.queryAllByRole("button", { name: "この神社を詳しく見る" })).toHaveLength(
+        scenario.registered.length,
+      );
+      expect(screen.queryByText("参考候補") !== null).toBe(scenario.references.length > 0);
+      for (const rank of scenario.ranks) expect(screen.getByText(`ご縁${rank}`)).toBeInTheDocument();
+      if (scenario.registered.length) {
+        fireEvent.click(screen.getAllByRole("button", { name: "この神社を詳しく見る" })[0]);
+        expect(onDetail).toHaveBeenCalledWith(
+          expect.objectContaining({ shrineId: String(scenario.registered[0]), kind: "registered" }),
+          1,
+        );
+      } else {
+        expect(onDetail).not.toHaveBeenCalled();
+        expect(onActionEvent).not.toHaveBeenCalled();
+        expect(container.querySelector("a")).toBeNull();
+      }
+      unmount();
+    },
+  );
+
+  it.each(["mixed-and-nonadjacent-duplicates", "external-only", "registered-only", "empty"])(
+    "%s: Web hero, references, routes and registered impression dedup",
+    (name) => {
+      vi.mocked(trackSearchEvent).mockClear();
+      const scenario = fixture.presentation_cases.find((c: any) => c.name === name);
+      const payload = buildPayloadFromUnified(
+        { data: { recommendations: normalizeWeb(scenario.records) } } as any,
+        { isOpen: false, goriyakuTags: [], selectedTagIds: [], suggestedTags: [] } as any,
+      );
+      if (!payload) throw new Error("An explicit response, including empty results, needs a safe presentation");
+      const { container, rerender, unmount } = render(
+        <ConciergeSectionsRenderer payload={payload} isPremiumActive={true} />,
+      );
+      expect(screen.queryByRole("region", { name: "参考候補" }) !== null).toBe(scenario.references.length > 0);
+      if (scenario.registered.length) {
+        expect(container.querySelector(`a[href^="/shrines/${scenario.registered[0]}"]`)).not.toBeNull();
+      } else expect(container.querySelector('a[href^="/shrines/31"]')).toBeNull();
+      if (scenario.references.length) {
+        const ref = screen.getByRole("region", { name: "参考候補" });
+        expect(ref.querySelector('a[href^="/shrines/resolve?"]')).not.toBeNull();
+        expect(ref.querySelector('a[href^="/shrines/31"]')).toBeNull();
+      }
+      rerender(<ConciergeSectionsRenderer payload={payload} isPremiumActive={true} />);
+      const events = vi
+        .mocked(trackSearchEvent)
+        .mock.calls.filter(([event]) => event === "concierge_result_impression");
+      expect(events.map(([, p]) => [p?.shrineId, p?.recommendationRank, p?.recommendationInstanceId])).toEqual(
+        scenario.registered.map((id: number, i: number) => [id, i + 1, "instance-first"]),
+      );
+      unmount();
+    },
+  );
 
   it("characterizes legacy explanation fallback differences", () => {
     const rec = { id: 31, shrine_id: 31, name: "fixture", explanation: { summary: "legacy summary" } };

@@ -1283,9 +1283,10 @@ export default function ConciergeSectionsRenderer({
                   ) : null}
 
                   {placeItems.length > 0 ? (
-                    <div className="space-y-3 pt-4">
-                      {placeItems.map((item: PlaceShrineItem, placeIdx: number) => (
-                        <div key={`rec-${i}-${placeIdx}-place-${item.placeId}`} className="space-y-2">
+                    <section aria-label="参考候補" className="space-y-3 pt-4">
+                      <h3 className="text-sm font-semibold">参考候補</h3>
+                      {placeItems.map((item: PlaceShrineItem) => (
+                        <div key={`place-${item.placeId}`} className="space-y-2">
                           <PlaceShrineCard
                             placeId={item.placeId}
                             title={item.title}
@@ -1297,7 +1298,7 @@ export default function ConciergeSectionsRenderer({
                           />
                         </div>
                       ))}
-                    </div>
+                    </section>
                   ) : null}
 
                   {!isEntryRoute && savePromptVisibility !== "hidden" ? (

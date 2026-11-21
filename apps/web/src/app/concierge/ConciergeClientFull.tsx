@@ -1,5 +1,6 @@
 // apps/web/src/app/concierge/ConciergeClientFull.tsx
 "use client";
+import { normalizeConciergeCandidates } from "../../../../../packages/shared/conciergeCandidates";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -1140,7 +1141,7 @@ export default function ConciergeClientFull() {
     const modeRaw = (displayUnified?.data as any)?._signals?.mode;
     const mode = modeRaw?.mode === "need" || modeRaw?.mode === "compat" ? modeRaw.mode : undefined;
     const flow = modeRaw?.flow === "A" || modeRaw?.flow === "B" ? modeRaw.flow : undefined;
-    const topRecommendation = displayRecommendations[0] as Record<string, unknown> | undefined;
+    const topRecommendation = normalizeConciergeCandidates(displayRecommendations).registered[0]?.record as Record<string, unknown> | undefined;
     const data = (displayUnified?.data as any) ?? {};
     const signals = data?._signals ?? {};
     const resultState = signals?.result_state ?? signals?.resultState ?? {};
@@ -1229,7 +1230,7 @@ export default function ConciergeClientFull() {
           : [];
 
       const completedModeRaw = (u.data as any)?._signals?.mode;
-      const completedTopRecommendation = completedRecommendations[0] as Record<string, unknown> | undefined;
+      const completedTopRecommendation = normalizeConciergeCandidates(completedRecommendations).registered[0]?.record as Record<string, unknown> | undefined;
       const completedData = (u.data as any) ?? {};
       const completedSignals = completedData?._signals ?? {};
       const completedResultState = completedSignals?.result_state ?? completedSignals?.resultState ?? {};
