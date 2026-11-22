@@ -152,15 +152,15 @@ def test_location_hint_migration_series_match_and_only_add_one_field():
         assert migration.operations[0].name == "location_hint"
 
 
-ANSWER_MAIN = "temples.migrations.0125_highlight_answer"
-ANSWER_NOGIS = "temples.migrations_nogis.0024_highlight_answer"
+ANSWER_MAIN = "temples.migrations.0126_highlight_answer"
+ANSWER_NOGIS = "temples.migrations_nogis.0025_highlight_answer"
 
 
 def test_answer_migration_series_match_and_only_create_one_model():
     assert normalized_operations(ANSWER_MAIN) == normalized_operations(ANSWER_NOGIS)
     for module, parent in [
-        (ANSWER_MAIN, "0124_highlight_translation_location_hint"),
-        (ANSWER_NOGIS, "0023_highlight_translation_location_hint"),
+        (ANSWER_MAIN, "0125_highlights_same_shrine_integrity"),
+        (ANSWER_NOGIS, "0024_highlights_same_shrine_integrity"),
     ]:
         migration = importlib.import_module(module).Migration
         assert migration.dependencies == [("temples", parent)]

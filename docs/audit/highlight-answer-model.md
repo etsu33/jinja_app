@@ -2,7 +2,7 @@
 
 > Status: Audit — 実装記録。推薦・画面への接続は後続PR。
 > 日付: 2026-11-22 JST
-> Base: develop `4a9b821`
+> Base: develop `4a9b821`（2026-11-22 に `777d825`（PR #3508 複合FK）を取り込み、Migration番号を 0126 / 0025 に繰り下げ）
 > Branch: `feature/highlight-answer-model`
 > 設計: プロジェクト文書 `claude/highlight-level-recommendation-plan.md`
 
@@ -47,12 +47,14 @@
 
 ### Migration
 
-- `migrations/0125_highlight_answer.py` / `migrations_nogis/0024_highlight_answer.py`（CreateModel 1件のみ。両系列の operation 一致をテストで確認）
+- `migrations/0126_highlight_answer.py` / `migrations_nogis/0025_highlight_answer.py`（CreateModel 1件のみ。両系列の operation 一致をテストで確認）
 - 本番では、マージ後に `python manage.py migrate` が必要（`RUN_MIGRATIONS_ON_START` は 0 のため、起動では適用されない）
 
 ### 既存テストの修正
 
 `test_highlights_migrations.py` の往復テストは、後片付けで基盤の4モデルだけを外していた。基盤より後に足したモデル（アンサー）も外すよう、鎖が作ったモデルを状態の差分から求める形にした。比べる相手も「最新の状態」から「基盤を当てた直後の状態」に直した。確認している内容は同じ。
+
+`test_highlights_db_integrity.py`（PR #3508）の Migration テストも、最新（leaf）を同一神社制約の Migration とみなしていた。アンサーの Migration が後に乗ると、制約ではなくアンサーの表を外して戻してしまうため、名前（`*_highlights_same_shrine_integrity`）で対象を選ぶ形にした。確かめている内容（制約の付け外し・ロック・失敗時の巻き戻し）は同じ。
 
 ## 含まないもの
 

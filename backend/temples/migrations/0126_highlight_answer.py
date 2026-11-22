@@ -9,7 +9,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("temples", "0023_highlight_translation_location_hint"),
+        ("temples", "0125_highlights_same_shrine_integrity"),
     ]
 
     operations = [
