@@ -71,26 +71,27 @@ def test_goriyaku_tag_without_tag_names_does_not_match_by_id():
 
 
 # --- text_hint ----------------------------------------------------------------
+# mental の文字の語から「厄除」「厄払い」を外した（2026-11-23）ので、例は「浄化」で確かめる。
 
 
 def test_text_hint_in_goriyaku_returns_the_goriyaku_segment_name():
-    rec = _rec(goriyaku="勝運・厄除け・家内安全")
+    rec = _rec(goriyaku="勝運・心身浄化・家内安全")
 
     facts = _facts_of(rec, ["mental"])
 
-    assert facts[("text_hint", "mental")]["matched_benefit_names"] == ["厄除け"]
+    assert facts[("text_hint", "mental")]["matched_benefit_names"] == ["心身浄化"]
 
 
 def test_text_hint_prefers_the_tag_name_over_the_goriyaku_segment():
     rec = _rec(
-        goriyaku="勝運・厄除け・家内安全",
+        goriyaku="勝運・心身浄化・家内安全",
         goriyaku_tag_ids=[UNRELATED_GID],
-        goriyaku_tag_names=["厄除け・方除け"],
+        goriyaku_tag_names=["心身浄化・心願成就"],
     )
 
     facts = _facts_of(rec, ["mental"])
 
-    assert facts[("text_hint", "mental")]["matched_benefit_names"] == ["厄除け・方除け"]
+    assert facts[("text_hint", "mental")]["matched_benefit_names"] == ["心身浄化・心願成就"]
 
 
 def test_text_hint_only_in_description_is_empty():
@@ -105,9 +106,9 @@ def test_text_hint_only_in_description_is_empty():
 def test_text_hint_only_in_description_is_empty_even_if_a_tag_has_the_same_word():
     rec = _rec(
         goriyaku="勝運",
-        description="厄除けで知られる",
+        description="心身浄化で知られる",
         goriyaku_tag_ids=[UNRELATED_GID],
-        goriyaku_tag_names=["厄除け・方除け"],
+        goriyaku_tag_names=["心身浄化・心願成就"],
     )
 
     facts = _facts_of(rec, ["mental"])
