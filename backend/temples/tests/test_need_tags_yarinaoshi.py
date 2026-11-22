@@ -1,7 +1,8 @@
-"""やり直し系の言葉を、相談の種類の挑戦（courage）と気持ち（mental）の両方につなぐ。
+"""やり直し系の言葉を、相談の種類の挑戦（courage）だけにつなぐ。
 
 決まりの正本：ドライブ「KAMI MUSUBI 相談の種類を取る辞書の決まり」（2026-11-22 えつこ決定）
-- 足す言葉：やり直し・やり直す・再出発・再挑戦・立て直し
+- 言葉：やり直し・やり直す・再出発・再挑戦・立て直し
+- 最初は気持ち（mental）にもつないだが、本番で遠い神社が上位に来たため、挑戦だけにした
 - 「もう一度」は足さない（相談ではない文でも当たるため）
 """
 
@@ -24,10 +25,8 @@ YARINAOSHI_WORDS = ["やり直し", "やり直す", "再出発", "再挑戦", "�
         "立て直したい",
     ],
 )
-def test_yarinaoshi_extracts_courage_and_mental(query):
-    tags = extract_need_tags(query).tags
-    assert "courage" in tags
-    assert "mental" in tags
+def test_yarinaoshi_extracts_courage_only(query):
+    assert extract_need_tags(query).tags == ["courage"]
 
 
 def test_mou_ichido_alone_is_not_a_need():
@@ -43,8 +42,9 @@ def test_career_is_kept_with_yarinaoshi():
     assert extract_need_tags("仕事でやり直したい").tags[0] == "career"
 
 
-@pytest.mark.parametrize("tag", ["courage", "mental"])
-def test_shadow_interpreter_has_the_same_words(tag):
+def test_words_are_in_courage_only_in_both_tables():
     for word in YARINAOSHI_WORDS:
-        assert word in KEYWORDS[tag]
-        assert word in NEED_KEYWORDS[tag]
+        assert word in KEYWORDS["courage"]
+        assert word in NEED_KEYWORDS["courage"]
+        assert word not in KEYWORDS["mental"]
+        assert word not in NEED_KEYWORDS["mental"]

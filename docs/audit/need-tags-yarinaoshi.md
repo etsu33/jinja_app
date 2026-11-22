@@ -41,3 +41,22 @@
 
 - `temples/tests/test_need_tags_yarinaoshi.py`（新規）
 - バックエンド全体：9件の失敗は develop でも同じく失敗する環境依存のもの（test_concierge_api ×3、test_removed_shrines_import ×4、nsrc_000002、audit_tls_evidence）
+
+## 追記：挑戦だけにつなぎ直す（2026-11-22・PR #3512 のあと）
+
+### 何が起きたか
+PR #3512 のマージ後、本番で新宿駅の近くから「やり直したい」と相談すると、上位3件が妙義神社（約108km）・寒川神社（約44km）・三峯神社（約74km）になり、花園神社（マージ前は1位）が外れた。3社とも気持ち（mental）と挑戦（courage）の両方に当たっていた。気持ちの相談はご利益ではなく神社の雰囲気で選ぶので、花園神社は気持ちに当たらず、両方に当たる遠い神社に負けたと考えている（推測）。
+
+### 決めたこと（2026-11-22 えつこさん）
+- 5語を気持ち（mental）から外し、挑戦（courage）だけにつなぐ
+- あわせて、遠い神社が1位になる原因（近さが順位に効いていない件）を調べる。気持ちのほうで花園神社に点が入るよう、神社の雰囲気のデータを足すことも検討する
+
+### 変更
+- `need_tags.py` の `KEYWORDS["mental"]` と、`consultation_interpreter.py` の `NEED_KEYWORDS["mental"]` から5語を外す
+- テストを「挑戦だけ」に合わせる
+
+| 相談 | PR #3512 | この変更のあと |
+|---|---|---|
+| やり直したい | mental, courage | courage |
+| 不安でやり直したい | mental, courage | mental, courage（「不安」で気持ちが取れる） |
+| 仕事でやり直したい | career, mental, courage | career, courage |
