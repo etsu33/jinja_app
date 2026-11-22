@@ -9,6 +9,7 @@ from temples.domain.shrine_identity import resolve_shrine_id, resolve_shrine_ide
 from temples.models import GoriyakuTag
 
 from temples.services.concierge_candidate_utils import _normalize_candidate_fields
+from temples.services.highlight_pick import attach_highlight_picks
 from temples.services.travel_ranking import rerank_for_travel
 from temples.services.concierge_history import load_shrine_history_facts
 from temples.services.channel_b_typed_need_match import strip_channel_b_carrier
@@ -1011,6 +1012,15 @@ def build_chat_recommendations(
         language=language,
     )
     _trim_to_top3_and_fill_message(recs)
+
+    # 見どころ単位の推薦 段階A：残った推薦の各神社に「ここで見る」見どころを1つ付ける。
+    # 順位・推薦理由は変えない（temples/services/highlight_pick.py）。
+    # travel モード（英語の相談）は英語のアンサーだけを使う。
+    recs.setdefault("_debug", {})["highlight_pick"] = attach_highlight_picks(
+        recs.get("recommendations") or [],
+        need_tags,
+        language_code="en" if travel_request_feature_ids is not None else "ja",
+    )
 
     trim_after = observe_trim_after(recs)
     recs.setdefault("_debug", {})["trim_observation"] = build_trim_observation(
