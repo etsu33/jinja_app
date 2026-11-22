@@ -116,12 +116,18 @@ def test_new_migration_apply_reverse_reapply_preserves_existing_facts(module):
         with connection.schema_editor() as editor:
             migration.apply(before.clone(), editor)
         assert counts() == snapshot
-        assert set(current.models) == set(after.models)
+        assert set(loader.project_state([foundation_key]).models) == set(after.models)
     finally:
         # Restore the active schema even if an assertion failed mid-round-trip.
         tables = set(connection.introspection.table_names())
+        # 基盤より後に足されたモデル（アンサーなど）も含め、鎖が作ったモデルを外してから戻す。
+        # 見どころ本体（shrinehighlight）は他のモデルから参照されるので最後に外す。
+        chain_models = sorted(
+            (name for app, name in set(current.models) - set(before.models) if app == "temples"),
+            key=lambda name: name == "shrinehighlight",
+        )
         with connection.schema_editor() as editor:
-            for name in reversed(MODELS):
+            for name in chain_models:
                 model = current.apps.get_model("temples", name)
                 if model._meta.db_table in tables:
                     editor.delete_model(model)
@@ -144,3 +150,19 @@ def test_location_hint_migration_series_match_and_only_add_one_field():
         assert migration.dependencies == [("temples", parent)]
         assert [type(op) for op in migration.operations] == [migrations.AddField]
         assert migration.operations[0].name == "location_hint"
+
+
+ANSWER_MAIN = "temples.migrations.0126_highlight_answer"
+ANSWER_NOGIS = "temples.migrations_nogis.0025_highlight_answer"
+
+
+def test_answer_migration_series_match_and_only_create_one_model():
+    assert normalized_operations(ANSWER_MAIN) == normalized_operations(ANSWER_NOGIS)
+    for module, parent in [
+        (ANSWER_MAIN, "0125_highlights_same_shrine_integrity"),
+        (ANSWER_NOGIS, "0024_highlights_same_shrine_integrity"),
+    ]:
+        migration = importlib.import_module(module).Migration
+        assert migration.dependencies == [("temples", parent)]
+        assert [type(op) for op in migration.operations] == [migrations.CreateModel]
+        assert migration.operations[0].name == "ShrineHighlightAnswer"

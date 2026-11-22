@@ -13,6 +13,7 @@ from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 from django.utils import timezone
 from temples.constraints_highlights import CompositeForeignKey
+from temples.domain.need_tags import NEED_TAGS
 from temples.models import (
     KNOWLEDGE_CONFIDENCE_CHOICES,
     KNOWLEDGE_VERIFICATION_STATUS_CHOICES,
@@ -24,6 +25,28 @@ from temples.models import (
 _HAS_NON_WHITESPACE = (
     "[^\t\n\v\f\r \x1c\x1d\x1e\x1f\x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]"
 )
+
+
+def _invalidate_approval_if_content_changed(instance, content_fields) -> None:
+    """保存済みの状態がapprovedで、利用者に見える文章が変わっていたらdraftへ戻す。
+
+    同じ保存で文章を変えて承認し直すことはできない（承認は文章を変えない保存で行う）。
+    QuerySet.update / bulk_update / raw SQLはsaveを通らないため対象外。
+    翻訳（ShrineHighlightTranslation）とアンサー（ShrineHighlightAnswer）で共有する。
+    """
+    if instance.pk is None:
+        return
+    stored = (
+        type(instance)
+        .objects.filter(pk=instance.pk)
+        .values("review_status", *content_fields)
+        .first()
+    )
+    if stored is None or stored["review_status"] != "approved":
+        return
+    if any(getattr(instance, field) != stored[field] for field in content_fields):
+        instance.review_status = "draft"
+        instance.reviewed_at = None
 
 
 class ShrineHighlight(models.Model):
@@ -194,31 +217,77 @@ class ShrineHighlightTranslation(models.Model):
         if self.review_status == self.ReviewStatus.APPROVED and self.reviewed_at is None:
             raise ValidationError({"reviewed_at": "Approved translations require reviewed_at."})
 
-    def _invalidate_approval_if_content_changed(self) -> None:
-        """保存済みの状態がapprovedで、文章が変わっていたらdraftへ戻す。
+    def save(self, *args, **kwargs):
+        _invalidate_approval_if_content_changed(self, self.REVIEWED_CONTENT_FIELDS)
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
-        同じ保存で文章を変えて承認し直すことはできない（承認は文章を変えない保存で行う）。
-        QuerySet.update / bulk_update / raw SQLはsaveを通らないため対象外。
-        """
-        if self.pk is None:
-            return
-        stored = (
-            type(self)
-            .objects.filter(pk=self.pk)
-            .values("review_status", *self.REVIEWED_CONTENT_FIELDS)
-            .first()
-        )
-        if stored is None or stored["review_status"] != self.ReviewStatus.APPROVED:
-            return
-        changed = any(
-            getattr(self, field) != stored[field] for field in self.REVIEWED_CONTENT_FIELDS
-        )
-        if changed:
-            self.review_status = self.ReviewStatus.DRAFT
-            self.reviewed_at = None
+
+class ShrineHighlightAnswer(models.Model):
+    """見どころへのアンサー（見どころ単位の推薦 段階A）。
+
+    見どころ × 相談の種類（need_tag・15分類）× 言語 ごとに、
+    「この見どころの由来が、今の相談と重なるかもしれない」という意味づけの文を1つ持つ。
+    事実はつながった由緒・歴史に書かれていることだけで書き、意味づけは解釈と分かる書き方にする。
+    表示のときにAIは呼ばない。確認済み（approved）の文だけを出す。
+    設計: プロジェクト文書 claude/highlight-level-recommendation-plan.md
+    """
+
+    Language = ShrineHighlightTranslation.Language
+    ReviewStatus = ShrineHighlightTranslation.ReviewStatus
+    NEED_TAG_CHOICES = [(tag, tag) for tag in NEED_TAGS]
+
+    highlight = models.ForeignKey(ShrineHighlight, on_delete=models.CASCADE, related_name="answers")
+    need_tag = models.CharField(max_length=32, choices=NEED_TAG_CHOICES)
+    language_code = models.CharField(max_length=2, choices=Language.choices)
+    answer_text = models.TextField(validators=[_validate_not_blank])
+    review_status = models.CharField(
+        max_length=16, choices=ReviewStatus.choices, default=ReviewStatus.DRAFT
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # 承認後に変わったら承認を取り消す項目。利用者に見える文章のすべて。
+    REVIEWED_CONTENT_FIELDS = ("answer_text",)
+
+    class Meta:
+        ordering = ["highlight", "need_tag", "language_code", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["highlight", "need_tag", "language_code"],
+                name="hl_answer_need_language_unique",
+            ),
+            models.CheckConstraint(
+                condition=Q(need_tag__in=list(NEED_TAGS)), name="hl_answer_need_tag_valid"
+            ),
+            models.CheckConstraint(
+                condition=Q(language_code__in=["ja", "en"]), name="hl_answer_language_valid"
+            ),
+            models.CheckConstraint(
+                condition=Q(answer_text__regex=_HAS_NON_WHITESPACE),
+                name="hl_answer_text_not_blank",
+            ),
+            models.CheckConstraint(
+                condition=Q(review_status__in=["draft", "approved", "rejected"]),
+                name="hl_answer_review_valid",
+            ),
+            models.CheckConstraint(
+                condition=~Q(review_status="approved") | Q(reviewed_at__isnull=False),
+                name="hl_answer_reviewed_at_required",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.highlight_id}:{self.need_tag}:{self.language_code}"
+
+    def clean(self):
+        super().clean()
+        if self.review_status == self.ReviewStatus.APPROVED and self.reviewed_at is None:
+            raise ValidationError({"reviewed_at": "Approved answers require reviewed_at."})
 
     def save(self, *args, **kwargs):
-        self._invalidate_approval_if_content_changed()
+        _invalidate_approval_if_content_changed(self, self.REVIEWED_CONTENT_FIELDS)
         self.full_clean()
         return super().save(*args, **kwargs)
 

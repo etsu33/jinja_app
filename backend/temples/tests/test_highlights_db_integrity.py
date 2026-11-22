@@ -214,8 +214,16 @@ def test_migration_series_have_identical_operations():
 
 
 def migration_context():
+    # 後続のMigration（見どころへのアンサーなど）が乗っても、同一神社制約のMigrationを
+    # 対象にする。最新（leaf）を前提にすると、後続のMigrationを外して戻すことになる。
+    # この制約は見どころ・由緒・つながりの表だけに効くので、後続の表があっても単独で往復できる。
     loader = MigrationLoader(connection)
-    active = loader.disk_migrations[loader.graph.leaf_nodes("temples")[0]]
+    key = next(
+        k
+        for k in loader.disk_migrations
+        if k[0] == "temples" and k[1].endswith("_highlights_same_shrine_integrity")
+    )
+    active = loader.disk_migrations[key]
     return active, loader.project_state(active.dependencies)
 
 
