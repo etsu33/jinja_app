@@ -1,4 +1,4 @@
-"""PR-1: foundation only; no publication gate, API, or composite FK."""
+"""Highlights foundation and PR-2 composite-FK regression contracts."""
 
 import pytest
 from django.contrib import admin
@@ -387,14 +387,14 @@ def test_admin_delete_selected_denies_non_draft(highlight, status):
     assert ShrineHighlight.objects.filter(pk=highlight.pk).exists()
 
 
-def test_pr1_does_not_claim_composite_fk_enforcement(highlight):
+def test_composite_fk_rejects_bulk_create_mismatch(highlight):
     other = Shrine.objects.create(name_jp="別神社")
     item = history(other)
-    # Deliberate isolated test: bulk_create bypasses clean. PR-2 must close this.
-    ShrineHighlightHistory.objects.bulk_create(
-        [ShrineHighlightHistory(highlight=highlight, history=item, shrine=highlight.shrine)]
-    )
-    assert highlight.history_links.count() == 1
+    with pytest.raises(IntegrityError), transaction.atomic():
+        ShrineHighlightHistory.objects.bulk_create(
+            [ShrineHighlightHistory(highlight=highlight, history=item, shrine=highlight.shrine)]
+        )
+    assert highlight.history_links.count() == 0
 
 
 @pytest.mark.parametrize("status", ["published", "archived"])

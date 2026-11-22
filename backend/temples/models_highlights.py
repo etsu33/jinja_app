@@ -2,7 +2,7 @@
 
 The pre_delete receiver covers ORM instance, queryset, admin and cascade deletes.
 It is intentionally not a database DELETE trigger: raw SQL bypasses it.
-Cross-shrine link integrity is validated here; composite FKs belong to PR-2.
+Cross-shrine links are also enforced by PostgreSQL composite foreign keys.
 """
 
 from django.core.exceptions import ValidationError
@@ -12,6 +12,7 @@ from django.db.models.deletion import ProtectedError
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 from django.utils import timezone
+from temples.constraints_highlights import CompositeForeignKey
 from temples.models import (
     KNOWLEDGE_CONFIDENCE_CHOICES,
     KNOWLEDGE_VERIFICATION_STATUS_CHOICES,
@@ -64,6 +65,7 @@ class ShrineHighlight(models.Model):
     class Meta:
         ordering = ["sort_order", "id"]
         constraints = [
+            models.UniqueConstraint(fields=["id", "shrine"], name="hl_id_shrine_unique"),
             models.CheckConstraint(
                 condition=Q(stable_key__regex=_HAS_NON_WHITESPACE), name="hl_key_not_blank"
             ),
@@ -249,6 +251,18 @@ class ShrineHighlightHistory(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["highlight", "history"], name="hl_history_unique"),
+            CompositeForeignKey(
+                name="hl_history_highlight_shrine_fk",
+                fields=["highlight", "shrine"],
+                to_model="temples.ShrineHighlight",
+                to_fields=["id", "shrine"],
+            ),
+            CompositeForeignKey(
+                name="hl_history_history_shrine_fk",
+                fields=["history", "shrine"],
+                to_model="temples.ShrineHistory",
+                to_fields=["id", "shrine"],
+            ),
         ]
 
     def clean(self):

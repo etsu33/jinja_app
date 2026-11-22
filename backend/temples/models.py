@@ -787,6 +787,9 @@ class ShrineHistory(models.Model):
     class Meta:
         ordering = ["sort_order", "id"]
         verbose_name_plural = "Shrine histories"
+        constraints = [
+            models.UniqueConstraint(fields=["id", "shrine"], name="history_id_shrine_unique"),
+        ]
         indexes = [
             models.Index(fields=["shrine", "sort_order"], name="idx_shrine_history_sort"),
         ]
