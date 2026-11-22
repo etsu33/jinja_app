@@ -6,6 +6,7 @@
 from django.contrib import admin
 from temples.models import (
     ShrineHighlight,
+    ShrineHighlightAnswer,
     ShrineHighlightHistory,
     ShrineHighlightSource,
     ShrineHighlightTranslation,
@@ -13,8 +14,17 @@ from temples.models import (
 from temples.services import highlight_publication
 
 
+class ShrineHighlightAnswerInline(admin.TabularInline):
+    """見どころの画面の中で、相談の種類ごとのアンサーを入れられるようにする。"""
+
+    model = ShrineHighlightAnswer
+    extra = 1
+    fields = ("need_tag", "language_code", "answer_text", "review_status", "reviewed_at")
+
+
 @admin.register(ShrineHighlight)
 class ShrineHighlightAdmin(admin.ModelAdmin):
+    inlines = [ShrineHighlightAnswerInline]
     list_display = (
         "stable_key",
         "shrine",
@@ -67,3 +77,25 @@ class ShrineHighlightSourceAdmin(admin.ModelAdmin):
 @admin.register(ShrineHighlightHistory)
 class ShrineHighlightHistoryAdmin(admin.ModelAdmin):
     list_display = ("highlight", "history", "shrine")
+
+
+@admin.register(ShrineHighlightAnswer)
+class ShrineHighlightAnswerAdmin(admin.ModelAdmin):
+    """見どころへのアンサー。「表示条件」列で出せるかと落ちた理由を確かめられる。"""
+
+    list_display = ("highlight", "need_tag", "language_code", "review_status", "display_check")
+    list_filter = ("need_tag", "language_code", "review_status")
+    search_fields = ("highlight__stable_key", "highlight__shrine__name_jp", "answer_text")
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("highlight", "highlight__shrine")
+            .prefetch_related("highlight__translations", "highlight__source_links__source")
+        )
+
+    @admin.display(description="表示条件")
+    def display_check(self, obj):
+        decision = highlight_publication.decide_answer_publication(obj, obj.language_code)
+        return "OK" if decision.displayable else ", ".join(decision.reasons)

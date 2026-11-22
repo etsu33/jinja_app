@@ -107,3 +107,23 @@ def make_displayable_highlight(shrine: Shrine, **translation_kwargs) -> ShrineHi
     make_translation(highlight, **translation_kwargs)
     link_source(highlight, make_source())
     return highlight
+
+
+def make_answer(
+    highlight: ShrineHighlight,
+    *,
+    need_tag: str = "career",
+    language_code: str = "ja",
+    review_status: str = "approved",
+    answer_text: str = "焼けたところから建て直した由来が、今のあなたの気持ちと重なるかもしれない。",
+):
+    from temples.models import ShrineHighlightAnswer
+
+    return ShrineHighlightAnswer.objects.create(
+        highlight=highlight,
+        need_tag=need_tag,
+        language_code=language_code,
+        answer_text=answer_text,
+        review_status=review_status,
+        reviewed_at=timezone.now() if review_status == "approved" else None,
+    )

@@ -110,3 +110,30 @@ def decide_for_highlight(highlight, language_code: str) -> HighlightPublicationD
         sources=sources,
         translation=translation,
     )
+
+
+# --- 見どころへのアンサー（見どころ単位の推薦 段階A） --------------------------------
+
+REASON_ANSWER_NOT_APPROVED = "answer_not_approved"
+REASON_ANSWER_LANGUAGE_MISMATCH = "answer_language_mismatch"
+REASON_ANSWER_EMPTY = "answer_empty"
+REASON_HIGHLIGHT_NOT_DISPLAYABLE = "highlight_not_displayable"
+
+
+def decide_answer_publication(answer, language_code: str) -> HighlightPublicationDecision:
+    """アンサーを出してよいか。
+
+    見どころ自体が同じ言語で公開判定を通っていること ＋ アンサーが承認済みで空でないこと。
+    見どころが出せないのにアンサーだけ出すことはしない（つながった事実の確認が前提のため）。
+    prefetch 済みの answer.highlight（translations / source_links__source）ならDBを追加で読まない。
+    """
+    reasons: list[str] = []
+    if answer.language_code != language_code:
+        reasons.append(REASON_ANSWER_LANGUAGE_MISMATCH)
+    if answer.review_status != "approved":
+        reasons.append(REASON_ANSWER_NOT_APPROVED)
+    if not (answer.answer_text or "").strip():
+        reasons.append(REASON_ANSWER_EMPTY)
+    if not decide_for_highlight(answer.highlight, language_code).displayable:
+        reasons.append(REASON_HIGHLIGHT_NOT_DISPLAYABLE)
+    return HighlightPublicationDecision(displayable=not reasons, reasons=tuple(reasons))

@@ -1797,6 +1797,7 @@ class PlaceCache(models.Model):
 # Register Highlights after the shared Knowledge constants/models are defined.
 from .models_highlights import (  # noqa: E402, F401, I001
     ShrineHighlight,
+    ShrineHighlightAnswer,
     ShrineHighlightHistory,
     ShrineHighlightSource,
     ShrineHighlightTranslation,
