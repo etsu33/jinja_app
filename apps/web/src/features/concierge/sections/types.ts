@@ -3,6 +3,7 @@ import type { ConciergeModeSignal } from "@/features/concierge/types/unified";
 import type { DirectionReference } from "../../../../../../packages/shared/directionReference";
 import type { RecommendationAnalyticsProvenance } from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
 import type { UserOrigin } from "../../../../../../packages/shared/userOrigin";
+import type { ConciergeHighlightPick } from "@/features/concierge/highlightPick";
 
 /* =========================
  * filter state
@@ -55,6 +56,8 @@ export type RegisteredShrineItem = {
     disclaimer?: string | null;
   } | null;
   directionReference?: DirectionReference | null;
+  /** 見どころ単位の推薦 PR-3：相談に合う「ここで見る」見どころ（backend の highlight_pick）。推薦理由ではない。 */
+  highlightPick?: ConciergeHighlightPick | null;
 };
 
 export type PlaceShrineItem = {

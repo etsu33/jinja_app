@@ -19,6 +19,7 @@ import {
 
 
 import { detailHrefFromRecommendation } from "@/features/concierge/detailHref";
+import { normalizeHighlightPick, type ConciergeHighlightPick } from "@/features/concierge/highlightPick";
 
 
 type NormalizedItemBase = {
@@ -60,6 +61,8 @@ type NormalizedRegistered = NormalizedItemBase & {
   placeId?: string | null;
   goriyakuTags: string[];
   initialFav: boolean;
+  /** 見どころ単位の推薦 PR-3：相談に合う「ここで見る」見どころ。推薦理由ではない。 */
+  highlightPick: ConciergeHighlightPick | null;
 };
 
 type NormalizedPlace = NormalizedItemBase & {
@@ -198,6 +201,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       isDummy,
       goriyakuTags: [],
       initialFav: false,
+      highlightPick: isDummy ? null : normalizeHighlightPick(r, { ctx: "concierge", tid: tid ?? undefined }),
     };
   }
 
