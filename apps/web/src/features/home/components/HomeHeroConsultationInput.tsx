@@ -4,6 +4,10 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUp } from "lucide-react";
 
+import HomeOriginRow from "@/features/home/components/HomeOriginRow";
+import { saveHomeOriginHandoff } from "@/lib/concierge/homeOriginHandoff";
+import type { UserOrigin } from "../../../../../../packages/shared/userOrigin";
+
 function buildConciergeHref(theme: string, options?: { openFilter?: boolean }): string {
   const params = new URLSearchParams();
   const trimmed = theme.trim();
@@ -45,11 +49,18 @@ const CONSULTATION_THEME_CHIPS = [
 export function HomeHeroConsultationInput() {
   const router = useRouter();
   const [theme, setTheme] = useState("");
+  // 出発地（任意）。/concierge には URL ではなく sessionStorage で1回だけ渡す。
+  const [origin, setOrigin] = useState<UserOrigin | null>(null);
 
   const canSubmit = useMemo(() => theme.trim().length > 0, [theme]);
 
+  const goToConcierge = (value: string, options?: { openFilter?: boolean }) => {
+    saveHomeOriginHandoff(origin);
+    router.push(buildConciergeHref(value, options));
+  };
+
   const submitTheme = (value: string) => {
-    router.push(buildConciergeHref(value));
+    goToConcierge(value);
   };
 
   return (
@@ -85,8 +96,8 @@ export function HomeHeroConsultationInput() {
           value={theme}
           onChange={(event) => setTheme(event.target.value)}
           placeholder="例: 気持ちを切り替えたい、これからのことを考えたい"
-          rows={3}
-          className="mt-2 w-full resize-none border-0 bg-transparent px-0 py-1 text-[15px] leading-8 text-[var(--home-text-primary)] outline-none placeholder:text-[var(--home-text-secondary)]"
+          rows={2}
+          className="mt-2 w-full resize-none border-0 bg-transparent px-0 py-1 text-[15px] leading-7 text-[var(--home-text-primary)] outline-none placeholder:text-[var(--home-text-secondary)]"
         />
 
         <div className="mt-2 flex items-end justify-between gap-4">
@@ -113,6 +124,12 @@ export function HomeHeroConsultationInput() {
             <ArrowUp className="size-5" aria-hidden />
           </button>
         </div>
+      </div>
+
+      {/* 出発地（任意）: 相談の欄のすぐ下に1行だけ置き、押すと下から選択肢を出す。
+          1回目の相談から位置付きで送るため（2026-11-23）。 */}
+      <div className="-mt-3">
+        <HomeOriginRow origin={origin} onChange={setOrigin} />
       </div>
 
       {/* 候補チップ: 入力カードの外に出し、補助であることを位置で示す。 */}
@@ -148,7 +165,7 @@ export function HomeHeroConsultationInput() {
         <button
           type="button"
           className="inline-flex items-center text-xs font-medium text-[var(--home-text-secondary)] transition hover:text-[var(--kt-color-action-primary)]"
-          onClick={() => router.push(buildConciergeHref(theme, { openFilter: true }))}
+          onClick={() => goToConcierge(theme, { openFilter: true })}
         >
           ＋ 条件を追加する
         </button>
