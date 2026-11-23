@@ -254,7 +254,8 @@ def test_mental_reason_unchanged():
         query="不安な気持ちを落ち着けたい",
         language="ja",
         # mental は札では結ばない（概念は空）。ご利益の文字列の言葉で一致させる。
-        candidates=[_candidate("厄除け神社", [], goriyaku="厄除け")],
+        # 「厄除」は mental の文字の語から外した（2026-11-23）ので「浄化」で一致させる。
+        candidates=[_candidate("浄化の神社", [], goriyaku="心身浄化")],
         public_mode="need",
         flow="A",
     )
