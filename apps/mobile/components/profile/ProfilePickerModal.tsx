@@ -1,5 +1,5 @@
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { appColors as theme, appSemanticTheme } from "../../design/theme";
+import { appColors as theme, appSemanticTheme } from "../../design/platformTheme";
 import { radius } from "../../design/radius";
 import { typography } from "../../design/typography";
 import Ionicons from "@expo/vector-icons/Ionicons";

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
-import { appColors as theme } from "../design/theme";
+import { appColors as theme, inputAppearance } from "../design/platformTheme";
 import { VISIT_STYLE_OPTIONS, GORIYAKU_OPTIONS } from "../lib/conditionPayload";
 import { ProfilePickerModal } from "./profile/ProfilePickerModal";
 import { MobileOriginSelector } from "./MobileOriginSelector";
@@ -84,6 +84,7 @@ export function ConditionFieldsCard({
           <Text style={styles.caption}>命式や吉方位の参考にします</Text>
         </View>
         <TextInput
+          {...inputAppearance}
           accessibilityLabel="誕生日"
           value={birthdate}
           onChangeText={onChangeBirthdate}
@@ -192,6 +193,7 @@ export function ConditionFieldsCard({
           <Text style={styles.caption}>場所や時間の希望があれば自由にどうぞ</Text>
         </View>
         <TextInput
+          {...inputAppearance}
           accessibilityLabel="相談補助条件"
           value={supportText}
           onChangeText={onChangeSupportText}

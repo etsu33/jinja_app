@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { post } from "../lib/http";
 import Button from "../components/ui/Button";
 import { setTokens } from "../lib/authTokens";
-import { appColors as theme } from "../design/theme";
+import { appColors as theme, inputAppearance } from "../design/platformTheme";
 import { spacing } from "../design/spacing";
 import { radius } from "../design/radius";
 import { typography } from "../design/typography";
@@ -55,6 +55,7 @@ export default function LoginScreen() {
           <View style={styles.field}>
             <Text style={styles.label}>ユーザー名</Text>
             <TextInput
+              {...inputAppearance}
               accessibilityLabel="ユーザー名"
               value={username}
               onChangeText={setUsername}
@@ -70,6 +71,7 @@ export default function LoginScreen() {
           <View style={styles.field}>
             <Text style={styles.label}>パスワード</Text>
             <TextInput
+              {...inputAppearance}
               accessibilityLabel="パスワード"
               value={password}
               onChangeText={setPassword}

@@ -2,7 +2,7 @@ import * as React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { appColors as theme, appSemanticTheme } from "../../design/theme";
+import { appColors as theme, appSemanticTheme } from "../../design/platformTheme";
 import { spacing } from "../../design/spacing";
 import { radius } from "../../design/radius";
 import Button from "../ui/Button";

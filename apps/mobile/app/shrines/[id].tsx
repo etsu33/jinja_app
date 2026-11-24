@@ -4,7 +4,7 @@ import { View, Text, Image, Pressable, StyleSheet, ScrollView, Linking, Platform
 import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { SHRINES } from "../../data/shrines";
 import { incVisits, isFavorite, toggleFavorite, pushRecent } from "../../lib/storage";
-import { appColors as theme } from "../../design/theme";
+import { appColors as theme, inputAppearance } from "../../design/platformTheme";
 import { get, isUnauthenticatedError } from "../../lib/http";
 import { isLoggedIn } from "../../lib/authTokens";
 import { trackShrineDetailView, trackShrineRouteOpen } from "../../lib/shrineInteractions";
@@ -830,6 +830,7 @@ export default function ShrineDetail() {
               参拝して感じたことを残しておくと、次の相談や再訪時に自分の変化を見返しやすくなります。
             </Text>
             <TextInput
+              {...inputAppearance}
               accessibilityLabel="参拝後の振り返り"
               value={reflectionAnswer}
               onChangeText={(text) => {

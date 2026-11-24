@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, type TextStyle, type Vi
 import { ctaSizes } from "../../design/ctaSizes";
 import { semanticRadius } from "../../design/radius";
 import { semanticShadow } from "../../design/shadow";
-import { appSemanticTheme } from "../../design/theme";
+import { appSemanticTheme, isIndigoIOS } from "../../design/platformTheme";
 import { typography } from "../../design/typography";
 
 type Props = {
@@ -79,6 +79,7 @@ export default function Button({
       style={({ pressed }) => [
         styles.btn,
         size === "compact" ? styles.btnCompact : styles.btnDefault,
+        isIndigoIOS && size === "default" ? styles.btnIOS : null,
         theme,
         pressed && !isDisabled ? styles.btnPressed : null,
         isDisabled ? styles.btnDisabled : null,
@@ -102,6 +103,12 @@ const styles = StyleSheet.create({
   btnDefault: {
     height: ctaSizes.mediumHeight,
     borderRadius: semanticRadius.control,
+  },
+  btnIOS: {
+    height: "auto",
+    minHeight: ctaSizes.mediumHeight,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   btnCompact: {
     alignSelf: "flex-start",

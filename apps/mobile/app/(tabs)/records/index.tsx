@@ -3,7 +3,7 @@ import { Animated, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { appColors as theme } from "../../../design/theme";
+import { appColors as theme } from "../../../design/platformTheme";
 import { spacing } from "../../../design/spacing";
 import { cardSizes } from "../../../design/cardSizes";
 import { radius } from "../../../design/radius";

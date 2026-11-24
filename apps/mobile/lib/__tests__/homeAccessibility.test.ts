@@ -64,8 +64,8 @@ describe("iOSホーム改修の境界", () => {
     expect(home).toContain('isIndigoHome ? indigoStyles.searchEntryCta : styles.searchEntryCta');
     expect(home).toContain('isIndigoHome ? indigoStyles.primaryCtaPressed : styles.primaryCtaPressed');
     const layout = readFileSync(new URL("../../app/(tabs)/_layout.tsx", import.meta.url), "utf8");
-    expect(layout).toContain('Platform.OS === "ios" && pathname === "/"');
-    expect(layout).toContain('isIndigoHome ? homeIndigo.action : theme.accent');
+    expect(layout).toContain('from "../../design/platformTheme"');
+    expect(layout).toContain('tabBarActiveTintColor: theme.accent');
   });
 
   it("ホーム表示中だけ明色のステータスバーを重ねる", () => {

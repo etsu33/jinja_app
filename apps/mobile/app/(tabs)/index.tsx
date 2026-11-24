@@ -2,7 +2,7 @@ import * as React from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ScrollView, View, Text, TextInput, StyleSheet, Pressable, Image, Platform, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { appColors as theme, homeIndigo } from "../../design/theme";
+import { appColors as theme, homeIndigo } from "../../design/platformTheme";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { ctaSizes } from "../../design/ctaSizes";

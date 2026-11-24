@@ -6,7 +6,7 @@ import * as Linking from "expo-linking";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { LEGAL_LABELS, openLegalDocument } from "../../../lib/legalLinks";
-import { appColors as theme } from "../../../design/theme";
+import { appColors as theme } from "../../../design/platformTheme";
 import { getFavoriteShrines, getRecentViewed } from "../../../lib/shrineStorage";
 import { getCounts } from "../../../lib/storage";
 import { getAuthenticatedBillingStatus, isPremiumStatus, type BillingStatus } from "../../../lib/billing";

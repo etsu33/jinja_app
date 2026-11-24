@@ -2,7 +2,7 @@ import * as React from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import * as Linking from "expo-linking";
 
-import { appColors as theme } from "../design/theme";
+import { appColors as theme } from "../design/platformTheme";
 import { spacing } from "../design/spacing";
 import { getRefreshToken } from "../lib/authTokens";
 import { createApplePurchaseFlow, type ApplePurchaseState } from "../lib/applePurchaseFlow";

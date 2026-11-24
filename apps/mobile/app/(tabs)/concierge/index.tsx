@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { appColors as theme } from "../../../design/theme";
+import { appColors as theme, inputAppearance } from "../../../design/platformTheme";
 import Button from "../../../components/ui/Button";
 import {
   buildConditionFilters,
@@ -1091,6 +1091,7 @@ export default function ConciergeScreen() {
       {/* 入力バー */}
       <View style={styles.inputBar}>
         <TextInput
+          {...inputAppearance}
           value={input}
           onChangeText={setInput}
           placeholder="条件を変える時だけ、追加で相談する"

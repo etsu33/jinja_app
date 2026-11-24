@@ -1,9 +1,9 @@
 import * as React from "react";
-import { AccessibilityInfo, Animated, StyleSheet, Text, View } from "react-native";
+import { AccessibilityInfo, Animated, Image, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as SplashScreen from "expo-splash-screen";
 
-import { dawn } from "../../design/theme";
+import { dawn, isIndigoIOS } from "../../design/platformTheme";
 import { typography } from "../../design/typography";
 
 // ios-ui-spec-v2.md 10節: Splash はロゴのみ。余計なコピー・ボタン・機能説明を置かない。
@@ -82,6 +82,7 @@ export function DawnSplash({ onDone }: Props) {
         style={StyleSheet.absoluteFill}
       />
       <View accessibilityRole="header" style={styles.mark}>
+        {isIndigoIOS ? <Image source={require("../../assets/icon.png")} style={styles.logo} resizeMode="contain" accessible={false} /> : null}
         <Text style={styles.brandName}>神結び</Text>
         <Text style={styles.brandRuby}>KAMI MUSUBI</Text>
       </View>
@@ -101,6 +102,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
+  logo: { width: 88, height: 88, borderRadius: 18, marginBottom: 8 },
   brandName: {
     ...typography.display,
     color: "#FFFFFF",

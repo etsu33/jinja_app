@@ -3,7 +3,7 @@ import * as React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, type Region } from "react-native-maps";
 
-import { appColors as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/platformTheme";
 import { radius } from "../../design/radius";
 import { spacing } from "../../design/spacing";
 import { prefectureOrigin } from "../../../../packages/shared/userOrigin";
