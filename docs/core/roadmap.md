@@ -23,6 +23,8 @@ Mobile（Expo / Android / iOS）・実機QA・ストア公開、御朱印画像�
 
 2026-10-25のWebセキュリティ監査（`docs/audit/web-production-security-effectiveness-audit-2026-10-25.md`、PR #3349）で新たなCritical/High所見が報告されている。過去のSecurity Foundation対策完了は**当時の対象範囲**に限る。現行の公開安全性や今回の所見の修正完了を示すものではない。修正・本番検証・マージ判断は独立PRと母艦判断で扱う。
 
+2026-11-24の個別承認により、iOSホームのプレゼンテーション層のみIndigo & Goldへ調整する。全画面展開・Web/Android・API・認証・推薦・課金は対象外。構成と検証範囲は `apps/mobile/README.md` を参照。Mobile全体の保留方針を解除するものではない。
+
 ---
 
 ## 現在地

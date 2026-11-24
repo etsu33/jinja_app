@@ -1,8 +1,8 @@
 import * as React from "react";
-import { type ColorValue } from "react-native";
-import { Tabs } from "expo-router";
+import { Platform, type ColorValue } from "react-native";
+import { Tabs, usePathname } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { appColors as theme } from "../../design/theme";
+import { appColors as theme, homeIndigo } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 
@@ -56,20 +56,23 @@ function tabIcon(key: TabIconKey) {
 // このレイアウトには実際にタブバーへ出す4画面だけを置く
 // (旧実装の hiddenTabOptions による「隠しタブ」は廃止した)。
 export default function TabsLayout() {
+  const pathname = usePathname();
+  // タブ全体の外観は、選択中がiOSホームの場合だけ変更する。
+  const isIndigoHome = Platform.OS === "ios" && pathname === "/";
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        // 選択中は深藍。朱はホームの主CTAだけに残す。
-        tabBarActiveTintColor: theme.accent,
-        tabBarInactiveTintColor: theme.muted,
+        // iOSホームは淡金。他画面とWeb/Androidでは従来の配色を維持する。
+        tabBarActiveTintColor: isIndigoHome ? homeIndigo.action : theme.accent,
+        tabBarInactiveTintColor: isIndigoHome ? homeIndigo.secondaryText : theme.muted,
         tabBarLabelStyle: {
           fontSize: bottomNavigationSizes.labelFontSize,
           fontWeight: "600",
         },
         tabBarStyle: {
-          backgroundColor: theme.background,
-          borderTopColor: theme.borderHeader,
+          backgroundColor: isIndigoHome ? homeIndigo.background : theme.background,
+          borderTopColor: isIndigoHome ? homeIndigo.backgroundSubtle : theme.borderHeader,
           borderTopWidth: cardSizes.borderWidth,
           paddingTop: spacing.inlineGap - 1,
         },

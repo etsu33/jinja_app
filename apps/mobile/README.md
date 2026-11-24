@@ -5,6 +5,22 @@ Expo Router で実装済みで、現在は **iOS リリース準備中**（App S
 
 ---
 
+## iOSホームの外観（2026-11-24承認）
+
+ホーム限定で「Indigo & Gold」を適用する。`design/theme.ts` の `homeIndigo` を
+`app/(tabs)/index.tsx` がiOSでのみ使用し、`appColors` / `appSemanticTheme` は維持する。
+既存 `assets/icon.png` を使用し、背景の雲文様はホーム内の静的なViewで描く。
+追加画像・ライブラリ・アニメーションは導入しない。和紙の写真テクスチャは未適用。
+タブバーはiOSホーム選択中だけ深藍・淡金とし、他画面では従来の色へ戻す。
+Web（Expo Webを含む）・Androidの外観、相談ペイロード、検索計測、業務ロジックは維持する。
+共通Buttonの任意 `textStyle` はホームの検索ボタンで使用し、既定の見た目を変えない。
+
+設定アイコンはアプリコードに存在しない。Expo Go上で表示される青い歯車は
+開発ツール側の表示として扱い、アプリに新しい設定導線は追加しない。
+
+検証: TypeScript、モバイル既存テスト、変更TS/TSXの限定Lint、iPhone 16e / iOS 26.1。
+ホーム表示のレビュー後に他画面への展開を判断する。現段階では他画面へ展開しない。
+
 ## 現在のステータス
 
 - 実装：✅ 実装済み（Expo Router / 既存 Backend API に接続）

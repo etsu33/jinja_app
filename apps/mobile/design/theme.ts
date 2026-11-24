@@ -187,6 +187,19 @@ export type KamimusubiLightColorKey = keyof typeof kamimusubiLight;
 // 画面が参照する実値。配色を切り替えるときはここだけを差し替える。
 export const appColors = kamimusubiLight;
 
+// 承認済み Indigo & Gold。iOSホームだけで選択し、共通テーマは切り替えない。
+export const homeIndigo = {
+  background: "#08162D",
+  backgroundSubtle: "#142D50",
+  surface: "#1B304A",
+  ornament: "#C9A044",
+  action: "#D8C39B",
+  actionText: "#08162D",
+  text: "#F7F5F0",
+  secondaryText: "#BFC9D6",
+  border: "#8290A3",
+} as const;
+
 export type AppColorKey = keyof typeof colors;
 export type KamimusubiDarkColorKey = keyof typeof kamimusubiDark;
 

@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
-import { dawn, kamimusubiLight as light } from "../../design/theme";
+import { dawn, homeIndigo, kamimusubiLight as light } from "../../design/theme";
 
 function channel(value: number): number {
   const c = value / 255;
@@ -215,12 +215,30 @@ describe("和の朝焼け（区切りの画面のグラデーション）", () =
     expect(contrast("#FFFFFF", colorAt(markTop))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("グラデーションを使う画面を区切りの画面に限る", () => {
-    // 40節の Gradient 禁止は、区切りの4画面を除いて有効。
+  it("グラデーションは区切り画面と承認済みのiOSホームに限る", () => {
+    // 2026-11-24承認: iOSホームのみIndigo & Goldを適用。他画面は従来どおり。
     const users = globSync(["app/**/*.tsx", "components/**/*.tsx"], { cwd: mobileRoot })
       .filter((file) => readFileSync(resolve(mobileRoot, file), "utf8").includes("LinearGradient"))
       .sort();
 
-    expect(users).toEqual(["components/common/DawnSplash.tsx"]);
+    expect(users).toEqual(["app/(tabs)/index.tsx", "components/common/DawnSplash.tsx"]);
+  });
+});
+
+describe("iOSホームのIndigo & Goldの可読性", () => {
+  it("本文・補助文字が背景全域と入力面でAAを満たす", () => {
+    for (const surface of [homeIndigo.background, homeIndigo.backgroundSubtle, homeIndigo.surface]) {
+      for (const text of [homeIndigo.text, homeIndigo.secondaryText]) {
+        expect(contrast(text, surface)).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(contrast(homeIndigo.border, surface)).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("主要CTAと検索CTA・選択中タブを識別できる", () => {
+    expect(contrast(homeIndigo.actionText, homeIndigo.action)).toBeGreaterThanOrEqual(4.5);
+    for (const background of [homeIndigo.background, homeIndigo.backgroundSubtle]) {
+      expect(contrast(homeIndigo.action, background)).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });
