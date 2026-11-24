@@ -352,6 +352,8 @@ Recommendation Reasonの固有性（V4構造化表示）、FactとMeaningの分�
 
 神社周辺の歴史スポット（ShrineNearbySpot）は、2026-11-24 に母艦が設計方針・API / UI契約を承認し、仕様を`docs/product/shrine-nearby-spot-spec.md`へ正本化した（PR-0）。モデル・公開判定・神社詳細API・Web UI・Mobile UI（PR-1〜PR-5）は未着手で、各PRの開始にそれぞれ母艦承認を必要とする。初期対象の乃木神社3件の本番公開は範囲外。
 
+**Mobileの例外（2026-11-24 母艦判断）：** 現行のMobile新規開発保留は維持しつつ、ShrineNearbySpotに限ってWebと同じ公開・位置・出典・翻訳・同一神社性のルールを適用し、PR-5でMobile UIを実装することを例外的に対象へ戻す。Backendが公開判定の正本。PR-1（モデル）→PR-2（整合性・Gate）→PR-3（API）→PR-4（Web UI）→PR-5（Mobile UI）の段階実装を想定し、各PRの開始・マージ・本番反映は個別に母艦が判断する。Mobile全体の開発再開・ストア公開・Phase 8の順序変更は承認されていない。
+
 ---
 
 ## Phase 7: Release Readiness
