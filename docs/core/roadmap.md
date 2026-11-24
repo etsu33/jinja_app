@@ -350,6 +350,8 @@ Recommendation Reasonの固有性（V4構造化表示）、FactとMeaningの分�
 
 続けて、認証なしの`POST /api/places/resolve/`（未登録Placeで Google Place Details 呼び出しと PlaceRef / ShrineCandidate 書き込みを伴う）に専用throttle `places-resolve`（10/min、POSTのみ）を追加した。GETとglobalの匿名制限は従来どおりで、`DISABLE_THROTTLE`でも緩めない。PlaceRef / ShrineCandidate の保持・掃除方針は未決定（別Gate）。
 
+神社周辺の歴史スポット（ShrineNearbySpot）は、2026-11-24 に母艦が設計方針・API / UI契約を承認し、仕様を`docs/product/shrine-nearby-spot-spec.md`へ正本化した（PR-0）。モデル・公開判定・神社詳細API・Web UI・Mobile UI（PR-1〜PR-5）は未着手で、各PRの開始にそれぞれ母艦承認を必要とする。初期対象の乃木神社3件の本番公開は範囲外。
+
 ---
 
 ## Phase 7: Release Readiness
