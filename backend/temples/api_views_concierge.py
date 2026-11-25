@@ -2,12 +2,10 @@
 from __future__ import annotations
 import requests  # test monkeypatch compatibility
 import logging
-import re
 import uuid
 import time
 from django.db import connection, reset_queries
 
-from datetime import date
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -24,17 +22,24 @@ from rest_framework_simplejwt.exceptions import TokenError
 from temples.api.serializers.concierge import (
     ConciergePlanRequestSerializer,
     ConciergePlanResponseSerializer,
-    ConciergeThreadSerializer,
 )
 from temples.geocoding.client import geocode_google_point
 from temples.models import ConciergeThread
 from temples.domain.consultation_axis import resolve_consultation_axis
+from temples.domain.feature_words_en import build_travel_feature_payload, is_travel_mode
 from temples.domain.kyusei import annual_lucky_directions, planned_visit_lucky_directions
-from temples.services import places as Places
 
 from temples.services.plan_service import resolve_plan_context
 from temples.services.quota_service import check_quota, consume_quota
 from temples.services.anonymous_id import attach_anonymous_cookie, build_anonymous_cookie_value
+from temples.services.concierge_input_contract import (
+    normalize_concierge_request,
+    concierge_birthdate_request_sources,
+    resolve_concierge_requested_mode,
+    resolve_profile_context_birthdate,
+    strip_concierge_birthdate_inputs,
+    build_concierge_recommendation_context,
+)
 
 from temples.services.concierge_candidate_utils import (
     _dedupe_candidates,
@@ -44,41 +49,24 @@ from temples.services.concierge_chat import build_chat_recommendations
 from temples.services.concierge_chat_ranking import (
     _resolve_public_mode,
 )
-from temples.services.concierge_chat_candidates import build_chat_candidates
+from temples.services.concierge_chat_candidates import (
+    build_chat_candidates,
+    filter_recommendation_eligible_candidates,
+)
 from temples.services.concierge_history import append_chat
 from temples.services.direction_reference import attach_direction_references
 from temples.services.concierge_plan import build_plan_response
 from temples.services.consultation_interpreter import interpret_consultation
+from temples.services.consultation_meaning import extract_consultation_meaning
 from temples.services.billing_state import is_premium_for_user  # test monkeypatch compatibility
+from temples.services.shrine_features_en import build_shrine_feature_matches
 
 
 
-BIRTHDATE_PATTERNS = (
-    re.compile(r"^(\d{4})-(\d{2})-(\d{2})$"),
-    re.compile(r"^(\d{4})/(\d{2})/(\d{2})$"),
-    re.compile(r"^(\d{4})(\d{2})(\d{2})$"),
-)
-
-def normalize_birthdate(value: Any) -> str | None:
-    s = str(value or "").strip()
-    if not s:
-        return None
-
-    for pattern in BIRTHDATE_PATTERNS:
-        m = pattern.match(s)
-        if not m:
-            continue
-
-        yyyy, mm, dd = m.groups()
-
-        try:
-            normalized = date(int(yyyy), int(mm), int(dd))
-        except ValueError:
-            return None
-
-        return normalized.isoformat()
-
-    return None
+# normalize_birthdate / _resolve_request_inputs_basic: moved to
+# temples.services.concierge_input_contract as part of the Concierge
+# Input Contract Foundation. The view below resolves phase-1 input via
+# normalize_concierge_request(), which wraps them.
 
 
 log = logging.getLogger(__name__)
@@ -270,101 +258,6 @@ def _geocode_area_for_chat(*, area: str) -> tuple[float, float] | None:
     )
     return pt
 
-def _probe_area_locationbias_for_chat(*, area: str | None) -> None:
-    """
-    Chatテスト用：area→geocode→findplace(locationbias=8000) を1回だけ叩いて、
-    monkeypatch が拾う params を残す。結果は使わない。
-    """
-    area = (area or "").strip()
-    if not area:
-        log.info("[concierge/perf] step=probe_locationbias skipped=no_area")
-        return
-
-    pt = _geocode_area_for_chat(area=area)
-    if not pt:
-        log.info("[concierge/perf] step=probe_locationbias skipped=no_geocode_result")
-        return
-
-    lb = f"circle:8000@{pt[0]:.3f},{pt[1]:.3f}"
-
-    t0 = time.perf_counter()
-    try:
-        Places.findplacefromtext(
-            input=area,
-            language="ja",
-            fields="place_id",
-            locationbias=lb,
-        )
-        elapsed = time.perf_counter() - t0
-        log.info(
-            "[concierge/perf] step=probe_locationbias elapsed=%.3f ok=1 area_len=%d",
-            elapsed,
-            len(area),
-        )
-    except Exception:
-        elapsed = time.perf_counter() - t0
-        log.exception(
-            "[concierge/perf] step=probe_locationbias elapsed=%.3f ok=0 area_len=%d",
-            elapsed,
-            len(area),
-        )
-
-
-
-def _resolve_request_inputs_basic(data: Dict[str, Any]):
-    filters = data.get("filters") if isinstance(data.get("filters"), dict) else {}
-    for k in ("birthdate", "goriyaku_tag_ids", "extra_condition"):
-        if data.get(k) in (None, "", []) and filters.get(k) not in (None, "", []):
-            data[k] = filters.get(k)
-
-
-    filters = data.get("filters") or {}
-    if isinstance(filters, dict):
-        if not data.get("birthdate") and filters.get("birthdate"):
-            data["birthdate"] = filters.get("birthdate")
-
-    if not data.get("goriyaku_tag_ids") and filters.get("goriyaku_tag_ids"):
-        data["goriyaku_tag_ids"] = filters.get("goriyaku_tag_ids")
-    if not data.get("extra_condition") and filters.get("extra_condition"):
-        data["extra_condition"] = filters.get("extra_condition")
-
-    message = (data.get("message") or "").strip()
-    query = (data.get("query") or "").strip()
-    query = message or query
-
-    # backend救済: query が日付文字列なら birthdate に寄せる
-    birthdate_raw = normalize_birthdate(data.get("birthdate"))
-
-    if not birthdate_raw and isinstance(filters, dict):
-        birthdate_raw = normalize_birthdate(filters.get("birthdate"))
-        if birthdate_raw:
-            data["birthdate"] = birthdate_raw
-
-    if not birthdate_raw:
-        rescued_birthdate = normalize_birthdate(query)
-        if rescued_birthdate:
-            data["birthdate"] = rescued_birthdate
-            birthdate_raw = rescued_birthdate
-            query = ""
-
-    language = (data.get("language") or "ja").strip()
-    area = data.get("area") or data.get("where") or data.get("location_text")
-
-    birthdate = data.get("birthdate")
-    goriyaku_tag_ids = data.get("goriyaku_tag_ids")
-    extra_condition = data.get("extra_condition")
-
-    return (
-        query,
-        message,
-        language,
-        area,
-        birthdate,
-        goriyaku_tag_ids,
-        extra_condition,
-    )
-
-
 def _resolve_request_location_inputs(
     data: Dict[str, Any],
     *,
@@ -390,6 +283,31 @@ def _resolve_request_location_inputs(
             lat, lng = pt
     return lat, lng
 
+def _attach_shrine_matches(
+    feature_words_en: Optional[Dict[str, Any]],
+    recs: Dict[str, Any],
+    rid: str,
+) -> Optional[Dict[str, Any]]:
+    """英語の相談のとき、推薦された神社ごとに「相談の語と神社の語の重なり」を足す。
+
+    記録用で、並び順には使わない（temples/services/shrine_features_en.py）。
+    失敗しても応答は止めない。
+    """
+    if feature_words_en is None:
+        return None
+    try:
+        return {
+            **feature_words_en,
+            "shrine_matches": build_shrine_feature_matches(
+                recs.get("recommendations") or [],
+                feature_words_en.get("ids") or [],
+            ),
+        }
+    except Exception:
+        log.exception("[concierge/feature_words_en] shrine_matches failed rid=%s", rid)
+        return feature_words_en
+
+
 def _build_chat_response(
     intent: Dict[str, Any],
     recs: Dict[str, Any],
@@ -401,6 +319,8 @@ def _build_chat_response(
     thread: Optional[Any],
     debug: Optional[Dict[str, Any]],
     anon_cookie_value: Optional[str],
+    consultation_meaning: Dict[str, Any],
+    feature_words_en: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     thread_id = str(thread.id) if thread is not None else None
 
@@ -420,7 +340,16 @@ def _build_chat_response(
         "data": data,
         "plan": plan,
         "reply": reply,
+        # Consultation Meaning v1 (PR-C): stable, top-level, request-level
+        # field -- one per consultation turn, not per-recommendation. Never
+        # sourced from _debug/interpretation_profile; always present (empty
+        # arrays, never omitted) regardless of quota/Recommendation state.
+        "consultation_meaning": consultation_meaning,
     }
+    # 英語の相談（language=en）のときだけ載せる。日本語の応答の形は変えない。
+    # travel モードのときだけ。英語の辞書を使ったときは、取り出した特徴語で並べ替えている（temples/services/travel_ranking.py）。
+    if feature_words_en is not None:
+        body["feature_words_en"] = feature_words_en
 
     if remaining is not None:
         body["remaining"] = remaining
@@ -525,14 +454,22 @@ def _build_chat_candidates_pipeline(
     )
 
     merged_candidates = user_candidates + raw_built_candidates
-    deduped_candidates = _dedupe_candidates(merged_candidates)
+    # Shared Recommendation Eligibility gate。build_chat_candidates()が返す候補は
+    # 生成時点で既にgate済みなので、ここでの再適用は追加クエリを発生させない。
+    # requestで持ち込まれた候補（user_candidates）はその共有層を通っていないため、
+    # 同じ共有関数でここでも必ず通す -- ineligibleなShrineがrequest経由で
+    # Recommendationへ再流入する経路を残さない（判定式は複製していない）。
+    eligible_candidates = filter_recommendation_eligible_candidates(merged_candidates)
+    deduped_candidates = _dedupe_candidates(eligible_candidates)
 
     log.info(
-        "[api/chat] build_candidates_output trace=%s user=%d built=%d merged=%d deduped=%d",
+        "[api/chat] build_candidates_output trace=%s user=%d built=%d merged=%d "
+        "eligible=%d deduped=%d",
         getattr(request, "_concierge_trace_id", ""),
         len(user_candidates),
         len(raw_built_candidates),
         len(merged_candidates),
+        len(eligible_candidates),
         len(deduped_candidates),
     )
 
@@ -599,22 +536,36 @@ class ConciergeChatView(APIView):
             )
 
             # -------------------------
-            # ① 入力解決
+            # ① 入力解決（Canonical Concierge Input、
+            #    see docs/product/concierge-input-architecture.md）
             # -------------------------
             phase = "resolve_inputs"
             t0 = time.perf_counter()
 
-            (
-                query,
-                message,
-                language,
-                area,
-                birthdate_value,
-                goriyaku_tag_ids,
-                extra_condition,
-            ) = _resolve_request_inputs_basic(data)
+            # 入力を読み取ると本文・filters・日付だけの相談文が birthdate にまとめられるため、先に出どころを見る。
+            birthdate_sources = concierge_birthdate_request_sources(data)
+            canonical_input = normalize_concierge_request(data)
+            query = canonical_input.query
+            message = canonical_input.message
+            language = canonical_input.language
+            area = canonical_input.area
+            goriyaku_tag_ids = canonical_input.goriyaku_tag_ids
+            extra_condition = canonical_input.extra_condition
+            visit_preferences = canonical_input.visit_preferences
 
-            birthdate = (birthdate_value or "").strip() or None
+            # travel モード（旅行・文化体験）のときだけ、相談文から特徴語を取り出す。
+            # 言語とは独立（英語の辞書は language=en のときだけ使う）。
+            # 英語の辞書を使ったとき（dictionary=en）は、この語で候補を並べ替える
+            # （temples/services/travel_ranking.py）。応答と ConciergeRecommendationLog にも残す。
+            feature_words_en = (
+                build_travel_feature_payload(query or message or "", language)
+                if is_travel_mode(data.get("mode"))
+                else None
+            )
+
+            # コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）。
+            # Web・モバイルから送られても、順位付け・説明の文・見出しに使わない。
+            birthdate = None
 
             log.info(
                 "[concierge/perf] step=resolve_inputs rid=%s elapsed=%.3f",
@@ -623,13 +574,20 @@ class ConciergeChatView(APIView):
             )
 
             raw_profile_context_value = data.get("profile_context")
-            raw_profile_context = dict(raw_profile_context_value) if isinstance(raw_profile_context_value, dict) else None
-            profile_user = raw_profile_context.get("user_profile") if raw_profile_context else None
-            profile_birthdate = (
-                profile_user.get("birthdate") or profile_user.get("birthday")
-                if isinstance(profile_user, dict)
-                else None
+            requested_mode = resolve_concierge_requested_mode(data.get("mode"))
+            raw_profile_context = strip_concierge_birthdate_inputs(
+                sources=birthdate_sources,
+                canonical_birthdate=canonical_input.birthdate,
+                profile_context=dict(raw_profile_context_value) if isinstance(raw_profile_context_value, dict) else None,
+                mode=data.get("mode"),
+                rid=rid,
             )
+            # Level 3-A Personal Profile (direction-calc precedence chain --
+            # separate from canonical_input.birthdate, see
+            # resolve_profile_context_birthdate() docstring).
+            profile_birthdate = resolve_profile_context_birthdate(raw_profile_context)
+            # Level 3-C Recommendation Context: visit_date/planned_visit_date
+            # alias resolution. `visit_date` is canonical (wins when both sent).
             visit_date = data.get("visit_date") or data.get("planned_visit_date")
             try:
                 calculated_direction = (
@@ -661,7 +619,7 @@ class ConciergeChatView(APIView):
 
 
             public_mode = _resolve_public_mode(
-                mode=str(data.get("mode") or "").strip().lower() or None,
+                mode=requested_mode,
                 birthdate=birthdate,
                 query=query,
             )
@@ -750,6 +708,7 @@ class ConciergeChatView(APIView):
                         if plan_context.plan == "anonymous" and plan_context.anon_id
                         else None
                     ),
+                    consultation_meaning=extract_consultation_meaning(query).as_dict(),
                 )
                 # 互換が不要なら削除
                 # body["note"] = "limit-reached"
@@ -771,6 +730,22 @@ class ConciergeChatView(APIView):
             remaining, limit_value = _chat_quota_fields(plan=plan_context.plan, quota=quota)
 
             lat, lng = _resolve_request_location_inputs(data, area=area)
+            # radius_m: parsed once here and reused below (bias + observability
+            # log) -- previously parsed twice from the same `data`, same value
+            # either way since _parse_radius() is a pure function of `data`.
+            radius_m = _parse_radius(data)
+            # Level 3-C Recommendation Context, canonical packaging (Task 7).
+            # Built here -- after the quota gate, same as lat/lng resolution
+            # above -- so this does not change when the geocode inside
+            # _resolve_request_location_inputs() fires (see
+            # ConciergeRecommendationContext docstring: moving this earlier
+            # would add wasted geocode calls for blocked/invalid requests).
+            l3_context = build_concierge_recommendation_context(
+                lat=lat,
+                lng=lng,
+                radius_m=radius_m,
+                visit_date=visit_date,
+            )
 
             # -------------------------
             # ② candidate build
@@ -799,23 +774,18 @@ class ConciergeChatView(APIView):
             )
 
             # -------------------------
-            # ③ probe / bias / intent
+            # ③ bias / intent
             # -------------------------
             phase = "pre_recommend"
             t0 = time.perf_counter()
-            try:
-                _probe_area_locationbias_for_chat(area=area)
-            except Exception:
-                log.exception("[concierge/perf] step=probe rid=%s failed", rid)
 
             bias = None
             if lat is not None and lng is not None:
-                r_m = _parse_radius(data)
-                bias = {"lat": lat, "lng": lng, "radius": r_m, "radius_m": r_m}
+                bias = {"lat": lat, "lng": lng, "radius": radius_m, "radius_m": radius_m}
                 log.info(
                     "[api/chat] computed_bias has_bias=%s radius_m=%d",
                     bias is not None,
-                    r_m,
+                    radius_m,
                 )
 
             log.info(
@@ -835,6 +805,8 @@ class ConciergeChatView(APIView):
                 applied.append("goriyaku_tag_ids")
             if (extra_condition or "").strip():
                 applied.append("extra_condition")
+            if visit_preferences:
+                applied.append("visit_preferences")
             if public_mode == "compat":
                 applied.append("mode:compat")
 
@@ -849,11 +821,18 @@ class ConciergeChatView(APIView):
                     birthdate=birthdate,
                     goriyaku_tag_ids=goriyaku_tag_ids,
                     extra_condition=extra_condition,
+                    visit_preferences=visit_preferences,
                     public_mode=public_mode,
                     flow=flow,
                     user=user if getattr(user, "is_authenticated", False) else None,
                     profile_context=raw_profile_context if isinstance(raw_profile_context, dict) else None,
                     interpretation_profile=interpretation_profile,
+                    # travel モードで英語の辞書を使ったときだけ並べ替える（日本語などは辞書が無いので並びは変えない）
+                    travel_request_feature_ids=(
+                        list(feature_words_en.get("ids") or [])
+                        if feature_words_en is not None and feature_words_en.get("dictionary") == "en"
+                        else None
+                    ),
                 )
             except Exception:
                 log.exception(
@@ -866,6 +845,18 @@ class ConciergeChatView(APIView):
                     birthdate is not None,
                 )
                 raise
+
+            # Level 3-C Recommendation Context: attached to the internal-only
+            # debug payload (stripped from the public response body by
+            # _build_chat_response(), same boundary as candidate_pool_observation
+            # / score_v3_mode below). Observational only -- does not change
+            # candidate filtering, ranking, or the public API contract.
+            recs.setdefault("_debug", {})["l3_context"] = {
+                "lat": l3_context.lat,
+                "lng": l3_context.lng,
+                "radius_m": l3_context.radius_m,
+                "visit_date": l3_context.visit_date,
+            }
 
             direction_profile = (
                 raw_profile_context.get("direction_profile")
@@ -891,6 +882,19 @@ class ConciergeChatView(APIView):
                     for recommendation in recommendation_list:
                         if isinstance(recommendation, dict):
                             recommendation.pop("direction_reference", None)
+
+            # Recommendation Instance Identity Contract
+            # (docs/audit/recommendation-instance-identity-propagation.md, Option C):
+            # reuse the existing per-request rid as the immutable recommendation_instance_id.
+            # No new ID generator -- same embed-into-item pattern already used for
+            # primary_reason_source (concierge_chat_ranking.py).
+            for recommendation_key in ("recommendations", "recommendations_v2"):
+                recommendation_list = recs.get(recommendation_key)
+                if not isinstance(recommendation_list, list):
+                    continue
+                for recommendation in recommendation_list:
+                    if isinstance(recommendation, dict):
+                        recommendation["recommendation_instance_id"] = rid
 
             after_n = len(recs.get("recommendations") or [])
             rec_count = after_n
@@ -990,12 +994,18 @@ class ConciergeChatView(APIView):
 
             from temples.services.concierge_observability import save_concierge_recommendation_log
 
+            feature_words_en = _attach_shrine_matches(feature_words_en, recs, rid)
+            travel_ranking = recs.pop("_travel_ranking", None)
+            if feature_words_en is not None and travel_ranking is not None:
+                feature_words_en = {**feature_words_en, "travel_ranking": travel_ranking}
+
             signals = recs.get("_signals") or {}
             llm_meta = signals.get("llm") or {}
             result_state = signals.get("result_state") or {}
             need_meta = recs.get("_need") or {}
             need_tags_for_log = need_meta.get("tags") or []
-            radius_m = _parse_radius(data)
+            # radius_m: reuses the single value parsed above (Level 3-C
+            # Recommendation Context), not re-parsed here.
 
             try:
                 _recs_debug = recs.get("_debug") or {}
@@ -1008,7 +1018,12 @@ class ConciergeChatView(APIView):
                     llm_enabled=bool(llm_meta.get("enabled")),
                     llm_used=bool(llm_meta.get("used")),
                     recommendations=recs.get("recommendations") or [],
-                    result_state=result_state,
+                    # travel モードの相談では、取り出した特徴語を記録に足す。dictionary="en" で ids が空の行が「辞書の取りこぼし」。
+                    result_state=(
+                        {**result_state, "feature_words_en": feature_words_en}
+                        if feature_words_en is not None
+                        else result_state
+                    ),
                     lat=lat,
                     lng=lng,
                     radius_m=radius_m,
@@ -1071,6 +1086,8 @@ class ConciergeChatView(APIView):
                         if plan_context.plan == "anonymous" and plan_context.anon_id
                         else None
                     ),
+                    consultation_meaning=extract_consultation_meaning(query).as_dict(),
+                    feature_words_en=feature_words_en,
                 )
 
             phase = "response"
@@ -1168,38 +1185,18 @@ class ConciergePlanViewLegacy(ConciergePlanView):
     schema = None
 
 
-@extend_schema(exclude=True)
-class ConciergeThreadView(APIView):
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        tid = request.query_params.get("tid")
-        if not tid:
-            return Response({"error": "tid required"}, status=400)
-
-        try:
-            thread = ConciergeThread.objects.get(id=tid)
-        except ConciergeThread.DoesNotExist:
-            return Response({"error": "not found"}, status=404)
-
-        return Response(ConciergeThreadSerializer(thread).data)
-
-
 chat = ConciergeChatView.as_view()
 plan = ConciergePlanView.as_view()
-thread = ConciergeThreadView.as_view()
 chat_legacy = ConciergeChatViewLegacy.as_view()
 plan_legacy = ConciergePlanViewLegacy.as_view()
 
 __all__ = [
     "chat",
     "plan",
-    "thread",
     "chat_legacy",
     "plan_legacy",
     "ConciergeChatView",
     "ConciergePlanView",
-    "ConciergeThreadView",
     "ConciergeChatViewLegacy",
     "ConciergePlanViewLegacy",
 ]

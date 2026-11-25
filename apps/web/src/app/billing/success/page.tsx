@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useBilling } from "@/features/billing/hooks/useBilling";
+import { formatPassExpiry } from "@/lib/billing/passes";
 import {
   parseBillingFunnelSource,
   parseBillingFunnelStep,
@@ -63,6 +64,7 @@ function BillingSuccessContent() {
   const billing = useBilling();
   const sessionId = searchParams.get("checkout_session_id") ?? searchParams.get("session_id");
   const isPremiumActive = billing.status?.plan === "premium" && billing.status.is_active === true;
+  const expiryLabel = isPremiumActive ? formatPassExpiry(billing.status?.current_period_end) : null;
   const checkoutSuccessTrackedRef = useRef(false);
   const premiumActiveTrackedRef = useRef(false);
 
@@ -89,13 +91,13 @@ function BillingSuccessContent() {
   if (!sessionId) {
     return (
       <div className="mx-auto w-full max-w-md px-4 py-6">
-        <h1 className="text-xl font-semibold text-slate-900">決済セッションを確認できません</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-600">もう一度プレミアム登録を開始してください。</p>
+        <h1 className="text-xl font-semibold text-[var(--kt-color-text-primary)]">決済セッションを確認できません</h1>
+        <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">もう一度パスの購入を開始してください。</p>
         <Link
           href="/billing/upgrade"
-          className="mt-6 inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
+          className="mt-6 inline-flex items-center justify-center rounded-md bg-[var(--kt-color-surface-emphasis)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-primary)]"
         >
-          プレミアム登録へ戻る
+          パスの購入へ戻る
         </Link>
       </div>
     );
@@ -103,16 +105,18 @@ function BillingSuccessContent() {
 
   return (
     <div className="mx-auto w-full max-w-md px-4 py-6">
-      <h1 className="text-xl font-semibold text-slate-900">
-        {isPremiumActive ? "プレミアムが有効になりました" : "決済結果を確認しています"}
+      <h1 className="text-xl font-semibold text-[var(--kt-color-text-primary)]">
+        {isPremiumActive ? "パスが有効になりました" : "決済結果を確認しています"}
       </h1>
 
       {billing.loading ? (
-        <p className="mt-2 text-sm leading-6 text-slate-600">プラン状況を再取得しています…</p>
+        <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">プラン状況を再取得しています…</p>
       ) : isPremiumActive ? (
-        <p className="mt-2 text-sm leading-6 text-slate-600">現在のプランに反映されています。</p>
+        <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+          {expiryLabel ? `有効期限：${expiryLabel}` : "現在のプランに反映されています。"}
+        </p>
       ) : (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+        <div className="mt-4 rounded-xl border border-[var(--kt-color-notice-border)] bg-[var(--kt-color-notice-bg)] p-4 text-sm leading-6 text-[var(--kt-color-notice-text)]">
           決済完了後の反映待ちです。少し時間をおいてからプラン状況を再確認してください。
         </div>
       )}
@@ -123,15 +127,15 @@ function BillingSuccessContent() {
         <button
           type="button"
           onClick={() => void billing.refresh()}
-          className="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
+          className="inline-flex items-center justify-center rounded-md bg-[var(--kt-color-surface-emphasis)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-primary)]"
         >
           プラン状況を再確認する
         </button>
         <Link
           href={isPremiumActive ? "/billing" : "/billing/upgrade"}
-          className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800"
+          className="inline-flex items-center justify-center rounded-md border border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-primary)]"
         >
-          {isPremiumActive ? "プラン状況を見る" : "もう一度登録を開始する"}
+          {isPremiumActive ? "プラン状況を見る" : "もう一度購入する"}
         </Link>
       </div>
     </div>
@@ -143,7 +147,7 @@ export default function BillingSuccessPage() {
     <Suspense
       fallback={
         <main className="mx-auto w-full max-w-md px-4 py-6">
-          <p className="text-sm leading-6 text-slate-600">課金状態を確認しています...</p>
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">課金状態を確認しています...</p>
         </main>
       }
     >

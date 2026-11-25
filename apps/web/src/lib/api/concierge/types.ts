@@ -43,6 +43,31 @@ export type ConciergeChatResponse = {
   remaining?: number | null;
   limit?: number | null;
   limitReached?: boolean;
+
+  /** Consultation Meaning v1 (PR-C). Stable, top-level, one per
+   * consultation turn -- not nested under `data` (that's per-recommendation
+   * territory) and never under `_debug`. Always present with all three
+   * families as arrays (empty when no signal was extracted). */
+  consultation_meaning?: ConsultationMeaning;
+};
+
+export type ConsultationMeaningEvidence = {
+  text: string;
+};
+
+export type SituationSignalType = "depleted" | "undecided" | "stalled";
+
+export type DesiredOutcomeSignalType = "decide" | "clarify" | "progress" | "calm";
+
+export type ExplicitConstraintSignalType = "time" | "money" | "other_person_availability";
+
+export type ConsultationMeaning = {
+  situation_signals: Array<{ type: SituationSignalType; evidence: ConsultationMeaningEvidence[] }>;
+  desired_outcome_signals: Array<{ type: DesiredOutcomeSignalType; evidence: ConsultationMeaningEvidence[] }>;
+  explicit_constraint_signals: Array<{
+    type: ExplicitConstraintSignalType;
+    evidence: ConsultationMeaningEvidence[];
+  }>;
 };
 
 // Backend契約(GET /api/concierge-threads/{pk}/, ConciergeThreadDetailView)は
@@ -77,6 +102,12 @@ export type ConciergeBreakdown = {
   matched_need_tags: string[];
 };
 
+export type KnowledgeBackingClass =
+  | "FULLY_KNOWLEDGE_BACKED"
+  | "PARTIALLY_KNOWLEDGE_BACKED"
+  | "LEGACY_BACKED"
+  | "UNKNOWN";
+
 export type RecommendationReasonQuality = {
   shrine_data_rate?: number | null;
   consultation_reflection_rate?: number | null;
@@ -85,6 +116,9 @@ export type RecommendationReasonQuality = {
   action_grounding_rate?: number | null;
   is_ai_inference_only?: boolean | null;
   fallback_source?: string | null;
+  knowledge_backing_class?: KnowledgeBackingClass | null;
+  deity_knowledge_used?: boolean | null;
+  history_knowledge_used?: boolean | null;
 };
 
 export type ConciergeReasonFactAxis =
@@ -126,32 +160,27 @@ export type RecommendationReasonV4Detail = {
   action: RecommendationReasonV4Action;
 };
 
-export type ConciergeReasonFacts = {
-  version?: 1;
-  primary_axis?: ConciergeReasonFactAxis | null;
-  secondary_axis?: ConciergeReasonFactAxis | null;
-
-  matched_need_tags?: string[];
-  matched_benefits?: string[];
-
-  shrine_feature?: string | null;
-  shrine_benefit?: string | null;
-  visit_fit?: string | null;
-
-  matched_element?: string | null;
-  matched_sign?: string | null;
-
-  distance_label?: string | null;
-  popularity_label?: string | null;
-
-  fallback_reason?: string | null;
-  confidence?: "high" | "mid" | "low" | null;
+export type ConciergeReasonFact = {
+  type: string;
+  label: string;
+  /** Backend が返す日本語の表示名。表示にだけ使い、比較や判定には label を使う。 */
+  label_ja?: string;
+  evidence: string[];
+  /** 相談と一致した神社のご利益の名前(#3451)。古い結果には無い。 */
+  matched_benefit_names?: string[];
+  score: number;
+  is_primary?: boolean;
 };
+
+/** Backend wire contract. This is intentionally not the legacy aggregate object shape. */
+export type ConciergeReasonFacts = ConciergeReasonFact[];
 
 export type ConciergeRecommendation = {
   id?: number | null;
   shrine_id?: number | null;
   place_id?: string | null;
+  /** Backend-issued per-request rid, reused as-is. Never generated/derived on Frontend. */
+  recommendation_instance_id?: string | null;
 
   name: string;
   display_name?: string;

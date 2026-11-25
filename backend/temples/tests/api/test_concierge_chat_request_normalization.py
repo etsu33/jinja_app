@@ -49,7 +49,7 @@ def test_chat_promotes_filters_to_top_level_and_keeps_need_mode_when_query_exist
     assert r.status_code == 200
 
     assert captured["query"] == "近場で参拝したい"
-    assert captured["birthdate"] == "1984-05-15"
+    assert captured["birthdate"] is None  # コンシェルジュでは生年月日を使わない
     assert captured["goriyaku_tag_ids"] == [10, 20]
     assert captured["extra_condition"] == "静か"
     assert captured["public_mode"] == "need"
@@ -101,19 +101,18 @@ def test_chat_top_level_values_override_filters_values_and_keep_need_mode(client
     assert r.status_code == 200
 
     assert captured["query"] == "転職が気になる"
-    assert captured["birthdate"] == "1990-01-01"
+    assert captured["birthdate"] is None  # コンシェルジュでは生年月日を使わない
     assert captured["goriyaku_tag_ids"] == [999]
     assert captured["extra_condition"] == "にぎやか"
     assert captured["public_mode"] == "need"
     assert captured["flow"] == "B"
 
 @pytest.mark.django_db
-def test_chat_rescues_birthdate_from_query_and_switches_to_compat_mode(client, monkeypatch):
+def test_chat_date_only_query_is_rejected_not_rescued_as_birthdate(client, monkeypatch):
     """
     CR-002:
-    top-level birthdate / filters.birthdate が空でも、
-    query が YYYY-MM-DD 形式なら backend で birthdate に救済すること。
-    その場合 public_mode='compat', flow='B' になること。
+    以前は query が YYYY-MM-DD 形式なら birthdate に救済し、compat にしていた。
+    コンシェルジュでは生年月日を使わないため、相談の文が無い扱いで 400 になる。
     """
     captured = {}
 
@@ -140,20 +139,17 @@ def test_chat_rescues_birthdate_from_query_and_switches_to_compat_mode(client, m
     }
 
     r = client.post(URL, data=json.dumps(payload), content_type="application/json")
-    assert r.status_code == 200
-
-    assert captured["query"] == ""
-    assert captured["birthdate"] == "1984-05-15"
-    assert captured["public_mode"] == "compat"
-    assert captured["flow"] == "B"
+    # コンシェルジュでは生年月日を使わない: 日付だけ・生年月日だけでは相談にしない（相性モードにもしない）。
+    assert r.status_code == 400
+    assert captured == {}
 
 
 @pytest.mark.django_db
-def test_chat_birthdate_only_allows_empty_query_in_compat_mode(client, monkeypatch):
+def test_chat_birthdate_only_is_rejected_without_query(client, monkeypatch):
     """
     CR-002:
-    birthdate only の入力では query='' でも 400 にならず、
-    compat として build_chat_recommendations へ到達すること。
+    以前は birthdate だけの入力でも compat として推薦へ進んでいた。
+    コンシェルジュでは生年月日を使わないため、相談の文が無い扱いで 400 になる。
     """
     captured = {}
 
@@ -181,15 +177,12 @@ def test_chat_birthdate_only_allows_empty_query_in_compat_mode(client, monkeypat
     }
 
     r = client.post(URL, data=json.dumps(payload), content_type="application/json")
-    assert r.status_code == 200
-
-    assert captured["query"] == ""
-    assert captured["birthdate"] == "1984-05-15"
-    assert captured["public_mode"] == "compat"
-    assert captured["flow"] == "B"
+    # コンシェルジュでは生年月日を使わない: 日付だけ・生年月日だけでは相談にしない（相性モードにもしない）。
+    assert r.status_code == 400
+    assert captured == {}
 
 @pytest.mark.django_db
-def test_chat_rescues_birthdate_from_slash_query_and_switches_to_compat_mode(client, monkeypatch):
+def test_chat_slash_date_only_query_is_rejected(client, monkeypatch):
     captured = {}
 
     monkeypatch.setattr(
@@ -213,15 +206,12 @@ def test_chat_rescues_birthdate_from_slash_query_and_switches_to_compat_mode(cli
     payload = {"query": "1984/05/15"}
 
     r = client.post(URL, data=json.dumps(payload), content_type="application/json")
-    assert r.status_code == 200
-
-    assert captured["query"] == ""
-    assert captured["birthdate"] == "1984-05-15"
-    assert captured["public_mode"] == "compat"
-    assert captured["flow"] == "B"
+    # コンシェルジュでは生年月日を使わない: 日付だけ・生年月日だけでは相談にしない（相性モードにもしない）。
+    assert r.status_code == 400
+    assert captured == {}
 
 @pytest.mark.django_db
-def test_chat_rescues_birthdate_from_slash_query_and_switches_to_compat_mode(client, monkeypatch):
+def test_chat_slash_date_only_query_is_rejected(client, monkeypatch):
     captured = {}
 
     monkeypatch.setattr(
@@ -245,16 +235,13 @@ def test_chat_rescues_birthdate_from_slash_query_and_switches_to_compat_mode(cli
     payload = {"query": "1984/05/15"}
 
     r = client.post(URL, data=json.dumps(payload), content_type="application/json")
-    assert r.status_code == 200
-
-    assert captured["query"] == ""
-    assert captured["birthdate"] == "1984-05-15"
-    assert captured["public_mode"] == "compat"
-    assert captured["flow"] == "B"
+    # コンシェルジュでは生年月日を使わない: 日付だけ・生年月日だけでは相談にしない（相性モードにもしない）。
+    assert r.status_code == 400
+    assert captured == {}
 
 
 @pytest.mark.django_db
-def test_chat_rescues_birthdate_from_compact_query_and_switches_to_compat_mode(client, monkeypatch):
+def test_chat_compact_date_only_query_is_rejected(client, monkeypatch):
     captured = {}
 
     monkeypatch.setattr(
@@ -278,12 +265,9 @@ def test_chat_rescues_birthdate_from_compact_query_and_switches_to_compat_mode(c
     payload = {"query": "19840515"}
 
     r = client.post(URL, data=json.dumps(payload), content_type="application/json")
-    assert r.status_code == 200
-
-    assert captured["query"] == ""
-    assert captured["birthdate"] == "1984-05-15"
-    assert captured["public_mode"] == "compat"
-    assert captured["flow"] == "B"
+    # コンシェルジュでは生年月日を使わない: 日付だけ・生年月日だけでは相談にしない（相性モードにもしない）。
+    assert r.status_code == 400
+    assert captured == {}
 
 @pytest.mark.django_db
 def test_chat_does_not_rescue_invalid_birthdate_query(client, monkeypatch):

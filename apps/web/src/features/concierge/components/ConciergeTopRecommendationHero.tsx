@@ -4,32 +4,34 @@ import Link from "next/link";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
-import type {
-  ActionSuggestionV4PreviewViewModel,
-  ActionSuggestionViewModel,
-} from "@/viewmodels/conciergeResultItem";
+import { buildHeroNextActionLines } from "@/features/concierge/buildHeroConclusion";
+import type { ActionSuggestionV4PreviewViewModel } from "@/viewmodels/conciergeResultItem";
 
 type Props = {
   name: string;
   href?: string | null;
-  imageUrl?: string | null;
   address?: string | null;
   topReasonLabel?: string | null;
   eyebrowLabel?: string | null;
-  subtitle?: string | null;
   trustLabels?: string[];
   originSummary?: string | null;
-  catchCopy: string;
-  whyTop?: string | null;
-  primaryReason?: string | null;
-  secondaryReason?: string | null;
-  factReason?: string | null;
-  interpretationReason?: string | null;
+  // Recommendation Result Hero Card consolidation
+  // (docs/product/recommendation-result-information-architecture.md §6, §13, §15
+  // PR2): pre-composed by buildHeroConclusionLines() upstream (ConciergeSectionsRenderer)
+  // from the existing, already-Authority-decided reason text (primaryReason / factReason
+  // / interpretationReason / legacy fallback). This component never re-decides which
+  // line wins -- it only lays the given lines out in the given order.
+  conclusionLines?: string[];
+  // Explanation-only Knowledge fact (deity/shrine_history winning the Reason V4 fact
+  // pick) -- docs/product/recommendation-signal-authority.md §8, docs/product/
+  // recommendation-result-information-architecture.md §13/§15 PR5, Finding 9. Never
+  // part of conclusionLines/Conclusion; rendered separately, below it, in a visibly
+  // weaker tone with an explicit "参考情報" label so it can never read as a Ranking
+  // reason. This component does not decide which fact wins or whether it counts as
+  // Explanation-only -- that classification is already made upstream
+  // (reasonV4FactPriority.ts / buildHeroReasonV4Sections.ts).
+  explanationOnlyFactText?: string | null;
   actionReason?: string | null;
-  differenceFromOthers?: string | null;
-  nextActionHint?: string | null;
-  tags?: string[];
-  actionSuggestions?: ActionSuggestionViewModel[];
   actionSuggestionV4Preview?: ActionSuggestionV4PreviewViewModel | null;
   analyticsSource?: "concierge_result" | "shrine_detail" | "map" | "shrines" | null;
   threadId?: string | null;
@@ -39,7 +41,6 @@ type Props = {
   historyTheme?: string | null;
   routeLabel?: string;
   secondaryActionSlot?: ReactNode;
-  onRouteClick?: () => void;
   onDetailClick?: () => void;
 };
 
@@ -53,24 +54,14 @@ function pickActionSuggestionV4Summary(preview: ActionSuggestionV4PreviewViewMod
 export default function ConciergeTopRecommendationHero({
   name,
   href = null,
-  imageUrl: _imageUrl = null,
   address = null,
   topReasonLabel = null,
   eyebrowLabel = null,
-  subtitle: _subtitle = null,
   trustLabels = [],
   originSummary = null,
-  catchCopy: _catchCopy,
-  whyTop: _whyTop = null,
-  primaryReason = null,
-  secondaryReason = null,
-  factReason = null,
-  interpretationReason = null,
+  conclusionLines = [],
+  explanationOnlyFactText = null,
   actionReason = null,
-  differenceFromOthers: _differenceFromOthers = null,
-  nextActionHint: _nextActionHint = null,
-  tags: _tags = [],
-  actionSuggestions: _actionSuggestions = [],
   actionSuggestionV4Preview = null,
   analyticsSource = "concierge_result",
   threadId = null,
@@ -80,7 +71,6 @@ export default function ConciergeTopRecommendationHero({
   historyTheme = null,
   routeLabel = "詳しく見る",
   secondaryActionSlot = null,
-  onRouteClick: _onRouteClick,
   onDetailClick,
 }: Props) {
   const visibleTrustLabels = trustLabels.filter(Boolean).slice(0, 4);
@@ -97,6 +87,13 @@ export default function ConciergeTopRecommendationHero({
         visibleActionSuggestionV4Preview.actionSource.source,
       ].join("|")
     : "";
+  // Merges Reason V4's action advice with the (already gated/resolved) Action
+  // Suggestion preview summary into one Next Action block -- neither is dropped or
+  // re-attributed, see buildHeroConclusion.ts.
+  const nextActionLines = buildHeroNextActionLines({
+    actionText: actionReason,
+    actionSuggestionSummary: actionSuggestionV4Summary || null,
+  });
   useEffect(() => {
     if (!visibleActionSuggestionV4Preview || !actionSuggestionV4Summary) return;
 
@@ -137,21 +134,21 @@ export default function ConciergeTopRecommendationHero({
   ]);
 
   return (
-    <section className="rounded-[30px] border border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white p-6 shadow-lg shadow-emerald-900/10 ring-1 ring-emerald-100">
+    <section className="rounded-[30px] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-6 shadow-[var(--kt-shadow-high)]">
       <div className="space-y-5">
         <div className="space-y-3">
           <div className="space-y-2">
             <div className="text-xs font-semibold tracking-[0.18em] text-emerald-700">
               {eyebrowLabel ?? "今の相談に近い神社"}
             </div>
-            <h2 className="text-xl font-semibold leading-8 text-slate-950">{name}</h2>
+            <h2 className="text-xl font-semibold leading-8 text-[var(--kt-color-text-primary)]">{name}</h2>
 
             {visibleTrustLabels.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {visibleTrustLabels.map((label) => (
                   <span
                     key={label}
-                    className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-100"
+                    className="rounded-full bg-[var(--kt-color-background-subtle)] px-2.5 py-1 text-[11px] font-semibold text-[var(--kt-color-text-secondary)]"
                   >
                     {label}
                   </span>
@@ -164,66 +161,49 @@ export default function ConciergeTopRecommendationHero({
           </div>
         </div>
 
-        {primaryReason ? (
+        {conclusionLines.length > 0 ? (
           <div
-            className="rounded-[var(--kt-radius-card)] border border-emerald-100 bg-white/70 px-4 py-3 shadow-sm shadow-emerald-900/5"
-            data-testid="recommendation-match-reason"
+            className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] px-4 py-3 shadow-[var(--kt-shadow-low)]"
+            data-testid="recommendation-conclusion"
           >
             <div className="space-y-1.5">
               <p className="text-[11px] font-semibold tracking-[0.14em] text-emerald-700">相談内容・ご利益との一致</p>
-              <p className="text-sm font-semibold leading-6 text-slate-800">{primaryReason}</p>
+              {conclusionLines.map((line, index) => (
+                <p key={index} className="text-sm font-semibold leading-6 text-[var(--kt-color-text-primary)]">
+                  {line}
+                </p>
+              ))}
               {topReasonLabel ? <p className="text-xs leading-5 text-[var(--kt-color-text-muted)]">{topReasonLabel}</p> : null}
             </div>
           </div>
         ) : null}
 
-        {secondaryReason ? (
-          <div
-            className="rounded-[var(--kt-radius-card)] border border-slate-100 bg-slate-50/70 px-4 py-3"
-            data-testid="recommendation-standard-reason"
-          >
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-slate-600">この神社を選んだ理由</p>
-            <p className="mt-1 text-sm leading-6 text-slate-700">{secondaryReason}</p>
+        {explanationOnlyFactText ? (
+          // Deliberately not a bordered/shadowed card like Conclusion/Next Action above --
+          // this must read as a quieter aside, weaker than both Conclusion and the Primary
+          // CTA below (Required UI, §15 PR5). "参考情報" makes explicit that this is
+          // knowledge about the candidate, not a reason it was recommended.
+          <div className="px-1" data-testid="recommendation-explanation-only-fact">
+            <span className="inline-flex items-center rounded-full bg-[var(--kt-color-background-subtle)] px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-[var(--kt-color-text-secondary)]">
+              参考情報
+            </span>
+            <p className="mt-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{explanationOnlyFactText}</p>
           </div>
         ) : null}
 
-        {factReason ? (
+        {nextActionLines.length > 0 ? (
           <div
-            className="rounded-[var(--kt-radius-card)] border border-emerald-100 bg-white/70 px-4 py-3 shadow-sm shadow-emerald-900/5"
-            data-testid="recommendation-reason-v4-fact"
+            className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] px-4 py-3 shadow-[var(--kt-shadow-low)]"
+            data-testid="recommendation-next-action"
           >
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-emerald-700">この神社について</p>
-            <p className="mt-1 text-sm leading-6 text-slate-800">{factReason}</p>
-          </div>
-        ) : null}
-
-        {interpretationReason ? (
-          <div
-            className="rounded-[var(--kt-radius-card)] border border-slate-100 bg-slate-50/70 px-4 py-3"
-            data-testid="recommendation-reason-v4-interpretation"
-          >
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-slate-600">今の相談とのつながり</p>
-            <p className="mt-1 text-sm leading-6 text-slate-700">{interpretationReason}</p>
-          </div>
-        ) : null}
-
-        {actionReason ? (
-          <div
-            className="rounded-[var(--kt-radius-card)] border border-teal-100 bg-teal-50/70 px-4 py-3 shadow-sm shadow-teal-900/5"
-            data-testid="recommendation-reason-v4-action"
-          >
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-teal-700">参拝前にできること</p>
-            <p className="mt-1 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{actionReason}</p>
-          </div>
-        ) : null}
-
-        {actionSuggestionV4Summary ? (
-          <div
-            className="rounded-[var(--kt-radius-card)] border border-teal-100 bg-teal-50/70 px-4 py-3 shadow-sm shadow-teal-900/5"
-            data-testid="hero-action-suggestion-v4-preview"
-          >
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-teal-700">次の一歩</p>
-            <p className="mt-1 truncate text-sm leading-6 text-[var(--kt-color-text-secondary)]">{actionSuggestionV4Summary}</p>
+            <div className="space-y-1">
+              <p className="text-[11px] font-semibold tracking-[0.14em] text-teal-700">参拝前にできること</p>
+              {nextActionLines.map((line, index) => (
+                <p key={index} className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+                  {line}
+                </p>
+              ))}
+            </div>
           </div>
         ) : null}
 

@@ -2,5 +2,5 @@
 import { Toaster } from "sonner";
 
 export function ClientToaster() {
-  return <Toaster richColors />;
+  return <Toaster richColors theme="dark" />;
 }

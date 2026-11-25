@@ -4,20 +4,35 @@ import { HomeHeroConsultationInput } from "./HomeHeroConsultationInput";
 
 export function HomeHero() {
   return (
-    <section className="rounded-3xl bg-stone-100/80 px-6 py-16 sm:px-10 sm:py-24">
-      <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-10 text-center">
-        <div className="space-y-4">
-          <p className="text-xs font-medium tracking-[0.35em] text-stone-500">KAMI MUSUBI</p>
-          <h1 className="text-3xl font-semibold leading-tight text-stone-900 sm:text-4xl">
-            今の相談から、向かう神社を見つける
-          </h1>
-          <p className="mx-auto max-w-xl text-sm leading-7 text-stone-500">
-            迷っていることを一言にすると、今の気持ちに合わせて神社との出会いを整えます。
-          </p>
-        </div>
+    // Home上部の単一の焦点。旧実装は大きな角丸カード(py-24)でHeroを囲っていたが、
+    // カードの表現は入力カードへ集約し、Hero自体は面を持たない見出し帯とする。
+    // これにより「カードが二重になって焦点が割れる」状態を避ける。
+    <section className="space-y-7">
+      <div className="space-y-3">
+        <p className="text-[10px] font-medium tracking-[0.3em] text-[var(--home-text-muted)]">KAMI MUSUBI</p>
+        {/*
+          Japanese Modern Classic の主役。日本語見出しだけを明朝Displayにする。
+          Webfontは追加していない（--home-font-display はOS標準明朝への
+          フォールバック指定のみ / bundle影響ゼロ）。明朝が無い環境では
+          serif、それも無ければ既存の継承フォントに戻るだけで構図は崩れない。
 
-        <HomeHeroConsultationInput />
+          明朝の細い線を暗い地でも読み取りやすくするため、見出しはsemiboldにする。
+          字間と改行位置は維持する。
+        */}
+        <h1
+          className="text-[27px] font-semibold leading-[1.4] text-[var(--home-text-primary)]"
+          style={{ fontFamily: "var(--home-font-display)" }}
+        >
+          今の相談から、
+          <br />
+          向かう神社を見つける
+        </h1>
+        <p className="text-[13px] font-medium leading-7 text-[var(--home-text-secondary)]" style={{ fontFamily: "var(--home-font-display)" }}>
+          迷っていることを一言にすると、今の気持ちに合わせて神社との出会いを整えます。
+        </p>
       </div>
+
+      <HomeHeroConsultationInput />
     </section>
   );
 }

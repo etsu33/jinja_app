@@ -1,8 +1,15 @@
 import type { DetailSupplementSection } from "@/components/shrine/detail/types";
+import { SHRINE_DETAIL_SECTION_CARD_CLASS, type ShrineDetailSectionVariant } from "@/components/shrine/detail/sectionVariant";
 
-export default function ShrineSupplementSection({ section }: { section: DetailSupplementSection }) {
+export default function ShrineSupplementSection({
+  section,
+  variant = "card",
+}: {
+  section: DetailSupplementSection;
+  variant?: ShrineDetailSectionVariant;
+}) {
   return (
-    <section className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4">
+    <section className={variant === "plain" ? "" : SHRINE_DETAIL_SECTION_CARD_CLASS}>
       <h2 className="text-base font-semibold text-[var(--kt-color-text-primary)]">{section.heading}</h2>
 
       <div className="mt-3 space-y-3">

@@ -40,7 +40,7 @@ def test_chat_response_includes_base_contract_fields(client, monkeypatch):
 
 
 @pytest.mark.django_db
-def test_chat_response_includes_optional_direction_reference_when_grounded(client, monkeypatch):
+def test_chat_response_omits_direction_reference_even_with_birthdate(client, monkeypatch):
     _stub_candidates(monkeypatch)
     _stub_recommendations(
         monkeypatch,
@@ -68,20 +68,11 @@ def test_chat_response_includes_optional_direction_reference_when_grounded(clien
         content_type="application/json",
     )
 
+    # 方位の参考情報は生年月日（九星）から計算する。コンシェルジュでは生年月日を使わない
+    # （生年月日との相性・方位はコンパスの役割）ため、生年月日を送っても付かない。
     assert r.status_code == 200
-    reference = r.json()["data"]["recommendations"][0]["direction_reference"]
-    assert set(reference) == {
-        "visit_date",
-        "actual_direction",
-        "reference_directions",
-        "matched",
-        "calculation_method",
-        "note",
-    }
-    assert reference["visit_date"] == "2026-09-15"
-    assert reference["calculation_method"] == "annual_monthly_kyusei_v1"
-    assert reference["note"] == "年盤と月盤による参考情報です。日盤は使用していません。"
-    assert r.json()["data"]["recommendations_v2"][0]["direction_reference"] == reference
+    assert "direction_reference" not in r.json()["data"]["recommendations"][0]
+    assert "direction_reference" not in r.json()["data"]["recommendations_v2"][0]
 
 
 @pytest.mark.django_db

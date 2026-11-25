@@ -5,6 +5,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { ClientToaster } from "./ClientToaster";
 import HomeLogoLink from "@/components/layout/HomeLogoLink";
+import { LegalFooter } from "@/components/layout/LegalFooter";
 
 import ClientBootstrap from "./providers/ClientBootstrap";
 
@@ -38,18 +39,22 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: "Shrine Map",
-  description: "Map preview",
+  title: "KAMI MUSUBI",
+  description:
+    "ユーザーの悩みや願いごとに応じて神社を提案し、神社詳細の確認から経路案内までつなぐ神社コンシェルジュアプリです。",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ja" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="ja" className={`${geistSans.variable} ${geistMono.variable} dark antialiased`}>
       <body className="min-h-dvh flex flex-col">
         <AuthProvider>
           <ClientBootstrap />
 
-          <header className="sticky top-0 z-[100] bg-white">
+          {/* 地と同じ Deep Ink Navy + Worldview の境界線。Header / 本文 / Footer の間に
+              色の継ぎ目を作らない。Home の幅調整 (27rem) は globals.css の
+              Home 限定ルールが担い、ここでは色だけを持つ。 */}
+          <header className="sticky top-0 z-[100] border-b border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-base)]">
             <nav className="mx-auto flex max-w-5xl items-center gap-4 p-3">
               <HomeLogoLink />
 
@@ -61,7 +66,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </nav>
           </header>
 
-          <main className="flex-1 min-h-0 overflow-y-auto">{children}</main>
+          {/* LegalFooter は main の内側・本文の後ろに置く。
+              flex の外へ出すとビューポート下端に貼り付いて常時可視になり、
+              Home / Concierge の主要導線より前に出てしまうため。 */}
+          <main className="flex-1 min-h-0 overflow-y-auto">
+            {children}
+            <LegalFooter />
+          </main>
 
           <ClientToaster />
         </AuthProvider>

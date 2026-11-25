@@ -19,3 +19,47 @@ export async function PATCH(req: NextRequest) {
     body: bodyText,
   });
 }
+
+function isAllowedOrigin(req: NextRequest): boolean {
+  const origin = req.headers.get("origin");
+
+  // Originを送らない非ブラウザクライアント等はここでは拒否しない。
+  // ブラウザからのcross-origin requestはOriginで判定する。
+  if (!origin) {
+    return true;
+  }
+
+  try {
+    return new URL(origin).origin === req.nextUrl.origin;
+  } catch {
+    return false;
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  if (!isAllowedOrigin(req)) {
+    return new Response(null, { status: 403 });
+  }
+
+  const response = await bffFetchWithAuthFromReq(req, "/api/users/me/", {
+    method: "DELETE",
+  });
+
+  // Backend が削除完了を 204 で確定した場合だけ認証Cookieを破棄する。
+  // 503 / 401 / その他の失敗時は Account が残っている可能性があるため、
+  // Cookie を維持して再試行できる状態を残す。
+  if (response.status !== 204) {
+    return response;
+  }
+
+  response.cookies.set("access_token", "", {
+    path: "/",
+    maxAge: 0,
+  });
+  response.cookies.set("refresh_token", "", {
+    path: "/",
+    maxAge: 0,
+  });
+
+  return response;
+}

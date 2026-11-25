@@ -15,6 +15,14 @@
 
 ---
 
+## 現行運用スコープ（2026-10-25）
+
+現行のMVP検証はWebを中心に、Concierge / 神社情報・推薦理由 / Map・Route / ユーザー獲得・行動分析を対象とする。Webは入力・表示・導線、BFFは認証情報の中継、Backendは推薦・認証・認可・業務判定の正本を担う。Mobile（Expo / Android / iOS）、画像機能の拡張、課金機能の拡張は新規開発を保留するが、既存の実装と依存関係は保持する。
+
+保留は既存APIの無効化を意味せず、公開中のエンドポイントは引き続き認証・認可・入力検証・レート制限などの対象とする。機能の公開停止や再開は個別の実装・監査・母艦判断による。フェーズと完了条件は `docs/core/roadmap.md`、セキュリティ所見は `docs/audit/` を参照する。
+
+---
+
 ## 全体フロー
 
 ```text
@@ -189,8 +197,10 @@ FrontendおよびMobileは、Backendが返す観測用Scoreを独自に順位へ
 
 ScoreのSignal、Component、Weight、計算式、評価方法および適用状況は、以下を正本とする。
 
-- `docs/analytics/recommendation-score-v3-design.md`
+- `docs/analytics/recommendation-score-v2-current-design.md`
 - 関連するBackend実装およびテスト
+
+`docs/analytics/recommendation-score-v3-design.md`はReference / Future Designであり、Current Score正本として扱わない（`docs/audit/rule-conflict-resolution.md` Decision B）。
 
 ---
 
@@ -239,6 +249,51 @@ Detail は神社理解を担当し、過度なパーソナライズを行わな�
 ### Shrine
 
 公開検索、ランキング、コンシェルジュ推薦で参照される神社マスター。
+
+書き込み権限（backend で判定）:
+
+```text
+Shrine の作成・更新・削除 = staff（is_staff）のみ
+  /api/shrines/ create / update / partial_update / destroy → staff 限定（default-deny）
+  POST /api/shrines/ingest/  → 誰でも呼べる。新規作成は staff のみ
+                               （staff 以外: 登録済みを返す / 未登録は 404 shrine_not_registered）
+  POST /api/places/resolve/  → 作成しない（未登録は registered=false と Place 情報を返す）
+                               専用 throttle `places-resolve`（10/min、POST のみ。DISABLE_THROTTLE でも緩めない）
+  Django Admin               → staff ログイン + モデル権限
+一般ユーザーの神社追加     = ShrineSubmission（staff 承認後に Shrine へ反映）
+```
+
+神社位置情報は、既存の参拝ナビ座標と将来の神社中心座標を同一責務として扱わない。
+
+```text
+Shrine.latitude / Shrine.longitude
+= 参拝ナビ座標
+= route / arrival responsibility
+
+ShrineCanonicalAnchor（将来Schema target）
+= 神社中心座標
+= geographic identity / proximity / compass direction responsibility
+```
+
+Split Anchorの物理保存構造、未調査状態、Component / Evidence責務、
+将来consumer routingおよびhidden fallback禁止は
+`docs/core/split-anchor-architecture.md`を正本とする。
+
+同文書の正本化だけではschema変更・backfill・runtime cutoverを行わない。
+
+### ShrineNearbySpot
+
+神社に関係する周辺の歴史スポット（旧邸・公園など）。境内の見どころ（ShrineHighlight）とは別のデータとして持つ（承認済み・実装未着手）。
+
+```text
+ShrineNearbySpot
+= 神社詳細の Public Layer に出す、境内の外の歴史スポット
+= 推薦・Compass・Ranking・課金では使わない
+= 公開判定は Publication Gate、地図導線は Position Gate（別判定）
+= 座標は Spot 自身のもの。Shrine.latitude / longitude で代わりに埋めない
+```
+
+モデル・公開判定・API / UI 契約は `docs/product/shrine-nearby-spot-spec.md` を正本とする。
 
 ### ShrineSubmission
 
@@ -317,10 +372,12 @@ request.user
 ### Core
 
 - Core文書の入口：`docs/core/README.md`
+- ローカル開発環境：`docs/core/desktop-development-contract.md`
+- Split Anchor Architecture：`docs/core/split-anchor-architecture.md`
 - Meaning Layer：`docs/core/meaning-layer.md`
 - Meaning接続：`docs/core/meaning-layer-connection.md`
 - Narrative原則：`docs/core/narrative-guideline.md`
-- Recommendation品質：`docs/core/recommendation-readiness.md`
+- Knowledge CoverageのGovernance観測：`docs/core/recommendation-readiness.md`
 - Recommendation Reason：`docs/core/recommendation-reason-contract.md`
 - 認証：`docs/core/authentication-flow.md`
 - 認証画面遷移：`docs/core/auth-flow.md`
@@ -333,6 +390,7 @@ request.user
 - Meaning Translation：`docs/product/meaning-translation-mapping.md`
 - Explore：`docs/product/explore-integration-design.md`
 - 神社詳細：`docs/product/shrine-detail-layer.md`
+- 神社周辺の歴史スポット：`docs/product/shrine-nearby-spot-spec.md`
 - Action：`docs/product/action_suggestion_v4.md`
 - Visit / Reflection：`docs/product/visit-reflection-flow.md`
 - Premium：`docs/product/premium-experience.md`
@@ -348,7 +406,8 @@ request.user
 ### Analytics
 
 - Analytics文書の入口：`docs/analytics/README.md`
-- Recommendation Score v3：`docs/analytics/recommendation-score-v3-design.md`
+- Recommendation Score（Current正本）：`docs/analytics/recommendation-score-v2-current-design.md`
+- Recommendation Score v3（Reference / Future Design。Current正本ではない）：`docs/analytics/recommendation-score-v3-design.md`
 
 ### Audit
 

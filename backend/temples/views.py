@@ -20,9 +20,9 @@ from django.views.generic import TemplateView
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
+from shrine_project.throttling import ScopedRateThrottle
 
 from .models import Shrine
 from .route_service import Point as RoutePoint

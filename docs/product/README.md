@@ -38,10 +38,22 @@ recommendation-v4-interpreter-contract.md
 action_suggestion_v4.md
 ```
 
+### 1.5 Compass
+
+```text
+compass-product-contract.md
+↓
+compass-mvp-runtime-contract.md
+↓
+compass-product-logic-evaluation-framework.md
+```
+
 ### 2. 神社詳細・参拝・記録
 
 ```text
 shrine-detail-layer.md
+↓
+shrine-nearby-spot-spec.md
 ↓
 shrine-detail-v3-design.md
 ↓
@@ -83,11 +95,20 @@ billing-paywall.md
 | `recommendation-v4-interpreter-contract.md` | Consultation InterpreterのInput / Output契約                |
 | `action_suggestion_v4.md`                   | Action Suggestion v4の契約・Schema                          |
 
+### Compass
+
+| ファイル                          | 役割                                                                                       |
+| --------------------------------- | -------------------------------------------------------------------------------------------- |
+| `compass-product-contract.md`     | Visit CompassのProduct Promise、Authority境界、Signal-to-Explanation Ruleを管理する正本 |
+| `compass-mvp-runtime-contract.md` | Visit Compass MVPの最小Runtime入出力契約（time/profile/origin/purpose/direction）を管理する正本 |
+| `compass-product-logic-evaluation-framework.md` | Direction Logic選択肢（現行annual∩monthly／fallback／score model等）を比較するための評価軸・判定方法・用語を固定する正本。特定案の採否は決定しない |
+
 ### 神社詳細・参拝・記録
 
 | ファイル                     | 役割                                                                         |
 | ---------------------------- | ---------------------------------------------------------------------------- |
 | `shrine-detail-layer.md`     | Shrine DetailのPublic / Context / Personal Layer契約                         |
+| `shrine-nearby-spot-spec.md` | 神社周辺の歴史スポット（ShrineNearbySpot）のデータ・公開判定・API / UI契約（承認済み・実装未着手） |
 | `shrine-detail-v3-design.md` | Shrine Detail v3のUX・Analytics・Premium接続設計                             |
 | `shrine-submission-flow.md`  | 神社追加、重複候補および投稿後導線の現行仕様                                 |
 | `visit-reflection-flow.md`   | 参拝から振り返りまでの体験・保存・イベント契約                               |

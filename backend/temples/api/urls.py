@@ -6,6 +6,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework.routers import DefaultRouter
 
 from temples import api_views_concierge as concierge
+from temples.api.views.apple_billing import AppleNotificationView, ApplePurchaseView
 from temples.api.views.billing import (
     BillingCheckoutView,
     BillingStatusLegacyView,
@@ -27,8 +28,8 @@ from temples.api.views.public_profile import public_profile
 from temples.api.views.search import (
     detail,
     detail_query,
-    nearby_search,
-    nearby_search_legacy,
+    PlacesNearbySearchLegacyView,
+    PlacesNearbySearchView,
     photo,
     places_find,
     search,
@@ -40,16 +41,19 @@ from temples.api.views.shrine import (
     PopularShrineListView,
     ShrineViewSet,
 )
-from temples.api.views.shrine_public import PublicShrineDetailView
 from temples.api.views.tags import goriyaku_tags_list
+from temples.api.views.shrine_feature_words_en import ShrineFeatureWordsEnView
 from temples.api.views.shrine_meaning import ShrineMeaningView
 from temples.api.views.visit import VisitCreateView, UserVisitListView
 from temples.api.views.reflection import ShrineReflectionCreateView, ShrineReflectionListView
 from temples.api.views.shrine_interaction import ShrineInteractionLogCreateView
 from temples.api.views.action_event import ActionEventCreateView
 from temples.api.views.debug_behavior_funnel import DebugBehaviorFunnelView
+from temples.api.views.deep_dive import DeepDiveAskView
 from temples.api.views.score_v3_dashboard import ScoreV3DashboardView
 from temples.api_views import FavoriteViewSet
+from temples.api_views_compass import CompassRecommendationsView
+from temples.api_views_compass_weekly import CompassWeeklyView
 
 
 app_name = "temples"
@@ -118,6 +122,8 @@ urlpatterns = [
     path("shrines/<int:pk>/", shrine_detail_view, name="shrine_detail"),
     path("shrines/<int:pk>/data/", shrine_detail_view, name="shrine_detail_data"),
     path("shrines/<int:pk>/meaning/", ShrineMeaningView.as_view(), name="shrine_meaning"),
+    path("shrines/<int:pk>/feature-words-en/", ShrineFeatureWordsEnView.as_view(), name="shrine_feature_words_en"),
+    path("deep-dive/ask/", DeepDiveAskView.as_view(), name="deep-dive-ask"),
     path("shrines/nearby/", NearestShrinesAPIView.as_view(), name="nearby"),
     path("shrines/<int:id>/visit/", VisitCreateView.as_view(), name="shrine-visit"),
     path("shrines/<int:pk>/reflection/", ShrineReflectionCreateView.as_view(), name="shrine-reflection-create"),
@@ -128,17 +134,19 @@ urlpatterns = [
     path("concierge/score-v3/dashboard/", ScoreV3DashboardView.as_view(), name="score-v3-dashboard"),
     path("visits/", UserVisitListView.as_view(), name="visit-list"),
     path("journeys/timeline/", JourneyTimelineView.as_view(), name="journey-timeline"),
-    path("public/shrines/<int:pk>/", PublicShrineDetailView.as_view(), name="public-shrine-detail"),
     path("populars/", PopularShrineListView.as_view(), name="popular-shrines"),
     path("concierge/chat/", concierge_chat_compat, name="concierge-chat"),
     path("concierge/chat", concierge_chat_compat_noslash, name="concierge-chat-noslash"),
     path("concierge/plan/", concierge.plan, name="concierge-plan"),
-    path("concierge/thread/", concierge.thread, name="concierge-thread"),
     path("concierge-threads/", ConciergeThreadListView.as_view(), name="concierge-thread-list"),
     path("concierge-threads/<int:pk>/", ConciergeThreadDetailView.as_view(), name="concierge-thread-detail"),
+    path("compass/recommendations/", CompassRecommendationsView.as_view(), name="compass-recommendations"),
+    path("compass/weekly/", CompassWeeklyView.as_view(), name="compass-weekly"),
     path("billing/status/", BillingStatusLegacyView.as_view(), name="billing-status-legacy"),
     path("billings/checkout/", BillingCheckoutView.as_view(), name="billing-checkout"),
     path("billings/status/", BillingStatusView.as_view(), name="billing-status"),
+    path("billings/apple/transactions/", ApplePurchaseView.as_view(), name="billing-apple-purchase"),
+    path("webhooks/apple/app-store/", AppleNotificationView.as_view(), name="billing-apple-notification"),
     path("billings/webhook/", BillingStripeWebhookView.as_view(), name="billing-stripe-webhook"),
     path("profiles/<str:username>/", public_profile, name="public_profile"),
     path("goriyaku-tags/", goriyaku_tags_list, name="goriyaku-tags"),
@@ -147,9 +155,17 @@ urlpatterns = [
     path("places/text-search/", text_search, name="places-text-search"),
     path("places/text_search/", text_search_legacy, name="places-text-search-legacy"),
     path("places/photo/", photo, name="places-photo"),
-    path("places/nearby_search/", nearby_search_legacy, name="places-nearby-search-legacy"),
-    path("places/nearby-search/", nearby_search_legacy, name="places-nearby-search-legacy-hyphen"),
-    path("places/nearby/", nearby_search, name="places-nearby"),
+    path(
+        "places/nearby_search/",
+        PlacesNearbySearchLegacyView.as_view(),
+        name="places-nearby-search-legacy",
+    ),
+    path(
+        "places/nearby-search/",
+        PlacesNearbySearchLegacyView.as_view(),
+        name="places-nearby-search-legacy-hyphen",
+    ),
+    path("places/nearby/", PlacesNearbySearchView.as_view(), name="places-nearby"),
     path("places/detail/", detail_query, name="places-detail"),
     path("places/detail/<str:id>/", detail, name="places-detail-id"),
     path("places/find/", places_find, name="places-find-lite"),

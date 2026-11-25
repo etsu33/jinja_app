@@ -4,7 +4,7 @@ import { __dedupeItemsForTest } from "../buildPayloadFromUnified";
 
 
 describe("dedupeItems", () => {
-  it("shrineId 重複は1件にする（registered優先維持）", () => {
+  it("shrineId 重複は最初の1件を保持する", () => {
     const out = __dedupeItemsForTest([
       {
         kind: "registered",
@@ -91,7 +91,7 @@ describe("dedupeItems", () => {
     expect(out.some((x: any) => x.kind === "place" && x.placeId === "P1")).toBe(false);
   });
 
-  it("placeId の trim/lowercase 正規化で重複を潰す", () => {
+  it("placeId は trim し、大文字小文字は区別する", () => {
     const out = __dedupeItemsForTest([
       {
         kind: "place",
@@ -115,6 +115,6 @@ describe("dedupeItems", () => {
       },
     ] as any);
 
-    expect(out).toHaveLength(1);
+    expect(out).toHaveLength(2);
   });
 });

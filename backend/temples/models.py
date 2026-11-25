@@ -11,6 +11,23 @@ from django.utils import timezone
 from .models_places_seeds import PlacesSeed, PlacesSeedState  # noqa
 from .models_concierge_analytics import ConciergeRecommendationLog
 from .models_usage import FeatureUsage  # noqa
+from .models_weekly_presentation import WeeklyPresentationSnapshot  # noqa
+from .models_feature_words_en import ShrineFeatureWordEn  # noqa
+from .models_canonical_anchor import (  # noqa
+    ShrineCanonicalAnchor,
+    ShrineCanonicalAnchorComponent,
+    ShrineCanonicalAnchorEvidence,
+)
+from temples.domain.evidence_provenance import EVIDENCE_MECHANISMS, EVIDENCE_PRODUCERS
+from temples.domain.evidence_taxonomy import get_current_taxonomy_version
+from temples.domain.goriyaku_taxonomy_v1 import (
+    GORIYAKU_TAXONOMY_NAMESPACE,
+    validate_goriyaku_v1_canonical_key,
+)
+from temples.domain.history_theme_taxonomy_v1 import (
+    HISTORY_THEME_TAXONOMY_NAMESPACE,
+    validate_history_theme_v1_canonical_key,
+)
 
 # GeoDjango switch
 USE_REAL_GIS = bool(getattr(settings, "USE_GIS", False)) and not bool(
@@ -520,6 +537,215 @@ class ShrineDeity(models.Model):
         _validate_verified_at_consistency(self.verification_status, self.verified_at)
 
 
+# member_count を必須とする member_count_relation。clean() と DB CheckConstraint が共有する。
+_COLLECTIVE_MEMBER_COUNT_RELATIONS_WITH_COUNT = ("exact", "minimum", "approximate")
+
+
+class ShrineDeityCollective(models.Model):
+    """Source-backed な集合祭神Fact。docs/audit/collective-deity-model-change-design.md（A-1）§4 の実装。
+
+    ShrineDeity（個別に帰属可能な名のある祭神 1柱 = 1 row）の意味は変えない。
+    本 model は Model Foundation のみであり、Runtime（Serializer / selector /
+    Recommendation eligibility / Deep Dive / Evidence Transport）からは読まれない。
+    member_count / member_list_status は Source が述べる値であり、Membership 行数から
+    導出しない。
+    """
+
+    MEMBER_COUNT_RELATION_CHOICES = [
+        ("exact", "exact"),
+        ("minimum", "minimum"),
+        ("approximate", "approximate"),
+        ("unspecified", "unspecified"),
+    ]
+    MEMBER_COUNT_RELATIONS_WITH_COUNT = _COLLECTIVE_MEMBER_COUNT_RELATIONS_WITH_COUNT
+
+    MEMBER_LIST_STATUS_CHOICES = [
+        ("complete", "complete"),
+        ("partial", "partial"),
+        ("not_enumerated", "not_enumerated"),
+        ("not_determined", "not_determined"),
+    ]
+
+    shrine = models.ForeignKey(Shrine, on_delete=models.CASCADE, related_name="deity_collectives")
+    source_attested_label = models.CharField(max_length=255, validators=[_validate_not_blank])
+    # role 語彙は ShrineDeity と同一（別語彙を作らない）。
+    role = models.CharField(max_length=16, choices=ShrineDeity.ROLE_CHOICES, default="unknown")
+    sort_order = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    member_count = models.PositiveIntegerField(null=True, blank=True)
+    member_count_relation = models.CharField(
+        max_length=16, choices=MEMBER_COUNT_RELATION_CHOICES, default="unspecified"
+    )
+    member_list_status = models.CharField(
+        max_length=16, choices=MEMBER_LIST_STATUS_CHOICES, default="not_determined"
+    )
+    sources = models.ManyToManyField(
+        ShrineKnowledgeSource, related_name="deity_collectives", blank=True
+    )
+    verification_status = models.CharField(
+        max_length=32,
+        choices=KNOWLEDGE_VERIFICATION_STATUS_CHOICES,
+        default="draft",
+    )
+    confidence = models.CharField(
+        max_length=8, choices=KNOWLEDGE_CONFIDENCE_CHOICES, blank=True, default=""
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+        indexes = [
+            models.Index(fields=["shrine", "sort_order"], name="idx_shrine_deity_coll_sort"),
+        ]
+        # A-4b: clean() と同じ row-local 不変条件を DB でも強制する（objects.create() /
+        # QuerySet.update() / bulk 経路でも破れないように）。member_count の値域
+        # （>0 / >=2 等）や Membership 行数との一致はここで追加しない。
+        constraints = [
+            CheckConstraint(
+                condition=(
+                    Q(
+                        member_count_relation__in=_COLLECTIVE_MEMBER_COUNT_RELATIONS_WITH_COUNT,
+                        member_count__isnull=False,
+                    )
+                    | Q(member_count_relation="unspecified", member_count__isnull=True)
+                ),
+                name="chk_deity_coll_count_rel",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.shrine_id}:{self.source_attested_label}"
+
+    def clean(self) -> None:
+        super().clean()
+        errors: dict[str, list] = {}
+        try:
+            _validate_verified_at_consistency(self.verification_status, self.verified_at)
+        except ValidationError as exc:
+            errors.update(exc.message_dict)
+
+        if (
+            self.member_count_relation in self.MEMBER_COUNT_RELATIONS_WITH_COUNT
+            and self.member_count is None
+        ):
+            errors.setdefault("member_count", []).append(
+                f"member_count_relation='{self.member_count_relation}' の場合、"
+                "member_count の設定が必要です。"
+            )
+        elif self.member_count_relation == "unspecified" and self.member_count is not None:
+            errors.setdefault("member_count", []).append(
+                "member_count_relation='unspecified' の場合、member_count は null でなければなりません。"
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+
+class ShrineDeityCollectiveMembership(models.Model):
+    """集合祭神Factと既知の個別 ShrineDeity の関係。docs/audit/collective-deity-model-change-design.md（A-1）§5 の実装。
+
+    Membership Evidence = B: Membership は独自の sources を持つ source-backed relation であり、
+    Collective の Source を自動継承しない。fact-ready な Collective があっても Membership は
+    fact-ready にならない。Membership 行数は Collective.member_count / member_list_status を
+    決めない。本 model は Model Foundation のみであり、Runtime からは読まれない。
+    """
+
+    collective = models.ForeignKey(
+        ShrineDeityCollective, on_delete=models.CASCADE, related_name="memberships"
+    )
+    # evidence-bearing relation のため、参照先 ShrineDeity の削除で黙って消さない（EvidenceLink と同じ方向）。
+    deity = models.ForeignKey(
+        ShrineDeity, on_delete=models.PROTECT, related_name="collective_memberships"
+    )
+    sort_order = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    sources = models.ManyToManyField(
+        ShrineKnowledgeSource, related_name="deity_collective_memberships", blank=True
+    )
+    verification_status = models.CharField(
+        max_length=32,
+        choices=KNOWLEDGE_VERIFICATION_STATUS_CHOICES,
+        default="draft",
+    )
+    confidence = models.CharField(
+        max_length=8, choices=KNOWLEDGE_CONFIDENCE_CHOICES, blank=True, default=""
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+        constraints = [
+            UniqueConstraint(fields=["collective", "deity"], name="uniq_deity_coll_member"),
+        ]
+        indexes = [
+            models.Index(fields=["collective", "sort_order"], name="idx_deity_coll_member_sort"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.collective_id}:{self.deity_id}"
+
+    def clean(self) -> None:
+        super().clean()
+        errors: dict[str, list] = {}
+        try:
+            _validate_verified_at_consistency(self.verification_status, self.verified_at)
+        except ValidationError as exc:
+            errors.update(exc.message_dict)
+
+        collective = None
+        deity = None
+        if self.collective_id is not None:
+            try:
+                collective = self.collective
+            except ShrineDeityCollective.DoesNotExist:
+                errors.setdefault("collective", []).append("参照する Collective を解決できません。")
+        if self.deity_id is not None:
+            try:
+                deity = self.deity
+            except ShrineDeity.DoesNotExist:
+                errors.setdefault("deity", []).append("参照する ShrineDeity を解決できません。")
+        # shrine identity は推測・修復しない。不一致は拒否するだけである。
+        if collective is not None and deity is not None and collective.shrine_id != deity.shrine_id:
+            errors.setdefault("deity", []).append(
+                "Collective と ShrineDeity は同じ Shrine に属する必要があります。"
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        # 通常の create / update 経路でも same-Shrine 不変条件を通す（EvidenceLink と同じ）。
+        # bulk_create() は save() を通らない。backfill の write path は後続 Gate で扱う。
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+
+class CollectiveRuntimeActivation(models.Model):
+    """集合祭神 Collective の Runtime rollout 承認（A6-00 Foundation）。
+
+    row が存在する = その Collective が Runtime rollout 候補として明示承認されている。
+    row が存在しない = Runtime activated ではない。row の有無が唯一の rollout state である。
+
+    Activation は rollout 承認にすぎず、Runtime admission の十分条件ではない。
+    Evidence usability / member_list_status / Membership Evidence / deity 解決 /
+    same-Shrine 整合の判定は後続 A6-01 で別途行い、本 model は持たない。
+    Knowledge Fact 構造（ShrineDeityCollective）に rollout state を載せないため別 model とする。
+    本 model は Foundation のみであり、Runtime からは読まれない。
+    """
+
+    collective = models.OneToOneField(
+        ShrineDeityCollective, on_delete=models.CASCADE, related_name="runtime_activation"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"runtime_activation:{self.collective_id}"
+
+
 class ShrineHistory(models.Model):
     """神社の由緒・歴史Knowledge。docs/knowledge/shrine-knowledge-contract.md「shrine_history契約」の実装。"""
 
@@ -561,6 +787,9 @@ class ShrineHistory(models.Model):
     class Meta:
         ordering = ["sort_order", "id"]
         verbose_name_plural = "Shrine histories"
+        constraints = [
+            models.UniqueConstraint(fields=["id", "shrine"], name="history_id_shrine_unique"),
+        ]
         indexes = [
             models.Index(fields=["shrine", "sort_order"], name="idx_shrine_history_sort"),
         ]
@@ -571,6 +800,490 @@ class ShrineHistory(models.Model):
     def clean(self) -> None:
         super().clean()
         _validate_verified_at_consistency(self.verification_status, self.verified_at)
+
+
+class ShrineFactSourceCitation(models.Model):
+    """Fact 単位の Source 内 locator（頁・節など）provenance。
+
+    docs/knowledge/fact-source-citation-contract.md の実装。ShrineKnowledgeSource は
+    document-level のまま（identity = source_type + normalized URL）とし、同じ Source 文書内の
+    Fact ごとに異なる位置を bibliography に持たせない。
+
+    - 既存の ShrineHistory.sources / ShrineDeity.sources M2M は置き換えない。runtime / Evidence Gate は
+      従来どおり M2M だけを読み、本 model を参照しない（additive provenance only）。
+    - 対象 Fact は shrine_history / shrine_deity の exactly one。
+    - source は対象 Fact の `.sources` に既に関連付いている Source でなければならない（application
+      validation。save() で full_clean() する）。
+    - 同じ Fact + Source + locator_text の重複は拒否する。同じ Fact + Source に別 locator は許容する。
+    """
+
+    source = models.ForeignKey(
+        ShrineKnowledgeSource, on_delete=models.CASCADE, related_name="fact_citations"
+    )
+    shrine_history = models.ForeignKey(
+        ShrineHistory,
+        on_delete=models.CASCADE,
+        related_name="source_citations",
+        null=True,
+        blank=True,
+    )
+    shrine_deity = models.ForeignKey(
+        ShrineDeity,
+        on_delete=models.CASCADE,
+        related_name="source_citations",
+        null=True,
+        blank=True,
+    )
+    locator_text = models.CharField(max_length=255, validators=[_validate_not_blank])
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["id"]
+        constraints = [
+            CheckConstraint(
+                condition=(
+                    Q(shrine_history__isnull=False, shrine_deity__isnull=True)
+                    | Q(shrine_history__isnull=True, shrine_deity__isnull=False)
+                ),
+                name="chk_fact_source_citation_exactly_one_fact",
+            ),
+            CheckConstraint(
+                condition=Q(locator_text__regex=r"\S"),
+                name="chk_fact_source_citation_locator_not_blank",
+            ),
+            UniqueConstraint(
+                fields=["shrine_history", "source", "locator_text"],
+                condition=Q(shrine_history__isnull=False),
+                name="uq_fact_source_citation_history",
+            ),
+            UniqueConstraint(
+                fields=["shrine_deity", "source", "locator_text"],
+                condition=Q(shrine_deity__isnull=False),
+                name="uq_fact_source_citation_deity",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        fact = (
+            f"history:{self.shrine_history_id}"
+            if self.shrine_history_id
+            else f"deity:{self.shrine_deity_id}"
+        )
+        return f"{fact}:{self.source_id}:{self.locator_text}"
+
+    @property
+    def fact(self):
+        return self.shrine_history if self.shrine_history_id else self.shrine_deity
+
+    def clean(self) -> None:
+        super().clean()
+        if (self.shrine_history_id is None) == (self.shrine_deity_id is None):
+            raise ValidationError(
+                "exactly one of shrine_history / shrine_deity must be set", code="fact_selector"
+            )
+        if self.source_id is not None and not self.fact.sources.filter(pk=self.source_id).exists():
+            raise ValidationError(
+                {"source": "source must already be related through the Fact's sources"},
+                code="source_not_related",
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class ShrineSourceFact(models.Model):
+    """Source が述べる祈祷・現行案内の記載をそのまま保存する Knowledge Fact（Policy C / Channel B）。
+
+    docs/audit/shrine-expansion-wave0-db04-f1-goriyaku-mapping-boundary.md §12.15.A〜E の実装。
+    goriyaku（GoriyakuTag / goriyaku_tags / ShrineGoriyakuAssignment）とは別の Fact であり、
+    それらへ変換・書き込みしない。canonical concept / Need / score / mapping は持たない
+    （registry と後続の層が持つ）。本 model は Foundation のみであり、Recommendation /
+    Serializer / selector からは読まれない。
+
+    identity = 明示的に記述された stable_key（全体で一意）。DB の PK や wording から導出しない。
+    wording / evidence_characterization が変われば別の Fact（別の stable_key）である。
+    """
+
+    EVIDENCE_CHARACTERIZATION_CHOICES = [
+        ("official_prayer_supported", "official_prayer_supported"),
+        ("official_current_guidance_supported", "official_current_guidance_supported"),
+        # 祈祷と現行案内の両方を list 単位で併記した記載。term 単位ではどちらか分けられていない
+        # （wave0-021）。一方の種類へ解決しない。
+        (
+            "official_prayer_and_current_guidance_list_level",
+            "official_prayer_and_current_guidance_list_level",
+        ),
+    ]
+
+    shrine = models.ForeignKey(Shrine, on_delete=models.CASCADE, related_name="source_facts")
+    stable_key = models.CharField(max_length=255, unique=True, validators=[_validate_not_blank])
+    source_attested_wording = models.CharField(max_length=255, validators=[_validate_not_blank])
+    evidence_characterization = models.CharField(
+        max_length=64, choices=EVIDENCE_CHARACTERIZATION_CHOICES
+    )
+    sources = models.ManyToManyField(ShrineKnowledgeSource, related_name="source_facts", blank=True)
+    verification_status = models.CharField(
+        max_length=32,
+        choices=KNOWLEDGE_VERIFICATION_STATUS_CHOICES,
+        default="draft",
+    )
+    confidence = models.CharField(
+        max_length=8, choices=KNOWLEDGE_CONFIDENCE_CHOICES, blank=True, default=""
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["id"]
+        constraints = [
+            # unique=True と合わせ、空 / 空白だけの stable_key を DB でも拒否する
+            # （objects.create() / bulk 経路でも破れないように）。
+            CheckConstraint(
+                condition=Q(stable_key__regex=r"\S"),
+                name="chk_source_fact_stable_key_not_blank",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.shrine_id}:{self.stable_key}"
+
+    def clean(self) -> None:
+        super().clean()
+        _validate_verified_at_consistency(self.verification_status, self.verified_at)
+
+
+class HistoryThemeAssignment(models.Model):
+    """Evidence Foundation PR-F2: history_theme semantic assignmentの
+    qualification path。docs/knowledge/evidence-foundation-shared-contract.md
+    「HistoryThemeAssignment」節を参照。
+
+    既存`Shrine.history_theme`（compatibility / 現行read path）とは独立
+    しており、どちらもこのモデルによって自動的に書き換えられることはない。
+    このモデル単体はまだQualified Evidenceではない（Source Evidence link
+    はPR-F4）。
+    """
+
+    class Lifecycle(models.TextChoices):
+        ACTIVE = "ACTIVE", "ACTIVE"
+        SUPERSEDED = "SUPERSEDED", "SUPERSEDED"
+
+    shrine = models.ForeignKey(
+        Shrine, on_delete=models.CASCADE, related_name="history_theme_assignments"
+    )
+    canonical_key = models.CharField(
+        max_length=64,
+        help_text="Evidence Foundation canonical semantic key（例: history_theme:restart）。"
+        "Shrine.history_themeの日本語表示値とは別の、機械識別子。",
+    )
+    taxonomy_version = models.CharField(
+        max_length=8,
+        help_text="canonical_keyがどのhistory_theme taxonomy versionで解釈されるか"
+        "（Mother Ship FINAL contract: 文字列表現、例 \"v1\"）。",
+    )
+    lifecycle = models.CharField(
+        max_length=16,
+        choices=Lifecycle.choices,
+    )
+    producer = models.CharField(
+        max_length=32,
+        choices=[(value, value) for value in EVIDENCE_PRODUCERS],
+        help_text="PR-F1 evidence_provenance.EVIDENCE_PRODUCERSをそのまま再利用。",
+    )
+    mechanism = models.CharField(
+        max_length=32,
+        choices=[(value, value) for value in EVIDENCE_MECHANISMS],
+        help_text="PR-F1 evidence_provenance.EVIDENCE_MECHANISMSをそのまま再利用。",
+    )
+    assigned_at = models.DateTimeField(
+        help_text="provenanceに基づく、実際にsemantic assignmentが行われた時刻。"
+        "created_at（DB行の作成時刻）とは責務が異なり、呼び出し側が明示的に指定する。",
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["shrine_id", "-created_at"]
+        constraints = [
+            UniqueConstraint(
+                fields=["shrine"],
+                condition=Q(lifecycle="ACTIVE"),
+                name="uniq_history_theme_assignment_active_per_shrine",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.shrine_id}:{self.canonical_key}:{self.lifecycle}"
+
+    def clean(self) -> None:
+        super().clean()
+
+        key_validation = validate_history_theme_v1_canonical_key(self.canonical_key)
+        if not key_validation.valid:
+            raise ValidationError(
+                {
+                    "canonical_key": (
+                        f"canonical_keyが無効です（reason={key_validation.reason}）: "
+                        f"{self.canonical_key!r}"
+                    )
+                }
+            )
+
+        current_version = get_current_taxonomy_version(HISTORY_THEME_TAXONOMY_NAMESPACE).version
+        if self.taxonomy_version != current_version:
+            raise ValidationError(
+                {
+                    "taxonomy_version": (
+                        f"taxonomy_version={self.taxonomy_version!r}は現行version"
+                        f"（{current_version!r}）と一致しません。"
+                    )
+                }
+            )
+
+
+class ShrineGoriyakuAssignment(models.Model):
+    """Evidence Foundation PR-F3: goriyaku semantic assignmentの
+    qualification path。docs/knowledge/evidence-foundation-shared-contract.md
+    「ShrineGoriyakuAssignment」節を参照。
+
+    既存`Shrine.goriyaku_tags`（M2M、Recommendation Signal / compatibility
+    layer）とは完全に独立しており、どちらもこのモデルによって自動的に
+    書き換えられることはない。このモデル単体はまだQualified Evidenceでは
+    ない（Source Evidence linkはPR-F4）。
+
+    重要（G1 DATA_REVIEW）: 承認済みcanonical key registry
+    （`temples.domain.goriyaku_taxonomy_v1.GORIYAKU_V1_CANONICAL_KEYS`）は
+    18件でactivated済みである。PR-F3時点の「意図的に空 / いかなる
+    canonical_keyも受理しない」はpoint-in-time recordであり、現行の
+    CURRENT FACTではない。承認済み18件以外のcanonical keyは引き続き
+    fail-closedでrejectされる。
+
+    NOTE: `canonical_key`のhelp_textはPR-F3時点の文面のままである。
+    help_textの変更はschema migrationを発生させるため、migration 0件を
+    要件とするG1では変更していない（文言更新は後続のmigration可能なPRで
+    行う）。
+    """
+
+    class Lifecycle(models.TextChoices):
+        ACTIVE = "ACTIVE", "ACTIVE"
+        REVOKED = "REVOKED", "REVOKED"
+
+    shrine = models.ForeignKey(
+        Shrine, on_delete=models.CASCADE, related_name="goriyaku_assignments"
+    )
+    canonical_key = models.CharField(
+        max_length=64,
+        help_text="Evidence Foundation canonical semantic key（例: goriyaku:<stable_key>）。"
+        "既存GoriyakuTag.nameとは別の、機械識別子。PR-F3時点では承認済みkeyが"
+        "存在しないため、いかなる値も現時点ではvalidationを通過しない。",
+    )
+    taxonomy_version = models.CharField(
+        max_length=8,
+        help_text="canonical_keyがどのgoriyaku taxonomy versionで解釈されるか"
+        "（Mother Ship FINAL contract: 文字列表現、例 \"v1\"）。",
+    )
+    lifecycle = models.CharField(
+        max_length=16,
+        choices=Lifecycle.choices,
+    )
+    producer = models.CharField(
+        max_length=32,
+        choices=[(value, value) for value in EVIDENCE_PRODUCERS],
+        help_text="PR-F1 evidence_provenance.EVIDENCE_PRODUCERSをそのまま再利用。",
+    )
+    mechanism = models.CharField(
+        max_length=32,
+        choices=[(value, value) for value in EVIDENCE_MECHANISMS],
+        help_text="PR-F1 evidence_provenance.EVIDENCE_MECHANISMSをそのまま再利用。",
+    )
+    assigned_at = models.DateTimeField(
+        help_text="provenanceに基づく、実際にsemantic assignmentが行われた時刻。"
+        "created_at（DB行の作成時刻）とは責務が異なり、呼び出し側が明示的に指定する。",
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["shrine_id", "canonical_key", "-created_at"]
+        constraints = [
+            UniqueConstraint(
+                fields=["shrine", "canonical_key", "taxonomy_version"],
+                condition=Q(lifecycle="ACTIVE"),
+                name="uniq_goriyaku_assignment_active_per_shrine_tag_version",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.shrine_id}:{self.canonical_key}:{self.lifecycle}"
+
+    def clean(self) -> None:
+        super().clean()
+
+        key_validation = validate_goriyaku_v1_canonical_key(self.canonical_key)
+        if not key_validation.valid:
+            raise ValidationError(
+                {
+                    "canonical_key": (
+                        f"canonical_keyが無効です（reason={key_validation.reason}）: "
+                        f"{self.canonical_key!r}"
+                    )
+                }
+            )
+
+        current_version = get_current_taxonomy_version(GORIYAKU_TAXONOMY_NAMESPACE).version
+        if self.taxonomy_version != current_version:
+            raise ValidationError(
+                {
+                    "taxonomy_version": (
+                        f"taxonomy_version={self.taxonomy_version!r}は現行version"
+                        f"（{current_version!r}）と一致しません。"
+                    )
+                }
+            )
+
+
+class EvidenceLink(models.Model):
+    """Semantic AssignmentとStored Factの根拠edgeを永続化するF4 foundation。"""
+
+    history_theme_assignment = models.ForeignKey(
+        HistoryThemeAssignment,
+        on_delete=models.CASCADE,
+        related_name="evidence_links",
+        null=True,
+        blank=True,
+    )
+    goriyaku_assignment = models.ForeignKey(
+        ShrineGoriyakuAssignment,
+        on_delete=models.CASCADE,
+        related_name="evidence_links",
+        null=True,
+        blank=True,
+    )
+    shrine_history = models.ForeignKey(
+        ShrineHistory,
+        on_delete=models.PROTECT,
+        related_name="evidence_links",
+        null=True,
+        blank=True,
+    )
+    shrine_deity = models.ForeignKey(
+        ShrineDeity,
+        on_delete=models.PROTECT,
+        related_name="evidence_links",
+        null=True,
+        blank=True,
+    )
+    rationale = models.TextField()
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["id"]
+        constraints = [
+            CheckConstraint(
+                condition=(
+                    Q(history_theme_assignment__isnull=False, goriyaku_assignment__isnull=True)
+                    | Q(history_theme_assignment__isnull=True, goriyaku_assignment__isnull=False)
+                ),
+                name="chk_evlink_one_assignment",
+            ),
+            CheckConstraint(
+                condition=(
+                    Q(shrine_history__isnull=False, shrine_deity__isnull=True)
+                    | Q(shrine_history__isnull=True, shrine_deity__isnull=False)
+                ),
+                name="chk_evlink_one_fact",
+            ),
+            CheckConstraint(condition=~Q(rationale=""), name="chk_evlink_rationale_nonempty"),
+            UniqueConstraint(
+                fields=["history_theme_assignment", "shrine_history"],
+                condition=Q(
+                    history_theme_assignment__isnull=False,
+                    shrine_history__isnull=False,
+                ),
+                name="uniq_evlink_ht_history",
+            ),
+            UniqueConstraint(
+                fields=["history_theme_assignment", "shrine_deity"],
+                condition=Q(
+                    history_theme_assignment__isnull=False,
+                    shrine_deity__isnull=False,
+                ),
+                name="uniq_evlink_ht_deity",
+            ),
+            UniqueConstraint(
+                fields=["goriyaku_assignment", "shrine_history"],
+                condition=Q(
+                    goriyaku_assignment__isnull=False,
+                    shrine_history__isnull=False,
+                ),
+                name="uniq_evlink_gori_history",
+            ),
+            UniqueConstraint(
+                fields=["goriyaku_assignment", "shrine_deity"],
+                condition=Q(
+                    goriyaku_assignment__isnull=False,
+                    shrine_deity__isnull=False,
+                ),
+                name="uniq_evlink_gori_deity",
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        errors = {}
+
+        assignment_fields = (
+            "history_theme_assignment",
+            "goriyaku_assignment",
+        )
+        fact_fields = ("shrine_history", "shrine_deity")
+        selected_assignment_fields = [
+            field for field in assignment_fields if getattr(self, f"{field}_id") is not None
+        ]
+        selected_fact_fields = [
+            field for field in fact_fields if getattr(self, f"{field}_id") is not None
+        ]
+
+        if len(selected_assignment_fields) != 1:
+            errors["history_theme_assignment"] = (
+                "history_theme_assignment / goriyaku_assignmentのどちらか一方だけが必要です。"
+            )
+        if len(selected_fact_fields) != 1:
+            errors["shrine_history"] = (
+                "shrine_history / shrine_deityのどちらか一方だけが必要です。"
+            )
+        if not isinstance(self.rationale, str) or not self.rationale.strip():
+            errors["rationale"] = "rationaleは空白以外の文字を1文字以上必要とします。"
+
+        if len(selected_assignment_fields) == 1 and len(selected_fact_fields) == 1:
+            assignment_field = selected_assignment_fields[0]
+            fact_field = selected_fact_fields[0]
+            try:
+                assignment = getattr(self, assignment_field)
+            except HistoryThemeAssignment.DoesNotExist:
+                assignment = None
+            except ShrineGoriyakuAssignment.DoesNotExist:
+                assignment = None
+            try:
+                fact = getattr(self, fact_field)
+            except ShrineHistory.DoesNotExist:
+                fact = None
+            except ShrineDeity.DoesNotExist:
+                fact = None
+
+            if assignment is None:
+                errors[assignment_field] = "参照するAssignmentを解決できません。"
+            if fact is None:
+                errors[fact_field] = "参照するStored Factを解決できません。"
+            if assignment is not None and fact is not None:
+                if assignment.shrine_id != fact.shrine_id:
+                    errors[fact_field] = "AssignmentとStored Factは同じShrineに属する必要があります。"
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
 
 class Favorite(models.Model):
@@ -898,51 +1611,6 @@ class GoshuinImage(models.Model):
         indexes = [models.Index(fields=["order"])]
 
 
-class Like(models.Model):
-    shrine = models.ForeignKey(Shrine, on_delete=models.CASCADE, related_name="likes")
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["shrine", "user"], name="uq_like_shrine_user")
-        ]
-
-
-class RankingLog(models.Model):
-    shrine = models.ForeignKey(Shrine, on_delete=models.CASCADE, related_name="ranking_logs")
-    date = models.DateField(default=timezone.localdate)
-    view_count = models.PositiveIntegerField(default=0)
-    like_count = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["shrine", "date"], name="uq_rankinglog_shrine_date")
-        ]
-
-
-class ConciergeHistory(models.Model):
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="concierge_histories"
-    )
-    shrine = models.ForeignKey(
-        Shrine,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="recommended_histories",
-    )
-    reason = models.TextField()
-    tags = models.JSONField(default=list, blank=True)
-    created_at = models.DateTimeField(default=timezone.now)
-
-    class Meta:
-        ordering = ["-created_at"]
-
-
-
 class Deity(models.Model):
     name = models.CharField(max_length=64, unique=True)
     kana = models.CharField(max_length=128, blank=True, default="")
@@ -1127,3 +1795,13 @@ class PlaceCache(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} ({self.place_id})"
+
+
+# Register Highlights after the shared Knowledge constants/models are defined.
+from .models_highlights import (  # noqa: E402, F401, I001
+    ShrineHighlight,
+    ShrineHighlightAnswer,
+    ShrineHighlightHistory,
+    ShrineHighlightSource,
+    ShrineHighlightTranslation,
+)

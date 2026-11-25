@@ -1,0 +1,147 @@
+"""Compass MVP API.
+
+See docs/product/compass-product-contract.md and
+docs/product/compass-mvp-runtime-contract.md.
+
+Deliberately independent from ConciergeChatView (Runtime Contract Section 6:
+"Compass は Phase 4 において独立した新規オーケストレーション層を持つものと
+し、既存 ConciergeChatView を実装の簡便さのために流用しない") -- this view
+does not import from api_views_concierge.py and does not reuse its
+compat-mode heuristics, quota gate, or request-shape resolution. It is a
+thin HTTP wrapper around two already-tested pure services:
+compass_runtime.build_compass_direction_runtime() and
+compass_recommendation_orchestrator.get_compass_recommendations().
+"""
+
+from __future__ import annotations
+
+import logging
+import uuid
+
+from drf_spectacular.utils import extend_schema
+from rest_framework import status
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+from temples.api.compass_public_projection import (
+    CompassPublicProjectionContractError,
+    project_compass_recommendations,
+)
+from temples.api.serializers.compass import (
+    CompassErrorResponseSerializer,
+    CompassRecommendationsInvalidPurposeResponseSerializer,
+    CompassRecommendationsRequestSerializer,
+    CompassRecommendationsResponseSerializer,
+)
+from temples.services.compass_recommendation_orchestrator import (
+    STATE_INVALID_PURPOSE,
+    STATE_RECOMMENDATION_SUCCESS,
+    get_compass_recommendations,
+)
+from temples.services.compass_runtime import build_compass_direction_runtime
+
+log = logging.getLogger(__name__)
+
+
+class CompassRecommendationsView(APIView):
+    """Compass の主API。month + direction + purpose + origin を受けて、
+
+    Compass Runtime Authority（方向）と Recommendation Authority（神社）の
+    両方を1リクエストで解決する。Free/Premium 判定・quota・thread は
+    このViewの責務ではない（Phase 5時点でCompassはgatingなし、
+    docs/product/compass-mvp-runtime-contractの対象外セクション参照）。
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = [JWTAuthentication]
+    throttle_scope = "compass"
+
+    @extend_schema(
+        tags=["Compass"],
+        summary="Compass Monthly recommendations",
+        request=CompassRecommendationsRequestSerializer,
+        responses={
+            200: CompassRecommendationsResponseSerializer,
+            400: CompassRecommendationsInvalidPurposeResponseSerializer,
+            500: CompassErrorResponseSerializer,
+        },
+    )
+    def post(self, request, *args, **kwargs):
+        # serializerはOpenAPI記述専用。ここでの入力解釈は従来どおり
+        # 手動で行う（docs/audit/compass-monthly-api-boundary.md Section 4:
+        # schema生成のためにruntime validation semanticsを変えない）。
+        recommendation_instance_id = uuid.uuid4().hex[:8]
+        data = request.data or {}
+
+        purpose = str(data.get("purpose") or "").strip()
+        birthdate = str(data.get("birthdate") or "").strip() or None
+        target_date = str(data.get("target_date") or "").strip() or None
+        raw_origin = data.get("origin")
+        origin = raw_origin if isinstance(raw_origin, dict) else None
+
+        try:
+            direction_context = build_compass_direction_runtime(
+                birthdate=birthdate,
+                target_date=target_date,
+            )
+            result = get_compass_recommendations(
+                purpose=purpose,
+                origin=origin,
+                direction_context=direction_context,
+            )
+        except Exception:
+            log.exception("[compass/recommendations] resolve_failed")
+            return Response(
+                {"state": "error"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # Shared Recommendation dict をそのまま widen して返さない。
+        # Public Contract v1 の allowlist へ投影してから HTTP へ載せる
+        # （同 audit Section 7 / G4、Section 10）。
+        #
+        # R-3 Identity Gate: recommendation_success のときだけ shrine_id を
+        # 必須にする（docs/audit/compass-shrine-id-presence-audit.md §11）。
+        # 投影は上の try/except の外側で行われるため、projection が送出する
+        # contract error はここで明示的に既存の error boundary へ正規化する。
+        # 部分投影結果は返さない（fail-closed / partial success 禁止）。
+        try:
+            recommendations = project_compass_recommendations(
+                result.recommendations,
+                recommendation_instance_id=recommendation_instance_id,
+                require_shrine_id=(result.state == STATE_RECOMMENDATION_SUCCESS),
+            )
+        except CompassPublicProjectionContractError:
+            # payload本体はログへ出さない（内部fieldやuser由来値の露出を避ける）。
+            # 件数とinstance idだけで、どのrequestが落ちたかは追跡できる。
+            log.error(
+                "[compass/recommendations] identity_contract_violation "
+                "instance=%s state=%s item_count=%d",
+                recommendation_instance_id,
+                result.state,
+                len(result.recommendations or []),
+            )
+            return Response(
+                {"state": "error"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        body = {
+            "state": result.state,
+            "purpose": result.purpose,
+            "direction_context": result.direction_context,
+            "recommendation_instance_id": recommendation_instance_id,
+            "recommendations": recommendations,
+            "distance_stage_km": result.distance_stage_km,
+            "direction_candidate_count": result.direction_candidate_count,
+            "distance_candidate_count": result.distance_candidate_count,
+        }
+
+        if result.state == STATE_INVALID_PURPOSE:
+            return Response(body, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(body, status=status.HTTP_200_OK)
+
+
+__all__ = ["CompassRecommendationsView"]

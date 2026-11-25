@@ -221,6 +221,17 @@ def _build_summary_from_primary_reason(
         if reason_type == "element":
             return "生年月日から見た傾向も、補助情報として重ねています。"
 
+        if reason_type == "visit_style":
+            evidence = primary_reason.get("evidence") if isinstance(primary_reason.get("evidence"), list) else []
+            tags = [str(x).strip() for x in evidence if isinstance(x, str) and str(x).strip()]
+            if "quiet" in tags and "less_crowded" in tags:
+                return "静かで人が少なめの雰囲気を求める条件と重なる神社です。"
+            if "quiet" in tags:
+                return "静かで落ち着いた雰囲気を求める条件と重なる神社です。"
+            if "less_crowded" in tags:
+                return "人が少なめで落ち着いて参拝したい条件と重なる神社です。"
+            return "参拝スタイルの希望と重なる神社です。"
+
         if reason_type == "fallback":
             return "今の条件に近い神社として整理しています。"
 

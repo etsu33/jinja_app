@@ -57,6 +57,32 @@ export type ShrineHistory = {
   sources: ShrineKnowledgeSource[];
 };
 
+// backend/temples/api/serializers/shrine.py の ShrineHighlightDetailSerializer に一致する（Highlights PR-4）。
+// 公開判定（published・確認済み・公開の根拠になる出典・承認済みの翻訳）を通ったものだけが返る。
+export type ShrineHighlightCategory =
+  | "architecture"
+  | "cultural_heritage"
+  | "nature"
+  | "ritual_festival"
+  | "historical_site"
+  | "experience";
+
+export type ShrineHighlight = {
+  id: number;
+  category: ShrineHighlightCategory | string;
+  sort_order: number;
+  name: string;
+  description: string;
+  historical_connection: string;
+  location_hint: string;
+  /** 神社詳細の histories に実際に出ている由緒・歴史の id だけ（histories の表示順） */
+  linked_history_ids: number[];
+  /** 公開の根拠になる出典だけ（現地観察は含まない） */
+  sources: ShrineKnowledgeSource[];
+  /** 現地で確認した最新の日（YYYY-MM-DD）。無ければ null */
+  observed_on: string | null;
+};
+
 export type ShrineBase = {
   id: number;
   name_jp: string;
@@ -78,10 +104,15 @@ export type ShrineBase = {
   description?: string | null;
   goriyaku_tags: GoriyakuTag[];
 
-  // ShrineDetailSerializerのみ返す（ShrinePublicSerializer/ShrineListSerializerには存在しない）。
+  // ShrineListSerializerのみ返す（ShrineDetailSerializerには存在しない）。
+  // ISO 8601 datetime。/shrines一覧の「新着」表示（lib/shrine/isNewShrine.ts）が参照する。
+  created_at?: string | null;
+
+  // ShrineDetailSerializerのみ返す（ShrineListSerializerには存在しない）。
   // 通常Detail API(/api/shrines/{id}/data/)経由でのみ値が入る。
   deities?: ShrineDeity[];
   histories?: ShrineHistory[];
+  highlights?: ShrineHighlight[];
 };
 
 export type Shrine = ShrineBase;

@@ -21,17 +21,21 @@ function buildSummary({
   hasPreviousAction,
 }: BuildSummaryArgs): string | null {
   if (changedNeedTags.length > 0) {
-    const labels = changedNeedTags.map(toNeedTagLabel);
-    return hasPreviousAction
-      ? `前回の行動を踏まえると、今回は「${labels.join("」「")}」を意識する流れが強まっています。`
-      : `今回は小さく行動へ移すために、「${labels.join("」「")}」を意識する流れが強まっています。`;
+    const labels = changedNeedTags.map(toNeedTagLabel).filter((label): label is string => Boolean(label));
+    if (labels.length > 0) {
+      return hasPreviousAction
+        ? `前回の行動を踏まえると、今回は「${labels.join("」「")}」を意識する流れが強まっています。`
+        : `今回は小さく行動へ移すために、「${labels.join("」「")}」を意識する流れが強まっています。`;
+    }
   }
 
   if (continuedNeedTags.length > 0) {
-    const labels = continuedNeedTags.map(toNeedTagLabel);
-    return hasPreviousAction
-      ? `前回の行動を踏まえて、今回も「${labels.join("」「")}」が継続したテーマになっています。`
-      : `今回は小さく行動へ移すために、前回から継続して「${labels.join("」「")}」を見直す流れです。`;
+    const labels = continuedNeedTags.map(toNeedTagLabel).filter((label): label is string => Boolean(label));
+    if (labels.length > 0) {
+      return hasPreviousAction
+        ? `前回の行動を踏まえて、今回も「${labels.join("」「")}」が継続したテーマになっています。`
+        : `今回は小さく行動へ移すために、前回から継続して「${labels.join("」「")}」を見直す流れです。`;
+    }
   }
 
   return null;

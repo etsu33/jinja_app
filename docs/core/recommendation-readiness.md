@@ -1,388 +1,311 @@
 > **Status: Active**
 >
-> 本ドキュメントは、神社データがRecommendation、ActionおよびReflectionへ利用可能かを判定するReadiness Level、Coverageおよび品質責務を管理する正本である。
+> 本ドキュメントは、神社データのKnowledge Coverage・Verification・Usability状態を観測し、データ補完・QA・105社Rolloutの判断材料を提供するGovernance Contractである。
 >
-> Recommendation Score、RankingおよびReason生成は本書の責務外とし、関連する契約文書、実装コードおよびテストを参照する。
+> 本書は元々「Recommendationに利用できるか」を判定するRuntime Readiness Levelとして設計されたが、`docs/knowledge/shrine-knowledge-contract.md`（Knowledge Model Foundation）・Evidence Gate（`temples.services.evidence_gate`）の実装、および`docs/audit/shrine-knowledge-pilot-5-result.md`（Pilot 5社の実データ検証）を経て、**Readiness Levelという形のRuntime判定**は不要であることが確認された（詳細は§Runtime / Governance Boundary）。本書はGovernance専用契約として再設計されたものである。
+>
+> Recommendation Score、Ranking、Reason生成、Candidate除外は本書の責務外とし、関連する契約文書、実装コードおよびテストを参照する。
+>
+> Runtime側のcandidate boundaryは、本書とは別責務の**Shared Recommendation Eligibility**（`docs/knowledge/recommendation-eligibility-contract.md`）が担う。本書のGovernance観測とShared Eligibilityを同一視しない（§Runtime / Governance Boundary）。
 
 # Recommendation Readiness
 
-## 目的
+## Purpose
 
-Recommendation Readiness は、KAMI MUSUBI が「この神社を推薦できる状態か」を判定する品質基準である。
+本書は、KAMI MUSUBIの神社データについて「Knowledge Modelとしてどこまで整備されているか」をCoverage・Verification・Usabilityの観点から観測し、Admin補完優先度・105社Rolloutの判断材料として提供するGovernance Contractである。
 
-推薦順位（Score）とは責務を分離し、
-
-- 推薦してよいか
-- Action を生成できるか
-- Reflection まで接続できるか
-
-を段階的に定義する。
-
-本ドキュメントは Recommendation の品質基準を定義する正本（Single Source of Truth）とする。
+Recommendation runtimeの安全性（候補除外・Fact利用可否）は、既にShared Recommendation Eligibility・Evidence Gate・Reason V4 fallback chainが担っており、本書はそれを再実装しない。
 
 ---
 
-# 基本方針
+## Responsibility
 
-Recommendation Readiness は順位付けを行わない。
-
-責務は
-
-「この神社データはどこまで利用できるか」
-
-を判定することである。
-
-```
-神社データ
-
-↓
-
-Readiness判定
-
-↓
-
-Recommendation
-
-↓
-
-Action
-
-↓
-
-Reflection
-```
-
-Readiness を満たしていない神社は、
-推薦順位が高くても品質不足として扱う。
+「神社データのKnowledge Coverage・Verification・Usability状態を観測し、データ補完・QA・Rollout判断に利用するGovernance情報を提供する」。
 
 ---
 
-# Readiness Level
+## Non-responsibilities
 
-## Level0
+以下は明示的に本書の責務外とする。
 
-### 表示可能
-
-最低限の神社情報を表示できる状態。
-
-利用範囲
-
-- 神社一覧
-- 神社詳細
-- 地図表示
-
-必要項目
-
-- shrine_name
-- place_context
-- latitude
-- longitude
-
-この段階では Recommendation は行わない。
-
----
-
-## Level1
-
-### Recommendation可能
-
-Recommendation Reason を生成できる最低条件。
-
-利用範囲
-
-- Recommendation
-- Recommendation Reason
-
-最低条件
-
-```
-place_context
-
-AND
-
-(
-history_theme
-OR
-goriyaku_tags
-)
-```
-
-この条件を満たさない神社は
-Recommendation対象外とする。
-
-なお、
-
-Recommendation可能であることと、
-Recommendation品質が十分であることは異なる。
-
----
-
-## Level2
-
-### Action生成可能
-
-Recommendationに加え、
-神社固有のActionを生成できる状態。
-
-必要項目
-
-- deity
-- shrine_history
-- source_url
-- verified_at
-
-Action生成では、
-
-神社固有情報を根拠とした提案のみ生成する。
-
-一般論だけのActionは生成しない。
-
----
-
-## Level3
-
-### Reflection生成可能
-
-参拝後の振り返りまで一貫して接続できる状態。
-
-追加項目
-
-- shrine_feature
-- action_source
-- reflection_source
-- multiple_sources
-
-この状態を
-KAMI MUSUBI の高品質推薦とする。
-
----
-
-# Coverage
-
-Coverage は入力率ではない。
-
-「どの用途に利用できる品質か」
-
-を示す。
-
----
-
-## Schema Coverage
-
-必要な項目の器が存在する割合。
-
-例
-
-- deity列が存在する
-- shrine_history列が存在する
-
----
-
-## Populated Coverage
-
-項目に値が入力されている割合。
-
-例
-
-```
-deity
-
-105件中82件
-```
-
----
-
-## Verified Coverage
-
-出典確認済みである割合。
-
-対象
-
-- deity
-- shrine_history
-- goriyaku
-- place_context
-
-Verifiedは
-Recommendation品質よりも
-Trust Layerの品質指標として扱う。
-
----
-
-## Usable Coverage
-
-Recommendationで実際に利用可能な割合。
-
-例
-
-```
-history_theme
-
-93%
-
-goriyaku_tags
-
-96%
-
-place_context
-
-100%
-```
-
-Usable Coverage は
-Recommendation Readiness 判定に利用する。
-
----
-
-# Recommendation可能条件
-
-Recommendation対象となる最低条件を以下とする。
-
-```
-Level1
-
-=
-
-place_context
-
-AND
-
-(
-history_theme
-OR
-goriyaku_tags
-)
-```
-
-この条件は
-
-Recommendation Reason が
-神社固有情報を持てる最小条件である。
-
-なお、
-
-Action
-
-Reflection
-
-高品質Recommendation
-
-には追加条件が必要となる。
-
----
-
-# Stored / Derived / Runtime / Governance
-
-Recommendation Readiness は
-Knowledge Layer の責務境界を前提とする。
-
-## Stored
-
-神社に固定して保存される情報。
-
-例
-
-- shrine_name
-- deity
-- shrine_history
-- place_context
-- goriyaku
-
-Stored情報は
-Recommendationの事実となる。
-
----
-
-## Derived
-
-Storedから生成される意味情報。
-
-例
-
-- history_theme
-- culture_translation
-- shrine_meaning_profile
-
-Derived情報は
-Meaning Layerで利用する。
-
----
-
-## Runtime
-
-相談ごとに生成される情報。
-
-例
-
-- matched_need_tags
-- consultation_axis
-- evidence
-- text_hint
-- visit_fit
-
-Runtimeは
-神社プロフィールへ保存しない。
-
----
-
-## Governance
-
-品質管理情報。
-
-例
-
-- Recommendation Readiness
-- Coverage
-- verified_at
-- source_url
-- trust_level
-
-Governanceは
-Recommendation順位には利用せず、
-品質管理のみに利用する。
-
----
-
-# Responsibility Boundary
-
-Recommendation Readiness は
-
-「推薦可能か」
-
-のみ判定する。
-
-以下は責務外とする。
-
+- Candidate generation（候補神社集合の生成）
+- Candidate exclusion（候補からの除外判定）
 - Recommendation Score
 - Ranking
-- Distance計算
-- Popularity
-- Recommendation Reason生成
-- Action Prompt
-- Reflection Prompt
-
-これらは
-各専用ドキュメントの責務とする。
+- Fact usability判定（Evidence Gateの責務）
+- Reason V4生成
+- User consultation matching
+- Astrology / personalization
+- User-facing recommendation label（「この神社は準備不足」等の断定表現を含む）
 
 ---
 
-# 他ドキュメントとの関係
+## Runtime / Governance Boundary
+
+### Current Runtime Boundary
+
+Current runtimeには、本書とは別責務の**Shared Recommendation Eligibility**が稼働している。
+
+```text
+Recommendation eligibility
+= usable Deity Fact >= 1
+  OR usable History Fact >= 1
+```
+
+責務は次のとおり分離する。両者を同一視しない。
+
+| | Recommendation Readiness（本書） | Shared Recommendation Eligibility |
+|---|---|---|
+| 責務 | Knowledge Coverage / Verification / Usability状態のGovernance観測 | Runtime candidate boundary |
+| Candidate exclusion | **持たない** | 持つ（usable Fact 0件のShrineを候補集合から除外する） |
+| Evidence Gate判定 | **持たない**（判定結果を集計するのみ） | Evidence Gate（`decide_fact_usability()`）へ委譲する |
+| Ranking / Score | **持たない** | **持たない**（score contributionではない） |
+| Readiness Levelとの関係 | Level 0〜3はSuperseded（§旧設計） | Readiness Levelの復活ではない |
+| 正本 | 本書 | `docs/knowledge/recommendation-eligibility-contract.md` + Backend実装 + テスト |
+
+Shared Eligibilityは、candidate setの**境界**である。ineligibleなShrineをScoreを下げて残すことはせず、eligible Shrineの順位・スコアはgateの有無で変化しない。正確な適格条件、zero-candidate挙動、Compass state契約は`docs/knowledge/recommendation-eligibility-contract.md`を正本とする。本書はこれを再定義しない。
+
+Governance側（105社Rolloutの優先順位付け、Admin補完対象抽出）の観測手段は、Shared Eligibilityでは代替されない。本書はこのGovernance責務のみを担う。
+
+> 本Boundaryは`docs/audit/rule-conflict-resolution.md`（Phase 2B、Decision A: KEEP CURRENT SHARED ELIGIBILITY）で確定したCurrent truthである。
+
+### 監査結果（`audit/recommendation-readiness-responsibility`、本書改訂の根拠。Shared Eligibility導入**前**の時点記録）
+
+以下は本書改訂時点の観測結果であり、現在のRuntime挙動の説明ではない。現在のcandidate boundaryは§Current Runtime Boundaryを参照する。
+
+現行実装（`build_chat_candidates()` → `_build_score_v3_candidate_profile()` → `concierge_chat_ranking.py` → `recommendation_reason_v4.py`）をコード・test・live実行で確認した結果、以下が確定した。
+
+- **Candidate Generation**は座標・住所の有無とtestフィクスチャ除外のみを条件とし、Knowledge完全性を候補除外に使っていない（**時点記述**。その後Shared Recommendation Eligibilityが導入され、現在はusable Fact 0件のShrineを候補集合から除外する）
+- **Score/Ranking**は`data_confidence_score`等のKnowledge由来信号を一切参照していない（未実装のまま）
+- **Evidence Gate**はFact 1件単位で利用可否を判定し、draft/disputed/no-source等の否定的ケースがtest 20件で網羅的に検証済み
+- **Reason V4のfallback chain**（`deity/shrine_history(Knowledge) → sajin/description(Legacy) → place_context → history_theme → goriyaku → name → "候補神社"`）は、Knowledgeが完全に空の神社（実データで確認: 伊勢神宮、§Zero-Knowledge Evidence参照）でもクラッシュや除外なく動作することを確認した。専用回帰test（`test_candidate_profile_zero_knowledge_shrine_matches_legacy_output`ほか）で保証されている
+
+この結果、**Runtime側に独立したReadiness判定を追加する必要はない**と判断した。旧版が定義していた「Level0〜3」およびそのLevel1を`docs/core/recommendation-architecture.md`のEligibility Filter段階へ接続する設計は本書から削除済みであり、§旧設計（Superseded）に設計経緯としてのみ残す。
+
+**この判断はその後も維持されている。** 「情報不足神社を候補から除外すべきか」というProduct方針は、Phase 2B（`docs/audit/rule-conflict-resolution.md` Decision A）で**Shared Recommendation Eligibilityを維持する**と決定済みであり、未決事項ではない。ただしそのgateはKnowledge由来のusable Fact有無で判定するものであって、旧Readiness Levelの復活ではない（§Current Runtime Boundary）。
+
+一方、**Governance側（105社Rolloutの優先順位付け、Admin補完対象抽出）には観測手段が必要**であり、これは既存実装のどこにも存在しない（DBへの集計クエリで即座に算出可能だが、専用の仕組みはない）。本書はこのGovernance責務のみを担う契約として再設計する。
+
+### 旧設計（Superseded）
+
+以下は本書の旧版が定義していたRuntime Readiness LevelおよびEligibility Filter接続案である。**現在は採用しない**が、設計経緯として記録する。
+
+```text
+[Superseded] Readiness Level（Runtime判定として設計されていたもの）
+
+Level0: 表示可能（shrine_name / place_context / latitude / longitude）
+Level1: Recommendation可能（place_context AND (history_theme OR goriyaku_tags)）
+        → docs/core/recommendation-architecture.mdのEligibility Filter段階が
+          この条件未達の候補をScoringへ渡さない、という設計だった
+Level2: Action生成可能（deity / shrine_history / source_url / verified_at）
+Level3: Reflection生成可能（shrine_feature / action_source / reflection_source / multiple_sources）
+```
+
+Level0・Level1は現行の実Shrineデータでほぼ全件が自動的に満たすため判別力を持たず、Level3の`shrine_feature`/`action_source`/`reflection_source`は現行Knowledge Modelに対応するFieldが存在しない。詳細な監査経緯は`audit/recommendation-readiness-responsibility`（本改訂のブランチ）の作業記録を参照。個別PR番号・時点記録はAudit文書側の責務であり、本書へは持ち込まない。
+
+---
+
+## Evidence Gate Boundary
+
+Recommendation Readiness（本書）とEvidence Gate（`temples.services.evidence_gate`、実装済み）は別責務であり、混同しない。
+
+| | Evidence Gate | Recommendation Readiness（本書） |
+|---|---|---|
+| 判定単位 | Fact 1件（`ShrineDeity`/`ShrineHistory`の各レコード） | Shrine全体（集計・観測） |
+| 判定内容 | この1件のFactをRecommendation Reason/Detail表示へ使ってよいか | この神社群のKnowledge状態はどうなっているか |
+| 実装状況 | 実装済み（`decide_fact_usability()`、test 50件で検証済み） | 未実装（本書はGovernance観点の観測契約） |
+| Recommendation runtimeへの接続 | あり（`shrine_knowledge_selector.py`経由で候補生成時に必須利用） | なし（意図的に接続しない） |
+
+Readiness側でEvidence Gateのverificationルールを再実装しない。Usable Fact数等のGovernance指標は、Evidence Gateの判定結果を集計するだけで算出できる（§Current Metrics参照）。
+
+---
+
+## Coverage Taxonomy
+
+以下4種のCoverageは現行実装と照合済みで、いずれも有効な概念として維持する。
+
+### Schema Coverage
+
+必要な項目の器が存在する割合。現行実装では`ShrineDeity`/`ShrineHistory`/`ShrineKnowledgeSource` modelとして105件全Shrineに対して器自体は存在する（Foundation実装済み）ため、Schema Coverageは事実上100%で頭打ちになる。
+
+### Populated Coverage
+
+項目に値が入力されている割合。例: `deity`保有神社数 / 105件。Pilot後の現状は5/105（§Pilot Evidence参照）。
+
+### Verified Coverage
+
+出典確認済みである割合。`verification_status`が`source_confirmed`以上のFactの割合。Trust Layerの品質指標として扱い、Recommendation品質そのものとは区別する。
+
+### Usable Coverage
+
+Evidence Gateで`usable=True`となるFactの割合。Recommendationで実際に利用可能かを示す、Governance観点で最も実利用に近い指標。
+
+---
+
+## Current Metrics（現行Modelから算出可能な項目）
+
+以下は現行Knowledge Model（`ShrineDeity`/`ShrineHistory`/`ShrineKnowledgeSource`）へのクエリのみで算出できる。新規Field・Migrationを必要としない。
+
+- `deity_count` / `history_count` / `source_count`（Shrine単位、全体単位）
+- `verified_source_count`（`verification_status`が`source_confirmed`以上のSource数）
+- `fact_ready_deity_count` / `fact_ready_history_count`（Evidence Gateで`usable=True`となるFact数）
+- `source_type diversity`（`shrine_official`/`government`/`local_history`等、実際に使われているsource_typeの種類数）
+- `verification_status distribution`（draft/unverified/source_confirmed/reviewed/disputed/outdated/rejectedの件数分布）
+- `confidence distribution`（high/medium/low/未設定の件数分布）
+
+これらはいずれも§Pilot Evidenceの5社で実測済み（`docs/audit/shrine-knowledge-pilot-5-result.md`）。
+
+---
+
+## Coverage Representation（Capability Set）
+
+Level0〜3という順序付き段階（ordinal）ではなく、独立したCapability（真偽値・カウント）の集合として神社の状態を表現する。
+
+| Capability | 判定方法 | 現行Modelとの対応 |
+|---|---|---|
+| `has_legacy_fallback_fields` | `place_context` AND (`history_theme` OR `goriyaku_tags`) | `Shrine`の既存Field（ほぼ全件で真） |
+| `has_fact_ready_deity` | Evidence Gateで`usable=True`のdeityが1件以上 | `ShrineDeity` + `evidence_gate.decide_fact_usability()` |
+| `has_fact_ready_history` | Evidence Gateで`usable=True`のhistoryが1件以上 | `ShrineHistory` + 同上 |
+| `has_verified_source` | `verification_status`が`source_confirmed`以上のSourceが1件以上 | `ShrineKnowledgeSource` |
+| `has_multiple_sources` | いずれかのFactに2件以上のSourceが紐づく | M2M `sources` relation |
+| `deity_source_type_diversity` | 紐づくSourceのsource_type種類数 | `ShrineKnowledgeSource.source_type` |
+
+Capability Setを採用する理由（Level0〜3を採用しない理由）:
+
+- Governance用途では「どの能力を持つか」の集合で十分説明でき、順序付きLevelによる序列表現が不要
+- 各Capabilityが現行Modelの実フィールド・実クエリと1:1で対応し、存在しないField（`shrine_feature`等）へ依存しない
+- count threshold（「deityが何件以上必要か」等）を固定せずに済む。Capabilityは存在有無の二値のみを扱う
+- 105社集計時、Capabilityごとの充足率（`N/105`）としてそのまま報告できる
+- Adminでの利用時、Level番号を解釈する必要がなく、各Capabilityの有無を個別に確認・フィルタできる
+
+---
+
+## Pilot Evidence
+
+`docs/audit/shrine-knowledge-pilot-5-result.md`（明治神宮・品川神社・三峯神社・神田神社・給田六所神社の5社）の実データを用いて、Capability Setおよび各Metricsを検証した。**DBへの分類保存は行っていない（観測のみ）。**
+
+| Shrine | has_legacy_fallback_fields | has_fact_ready_deity | has_fact_ready_history | has_verified_source | has_multiple_sources | confidence |
+|---|---|---|---|---|---|---|
+| 明治神宮 | YES | YES | YES | YES | YES | high |
+| 品川神社 | YES | YES | YES | YES | YES | high |
+| 三峯神社 | YES | YES | YES | YES | NO | high |
+| 神田神社 | YES | YES | YES | YES | NO | high/medium混在 |
+| 給田六所神社 | YES | YES | YES | YES | YES | medium |
+
+5社は全てKnowledge-backed Recommendationが成立し、medium confidence・shrine_officialなし・naming variance・traditionのいずれもRuntimeを壊していない（`audit/recommendation-readiness-responsibility`でlive実行確認済み）。5社すべてが`has_legacy_fallback_fields`〜`has_verified_source`をYESで満たすため、**これらのCapabilityがどこで実際に判別力を持つか（NOになる実例）はPilotだけでは確認できていない**（`INSUFFICIENT_NEGATIVE_CASES`）。
+
+---
+
+## Zero-Knowledge Evidence
+
+伊勢神宮（id=3、Pilot対象外、Knowledge Model・Legacy Field（`sajin`/`description`）ともに空）を用いて、実データによる否定ケースを確認した（`audit/recommendation-readiness-responsibility`でlive実行確認）。
+
+- `knowledge_deities: []` / `knowledge_histories: []`
+- `candidate_profile.deity: None` / `confidence: None`
+- `candidate_profile.place_context` / `history_theme` / `goriyaku`は通常どおり値が入る
+- 候補プールから除外されず、クラッシュせず、Reason V4は`place_context`/`history_theme`/`goriyaku`ベースで正常に説明文を生成する
+
+この事実は、「Knowledge Coverageが低い（0でも）＝Recommendation不能」ではないことを示す。したがって**Coverageの値をcandidate eligibility（除外可否）へ直結させる設計は現状不要**である。
+
+---
+
+## Threshold Policy
+
+Capability Setは真偽値のみを扱うため、count threshold（「deityが何件以上」等）は本書に存在しない。105社の実データ分布が観測されるまで、具体的な数値基準は設定しない。
+
+`Thresholds are not normative until 105-shrine shadow evaluation.`
+
+---
+
+## Admin Use Cases
+
+Readiness/Coverageの主な利用先はAdmin・Governance用途に限定する。
+
+- 補完対象抽出（`has_fact_ready_deity=false`の神社一覧等）
+- Coverage dashboard（Capabilityごとの充足率表示）
+- Source不足抽出（`has_verified_source=false`の神社一覧）
+- Evidence Gate usable Fact率の集計
+- Rollout readiness確認（105社のうちどこまでKnowledge投入が進んだか）
+- 105社Shadow評価
+- Pilot/Rollout QA
+
+---
+
+## 105-Shrine Shadow Evaluation（次工程の集計項目案。本書では実装しない）
+
+- `total_shrines`
+- `shrines_with_deity` / `shrines_with_history` / `shrines_with_source`
+- `shrines_with_verified_source`
+- `shrines_with_fact_ready_deity` / `shrines_with_fact_ready_history`
+- `zero_knowledge_shrines`（Knowledge・Legacyとも空の件数）
+
+---
+
+## User-facing Policy
+
+現行Product要求を確認した結果、Web/Mobileのいずれにも「情報充実度」「信頼度」等の表示要求は確認できなかった。
+
+`NO_CURRENT_USER_FACING_REQUIREMENT`
+
+Readiness/Coverageを「神社の信頼度」「神社の格」のような形でユーザーへ直接表示しない。表示するかどうかを検討する場合も、断定的な優劣表現は避ける。
+
+---
+
+## Contract Gaps
+
+| Gap | 分類 | 内容 |
+|---|---|---|
+| `CONTRACT_GAP_ALIASES_FIELD` | `NON_BLOCKING_FOR_READINESS` | `ShrineDeity`に専用aliases fieldが存在しない。Capability判定は`deity`エントリの有無のみを見るため影響しない（`docs/audit/shrine-knowledge-pilot-5-result.md`） |
+| Level3旧Field不存在 | `SUPERSEDED`（Capability Set移行により解消） | `shrine_feature`/`action_source`/`reflection_source`は現行Modelに存在しない。旧Level3設計自体を採用しないため、本書では以後参照しない |
+
+---
+
+## Mother Ship Decisions Required
+
+以下は現時点でも未決である。
+
+- Readinessをuser-facingへ表示するか
+- 105社Rollout時の品質最低条件（どのCapabilityを必須とするか）
+- Capability Setの名称・分類をこのまま採用するか
+- aliases field追加を別途行うか
+
+### 決定済み（本節の未決事項ではない）
+
+- **情報不足神社を候補除外するか** → Phase 2B（`docs/audit/rule-conflict-resolution.md` Decision A）で**Shared Recommendation Eligibilityを維持する**と決定済み。適格条件は`docs/knowledge/recommendation-eligibility-contract.md`を正本とする。本書のGovernance責務は変わらない（§Current Runtime Boundary）
+
+---
+
+## Implementation / Measurement Plan（実装しない。後続PR分割案）
+
+| PR | 目的 | Scope | Out of Scope | Recommended AI |
+|---|---|---|---|---|
+| PR-G1 | Coverage集計スクリプト | 既存Modelへの集計クエリのみで§Current Metrics/§105-Shrine Shadow Evaluationの値を算出 | 新規Model・classifier実装 | Codex |
+| PR-G2 | Admin Coverage表示 | Admin画面へCapability一覧・充足率を表示 | candidate filtering変更 | Codex |
+| ~~PR-G3（Product判断後）~~ | ~~Runtime Eligibility Filter~~ | **不要**。Runtime candidate boundaryはShared Recommendation Eligibilityとして実装済みであり、本書の後続PRとしては着手しない（`docs/knowledge/recommendation-eligibility-contract.md`が正本） | — | — |
+
+各PRの着手順序・要否は母艦判断とする。PR-G1 / PR-G2はGovernance観測の実装案であり、candidate filteringを変更しない。
+
+---
+
+## 他ドキュメントとの関係
 
 | ドキュメント | 責務 |
 |--------------|------|
 | docs/knowledge/shrine-profile-spec.md | 神社プロフィール定義 |
 | docs/knowledge/shrine-data-guide.md | データ入力基準 |
+| docs/knowledge/shrine-knowledge-contract.md | Knowledge Model（deity/shrine_history/Source）の値の意味・出典・確認状態・Evidence Gate要件の正本 |
+| docs/knowledge/recommendation-eligibility-contract.md | Shared Recommendation Eligibility（Runtime candidate boundary）の正本。本書のGovernance責務とは別責務（§Current Runtime Boundary） |
+| docs/core/recommendation-architecture.md | Recommendationパイプライン全体の正本。Eligibility Filter段階はShared Recommendation Eligibilityへ整合済み |
 | docs/core/meaning-layer.md | Meaning Layer |
-| docs/core/recommendation-readiness.md | Recommendation品質判定 |
 | docs/product/visit-reflection-flow.md | 参拝導線 |
 | docs/product/action_suggestion_v4.md | Action契約 |
+| docs/audit/shrine-knowledge-pilot-5-result.md | Pilot 5社の実データ監査結果（本書§Pilot Evidence・§Zero-Knowledge Evidenceの根拠） |
 
 ---
 
-# 今後の拡張
+## 今後の拡張
 
-Recommendation Readiness は
-Scoreとは独立して進化できる構造を維持する。
+Recommendation Readiness（Governance Contract）は、Runtimeとは独立して進化できる構造を維持する。
 
 将来的な候補
 
@@ -395,15 +318,14 @@ Scoreとは独立して進化できる構造を維持する。
 
 ---
 
-# 更新ルール
+## 更新ルール
 
 以下の場合のみ更新する。
 
-- Readiness Levelの変更
-- Coverage定義の変更
-- Recommendation最低条件の変更
-- Governance項目の追加
-- Responsibility Boundaryの変更
+- Governance責務・Non-responsibilitiesの変更
+- Coverage Taxonomy・Capability Setの変更
+- Evidence Gate Boundaryの変更
+- Threshold Policyの確定（105社shadow evaluation後）
+- Mother Ship Decisionsの決定反映
 
-実装の進捗や
-データ件数だけでは更新しない。
+実装の進捗やデータ件数だけでは更新しない。

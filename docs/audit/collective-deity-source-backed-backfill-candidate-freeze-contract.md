@@ -1,0 +1,1405 @@
+# A-5b Source-backed Collective Backfill Candidate Freeze Contract
+
+## Status
+
+- Status: `A-5b CANDIDATE FREEZE CONTRACT / FROZEN`
+- Recorded at: `2026-09-27`
+- Base branch: `develop`
+- Branch: `audit/a5b-source-backed-candidate-freeze`
+- Production write: **NONE**
+- Backfill execution: **NONE**
+- Runtime activation: **NONE**
+- Candidate Master change: **NONE**
+- Revision 2026-10-01: Mother Ship P1–P5 integrated (§5.1, §6.1, §6.2, §13). Canonical text: `collective-deity-knowledge-seed-v1-1-contract.md` §12
+- Revision 2026-10-01: Freeze Evidence Artifact defined (§6.1, §6.2, §7.1–§7.3, §9, §12, §14)
+- Revision 2026-10-01: Direct Verification Timestamp Policy referenced (§6.1 condition 9, §7, §7.1, §15). Canonical text: Seed 1.1 contract §12.8
+- Revision 2026-10-01: Artifact Source reference = semantic Source identity (§7, §7.1, §16)
+- Revision 2026-10-01: Pre-FREEZE source-backed replacement (§4, §6.1, §6.3, §6.4, §7, §10, §12, §17)
+- Revision 2026-10-01: A-5b unset Collective confidence rule (§6.1 condition 9, §7, §18)
+- Revision 2026-10-01: A-5b member_list_status assignment rule (§6.1 condition 5, §7, §19)
+- Revision 2026-10-01: Erroneous pre-FREEZE replacement lifecycle (§6.5, §20)
+- Revision 2026-10-01: candidate_order and reason_code rules (§7, §21)
+- Revision 2026-10-02: Legacy Pattern B 6 lifecycle status and mutation accounting (§7.3.1, §7.3.2, §12, §22)
+- Revision 2026-10-03: Reproducibility comparison contract (§10, §10.1, §12, §23)
+
+## 1. Purpose
+
+A-5b freezes the candidate set that may proceed to the Source-backed Collective / Membership backfill defined by the existing Collective Deity contracts.
+
+This is a read-only audit gate. It does not execute the backfill and does not authorize Production writes.
+
+A-5b exists after A-5a fixed Knowledge Seed schema 1.1. It must not redefine the model, importer, Source identity, Collective identity, Membership identity, verification lifecycle, or write path already fixed by A-1 through A-5a.
+
+## 2. Canonical authority
+
+A-5b inherits, without reinterpretation, the existing contracts:
+
+- `docs/audit/collective-deity-model-change-design.md`
+- `docs/audit/collective-deity-backfill-integrity-gate.md`
+- `docs/audit/collective-deity-knowledge-seed-v1-1-contract.md`
+- `docs/knowledge/shrine-knowledge-contract.md`
+- current `backend/temples/models.py`
+- current Knowledge importer authority in `backend/temples/services/knowledge_seed.py` and `backend/temples/management/commands/import_shrine_knowledge.py`
+
+If this document conflicts with those authorities, the upstream canonical contract wins and the candidate must not be frozen under the conflicting interpretation.
+
+## 3. Fixed upstream decisions
+
+A-5b must preserve these decisions:
+
+```text
+Membership Evidence = B
+Named Collective Migration = C
+WRITE_PATH_AUTHORITY = EXTEND_EXISTING_KNOWLEDGE_IMPORTER
+BULK_WRITE_POLICY = PROHIBITED_FOR_COLLECTIVE_BACKFILL
+INTEGRITY_BOUNDARY = DB_ROW_LOCAL_MODEL_SERVICE_CROSS_ROW
+COUNT_RELATION_DB_CONSTRAINT = ADD_BEFORE_BACKFILL
+COLLECTIVE_IDENTITY = SHRINE_PLUS_SOURCE_ATTESTED_LABEL
+KNOWLEDGE_SEED_SCHEMA = VERSION_1_1_WITH_1_0_BACKWARD_COMPATIBILITY
+```
+
+## 4. A-5b scope
+
+A-5b may only determine whether a candidate has sufficient repository-traceable evidence to be frozen for a later Source-backed backfill packet.
+
+A-5b may:
+
+- preserve the fixed candidate input set (a §6.4 replacement preserves it: the replacement occupies the failed legacy candidate's position)
+- resolve Shrine identity using the existing authority
+- identify a Source-attested Collective label
+- identify Source-backed Collective properties
+- identify individually attributable Membership relations only when independently supported
+- record Source provenance required by Knowledge Seed 1.1
+- classify each candidate as `FREEZE`, `HOLD`, or `EXCLUDE`
+- freeze a deterministic candidate artifact for the later backfill implementation/execution stage
+
+A-5b must not:
+
+- write Production data
+- mutate the DB
+- execute the backfill
+- use Django shell or a one-off script as a canonical write path
+- create a parallel importer
+- use `bulk_create`, `bulk_update`, `QuerySet.update`, or raw SQL as a backfill authority
+- infer or invent a canonical Collective name
+- infer religious equivalence
+- synthesize unknown members
+- inherit Collective Sources into Membership Sources
+- create a missing Deity merely because a Membership refers to it
+- rewrite existing Deity / History identity behavior
+- activate Collective data in Runtime
+- change Serializer / selector / Recommendation Eligibility
+- change Concierge / Compass / Deep Dive / Evidence Transport
+- release Model Risk holds
+- change Candidate Master status
+
+## 5. Source-backed evidence boundary
+
+### 5.1 Collective evidence
+
+Every candidate Collective requires its own non-empty `source_keys`.
+
+The Source must directly support the Source-attested aggregate expression and the Collective properties proposed for the later seed packet.
+
+The Collective identity remains exactly:
+
+```text
+resolved Shrine + source_attested_label
+```
+
+`source_attested_label` is Source-attested text. A-5b must not canonicalize, translate, synonym-match, or infer an equivalent religious label.
+
+Collective evidence follows Knowledge Seed 1.1 contract §12 (Mother Ship P1–P5):
+
+- the label is extracted only as permitted by §12.1 (P1)
+- the accepted official Source content must directly support the Collective assertion (§12.2, P2)
+- notes, legacy ShrineDeity Facts, and prior extraction results are discovery evidence only (§12.2–§12.3, P2–P3)
+- `role` follows §12.4 (P4)
+- `member_count` / `member_count_relation` follow §12.5 (P5)
+
+### 5.2 Membership evidence
+
+Membership Evidence remains policy B.
+
+Every supplied Membership requires its own non-empty `source_keys` proving that specific member relation.
+
+```text
+Collective Source evidence
+!=
+automatic Membership evidence
+```
+
+There is no Source inheritance from Collective to Membership.
+
+If a Source establishes only the Collective and does not establish a named member relation:
+
+```text
+Collective may remain a candidate
+Membership must not be supplied
+```
+
+A Collective with zero Memberships remains valid.
+
+## 6. Candidate freeze states
+
+A-5b audit states are namespaced as `a5b_freeze_status` and do not replace Knowledge verification statuses or other repository lifecycle statuses.
+
+### 6.1 FREEZE
+
+A candidate may be `FREEZE` only when all applicable conditions are satisfied:
+
+1. candidate belongs to the fixed A-5b input set, or is a replacement candidate authored under §6.4 that occupies the position of a legacy candidate in that set
+2. Shrine identity is deterministically resolvable under existing authority
+3. `source_attested_label` is non-blank, Source-attested, and occurs verbatim as one contiguous substring of the accepted official Source, extracted only as permitted by Seed 1.1 contract §12.1 (P1)
+4. at least one accepted official Source is traceable for the Collective, and its content has been confirmed to directly support the Collective assertion (§12.2, P2). A note, a legacy Fact, or a prior judgment alone does not satisfy this (§12.2–§12.3, P2–P3)
+5. every proposed Collective field is directly supported by the accepted official Source, or is a default that Seed 1.1 contract §12 permits: `role = unknown` under §12.4 (P4); `member_count_relation = unspecified` / `member_count = null` only when no numeric count is established, under §12.5 (P5). `member_list_status` follows the A-5b member_list_status assignment rule (§7)
+6. every supplied Membership resolves to an individually attributable same-Shrine Deity under the v1.1 reference contract
+7. every supplied Membership has its own non-empty Source evidence
+8. member count / count relation values satisfy the existing v1.1 invariant
+9. verification / confidence / `verified_at` values satisfy the current Knowledge contract. For a new P1–P5-governed Collective or Membership, `verified_at` also satisfies the Direct Verification Timestamp Policy (Seed 1.1 contract §12.8), and Collective `confidence` follows the A-5b unset confidence rule (§7)
+10. no unresolved Source, Shrine, Collective, Membership, or existing-row conflict is present
+11. the candidate can be represented without inference beyond upstream contracts
+12. a contract-compliant Freeze Evidence Artifact (§7.1) records the direct verification against the accepted official Source, and in it:
+    - every required assertion (§7.1) is auditable and has `support_status = SUPPORTED`
+    - no required assertion is `UNSUPPORTED` or `AMBIGUOUS`
+    - `NOT_APPLICABLE` is used only where the governing contract makes that assertion non-applicable
+
+`FREEZE` means only that the candidate packet is frozen for the next backfill stage.
+
+```text
+FREEZE != BACKFILL_EXECUTED
+FREEZE != PRODUCTION_WRITE_AUTHORIZED
+FREEZE != FACT_READY
+FREEZE != RUNTIME_ACTIVE
+```
+
+### 6.2 HOLD
+
+Use `HOLD` when the candidate remains in scope but cannot satisfy `FREEZE` without additional evidence or adjudication.
+
+HOLD conditions include:
+
+- Shrine identity unresolved or ambiguous
+- Source identity conflict or ambiguity
+- Source-attested label absent or ambiguous
+- Source does not directly support a proposed field
+- conflicting Source evidence
+- member relation is not independently Source-backed
+- Membership Deity is not found, ambiguous, or belongs to another Shrine
+- existing Collective / Membership meaningful-field mismatch
+- existing Source relation mismatch
+- verification metadata cannot be established under the current contract
+- any interpretation would require alias matching, note parsing, canonical-name inference, or religious-equivalence inference
+- the Collective assertion is supported only by notes, legacy Facts, or prior judgments, with no direct Source confirmation (P2 / P3)
+- the label cannot be extracted under P1
+- a numeric expression exists but the Source does not establish its semantics (P5): `unspecified` / `null` must not be used to bypass this HOLD. The Artifact records the count assertion as `AMBIGUOUS`
+- no contract-compliant Freeze Evidence Artifact exists, or a required assertion in it is not auditable
+- a required assertion is `UNSUPPORTED` or `AMBIGUOUS` in the Freeze Evidence Artifact
+
+HOLD performs zero writes.
+
+### 6.3 EXCLUDE
+
+Use `EXCLUDE` only when the item is not an A-5b Source-backed Collective backfill candidate, for example:
+
+- it is outside the fixed A-5b candidate input set (a §6.4 replacement candidate is not outside it)
+- evidence establishes no Collective fact to backfill
+- the item is a legacy representation that is not eligible for this staged candidate packet
+- the candidate was included accidentally and has no applicable Collective / Membership backfill target
+
+EXCLUDE is not a negative statement about the Shrine or religious content. It is only an A-5b scope classification.
+
+### 6.4 Pre-FREEZE source-backed replacement
+
+```text
+PRE_FREEZE_REAUTHORING_POLICY = ALLOW_SOURCE_BACKED_REPLACEMENT_WITH_PROVENANCE
+```
+
+**Scope.** This section applies only when all of the following hold:
+
+1. the legacy candidate belongs to the fixed A-5b input set
+2. it has not reached `FREEZE` under the current P1–P5 policy
+3. no applicable A-5b candidate packet has materialized it into Seed 1.1, the DB,
+   or runtime
+4. a current direct official Source verification establishes that the legacy
+   proposed `source_attested_label` cannot satisfy P1 (Seed 1.1 contract §12.1)
+
+**Legacy candidate.** The legacy candidate is never mutated. It remains recorded
+with:
+
+- its original identity (resolved Shrine + legacy `source_attested_label`)
+- `a5b_freeze_status = HOLD`
+- an explicit P1 failure reason
+- provenance pointing to the replacement (§7, "Replacement provenance")
+
+**Replacement candidate.** A replacement candidate may be authored from the
+accepted official Source. The replacement:
+
+- uses a `source_attested_label` that independently satisfies current P1
+- is evaluated fresh under P1–P5 and §6.1. No prior evidence judgment is inherited
+  automatically (P2)
+- does not normalize characters or numerals to preserve the legacy identity
+- receives its own exact identity: resolved Shrine + `source_attested_label`
+  (Seed 1.1 contract §5.3). It is never treated as equal to the legacy identity
+- has its own single `a5b_freeze_status`, decided by §6.1 / §6.2
+
+**Universe and count.**
+
+- A replacement is not an unrelated expansion of the fixed input set. It occupies
+  the lifecycle position of the failed legacy candidate.
+- The `CLOSED_FROZEN` candidate universe and the logical candidate count are
+  unchanged. One position holds both identities.
+- The legacy identity stays historically auditable and keeps its `HOLD`.
+- Only the replacement identity can proceed to `FREEZE` and Seed 1.1 authoring for
+  that position.
+
+**Explicit act.** A replacement is a deliberate authoring act recorded in the Freeze
+Evidence Artifact for that position. It is never automatic.
+
+**Historical candidate-freeze document.**
+
+- A source-backed replacement does not rewrite
+  `docs/audit/collective-deity-backfill-candidate-freeze.md`.
+- That document keeps the original `CLOSED_FROZEN` candidate identity as historical
+  provenance.
+- For an authorized replacement case, two records are authoritative for subsequent
+  A-5b processing:
+  - the current candidate evaluation
+  - the legacy → replacement provenance recorded in the contract-compliant Freeze
+    Evidence Artifact
+- The historical legacy identity does not override the later P1–P5-governed
+  replacement.
+- The logical candidate count is unchanged.
+
+**Not authorized by this section:**
+
+- mutation of a candidate already at `FREEZE`
+- mutation of an already materialized Collective
+- rewriting Pattern B 6 history (§7.3)
+- alias matching
+- Unicode or numeral normalization
+- religious-equivalence inference
+- automatic replacement
+- Production writes
+- Seed writes during evidence classification (§9)
+
+### 6.5 Erroneous pre-FREEZE replacement
+
+```text
+ERRONEOUS_PRE_FREEZE_REPLACEMENT_POLICY
+= INVALIDATE_REPLACEMENT_AND_RESUME_ORIGINAL_CANDIDATE
+```
+
+**Scope.** This section applies only when all of the following hold:
+
+1. a replacement candidate was authorized under §6.4 before `FREEZE`
+2. the authorization is later shown to rely on an erroneous Source transcription /
+   verification premise
+3. the replacement has not been materialized into Seed 1.1, the DB, or runtime
+4. the original candidate identity remains historically identifiable
+
+**A. Erroneous replacement**
+
+- All further A-5b progression stops.
+- It must not reach `FREEZE`, be authored into Seed 1.1, be written to the DB, or
+  enter runtime.
+- Its identity and audit history are preserved.
+- It is marked invalidated for further A-5b progression by the Freeze Evidence
+  Artifact marker:
+
+  ```text
+  replacement_progression = INVALIDATED
+  ```
+
+  This marker is an Artifact lifecycle note. It is not an `a5b_freeze_status` value
+  and adds nothing to the Seed 1.1 schema or any DB model.
+- For §12, the replacement identity keeps its last recorded `a5b_freeze_status`. No
+  new status value is introduced. The marker bars any progression from that status.
+
+**B. Original candidate**
+
+- It resumes evaluation as the active candidate identity for the position.
+- No new candidate identity is created, and the logical candidate count is unchanged.
+- It is re-evaluated under the current contracts.
+- Earlier `PASS` / `FAIL` judgments are not inherited automatically.
+
+**C. Historical evaluations**
+
+- Historical erroneous evaluations are preserved.
+- They are not current authoritative evaluations.
+- The corrected evaluation is authoritative for subsequent A-5b processing.
+
+**D. Evidence inheritance**
+
+- Evidence judgments are not copied automatically from the erroneous replacement to
+  the resumed original candidate.
+- Source-backed facts may be re-established only through a valid current direct
+  verification event (Seed 1.1 contract §12.2, §12.8).
+
+**E. Materialization boundary**
+
+If the erroneous replacement has already been materialized into Seed 1.1, the DB, or
+runtime, this section does not apply. Such cases require a separate rollback /
+correction process.
+
+## 7. Frozen candidate artifact schema
+
+Each evaluated candidate record must preserve at minimum:
+
+```text
+candidate_order
+candidate_name
+candidate_address
+
+resolved_shrine_id
+source_attested_label
+role
+sort_order
+member_count
+member_count_relation
+member_list_status
+verification_status
+confidence
+verified_at
+note
+collective_source_keys
+
+memberships[]
+  deity_ref.display_name
+  sort_order
+  verification_status
+  confidence
+  verified_at
+  note
+  source_keys
+
+a5b_freeze_status
+reason_code
+review_note
+```
+
+Source records referenced by `source_keys` must remain representable under Knowledge Seed 1.1 and preserve the existing Source identity contract.
+
+No numeric DB primary key may be used as a portable Membership deity reference.
+
+For a new P1–P5-governed candidate, the Collective `verified_at` and each `memberships[].verified_at` follow Seed 1.1 contract §12.8.
+
+A-5b unset confidence rule. For a new P1–P5-governed Collective:
+
+1. If an existing authoritative contract explicitly determines `confidence` =
+   `high` / `medium` / `low`, use that value.
+2. Otherwise, `confidence = ""`. This is the existing Seed 1.1 unset/default
+   representation (Seed 1.1 contract §5.1).
+3. Collective `confidence` is never derived from:
+   - `source_type`
+   - official-source status
+   - `verification_status` (including `source_confirmed`)
+   - direct Source access
+   - Source `confidence`
+
+`confidence = ""` is not a confidence score. It does not mean low confidence. It is
+not a new `high` / `medium` / `low` assignment algorithm, and not a Source → Fact
+confidence conversion. A project-wide confidence-assignment policy remains a
+separate task.
+
+A-5b member_list_status assignment rule. For a new P1–P5-governed Collective,
+`member_list_status` is assigned from the accepted Source as follows:
+
+| Value | Use only when the accepted Source |
+|---|---|
+| `complete` | explicitly establishes the complete individual member list |
+| `partial` | explicitly presents an individual member list **and** establishes that the presented list is incomplete / only part of the Collective |
+| `not_enumerated` | establishes the Collective but presents no individual member list |
+| `not_determined` | presents individual-member information but does not establish whether that list is complete or partial |
+
+A deity name that appears only as part of the aggregate expression or the
+`source_attested_label` does not itself count as an individual member-list entry.
+For example, 健磐龍命 inside 「健磐龍命をはじめ家族神１２神」 does not by itself
+establish `partial`.
+
+`member_list_status` is never derived from:
+
+- Membership row count
+- `member_count` or `member_count_relation`
+- known deity rows, canonical names, or aliases
+- religious relationships
+- legacy notes or external knowledge
+- the Collective label alone
+
+No rule of the form "N named deities + a stated total = `partial`" exists.
+
+This rule applies A-1 §4.2 semantics to A-5b. It does not change them, the
+Seed 1.1 default (`not_determined`), or the model enum.
+
+A-5b candidate_order rule.
+
+```text
+CANDIDATE_ORDER_POLICY = FIXED_INPUT_DOCUMENT_ORDER
+```
+
+- Source of authority: the historical fixed A-5b input document
+  `docs/audit/collective-deity-backfill-candidate-freeze.md`.
+- `candidate_order` is a positive 1-based integer.
+- It is the first-appearance order of each logical candidate position in that
+  document, traversed:
+  1. section order, top to bottom
+  2. table row order, top to bottom
+- A later appearance of the same logical candidate position does not create a new
+  order.
+- It is stable for the lifetime of the logical candidate position.
+- It is not a priority, a quality score, or a freeze order.
+- It is not recomputed after a `HOLD` / `FREEZE` / `EXCLUDE` change.
+- Replacement:
+  - A §6.4 replacement inherits the `candidate_order` of the original logical
+    position.
+  - An erroneous replacement invalidated under §6.5 does not create a new order.
+  - An original candidate resumed under §6.5 keeps the same `candidate_order`.
+  - The logical candidate count does not change.
+- Candidates are never renumbered after lifecycle transitions.
+
+A-5b reason_code rule.
+
+```text
+REASON_CODE_POLICY = STATUS_LEVEL_REASON_CODE_WITH_DETAIL_IN_REVIEW_NOTE
+```
+
+The allowed `reason_code` vocabulary is exactly:
+
+| `a5b_freeze_status` | `reason_code` |
+|---|---|
+| `FREEZE` | `ALL_FREEZE_CONDITIONS_SATISFIED` |
+| `HOLD` | `UNSATISFIED_FREEZE_CONDITIONS` |
+| `EXCLUDE` | `OUTSIDE_A5B_BACKFILL_SCOPE` |
+
+Field responsibilities:
+
+| Field | Responsibility |
+|---|---|
+| `a5b_freeze_status` | lifecycle classification |
+| `reason_code` | coarse reason category corresponding to that status |
+| `review_note` | concrete condition-level detail |
+
+Example:
+
+```text
+a5b_freeze_status = HOLD
+reason_code       = UNSATISFIED_FREEZE_CONDITIONS
+review_note       = HOLD: §6.1 conditions 2, 10, 12 are not satisfied
+```
+
+- `reason_code` is a status-level classification only. It does not encode
+  individual blockers. Blocker-specific codes (for example `SHRINE_UNRESOLVED`,
+  `IMPORTER_NOT_RUN`) are not part of the vocabulary unless a future Mother Ship
+  contract revision authorizes them.
+- No "primary blocker" rule exists.
+- Replacement invalidation is not a `reason_code`. It stays with the §6.5 Artifact
+  marker `replacement_progression = INVALIDATED`. An invalidated replacement keeps
+  its last recorded `a5b_freeze_status` and the `reason_code` mapped from it.
+
+Neither rule adds a status value, changes FREEZE / HOLD / EXCLUDE semantics, or
+adds anything to the Seed 1.1 schema or any DB model.
+
+Replacement provenance (§6.4). When a replacement is authored, the Freeze Evidence
+Artifact for that position records both candidate records and this minimum block:
+
+```text
+replacement_provenance
+  legacy_identity
+    shrine_ref.name_jp
+    shrine_ref.address
+    source_attested_label            (legacy, verbatim)
+  legacy_a5b_freeze_status = HOLD
+  legacy_hold_reason                 (explicit P1 failure; cites the replacement's label evidence entry)
+  replacement_identity
+    shrine_ref.name_jp
+    shrine_ref.address
+    source_attested_label            (replacement, verbatim)
+  replacement_basis                  (source_ref + excerpt of the direct verification, §7.1)
+  replacement_evaluation             (the replacement's own §7.1 evidence block and §6.1 result)
+```
+
+The legacy and replacement labels are recorded verbatim. They are not normalized
+for comparison. This block is an Artifact field only. It adds nothing to the Seed 1.1
+schema or to any DB model.
+
+In a Freeze Evidence Artifact, `collective_source_keys` and `memberships[].source_keys` are Seed 1.1 file-local values. They are assigned only at Seed 1.1 authoring (§7.1 "Source reference and Seed linkage"). Before then, the Artifact identifies each Source by semantic Source identity (§7.1).
+
+### 7.1 Freeze Evidence Artifact (new P1–P5-governed FREEZE)
+
+```text
+FREEZE_EVIDENCE_ARTIFACT = REPOSITORY_LEVEL_CONFIRMING_EVIDENCE
+```
+
+A contract-compliant Freeze Evidence Artifact is the §7 frozen candidate artifact,
+extended with the evidence block below. It persists the result of direct
+verification against an accepted official Source for an A-5b FREEZE decision. It is
+not a separate or parallel artifact type.
+
+The official Source remains the underlying authority. The Artifact does not replace it.
+
+```text
+Official Source
+-> direct verification
+-> Freeze Evidence Artifact
+-> A-5b FREEZE
+-> Seed 1.1
+-> importer
+-> DB
+```
+
+Minimum evidence block, per evaluated candidate:
+
+```text
+candidate identity
+  shrine_ref.name_jp
+  shrine_ref.address
+  source_attested_label
+
+sources[]                         (each Source used for verification)
+  source_type
+  url
+  accessed_at
+  verification_status
+
+assertions
+  source_attested_label           -> evidence entry
+  role                            -> evidence entry
+  member_count                    -> evidence entry
+  member_count_relation           -> evidence entry
+  memberships[]
+    deity_ref.display_name        -> evidence entry
+
+evidence entry
+  value
+  source_ref                      (source_type + url of one sources[] entry)
+  excerpt
+  location
+  support_status
+```
+
+Field rules:
+
+- **Candidate identity** uses the existing conventions:
+  - Shrine: `shrine_ref.name_jp` + `shrine_ref.address`, resolved by the existing
+    Shrine authority (§6.1 condition 2)
+  - Collective: resolved Shrine + `source_attested_label` (Seed 1.1 contract §5.3)
+
+  No new DB identity scheme is introduced.
+- **Source fields** follow the active Source contract
+  (`docs/knowledge/shrine-knowledge-contract.md` "Source契約").
+- **`source_ref`** identifies a `sources[]` entry by its semantic Source identity
+  (`source_type` + normalized URL). See "Source reference and Seed linkage" below.
+- **`value`**: the value proposed for the Seed 1.1 field.
+- **`excerpt`**: the exact Source text sufficient to audit the assertion. It stores
+  only the minimum excerpt needed for auditability, not a copy of the Source.
+- **`location`**: the Source location or surrounding context, when available.
+- **`support_status`**: one of `SUPPORTED`, `UNSUPPORTED`, `AMBIGUOUS`,
+  `NOT_APPLICABLE`.
+- **`verified_at` (§7)**: follows Seed 1.1 contract §12.8. One direct verification
+  event provides the same `verified_at` only to assertions directly verified during
+  that event. A verification recorded without an ISO-8601 datetime cannot supply
+  `verified_at`, and a new direct verification event is required.
+
+Required assertions:
+
+- `source_attested_label`
+- each supplied Membership
+- `role`, when a concrete role other than `unknown` is proposed
+- `member_count` / `member_count_relation`, when a value other than
+  `null` / `unspecified` is proposed
+
+A contract-valid fallback value is recorded with the `support_status` its Source
+evidence has. The fallbacks are `role = unknown` under P4, and
+`unspecified` / `null` under P5 when no numeric count is established.
+
+Policy linkage (canonical text: Seed 1.1 contract §12.7):
+
+- **P1:** the label entry's `excerpt` / `location` must show the label as a permitted
+  contiguous substring of the Source.
+- **P3:** legacy Facts may assist discovery. They cannot cause any entry to receive
+  `SUPPORTED`.
+- **P4:** a concrete `role` is `SUPPORTED` only when the Source directly supports
+  the Collective role and any Source-expression → role-enum mapping is valid under
+  an existing contract.
+- **P5:** a concrete count / relation is `SUPPORTED` only when the Source
+  establishes both the numeric value and its semantics. A numeric expression with
+  unresolved semantics is `AMBIGUOUS`, and the candidate is HOLD (§6.2).
+- **`NOT_APPLICABLE`** is permitted only where the governing contract makes the
+  assertion non-applicable.
+
+Membership evidence (Membership Evidence B, §5.2):
+
+- Each Membership entry is independently auditable and records its own
+  `source_ref` and `excerpt`.
+- Collective evidence entries do not establish Membership evidence.
+- A Membership must not be derived solely from the Collective label, the member
+  count, list length, or legacy Membership / Deity Facts.
+
+Source reference and Seed linkage:
+
+```text
+FREEZE_ARTIFACT_SOURCE_REFERENCE = SEMANTIC_SOURCE_IDENTITY
+```
+
+- **Portable identity.** The Artifact identifies an official Source portably by
+  `source_type` + normalized URL. This is the existing Source semantic identity
+  (Source contract "Import時のSource semantic identity"; `normalize_source_url` in
+  `backend/temples/services/knowledge_seed.py`).
+- **`source_key` is not portable.** It is not a Source identity in the Artifact. It
+  remains a Seed 1.1 file-local reference only (Seed 1.1 contract §5.1, §6.1).
+- **Not yet in a Seed.** The Artifact may record a directly verified official Source
+  that has not yet been authored into any Seed 1.1 file.
+- **No key ownership.** The Artifact does not reserve, issue, or own a future
+  `source_key`.
+- **Later Seed 1.1 authoring:**
+  1. Define the Source in that seed's `sources[]`.
+  2. Assign a non-blank seed-local `key` under the existing Seed 1.1 rules.
+  3. Link the Seed Source to the Artifact Source by exact semantic Source
+     identity (`source_type` + normalized URL).
+- **Keys need not match.** The seed-local key does not need to equal any identifier
+  in the Artifact.
+- **§5.1 / §5.2.** Their `source_keys` requirements are satisfied in the Seed 1.1
+  packet by these linked seed-local keys.
+- **No new registry.** No repository-wide Source key or Source registry is
+  introduced.
+
+### 7.2 Architecture boundary
+
+```text
+Freeze Evidence Artifact = why a candidate / value is supportable
+Seed 1.1                 = values selected for import + Source references
+Database                 = runtime Facts + Source relations
+```
+
+The Freeze Evidence Artifact is not a Source registry, a Seed, Production data,
+runtime data, or a copy of the official Source. Its fields are not added to the
+Seed 1.1 schema or to any DB model. The importer neither reads nor writes it.
+
+### 7.3 Pattern B 6 compatibility
+
+The six completed Pattern B Collectives are pre-policy / legacy freeze evidence:
+
+- Seed: `backend/temples/data/knowledge_seeds/a5b_collective_pattern_b_seed.json`
+- Closure: `docs/audit/collective-deity-a5b-production-final-closure-classification.md`
+
+This contract does not require their retroactive migration solely because it now
+exists, and it does not change their Seed or DB data. A future material re-authoring
+of any of them under the current P1–P5 process must use the current Freeze Evidence
+Artifact contract.
+
+#### 7.3.1 Current lifecycle status (Mother Ship, 2026-10-02)
+
+```text
+LEGACY_PATTERN_B_6_CLOSURE_POLICY
+= GRANDFATHER_AS_FREEZE_WITHOUT_RETROACTIVE_REVERIFICATION
+```
+
+Exact scope. No other candidate is covered:
+
+| `candidate_order` | Shrine | `source_attested_label` | `a5b_freeze_status` | `reason_code` |
+|---:|---|---|---|---|
+| 1 | 箱根神社 | 箱根大神 | `FREEZE` | `ALL_FREEZE_CONDITIONS_SATISFIED` |
+| 2 | 寒川神社 | 寒川大明神 | `FREEZE` | `ALL_FREEZE_CONDITIONS_SATISFIED` |
+| 3 | 二荒山神社 | 二荒山大神 | `FREEZE` | `ALL_FREEZE_CONDITIONS_SATISFIED` |
+| 4 | 住吉神社（博多） | 住吉五所大神 | `FREEZE` | `ALL_FREEZE_CONDITIONS_SATISFIED` |
+| 5 | 安房神社 | 忌部五部神 | `FREEZE` | `ALL_FREEZE_CONDITIONS_SATISFIED` |
+| 6 | 王子神社 | 王子大神 | `FREEZE` | `ALL_FREEZE_CONDITIONS_SATISFIED` |
+
+`review_note` for each of the six:
+
+```text
+FREEZE: grandfathered under LEGACY_PATTERN_B_6_CLOSURE_POLICY; all conditions
+applicable under the governing legacy policy; not re-verified under P1–P5
+```
+
+This record is the authoritative current A-5b lifecycle status of these six
+positions. It is used for A-5b lifecycle and closure accounting (§12).
+
+Semantics:
+
+- For these six candidates, `ALL_FREEZE_CONDITIONS_SATISFIED` means all
+  conditions that apply under the governing legacy policy for them. That policy is
+  the one under which they were selected (`PATTERN_B_6`), materialized, and
+  imported (§7.3).
+- It does **not** state that the current P1–P5 requirements (Seed 1.1 contract §12),
+  the Direct Verification Timestamp Policy (§12.8), the A-5b unset confidence rule,
+  the A-5b member_list_status assignment rule, or §6.1 condition 12 were satisfied
+  retroactively. None of these was re-evaluated.
+- §6.1 condition 12 and the §12 Freeze Evidence Artifact criterion do not apply to
+  these six. They are not new P1–P5-governed candidates.
+
+Not done by this decision:
+
+- no retroactive Freeze Evidence Artifact is created
+- no Source verification is performed
+- no change to `verified_at`, `confidence`, Seed 1.1, DB data, Source rows,
+  Collective rows, Membership rows, runtime, or Production
+- the historical `BACKFILL_READY` / `PATTERN_B_6` / Production execution records
+  are not rewritten
+
+Future material re-authoring of any of these six candidates must use the current
+P1–P5 policy (Seed 1.1 contract §12) and the Freeze Evidence Artifact contract
+(§7.1). The grandfathered status does not carry over to a re-authored candidate.
+
+#### 7.3.2 Mutation accounting
+
+```text
+LEGACY_PATTERN_B_MATERIALIZATION = HISTORICAL_DOWNSTREAM_EXECUTION
+```
+
+- The 2026-09-27 Pattern B Seed 1.1 authoring, importer apply, and Production write
+  (Collectives 6, Memberships 23) remain recorded as they occurred. They are not
+  rewritten as zero.
+- They are classified as historical downstream execution of these six positions.
+- They are accounted separately from mutations that occur during the A-5b candidate
+  freeze / closure audit (§9, §12). The §9 / §12 zero-mutation checks apply to the
+  latter.
+
+## 8. Conflict and fail-safe contract
+
+A-5b is fail closed.
+
+Any unresolved conflict means the candidate cannot be `FREEZE`.
+
+Existing upstream planning semantics remain authoritative:
+
+```text
+0 matching Collective rows
+-> CREATE candidate for later plan
+
+1 matching Collective + exact expected fields + exact Source relation set
+-> SKIP_EXISTS candidate for later plan
+
+1 matching Collective + meaningful mismatch
+-> COLLECTIVE_CONFLICT
+-> HOLD / STOP
+
+2+ matching Collective rows
+-> COLLECTIVE_AMBIGUOUS
+-> HOLD / STOP
+```
+
+Membership planning follows the existing v1.1 contract in the same way. A-5b does not silently overwrite an existing row to make evidence fit.
+
+## 9. Mutation prohibition
+
+During A-5b candidate freeze:
+
+```text
+Production write = 0
+DB mutation = 0
+Seed mutation = 0 during evidence classification
+AUTO_IMPORT = 0
+AUTO_MERGE = 0
+AUTO_CREATE = 0
+Runtime activation = 0
+```
+
+Not every audit document is confirming evidence:
+
+- ordinary audit notes, analysis notes, and historical audit prose remain
+  discovery-only under P2 (Seed 1.1 contract §12.2)
+- only a contract-compliant Freeze Evidence Artifact (§7.1) can be the
+  repository-level confirming record of direct Source verification for a new
+  P1–P5-governed FREEZE
+
+Committing a Freeze Evidence Artifact, or any other audit document, to the
+repository is not a Production write and not a DB mutation.
+
+## 10. Determinism / reproducibility
+
+The candidate input set must be fixed before classification. A §6.4 replacement does not change the fixed set: it occupies an existing position. The lifecycle (§6.4 / §6.5) resolves the position to one current authoritative identity before projection. Historical identities and the replacement provenance (§7) stay Artifact data. They are not part of the reproducibility equality output (§10.1 D, §23).
+
+A-5b run1 must be frozen before an independent run2 comparison.
+
+The reproducibility comparison must use only fields whose generation authority is canonical or explicitly fixed by this contract. Audit-derived helper fields must not be silently promoted to canonical comparison fields.
+
+If a field is discovered to have no canonical repository authority, its provenance must be recorded and the field must be explicitly included or excluded before the reproducibility Gate is evaluated.
+
+A reproducibility PASS does not prove Source truth or Production import eligibility. It proves only deterministic reproduction of the frozen comparison contract.
+
+### 10.1 Reproducibility comparison contract (Mother Ship, 2026-10-03)
+
+```text
+A5B_REPRODUCIBILITY_TARGET
+= CANONICAL_PROJECTION_OF_FIXED_10_CANDIDATE_STATE
+```
+
+This section is the "fixed comparison contract" of §10 and §12.
+
+**A. Target.** The reproducibility Gate compares a deterministic canonical
+projection of the authoritative current state of the 10 fixed A-5b candidates. It
+does not compare Artifact files byte for byte.
+
+**B. Fixed input.**
+
+- One repository commit, identified by its full git commit SHA (the input commit).
+- At that commit, only the git-tracked authoritative records listed in E are read.
+- The comparison output location (G) is never an input.
+
+**C. Comparison fields.** Closed list. A field not listed here is excluded.
+
+| Group | Fields |
+|---|---|
+| Candidate identity | `candidate_order`, `shrine_ref.name_jp`, `shrine_ref.address`, `source_attested_label` |
+| Decision | `a5b_freeze_status`, `reason_code` |
+| Collective | `role`, `sort_order`, `member_count`, `member_count_relation`, `member_list_status`, `verification_status`, `confidence` |
+| Membership (each supplied) | `deity_ref.display_name` (the portable reference, Seed 1.1 contract §6.2), `sort_order`, `verification_status`, `confidence` |
+| Evidence identity | Source semantic identity `source_type` + normalized URL (§7.1); assertion-to-Source reference identity |
+
+Explicitly excluded from equality:
+
+- `resolved_shrine_id`
+- `verified_at` (Collective and Membership)
+- Source `accessed_at` and Source verification timestamps
+- `note`, Membership `note`, `review_note`
+- excerpts, evidence `location` / page prose, audit commentary
+- repository formatting
+
+Also excluded by the closed list:
+
+- `support_status`
+- `source_key`, `collective_source_keys`, `memberships[].source_keys` (file-local keys, §7.1)
+- Source `title`, `publisher`, `verification_status`, `confidence`
+- `candidate_name` / `candidate_address`. They are carried by `shrine_ref`
+- `replacement_progression`, historical statuses, and the replacement provenance
+
+Excluded fields stay valid Artifact / provenance data. The exclusion applies only to
+reproducibility equality.
+
+**D. Lifecycle resolution.**
+
+- The projection holds exactly one candidate object per logical position.
+- Each position is first resolved to its one current authoritative identity and
+  state under §6.4 / §6.5 and §7.3.1.
+- Historical, replaced, and `replacement_progression = INVALIDATED` identities are
+  not projected. They never create a candidate object.
+- If a position has zero, or two or more, current authoritative records, the Gate is
+  `UNRESOLVED`.
+
+**E. Record map.** Where each value is read, by position class:
+
+| Position class | Identity / decision | Collective / Memberships | Sources / assertion references |
+|---|---|---|---|
+| §7.3.1 grandfathered (current: 1–6) | §7.3.1 table: `candidate_order`, Shrine, label, status, `reason_code`. `shrine_ref.address`: the `shrine_ref` of the Pattern B Seed block whose `name_jp` matches | the Pattern B Seed Collective with that `source_attested_label` in that block, and its `memberships` | the Seed `sources[]` entries named by the Collective's and each Membership's `source_keys` |
+| §7.1 Freeze Evidence Artifact (current: 7, 8, 10) | the Artifact's candidate identity block and "Current candidate fields (§7)" table. For position 10 only the current authoritative section C applies (§6.5 C) | the same table; `memberships[]` as recorded by the Artifact | the Artifact's `sources[]` table for the current verification event; the §7.1 evidence block entries |
+| HOLD / EXCLUDE Artifact (current: 9) | the Artifact's candidate identity and final record (`a5b_freeze_status`, `reason_code`) | not projected (F, null rule) | not projected (F, null rule) |
+
+- Pattern B Seed: `backend/temples/data/knowledge_seeds/a5b_collective_pattern_b_seed.json`.
+- Pattern B values are read as recorded. They are not re-evaluated under P1–P5 and are
+  not rewritten into the §7.1 format (§7.3.1).
+- A Seed field omitted from a Seed entry takes its Seed 1.1 contract §5.1 / §6.1
+  default. That default is the contract-defined meaning of the omission. No other
+  default is applied.
+- Values are taken verbatim. No Unicode, numeral, width, or parenthesis normalization.
+  In an Artifact table, a value in backticks is the text inside the backticks, and
+  `""` is the empty string.
+- When this map no longer matches the records (for example, a new candidate-level
+  Artifact supersedes a position), the Gate is `UNRESOLVED` until this map is
+  revised.
+
+**F. Projection schema.**
+
+Top level:
+
+```text
+projection           "a5b-reproducibility-projection"
+projection_version   1
+candidates           array of exactly 10 candidate objects
+```
+
+Candidate object:
+
+| Key | Type | Value |
+|---|---|---|
+| `candidate_order` | integer | |
+| `shrine_ref` | object | `{"address", "name_jp"}` |
+| `source_attested_label` | string | |
+| `a5b_freeze_status` | string | `FREEZE` / `HOLD` / `EXCLUDE` |
+| `reason_code` | string | §7 reason_code mapping |
+| `collective` | object or null | `role`, `sort_order`, `member_count` (integer or null), `member_count_relation`, `member_list_status`, `verification_status`, `confidence` |
+| `memberships` | array or null | objects `{"confidence", "deity_ref": {"display_name"}, "sort_order", "verification_status"}` |
+| `sources` | array or null | objects `{"source_type", "url"}` |
+| `assertion_sources` | array or null | objects `{"assertion", "source_type", "url"}` |
+
+Null rule:
+
+- `a5b_freeze_status = FREEZE`: `collective`, `memberships`, `sources`, and
+  `assertion_sources` are required and non-null. `memberships` may be `[]`.
+- `a5b_freeze_status = HOLD` or `EXCLUDE`: all four are `null`. A HOLD / EXCLUDE
+  candidate has no frozen packet (§6.1 "FREEZE means only that the candidate packet
+  is frozen"; §6.2). Values a HOLD record mentions are not projected.
+- For a HOLD / EXCLUDE candidate, `null` means only "not projected under the
+  reproducibility comparison contract because the candidate is not frozen". It does
+  not mean unknown, absent in the authoritative Artifact, unsupported, unverified, or
+  a default value.
+- The null rule never fills a missing required value of a FREEZE candidate. That
+  case is `UNRESOLVED` (I).
+
+`url` is `normalize_source_url(url)` as implemented at the input commit in
+`backend/temples/services/knowledge_seed.py` (§7.1).
+
+`assertion_sources`:
+
+- §7.1 Artifact: one entry per evidence-block entry, whatever its
+  `support_status`. `assertion` is the asserted field name
+  (`source_attested_label`, `role`, `member_count`, `member_count_relation`), or
+  `membership:` + `deity_ref.display_name` for a Membership entry. The Source is the
+  entry's `source_ref`.
+- §7.3.1 Seed: one entry per Source key on the Collective (`assertion` =
+  `collective`) and on each Membership (`assertion` = `membership:` +
+  `deity_ref.display_name`), resolved through the Seed `sources[]`.
+
+`sources`:
+
+- §7.1 Artifact: the distinct Source identities in the Artifact's `sources[]` table
+  for the current verification event, together with every Source in
+  `assertion_sources`.
+- §7.3.1 Seed: only the distinct Sources in `assertion_sources`. The Seed's top-level
+  `sources[]` is shared by all blocks and is not projected as a whole.
+
+**G. Ordering.**
+
+- `candidates`: ascending `candidate_order`.
+- `memberships`: the array order of the authoritative record (Seed `memberships`
+  order, or the Artifact `memberships[]` order). No contract defines a semantic
+  Membership order, and `sort_order` does not order them (all Pattern B Memberships
+  have `sort_order = 0`). This record order is only a deterministic serialization
+  order for reproducibility. It does not establish or imply deity priority,
+  religious hierarchy, semantic importance, or a canonical worship order.
+- `sources`: ascending by `source_type`, then `url`. Exact duplicates are removed.
+- `assertion_sources`: ascending by `assertion`, then `source_type`, then `url`.
+  Exact duplicates are removed.
+- All string comparison is by Unicode code point, not by UTF-16 code unit or locale.
+
+**H. Canonical serialization.**
+
+- JSON (RFC 8259), encoded as UTF-8 without a BOM.
+- Object keys ascending by Unicode code point, at every level.
+- Array order as in G.
+- No whitespace outside strings. Separators are exactly `,` and `:`. No indentation.
+- Strings: non-ASCII characters are written literally, not as `\u` escapes, and
+  Unicode is not normalized. Escape only `"` as `\"`, `\` as `\\`, and U+0000–U+001F:
+  `\b` `\f` `\n` `\r` `\t` where defined, otherwise `\u00xx` with lowercase hex. `/`
+  is not escaped.
+- Numbers: integers only, in decimal, with no sign `+`, leading zero, fraction, or
+  exponent.
+- `null` is the literal `null`. No booleans are used.
+- The byte stream ends with exactly one LF (0x0A) after the JSON value.
+
+Reference equivalent: Python
+`json.dumps(projection, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"`,
+encoded as UTF-8.
+
+Hash: SHA-256 of the canonical bytes, written as lowercase hex.
+
+**I. Comparison result.**
+
+| Result | When |
+|---|---|
+| `PASS` | run1 and run2 each produce a valid projection (F, exactly 10 candidates) from the same input commit, the canonical bytes are identical, and the SHA-256 hashes are identical |
+| `FAIL` | both projections are valid and the bytes differ |
+| `UNRESOLVED` | either run cannot produce a valid projection: a required value is missing or ambiguous, a position does not resolve to one record (D), or the record map does not match (E). Nothing is defaulted to complete it |
+
+Byte equality is authoritative. Hash equality is a recorded confirmation.
+
+**J. run1 freeze and run2.**
+
+- run1 output location: `docs/audit/a5b-reproducibility/run1-projection.json`. This
+  follows the existing `docs/audit/<topic>/*.json` audit-output convention. The file
+  holds exactly the canonical bytes (H).
+- run record: the input commit SHA, the process, the SHA-256, and the side effects
+  of each run are recorded in the reproducibility section of
+  `docs/audit/collective-deity-a5b-fixed-candidate-set-closure-audit.md`.
+- run1 is frozen when its output and run record are committed.
+- run2 regenerates the projection from the same input commit without reading the run1
+  output. A separate implementation is allowed but not required. run2 output need not
+  be committed; its SHA-256 and the byte comparison are recorded.
+
+**K. Boundary.**
+
+- Authoritative candidate evidence and decisions remain the records in E (contract
+  tables, Artifacts, Seed).
+- The projection is reproducibility comparison output only. It is not a Source of
+  truth for candidate semantics, not a Seed, not Production data, and not read by the
+  importer or runtime.
+- If the projection and an authoritative record disagree, the record governs. The
+  projection is then regenerated; it is never hand-edited.
+
+**L. Safety.** The process is read-only. It reads git-tracked files at the input
+commit and may call the pure function `normalize_source_url`. It does not access the
+DB or the network. It does not write Seed, candidate Artifacts, candidate decisions,
+or Production. It does not run the importer. Its only write is the run1 output and
+run record (J).
+
+**M. Not changed by this section.** Candidate states, the fixed universe, §6.1–§6.5,
+§7.3.1, P1–P5, Seed 1.1 schema and data, DB, importer, runtime, Production. The B3
+(position 9) HOLD is unaffected and is projected under the null rule.
+
+## 11. Downstream boundary
+
+After A-5b candidate freeze closes, the next stage may prepare Knowledge Seed 1.1 packets and run the existing importer validation / dry-run path.
+
+The canonical write sequence remains the A-4 / A-5a sequence:
+
+```text
+parse
+-> validate
+-> resolve Shrine
+-> resolve Source
+-> resolve Collective identity
+-> resolve Membership deity identity
+-> CREATE / SKIP / CONFLICT plan
+-> any error = STOP, zero writes
+-> dry-run = zero writes
+-> transaction.atomic()
+-> normal validated saves only
+-> attach Collective sources
+-> attach Membership sources independently
+-> verify expected delta
+-> commit
+-> second dry-run CREATE=0 / CONFLICT=0
+```
+
+A-5b itself stops before any apply / Production write.
+
+## 12. Closure criteria
+
+A-5b candidate freeze may close only when:
+
+- the candidate input set is frozen
+- every candidate identity has exactly one `a5b_freeze_status`. A §6.4 position holds two identities: the legacy identity (`HOLD`) and the replacement identity (its own status). The logical candidate count is unchanged
+- every §6.4 replacement records the replacement provenance (§7)
+- every `FREEZE` candidate satisfies all applicable Source-backed conditions
+- every new P1–P5-governed `FREEZE` candidate has a contract-compliant Freeze Evidence Artifact (§7.1)
+- every supplied Membership has independent Source evidence
+- every HOLD / EXCLUDE has an explicit reason
+- no unresolved conflict is hidden by inference
+- no Production or DB mutation occurred during the freeze audit. Legacy Pattern B
+  materialization is historical downstream execution, accounted separately (§7.3.2)
+- the frozen artifact is reproducible under its fixed comparison contract (§10.1)
+
+Only then may A-5b be recorded as closed.
+
+## 13. Revision record — Mother Ship P1–P5 (2026-10-01)
+
+Source of the decisions: Mother Ship resolution of the questions in
+`docs/audit/collective-deity-a5b-deferred-ready-4-policy-gap.md` §6.
+Canonical policy text: `docs/audit/collective-deity-knowledge-seed-v1-1-contract.md` §12.
+
+Superseded wording:
+
+| Location | Previous wording | Replaced because |
+|---|---|---|
+| §6.1 condition 3 | "`source_attested_label` is non-blank, Source-attested, and unmodified" | "unmodified" did not define extraction. P1 permits contiguous verbatim extraction and prohibits all other changes |
+| §6.1 condition 4 | "at least one valid Source is traceable for the Collective" | P2 requires the Source content to directly support the assertion, not traceability alone |
+| §6.1 condition 5 | "every proposed Collective field is supported by the recorded Source or is a contract-defined default" | P5 forbids `unspecified` / `null` when a numeric expression exists with unestablished semantics. P4 fixes `role = unknown` as the only fallback |
+
+Added: §5.1 policy pointer and three HOLD conditions in §6.2.
+
+Unchanged:
+
+- FREEZE / HOLD / EXCLUDE vocabulary
+- identity contract
+- Membership Evidence B
+- mutation prohibition
+- downstream write sequence
+
+This revision does not reclassify any candidate or change any recorded closure.
+
+## 14. Revision record — Freeze Evidence Artifact (2026-10-01)
+
+Mother Ship decision:
+
+```text
+FREEZE_EVIDENCE_ARTIFACT = REPOSITORY_LEVEL_CONFIRMING_EVIDENCE
+```
+
+Origin: the ambiguity between Seed 1.1 contract §12.2 ("audit notes … discovery
+evidence only") and the §9 sentence below.
+
+Superseded wording:
+
+| Location | Previous wording | Replaced because |
+|---|---|---|
+| §9 | "A frozen audit artifact may be committed to the repository. That repository artifact is evidence, not a Production data write." | It did not separate ordinary audit material (discovery-only under P2) from a contract-compliant Freeze Evidence Artifact |
+
+Added:
+
+- §6.1 condition 12
+- two §6.2 HOLD conditions, and an Artifact note on the P5 HOLD condition
+- §7.1–§7.3
+- one §12 closure criterion
+
+Unchanged:
+
+- the P2 direct-Source requirement
+- Membership Evidence B
+- FREEZE / HOLD / EXCLUDE vocabulary
+- the identity contracts
+- Seed 1.1 schema, importer, DB models, runtime
+
+This revision does not reclassify any candidate and does not change any recorded
+closure, including Pattern B 6.
+
+## 15. Revision record — Direct Verification Timestamp Policy (2026-10-01)
+
+Canonical text: Seed 1.1 contract §12.8.
+
+Changed:
+
+- **§6.1 condition 9.** Previously it required only that `verified_at` satisfy the
+  Knowledge contract. For a new P1–P5-governed Collective or Membership,
+  `verified_at` must now also be the completion timestamp of the direct verification
+  event (Seed 1.1 contract §12.8).
+- **§7 and §7.1.** Added references stating which event a `verified_at` value may come
+  from, and that a date-only verification cannot supply it.
+
+Consequence under the existing gates (no new gate added):
+
+- A candidate whose direct verification has no recorded ISO-8601 datetime cannot
+  satisfy §6.1 condition 9 with `source_confirmed` / `reviewed` metadata.
+- The existing §6.2 HOLD condition "verification metadata cannot be established
+  under the current contract" applies until a new direct verification event records
+  the datetime.
+
+Unchanged:
+
+- `Source.verified_at` semantics
+- §7.3 Pattern B 6 compatibility
+- Seed 1.1 schema, DB models, importer, runtime, migrations, seed data
+- candidate classifications
+
+## 16. Revision record — Artifact Source reference (2026-10-01)
+
+Mother Ship decision:
+
+```text
+FREEZE_ARTIFACT_SOURCE_REFERENCE = SEMANTIC_SOURCE_IDENTITY
+```
+
+Superseded wording:
+
+| Location | Previous wording | Replaced because |
+|---|---|---|
+| §7.1 `sources[]` | listed `source_key` as a Source field of the Artifact | `source_key` is file-local to a Seed 1.1 file and is not a portable Source identity |
+| §7.1 evidence entry | `source_key` | Replaced by `source_ref` (`source_type` + url of a `sources[]` entry) |
+| §7.1 Membership evidence | "records its own `source_key` and `excerpt`" | Membership evidence now records its own `source_ref` |
+
+Added:
+
+- the §7 note on when `collective_source_keys` / `memberships[].source_keys` are
+  assigned
+- the §7.1 "Source reference and Seed linkage" rules
+
+Unchanged:
+
+- Seed 1.1 `source_key` semantics (file-local; Seed 1.1 contract §5.1, §6.1, §8)
+- the Source semantic identity (`source_type` + normalized URL)
+- Membership Evidence B
+- §12.8 timestamp policy
+- Pattern B 6 (§7.3)
+- the Seed 1.1 schema, importer, DB models, runtime
+
+No key-generation convention and no Source registry is introduced.
+
+## 17. Revision record — Pre-FREEZE source-backed replacement (2026-10-01)
+
+Mother Ship decision:
+
+```text
+PRE_FREEZE_REAUTHORING_POLICY = ALLOW_SOURCE_BACKED_REPLACEMENT_WITH_PROVENANCE
+```
+
+Origin: the contract gap on pre-FREEZE label replacement found for a
+`DEFERRED_READY` candidate whose legacy label fails P1.
+
+Superseded or extended wording:
+
+| Location | Previous wording | Change |
+|---|---|---|
+| §4 | "preserve the fixed candidate input set" | Clarified that a §6.4 replacement preserves the set |
+| §6.1 condition 1 | "candidate belongs to the fixed A-5b input set" | Also admits a §6.4 replacement occupying a legacy position |
+| §6.3 | "it is outside the fixed A-5b candidate input set" | A §6.4 replacement is not outside the set |
+| §10 | "The candidate input set must be fixed before classification." | Replacement does not change the set. The comparison includes both identities |
+| §12 | "every candidate has exactly one `a5b_freeze_status`" | Applies per candidate identity. The logical count is unchanged. Replacement provenance is required |
+
+Added:
+
+- §6.4, including the precedence rule: the historical candidate-freeze document is
+  not rewritten, and the Freeze Evidence Artifact's current evaluation and
+  replacement provenance govern subsequent A-5b processing
+- §7 replacement provenance block
+
+Unchanged:
+
+- P1–P5 and Seed 1.1 contract §5.3 identity (A-5a not amended)
+- §9 mutation prohibition
+- Membership Evidence B
+- §7.3 Pattern B 6
+- the Seed 1.1 schema, DB models, importer, runtime
+
+This revision does not perform any replacement and does not reclassify any candidate.
+
+## 18. Revision record — A-5b unset confidence rule (2026-10-01)
+
+Mother Ship decision for a new P1–P5-governed Collective:
+
+```text
+No upstream authoritative high / medium / low assignment rule
+-> confidence = ""
+```
+
+Changed:
+
+- §6.1 condition 9 references the rule.
+- §7 states the rule.
+
+Unchanged:
+
+- Knowledge contract confidence semantics
+- the Source confidence prohibitions (PR-C1)
+- the Seed 1.1 `confidence` default (`""`)
+- importer, models, Recommendation expression-strength behavior
+
+No confidence scoring model is introduced.
+
+## 19. Revision record — A-5b member_list_status assignment rule (2026-10-01)
+
+Mother Ship decision: the four-state assignment semantics in §7, plus the
+aggregate-expression rule:
+
+```text
+deity name inside aggregate expression != individual member list
+```
+
+Changed:
+
+- §6.1 condition 5 references the rule.
+- §7 states the rule.
+
+Unchanged:
+
+- A-1 §4.2 vocabulary and semantics
+- Seed 1.1 `member_list_status` default and the prohibition on deriving it from
+  Membership rows
+- model enum, importer, runtime
+- candidate classifications
+
+## 20. Revision record — Erroneous pre-FREEZE replacement lifecycle (2026-10-01)
+
+Mother Ship decision:
+
+```text
+ERRONEOUS_PRE_FREEZE_REPLACEMENT_POLICY
+= INVALIDATE_REPLACEMENT_AND_RESUME_ORIGINAL_CANDIDATE
+```
+
+Origin: a §6.4 replacement whose authorization rested on an erroneous Source
+transcription, found before `FREEZE` / Seed / DB materialization.
+
+Added:
+
+- §6.5
+- the Artifact lifecycle marker `replacement_progression = INVALIDATED`
+
+Unchanged:
+
+- the FREEZE / HOLD / EXCLUDE vocabulary
+- §6.4
+- Seed 1.1 schema, DB models, importer, runtime
+- the historical candidate-freeze document
+
+## 21. Revision record — candidate_order and reason_code (2026-10-01)
+
+Mother Ship decisions:
+
+```text
+CANDIDATE_ORDER_POLICY = FIXED_INPUT_DOCUMENT_ORDER
+REASON_CODE_POLICY     = STATUS_LEVEL_REASON_CODE_WITH_DETAIL_IN_REVIEW_NOTE
+```
+
+Origin: §7 required `candidate_order` and `reason_code`, but no rule defined their
+values. A §6.1 condition 12 Artifact could not record them.
+
+Added (§7):
+
+- the A-5b candidate_order rule
+- the A-5b reason_code rule, with the status → `reason_code` mapping and the
+  `review_note` responsibility
+
+Unchanged:
+
+- FREEZE / HOLD / EXCLUDE semantics and vocabulary
+- §6.4, §6.5
+- Seed 1.1 schema, DB models, importer, runtime
+- the historical candidate-freeze document
+
+## 22. Revision record — Legacy Pattern B 6 lifecycle status (2026-10-02)
+
+Mother Ship decisions:
+
+```text
+LEGACY_PATTERN_B_6_CLOSURE_POLICY
+= GRANDFATHER_AS_FREEZE_WITHOUT_RETROACTIVE_REVERIFICATION
+
+LEGACY_PATTERN_B_MATERIALIZATION = HISTORICAL_DOWNSTREAM_EXECUTION
+```
+
+Origin: `docs/audit/collective-deity-a5b-fixed-candidate-set-closure-audit.md`
+found that §7.3 granted legacy compatibility to the Pattern B 6 but assigned no
+`a5b_freeze_status`. §12 requires exactly one per candidate identity.
+
+Added:
+
+- §7.3.1: explicit current status `FREEZE` / `ALL_FREEZE_CONDITIONS_SATISFIED` for
+  `candidate_order` 1–6, with the legacy-policy meaning of the reason_code
+- §7.3.2: mutation accounting for the 2026-09-27 Pattern B materialization
+- §12: pointer from the zero-mutation criterion to §7.3.2
+
+Unchanged:
+
+- FREEZE / HOLD / EXCLUDE vocabulary and the reason_code mapping (§7)
+- P1–P5, §12.8, and the §7.1 Freeze Evidence Artifact contract
+- §6.4, §6.5
+- candidates 7–10
+- Seed 1.1 schema and data, DB models and data, importer, runtime, Production
+- the historical candidate-freeze document and the Pattern B Production records
+
+## 23. Revision record — Reproducibility comparison contract (2026-10-03)
+
+Mother Ship decision:
+
+```text
+A5B_REPRODUCIBILITY_TARGET
+= CANONICAL_PROJECTION_OF_FIXED_10_CANDIDATE_STATE
+```
+
+Origin: `docs/audit/collective-deity-a5b-fixed-candidate-set-closure-audit.md` §15
+recorded the contract §10 run1 / run2 Gate as NOT RECORDED. No fixed comparison
+contract existed (blocker B4).
+
+Added:
+
+- §10.1: the comparison target, fixed input, closed comparison field list and
+  exclusions, lifecycle resolution, record map, projection schema with the
+  HOLD / EXCLUDE null rule, ordering, canonical JSON serialization, comparison
+  result, run1 freeze location, boundary, and safety
+- §12: pointer from the reproducibility criterion to §10.1
+
+Changed:
+
+- §10 first paragraph. It said the comparison includes both §6.4 identities and the
+  replacement provenance. Under this decision, the position is resolved to its
+  current identity first, and historical identities and provenance are not part of
+  the equality output. They remain Artifact data
+
+Unchanged:
+
+- candidate states (FREEZE 9 / HOLD 1 / EXCLUDE 0), the fixed universe, and
+  `candidate_order`
+- §6.1–§6.5, §7, §7.1, §7.3.1, §7.3.2, P1–P5, §12.8
+- Seed 1.1 schema and data, DB, importer, runtime, Production
+- position 9 HOLD (B3)
+
+Not done: run1 and run2 were not executed. B4 stays open until they are.

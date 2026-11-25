@@ -3,7 +3,27 @@ import json
 
 import pytest
 
+from temples.models import Shrine
+from temples.tests.support.recommendation_eligibility import attach_usable_deity_fact
+
 URL = "/api/concierge/chat/"
+
+
+def _eligible_shrine(name: str, *, latitude: float = 35.0, longitude: float = 139.0) -> Shrine:
+    """Shared Recommendation Eligibility gateを通過できるShrineを1件作る。
+
+    requestで持ち込まれる候補も共有gateを通るため、usable Knowledge Factを
+    持つShrineを指すshrine_idが必要になる（ineligibleな候補のfallback再流入禁止）。
+    """
+    shrine = Shrine.objects.create(
+        name_jp=name,
+        address="東京都千代田区1-1",
+        latitude=latitude,
+        longitude=longitude,
+    )
+    attach_usable_deity_fact(shrine)
+    return shrine
+
 
 # This contract test assumes LLM enabled so orchestrator is used.
 @pytest.mark.django_db
@@ -97,7 +117,11 @@ def test_concierge_chat_need_and_breakdown_contract(client, monkeypatch, setting
         "birthdate": "1984-05-15",
         "lat": 35.0,
         "lng": 139.0,
-        "candidates": [{"name": "A"}, {"name": "B"}, {"name": "C"}],
+        "candidates": [
+            {"shrine_id": _eligible_shrine("A").id, "name": "A"},
+            {"shrine_id": _eligible_shrine("B").id, "name": "B"},
+            {"shrine_id": _eligible_shrine("C").id, "name": "C"},
+        ],
     }
 
     r = client.post(URL, data=json.dumps(payload), content_type="application/json")
@@ -121,7 +145,7 @@ def test_concierge_chat_need_and_breakdown_contract(client, monkeypatch, setting
     assert isinstance(recs, list)
     assert len(recs) == 3
 
-    # 先頭(A)は pri=2 になるはず（ソートが変わっても name で取る）
+    # 名前で取る（生年月日を使わないため、並びは相談の一致・人気で決まる）
     by_name = {x.get("name"): x for x in recs if isinstance(x, dict)}
     assert set(by_name.keys()) >= {"A", "B", "C"}
 
@@ -135,12 +159,14 @@ def test_concierge_chat_need_and_breakdown_contract(client, monkeypatch, setting
         "popular": 0.1,
         "direction_bonus": 0.0,
     }
-    assert bd["score_element"] == 2
+    # コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）ため、
+    # birthdate を送っても生年月日の点（score_element）は 0。
+    assert bd["score_element"] == 0
     assert bd["matched_need_tags"] == ["career", "rest"]
     assert bd["score_need"] == 2
     assert bd["score_popular"] == 0.8
 
-    expected_total = 2 * 0.6 + 2 * 0.3 + 0.8 * 0.1
+    expected_total = 0 * 0.6 + 2 * 0.3 + 0.8 * 0.1
     assert bd["score_total"] == pytest.approx(expected_total, rel=1e-6)
 
     # B / C は形だけ最低限保証（過度に数値固定しない）
@@ -155,6 +181,7 @@ def test_concierge_chat_need_and_breakdown_contract(client, monkeypatch, setting
             "direction_bonus",
             "weights",
             "matched_need_tags",
+            "need_evidence_winner_by_tag",
             "profile_signal",
             "direction_signal",
             "behavior_profile",
@@ -188,6 +215,7 @@ def test_concierge_chat_result_state_and_reason_source_contract(client, monkeypa
         "goriyaku_tag_ids": [999],  # どの候補にも一致しない -> fallback を起こす
         "candidates": [
             {
+                "shrine_id": _eligible_shrine("A", latitude=35.001, longitude=139.001).id,
                 "name": "A",
                 "lat": 35.001,
                 "lng": 139.001,
@@ -196,6 +224,7 @@ def test_concierge_chat_result_state_and_reason_source_contract(client, monkeypa
                 "popular_score": 8.0,
             },
             {
+                "shrine_id": _eligible_shrine("B", latitude=35.002, longitude=139.002).id,
                 "name": "B",
                 "lat": 35.002,
                 "lng": 139.002,
@@ -204,6 +233,7 @@ def test_concierge_chat_result_state_and_reason_source_contract(client, monkeypa
                 "popular_score": 5.0,
             },
             {
+                "shrine_id": _eligible_shrine("C", latitude=35.003, longitude=139.003).id,
                 "name": "C",
                 "lat": 35.003,
                 "lng": 139.003,
@@ -264,6 +294,7 @@ def test_concierge_chat_explanation_payload_v2_contract(client, monkeypatch, set
         "lng": 139.0,
         "candidates": [
             {
+                "shrine_id": _eligible_shrine("A").id,
                 "name": "A",
                 "goriyaku": "仕事運・勝運",
                 "astro_tags": ["career"],

@@ -13,8 +13,12 @@
 > **追記（2026-08-02時点、PR-C4A）**: `verification_status: disputed`のFact扱いを「Disputed Evidence Contract」節（本書）で契約確定した。Recommendation側は現行のusable=False（非表示）を正式契約として固定（コード変更なし）。Detail側は「将来的に個別Fact列挙可能」という方向性のみ契約化し、実装（自動グルーピング・自動要約・AIによる正誤判定を明示的に禁止した上での個別Fact列挙）は別PR（PR-C4B候補）へ委ねている。PR-C4A自体もPR-C1と同様Docsのみで、コード・Model・DB・UIの変更は伴わない。
 >
 > **追記（2026-08-03時点、PR-C4B1/PR-C4B2/PR-D1、Current State）**: 上記PR-C4Aが別PRへ委ねていたDetail側の個別Fact列挙表示は、PR-C4B1（Backend、`decide_detail_display_state()`、PR #2232）・PR-C4B2（Web、`FactDisplayState`、PR #2233）として実装・`develop`へマージ済みである。API response相当fixtureからUI表示までの統合回帰テストもPR-D1（PR #2234）で追加済み。Recommendation側の契約（`disputed`を使用しない）はいずれによっても変更されていない。自動グルーピング・自動要約・AIによる正誤判定・`FactSourceEvidence`等の明示的中間Modelは実装後も禁止事項のまま未実装である。詳細は本書「Disputed Evidence Contract」節の「Current State追記」、「後続PR設計」PR2の追記、および「母艦判断項目」の追記を参照。本段落より前の記述（PR2219系列〜PR-C4A時点）は、その時点でのAs-Is・設計判断の履歴として書き換えていない。
+>
+> **追記（2026-08-16時点、PR-C6候補、Presentation Grouping Contract）**: [`docs/audit/shrine-detail-explanation-knowledge-responsibility.md`](../audit/shrine-detail-explanation-knowledge-responsibility.md)（`PARTIAL READY`判定）が、「Shrine Detail Multi-View Contract」節の自動グルーピング禁止と、`ShrineHistory`が同一`history_type`を持つ複数行を安全に保持できることとの間の解釈の空白（Data Merge／Semantic Auto-Grouping／Presentation Groupingの区別が本書に明示されていなかったこと）を指摘した。本追記で新設する「Presentation Groupingの契約」節（「Disputed Evidence Contract」節内）が、コード変更を伴わない契約明確化としてこの空白を埋める。結論のみ先出しする：**既存の`history_type`（canonical、人手割当済み）が一致するFact群を、内容を合成せず・出典を個別保持したまま、共通の見出しの下へ表示することは、本書が禁止する「自動グルーピング」に該当しない（PRESENTATION GROUPING ALLOWED WITH CONSTRAINTS）。** ただし`disputed`のFactを含むグルーピングは本追記の対象外とし、従来どおり「各Factを独立したFactとして個別に表示する」の対象のままとする。詳細・根拠・制約は該当節を参照。
 
 # Shrine Knowledge Contract
+
+> **Recommendation Eligibility との関係**: 本書の「Evidence Gate要件」（`decide_fact_usability()`）は、Concierge / Compass の Shared Recommendation Eligibility gate の usability authority でもある。Recommendation 候補の適格条件（usable Deity Fact または usable History Fact が1件以上）は `docs/knowledge/recommendation-eligibility-contract.md` を参照。本書の判定基準そのものは変更していない。
 
 ## 目的
 
@@ -95,12 +99,29 @@
 |---|---|
 | 神社Profile項目の一覧（どの項目が存在するか） | `shrine-profile-spec.md` |
 | 項目の必須・任意・Coverage | `shrine-profile-spec.md` |
-| 項目のRecommendation利用に必要な充足条件 | `shrine-profile-spec.md`（Readiness判定材料の提供）、`docs/core/recommendation-readiness.md`（Readiness Level本体） |
 | `deity` / `shrine_history`の値の意味・分類・不明値の扱い | 本書 |
 | Source（出典）の項目・確認状態・信頼度 | 本書 |
 | Fact利用条件・表示条件・AI生成値の制約 | 本書 |
+| Factのusable判定（Evidence Gate要件） | 本書 |
 | 情報矛盾時の扱い | 本書 |
+| Recommendation candidate eligibility（どのShrineが候補になれるか） | `docs/knowledge/recommendation-eligibility-contract.md` |
+| Knowledge Coverage / Verification / Usability状態のGovernance観測 | `docs/core/recommendation-readiness.md` |
 | Recommendationパイプライン全体の段階構成 | `docs/core/recommendation-architecture.md` |
+
+「Recommendationに利用できるか」は単一の責務ではなく、次の3つに分離する。旧Runtime Readiness Level 0〜3はSupersededであり、いずれの判定にも使用しない。
+
+```text
+Factをこの1件として利用してよいか
+  -> Evidence Gate（本書「Evidence Gate要件」）
+
+このShrineがRecommendation候補になれるか
+  -> Shared Recommendation Eligibility
+     （docs/knowledge/recommendation-eligibility-contract.md）
+
+この神社群のKnowledge整備状態はどうなっているか
+  -> Recommendation Readiness（Governance観測。
+     docs/core/recommendation-readiness.md）
+```
 
 本書は`shrine-profile-spec.md`を統合・吸収しない。`shrine-profile-spec.md`の「⑥ Trust Layer」「未確定事項 5. Trust Layerの実装場所」は、本書公開後は本書への参照ポインタとして扱う（本書がその内容を正本化したことの明示のみを`shrine-profile-spec.md`側へ最小限追記する。項目定義の書き換えは行わない）。
 
@@ -429,6 +450,20 @@ Web出典のみを前提にしない。以下を扱えるようにする。
 - 文化財データ
 - 現地観察記録
 
+### Import時のSource semantic identity
+
+URLを持つSourceは、portableなimportにおいて`source_type + normalized URL`を
+semantic identityとして扱う。titleの表記差だけを理由に同じWeb文書を重複作成
+しない。normalizationはscheme/hostのcase、default port、fragment、非rootの
+末尾slashに限定し、http/httpsおよびquery stringは区別する。
+
+同一identityの既存Sourceが1件だけで、publisher、verification_status、
+confidence、bibliography、languageがseedと一致するときだけ再利用できる。
+複数一致は`SOURCE_REUSE_AMBIGUOUS`、重要metadata差は
+`SOURCE_REUSE_CONFLICT`としてimport全体を停止する。既存Sourceを上書きせず、
+Production numeric PKをseedへ記録しない。URLを持たないSourceは既存の
+`source_type + title + bibliography`契約を維持する。
+
 ### accessed_atとverified_at
 
 - `accessed_at`: 情報源（URL・資料）へアクセスした日
@@ -476,6 +511,47 @@ Web出典のみを前提にしない。以下を扱えるようにする。
 > - **Fact confidence**（`ShrineDeity.confidence`/`ShrineHistory.confidence`）: Evidence Gate PR-Bで実装済み。Recommendation Reasonの表現強度（high→assertive/現行文言、medium→weakened/限定表現、low→suppressed/Knowledge Factとして使用しない、未設定→legacy-compatible/現行互換の通常表現）へ接続されている。Fact利用可否（usable判定）そのものには使わない。
 > - **Source confidence**（`ShrineKnowledgeSource.confidence`）: PR-C1時点で以下のいずれにも使わないと確定する。Evidence usable判定、Recommendation Reason表現強度、Score/Ranking。Source confidenceからFact confidenceへの自動変換も行わない（上表の「Source typeによる基準値」「複数Source一致度から算出」「複合方式」はいずれも未採用のままの候補であり、Source confidence自体をどう算出・利用するかは引き続き未確定）。
 > - 上表の「利用先」のうち、`data_confidence_score`（Score軸）は今回も対象外のまま。数値閾値も導入していない（PR-Bはcategorical値(high/medium/low)をそのままReason表現強度へ対応させており、数値閾値を持たない）。
+
+### Traceability Contract（Batch 7 Closure、2026-08-08追加）
+
+> **Status**: 契約確定のみ。コード実装（`knowledge_coverage_report`等への組み込み）は伴わない。
+
+これまでのAudit（Batch 4-7）では、「Internal Traceability」を単一の指標
+（`Fact → Source → URL`まで逆引きできるか）として扱ってきたが、`user_observation`
+（現地観察）のようにURLを持たないことが仕様上正当なSource種別が存在するため、
+「URLの有無」と「Source Traceabilityそのもの」を同一視すると誤った異常判定を招く
+（Batch 7 Closureで実際にこの誤判定が発生した）。本節でこれを分離する。
+
+**Fact → Source relation到達を必須条件とする。** URLの有無に関わらず、すべての
+Fact（`ShrineDeity`/`ShrineHistory`）は最低1件の`ShrineKnowledgeSource`への
+Relationを持たなければならない。これはEvidence Gate（`decide_fact_usability()`）が
+既に強制している要件であり、Traceability Contractもこれを土台とする。
+
+#### Source typeごとのtraceability要件
+
+| source_type | URL | 必須項目 |
+|---|---|---|
+| `shrine_official` / `government` / `cultural_property` / `academic` / `museum_or_archive` / `tourism_official` / `secondary_editorial` | **必須を基本とする** | `url` |
+| `user_observation` | **なしを許容** | `title`・`source_type`・`verification_status`・Note等で観察内容を識別可能であること（`bibliography`等の代替識別情報でも可）・Fact relation |
+| `local_history`（書籍・郷土資料等）／URLを持たない`academic`等 | **なしを許容** | `bibliography`・`publisher`等の書誌情報・Fact relation |
+
+`internal_research`・`ai_generated_draft`は上記のいずれにも該当しない特殊区分として、
+本節では扱わない（`ai_generated_draft`はSourceとして独立した信頼性を持たない、
+既存記載の通り）。
+
+#### KPI再定義（3指標を混ぜない）
+
+| KPI | 定義 | 用途 |
+|---|---|---|
+| **Internal Source Traceability Rate** | Source relationへ逆引き可能なFact数 ÷ 対象Fact数 | Fact Integrityの根幹指標。Evidence Gateの必須要件（Source relation存在）と対応する。URLの有無を問わない |
+| **URL-backed Source Rate** | URLを持つSourceに紐づくFact数 ÷ 対象Fact数 | Web上で直接検証可能なFactの割合。ユーザー向けSource表示（将来のTrust UX検討）の実現可能範囲を示す |
+| **Offline Source-backed Fact Rate** | `user_observation`・書籍等のoffline Sourceに紐づくFact数 ÷ 対象Fact数 | URLを持たないことが仕様上正当なFactの割合。「URL-backed Rateが100%でない」ことが直ちに異常を意味しないことを示すための補助指標 |
+
+**Internal Source Traceability Rateは、Fact Integrityが健全かどうかの判定に使う。
+URL-backed Source Rateは、それより狭い「Web直接検証可能性」の指標であり、
+100%未満であることは`user_observation`等のoffline Sourceが正当に存在する限り
+異常ではない。** 今後のAuditでは、この3指標を区別して報告し、単一の
+「Traceability」という語で両者を混同しない。
 
 ### 情報矛盾時
 
@@ -620,6 +696,143 @@ Detailで`disputed`のFactを扱う場合は、各Factを**独立したFactと�
 >
 > Recommendation Contract（本節前半）は本追記時点でも変更されていない。`disputed`のFactはRecommendation Reasonへ引き続き使用しない。
 
+### Presentation Groupingの契約（PR-C6候補、2026-08-16追加）
+
+> **Status**: 契約明確化のみ。コード・Model・DB・UI実装は伴わない（PR-C6候補はDocsのみのPR）。production diff = 0。
+
+[`docs/audit/shrine-detail-explanation-knowledge-responsibility.md`](../audit/shrine-detail-explanation-knowledge-responsibility.md)
+（`PARTIAL READY`判定、§12/§15）が指摘した空白を埋める。上記「Shrine Detail Multi-View Contract」節
+および「Multiple Fact保持方針」節（後述）はいずれも「グルーピング」を禁止する記述を含むが、両節とも
+**その語が指す操作の層を明示的に定義していなかった**。本節はこれを3つの操作へ分解し、それぞれについて
+本書のどの既存文言が適用されるかを確定する。
+
+#### 3つの操作の区別
+
+| 操作 | 定義 | 具体例 |
+|---|---|---|
+| **A. Data Merge** | 2つ以上のFactが1つのFactへ統合される（レコードが減る、`content`が合成される） | `ShrineHistory`のFact AとFact Bを1レコードへcompactionする |
+| **B. Semantic Auto-Grouping** | システムがFactのテキスト内容から関連性・同一テーマ性を**推測**し、その推測結果に基づいて分類・関連付けを行う | 「このFactとこのFactは同じ出来事について述べている」とAIが判定し、束ねて表示する |
+| **C. Presentation Grouping** | 各Factが既に持つ**canonical（人手割当済み）**な`history_type`が一致するという、Modelに既存のfieldの値のみを条件として、レコード・content・sourceを一切変更せず、共通の見出しの下へ視覚的に配置する | `history_type="tradition"`のFact AとFact Bを、「伝承」という同じ見出しの下に、それぞれ別カードのまま並べる |
+
+#### 既存文言の再確認と、それぞれがどの操作を指すか
+
+**「Multiple Fact保持方針」節**（本書、後述）: 「1つの`content`へ複数説を合成しない」——これは
+**Operation Aのみ**を指す。レコードの独立性・`content`の非合成について述べており、UI上の見出し・
+コンテナ構造には一切言及していない。
+
+**「Shrine Detail Multi-View Contract」節の禁止事項リスト**（本節前半、`disputed`Fact文脈）を再度
+引用する。
+
+> - 「複数説があります」等のメタ情報をシステムが自動生成すること
+> - どちらの説が正しいかをAIが判定すること
+> - 複数のFactを1つへ自動統合すること
+> - 複数のFactを自動要約すること
+> - 複数のFactを自動グルーピングすること（**同一テーマの複数説であるという判定をシステムが自動で
+>   行うこと**）
+
+最後の項目の括弧内定義（原文のまま）が、この禁止事項の射程を確定する一次的な根拠である。「同一テーマの
+複数説であるという**判定**をシステムが**自動で行う**こと」は、Modelに存在しないテーマ・関連性を
+システムが推測・断定する行為を指しており、これは**Operation B**の定義と一致する。1〜4番目の項目
+（メタ情報自動生成／AI正誤判定／自動統合／自動要約）もすべて「Factの内容・関係性についてシステムが
+新たな判断を下すこと」という共通点を持ち、いずれもOperation A/Bの範疇に入る。**Operation Cを名指しで
+禁止する文言は、本書のどこにも存在しない**（本節作成にあたり「グルーピング」「グループ」の全出現箇所
+を確認済み）。
+
+「複数Factを束ねる新たな集約層を設けない」（同節、個別列挙の指示に続く文）は、文字面だけを見ると
+Operation Cも含み得るように読めるため、本節でこの曖昧さを解消する。この一文は「disputedのFactを
+複数説として列挙する際、それらが同一テーマの異説であるという新たな意味づけをする層（例:
+`FactSourceEvidence`・`EvidenceGroup`・`groupId`・`conflictType`のような明示的中間Model、いずれも
+本節前半で列挙され実装していないと確認済み）を作らない」という意図であり、**disputed Fact特有の
+「対立する複数説をどう見せるか」という文脈に限定される**。同節の見出し自体が「Shrine Detail
+Multi-View Contract」であり、`verification_status: disputed`のFactを対象とすることが明記されている
+（節冒頭）。非`disputed`の、単に同じcanonical `history_type`を持つだけの独立したFact群
+（対立していない、多説併記でもない）を、既存の型ラベルの下へ視覚的に整理する行為は、この節が扱う
+問題設定の外側にある。
+
+#### Provenance（出典）保持の検証
+
+Operation Cが安全である条件として、以下がすべて満たされることを確認した。
+
+| 保持すべき情報 | Presentation Grouping後も保持されるか |
+|---|---|
+| Fact identity | 保持される。各`ShrineHistory`行はグループ化後も個別の`id`・`title`・`content`を持つレコードのまま（データ層は無変更） |
+| Fact text | 保持される。`content`は合成されない（Operation Aを行わないため） |
+| Fact type | 保持される。グループの見出し自体が`history_type_label`（既存、`HISTORY_TYPE_LABELS`）そのものであり、個々のFactからtypeが失われることはない |
+| Source provenance | 保持される。`ShrineHistorySerializer`の`sources`（`shrine.py:92-103`）は各Factレコードに紐づいたまま返る。共有・合算されない |
+| Evidence traceability | 保持される。`verification_status`→`FactDisplayState`（`full`/`disputed`）はFactごとに個別のまま（`resolveFactDisplayState()`は1 Fact = 1呼び出し） |
+| 独立したFactライフサイクル | 保持される。編集・追加・削除は`ShrineHistory`の個別レコードに対して行われ、グルーピングは表示層のみの再配置であるため、Adminでの編集単位に影響しない |
+
+**Provenanceが曖昧になる境界条件**: `disputed`のFactが混在するグループでは、「なぜこの2件が同じ見出しの
+下にあるのか」（`history_type`が一致するからか、それとも対立する2説として意味的に並べられているのか）
+が読み手にとって区別しにくくなる可能性がある。本節は**この境界条件を安全に扱う設計を提示しない**——
+`disputed`を含むFactのグルーピングは、本節の対象外のまま「Shrine Detail Multi-View Contract」節の
+既存文言（個別表示のみ、集約層を設けない）に従う。
+
+#### Canonical-type限定の確認
+
+Presentation Groupingが安全と判断できるのは、グルーピングキーが以下の条件をすべて満たす場合に限る。
+
+1. 既にModelのfieldとして存在する値であること（`ShrineHistory.history_type`、`models.py:526-533`
+   の6値のいずれか）
+2. その値が人手（Admin編集）によって個々のFact作成時に割り当てられていること——AIやシステムが
+   Fact本文から事後的に推測した値ではないこと
+3. 同一の`history_type`値を持つことの判定が、文字列の完全一致のみであること（類似度判定・
+   embedding比較・LLM分類等を一切用いないこと）
+
+**コピーテキストのヒューリスティックからカテゴリを発明することは、本節でも引き続き禁止する**（タスク
+指示のとおり、Future候補として明示されない限り不可）。`period_text`（自由記述）や`content`本文からの
+時代区分推定（例: 「創建」「江戸期」「近代」という時代軸グルーピング）は、既存metadataが構造化された
+形で持たない値であり、本節が許可するPresentation Groupingの範囲に**含まれない**
+（[`shrine-detail-explanation-knowledge-responsibility.md`](../audit/shrine-detail-explanation-knowledge-responsibility.md)
+§13で確認済み）。
+
+#### 許可される例と、許可されない例
+
+**許可される（Operation C）**:
+
+```
+伝承
+  Fact A [Source: ローカル郷土資料]
+  Fact B [Source: 神社公式サイト]
+```
+
+各Factが独立したカード・独立した`sources`を保ったまま、共通の`history_type`見出しの下に配置される。
+
+**許可されない（Operation A、内容合成）**:
+
+```
+伝承
+  Fact AとFact Bを統合した要約文
+```
+
+**許可されない（Operation B、意味推測によるグルーピング）**:
+
+```
+神社の始まり（システムが推測した独自見出し）
+  Fact A（history_type=founding） + Fact C（history_type=official_origin、
+  「実は同じ出来事について言及している」とシステムが判定）
+```
+
+`history_type`が異なるFact同士を、それらが「同じ出来事について述べている」という意味的類似性で
+束ねることは、`history_type`が一致するグルーピングとは別物であり、Operation Bに該当し禁止される。
+
+#### 決定
+
+# PRESENTATION GROUPING ALLOWED WITH CONSTRAINTS
+
+**制約**:
+
+1. グルーピングキーは既存のcanonical `history_type`値の完全一致のみ（§Canonical-type限定の確認）
+2. Operation A（content合成）・Operation B（意味推測）を一切行わない
+3. 各Factの`id`/`content`/`title`/`sources`/`verification_status`/`sort_order`は個別に表示され続ける
+4. グループ見出しは既存の`history_type_label`（`HISTORY_TYPE_LABELS`）をそのまま使う。新規カテゴリ名を
+   発明しない
+5. `disputed`のFactを含むグルーピングは本節の対象外——「Shrine Detail Multi-View Contract」節の
+   既存契約（個別表示のみ）に従い続ける
+6. 本節は契約の明確化のみであり、実装（`buildShrineFactSection.ts`/`ShrineFactSection.tsx`の変更）を
+   authorizeしない。実装着手には別途、実装PR（`shrine-detail-explanation-knowledge-responsibility.md`
+   §16 PR-B候補）としての着手判断が必要
+
 ### history_type / verification_status / confidenceの3軸分離
 
 以下の3軸は、Model上完全に独立したfieldであり、相互に値を制約するvalidationは存在しない。
@@ -635,6 +848,8 @@ Detailで`disputed`のFactを扱う場合は、各Factを**独立したFactと�
 - `tradition` ≠ `disputed`（伝承であることと、複数Sourceが矛盾し未解決であることは別概念）
 - `official_origin` ≠ `source_confirmed`（公式由緒に分類されていることと、確認済み状態であることは別概念。公式由緒であっても`draft`のまま未確認の場合がある）
 - `founding` ≠ historical certainty（創建情報に分類されていることは、その内容が史実として確定していることを意味しない。確定性は`verification_status`/`confidence`側で表現する）
+
+> **Recommendation Reason側での強制（TRADITION_ALWAYS_HEDGED）**: 上記の3軸分離はModel/Data Entry契約であり、Recommendation Reason生成側が`confidence=high`の`tradition`分類Factを断定表現で出力しないことまでは、本節単独では保証しない。Reason生成側での強制（`history_type="tradition"`ならconfidenceに関わらずhedge表現を使う）は`docs/core/recommendation-reason-contract.md`「Fact表現強度（confidence / history_type）」を正本とする。
 
 ### Multiple Fact保持方針
 
@@ -1137,6 +1352,17 @@ Codex側では最終決定を行わない。
 > **追記（2026-08-03時点、PR-C4B1/PR-C4B2/PR-D1、Current State）**: 21（Shrine Detailで`disputed`のFactを個別列挙表示する実装）は、PR-C4B1（Backend）・PR-C4B2（Web）として着手・実装済みとなり、PR-D1で統合回帰テストも追加された（詳細は「Disputed Evidence Contract」節「Current State追記」を参照）。ただし「Shrine Detail Multi-View Contract」節が禁止した自動グルーピング・自動要約・AIによる正誤判定・`FactSourceEvidence`等の明示的中間Modelはいずれも実装していない。18・19（Source confidence関連）・20（Conflicting Evidence対応要否）は本追記時点でも変わらず未確定のまま据え置く。加えて、本追記で新たに以下を母艦判断項目へ追加する。
 >
 > **23.** Mobileにおける Knowledge Fact（`deities`/`histories`/`disputed`表示）対応方針。Mobileは本追記時点でKnowledge Factを一切消費していない（本書「Mobile Current State」節を参照）。実装するか、対象外とするか、Web側仕様と統一するかは未確定のまま母艦判断へ委ねる
+>
+> **追記（2026-08-16時点、PR-C6候補）**: 「Presentation Groupingの契約」節（本書、「Disputed Evidence
+> Contract」節内）で、Data Merge／Semantic Auto-Grouping／Presentation Groupingの3操作を区別し、
+> Presentation Grouping（既存canonical `history_type`一致のみによる表示上のグルーピング）は本書の
+> 既存禁止事項に該当しないことを確定した（`PRESENTATION GROUPING ALLOWED WITH CONSTRAINTS`）。これは
+> **契約解釈の確定のみ**であり、以下は本追記でも決定しない。
+>
+> **24.** Presentation Grouping（History/Tradition等のcanonical `history_type`単位でのカード
+> グルーピング表示）を実際に実装するか、実装する場合の時期・PR分割（候補:
+> [`shrine-detail-explanation-knowledge-responsibility.md`](../audit/shrine-detail-explanation-knowledge-responsibility.md)
+> §16 PR-B）
 
 ---
 

@@ -26,19 +26,21 @@ afterAll(() => {
   server.close();
 });
 
-function makeReq() {
+function makeReq(body: unknown = { pass_type: "7d" }) {
   return new NextRequest("http://localhost:3000/api/billings/checkout", {
     method: "POST",
     headers: { "content-type": "application/json" },
+    body: body === null ? undefined : JSON.stringify(body),
   });
 }
 
 describe("/api/billings/checkout BFF", () => {
-  it("backendへsuccess/cancel URLを渡してcheckout sessionを返す", async () => {
+  it("backendへパスの種類とsuccess/cancel URLを渡してcheckout sessionを返す", async () => {
     server.use(
       http.post(UPSTREAM_CHECKOUT, async ({ request }) => {
         const body = (await request.json()) as Record<string, string>;
         expect(body).toEqual({
+          pass_type: "7d",
           success_url: "http://localhost:3000/billing/success",
           cancel_url: "http://localhost:3000/billing/cancel",
         });
@@ -69,5 +71,16 @@ describe("/api/billings/checkout BFF", () => {
 
     expect(res.status).toBe(401);
     expect(await res.json()).toHaveProperty("detail");
+  });
+
+  it.each([
+    ["パスの種類が無い", {}],
+    ["知らないパスの種類", { pass_type: "30d" }],
+    ["本文が無い", null],
+  ])("%s ときは backend を呼ばずに 400 を返す", async (_label, body) => {
+    // backend を呼ぶと onUnhandledRequest: "error" で失敗する
+    const res = await POST(makeReq(body));
+
+    expect(res.status).toBe(400);
   });
 });

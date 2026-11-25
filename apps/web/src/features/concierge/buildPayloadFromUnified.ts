@@ -1,3 +1,5 @@
+import { normalizeConciergeCandidates, conciergePlaceId } from "../../../../../packages/shared/conciergeCandidates";
+import { resolveShrineIdentity } from "@/lib/identity/resolveShrineId";
 // apps/web/src/features/concierge/buildPayloadFromUnified.ts
 import type { UnifiedConciergeResponse } from "@/features/concierge/types/unified";
 import type {
@@ -6,10 +8,18 @@ import type {
   ConciergeFilterState,
 } from "@/features/concierge/sections/types";
 import type { ConciergeReasonFacts, RecommendationReasonV4Detail } from "@/lib/api/concierge";
+import type { ActionSuggestionV4PreviewViewModel } from "@/viewmodels/conciergeResultItem";
+import { normalizeActionSuggestionV4Preview } from "@/viewmodels/actionSuggestionV4Preview";
 import { validDirectionReferenceOrNull, type DirectionReference } from "../../../../../packages/shared/directionReference";
+import {
+  normalizeRecommendationInstanceId,
+  recommendationAnalyticsProvenance,
+  type RecommendationAnalyticsProvenance,
+} from "../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 
 import { detailHrefFromRecommendation } from "@/features/concierge/detailHref";
+import { normalizeHighlightPick, type ConciergeHighlightPick } from "@/features/concierge/highlightPick";
 
 
 type NormalizedItemBase = {
@@ -20,6 +30,8 @@ type NormalizedItemBase = {
   breakdown: any | null;
   breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
+  analyticsProvenance: RecommendationAnalyticsProvenance;
+  recommendationInstanceId: string | null;
   reasonV4Detail?: RecommendationReasonV4Detail | null;
   recommendationReasonV4?: string | null;
   trustMetadata?: any | null;
@@ -37,6 +49,7 @@ type NormalizedItemBase = {
     timeEstimate: string;
     measurementKey: string;
   }>;
+  actionSuggestionV4Preview?: ActionSuggestionV4PreviewViewModel | null;
   detailHref?: string;
   isDummy?: boolean;
   directionReference?: DirectionReference | null;
@@ -48,6 +61,8 @@ type NormalizedRegistered = NormalizedItemBase & {
   placeId?: string | null;
   goriyakuTags: string[];
   initialFav: boolean;
+  /** 見どころ単位の推薦 PR-3：相談に合う「ここで見る」見どころ。推薦理由ではない。 */
+  highlightPick: ConciergeHighlightPick | null;
 };
 
 type NormalizedPlace = NormalizedItemBase & {
@@ -70,11 +85,6 @@ function asTrimmedString(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const s = v.trim();
   return s.length ? s : null;
-}
-
-function asPositiveInt(v: unknown): number | null {
-  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
-  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
 }
 
 function pickFirstString(...vals: unknown[]): string | null {
@@ -119,13 +129,10 @@ function normalizeActionSuggestions(r: any): NonNullable<NormalizedItemBase["act
 
 // 登録済み=shrine_idあり → /shrines/:id, 未登録=place_idのみ → /shrines/resolve, どちらも無い→除外
 function normalizeRecommendation(r: any, tid: string | null, analyticsContext: DetailAnalyticsContext): NormalizedItem | null {
-  const shrineId = asPositiveInt(r?.shrine_id ?? r?.shrine?.id ?? null);
-
-  const placeId =
-    asTrimmedString(r?.place_id) ??
-    asTrimmedString(r?.placeId) ??
-    (r?.place_id != null ? String(r.place_id).trim() : null) ??
-    (r?.placeId != null ? String(r.placeId).trim() : null);
+  const identity = resolveShrineIdentity(r, "registered_compat");
+  if (identity.status === "invalid" || identity.status === "conflict") return null;
+  const shrineId = identity.shrineId;
+  const placeId = conciergePlaceId(r);
 
   const isDummy = r?.is_dummy === true || r?.__dummy === true;
   const rawHref =
@@ -142,7 +149,8 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
   const imageUrl = asTrimmedString(r?.photo_url);
   const breakdown = r?.breakdown ?? null;
   const breakdownDetail = r?.breakdown_detail ?? r?.breakdownDetail ?? null;
-  const reasonFacts = r?.reason_facts ?? r?.reasonFacts ?? null;
+  const reasonFactsCandidate = r?.reason_facts ?? r?.reasonFacts ?? null;
+  const reasonFacts = Array.isArray(reasonFactsCandidate) ? reasonFactsCandidate : null;
   const reasonV4Detail = r?.recommendation_reason_v4_detail ?? r?.recommendationReasonV4Detail ?? null;
   const recommendationReasonV4 = asTrimmedString(r?.recommendation_reason_v4 ?? r?.recommendationReasonV4);
   const trustMetadata = r?.trust_metadata ?? r?.trustMetadata ?? null;
@@ -154,6 +162,16 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
     analyticsContext.consultationAxis,
   );
   const actionSuggestions = normalizeActionSuggestions(r);
+  const actionSuggestionV4PreviewRaw = r?.action_suggestion_v4_preview ?? r?.actionSuggestionV4Preview ?? null;
+  const actionSuggestionV4Preview = normalizeActionSuggestionV4Preview(actionSuggestionV4PreviewRaw);
+  const analyticsProvenance = recommendationAnalyticsProvenance({
+    primaryReasonSource: r?.primary_reason_source ?? r?._primary_reason_source,
+    reasonFacts,
+    actionSuggestionPreview: actionSuggestionV4PreviewRaw,
+  });
+  const recommendationInstanceId = normalizeRecommendationInstanceId(
+    r?.recommendation_instance_id ?? r?.recommendationInstanceId,
+  );
   const directionReference = validDirectionReferenceOrNull(r?.direction_reference);
 
   if (shrineId) {
@@ -168,6 +186,9 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       breakdown,
       breakdown_detail: breakdownDetail,
       reasonFacts,
+      analyticsProvenance,
+      recommendationInstanceId,
+      actionSuggestionV4Preview,
       reasonV4Detail,
       recommendationReasonV4,
       trustMetadata,
@@ -180,6 +201,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       isDummy,
       goriyakuTags: [],
       initialFav: false,
+      highlightPick: isDummy ? null : normalizeHighlightPick(r, { ctx: "concierge", tid: tid ?? undefined }),
     };
   }
 
@@ -194,6 +216,9 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       breakdown,
       breakdown_detail: breakdownDetail,
       reasonFacts,
+      analyticsProvenance,
+      recommendationInstanceId,
+      actionSuggestionV4Preview,
       reasonV4Detail,
       recommendationReasonV4,
       trustMetadata,
@@ -213,93 +238,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
 
 
 function dedupeItems(items: NormalizedItem[]): NormalizedItem[] {
-  const out: NormalizedItem[] = [];
-  const seenShrine = new Set<number>();
-  const seenPlace = new Set<string>();
-  const norm = (s: string) => s.trim().toLowerCase();
-
-  // placeId -> out index（registered only）
-  const registeredByPlace = new Map<string, number>();
-
-  // 1) registered を先に確保
-  for (const item of items) {
-    if (item.kind !== "registered") continue;
-
-    if (seenShrine.has(item.shrineId)) continue;
-    seenShrine.add(item.shrineId);
-
-    out.push(item);
-
-    // ★ push 後の index を保存
-    if (item.placeId) {
-      const k = norm(item.placeId);
-      if (k) {
-        seenPlace.add(k);
-        registeredByPlace.set(k, out.length - 1);
-      }
-    }
-  }
-
-  // 2) place は後から
-  for (const item of items) {
-    if (item.kind !== "place") continue;
-
-    const k = norm(item.placeId);
-    if (!k) continue;
-
-    if (seenPlace.has(k)) {
-      // ★ breakdown / breakdown_detail を救出
-      const idx = registeredByPlace.get(k);
-      if (idx != null) {
-        const reg = out[idx];
-        if (
-          reg?.kind === "registered" &&
-          (reg.breakdown == null || typeof reg.breakdown !== "object") &&
-          item.breakdown &&
-          typeof item.breakdown === "object"
-        ) {
-          out[idx] = { ...reg, breakdown: item.breakdown, breakdown_detail: item.breakdown_detail ?? reg.breakdown_detail ?? null };
-        }
-        if (
-          reg?.kind === "registered" &&
-          (reg.breakdown_detail == null || typeof reg.breakdown_detail !== "object") &&
-          item.breakdown_detail &&
-          typeof item.breakdown_detail === "object"
-        ) {
-          out[idx] = { ...reg, breakdown_detail: item.breakdown_detail };
-        }
-        if (
-          reg?.kind === "registered" &&
-          (reg.trustMetadata == null || typeof reg.trustMetadata !== "object") &&
-          item.trustMetadata &&
-          typeof item.trustMetadata === "object"
-        ) {
-          out[idx] = { ...reg, trustMetadata: item.trustMetadata };
-        }
-        if (reg?.kind === "registered" && !reg.historyTheme && item.historyTheme) {
-          out[idx] = { ...out[idx], historyTheme: item.historyTheme };
-        }
-        if (reg?.kind === "registered" && !reg.historyContext && item.historyContext) {
-          out[idx] = { ...out[idx], historyContext: item.historyContext };
-        }
-        if (reg?.kind === "registered" && !reg.consultationAxis && item.consultationAxis) {
-          out[idx] = { ...out[idx], consultationAxis: item.consultationAxis };
-        }
-        if (reg?.kind === "registered" && !reg.reasonV4Detail && item.reasonV4Detail) {
-          out[idx] = { ...out[idx], reasonV4Detail: item.reasonV4Detail };
-        }
-        if (reg?.kind === "registered" && !reg.recommendationReasonV4 && item.recommendationReasonV4) {
-          out[idx] = { ...out[idx], recommendationReasonV4: item.recommendationReasonV4 };
-        }
-      }
-      continue;
-    }
-
-    seenPlace.add(k);
-    out.push(item);
-  }
-
-  return out;
+  return normalizeConciergeCandidates(items).ordered.map(c => c.record);
 }
 
 export function buildPayloadFromUnified(
@@ -323,7 +262,8 @@ export function buildPayloadFromUnified(
   const tidRaw = (u as any)?.thread?.id ?? (u as any)?.thread_id ?? (u as any)?.data?.thread_id ?? null;
   const tid = tidRaw != null ? String(tidRaw) : null;
 
-  const hasRecs = Array.isArray(recs) && recs.length > 0;
+  const presentation = normalizeConciergeCandidates(Array.isArray(recs) ? recs : []);
+  const hasRecs = presentation.ordered.length > 0;
   const isLimitReached = limitReached;
 
   const mode = (u as any)?.data?._signals?.mode ?? null;
@@ -344,7 +284,8 @@ export function buildPayloadFromUnified(
   const analyticsContext: DetailAnalyticsContext = {
     mode: analyticsMode,
     flow: analyticsFlow,
-    hasBirthdate: Boolean(filterState.birthdate?.trim()),
+    // コンシェルジュでは生年月日を使わない。
+    hasBirthdate: false,
     recommendationCount: Array.isArray(recs) ? recs.length : undefined,
     consultationAxis,
   };
@@ -365,7 +306,7 @@ export function buildPayloadFromUnified(
         }
       : null;
 
-  if (!hasRecs && (reply || isLimitReached)) {
+  if (!hasRecs && (reply || isLimitReached || Array.isArray(recs))) {
     const sections: ConciergeSection[] = [
       {
         type: "filter",
@@ -391,10 +332,9 @@ export function buildPayloadFromUnified(
 
   if (!hasRecs) return null;
 
-  let items = recs
-    .map((r: any) => normalizeRecommendation(r, tid, analyticsContext))
+  const items = presentation.ordered
+    .map(({record}) => normalizeRecommendation(record, tid, analyticsContext))
     .filter((x): x is NormalizedItem => x !== null);
-  items = dedupeItems(items);
 
   if (items.length === 0) return null;
 

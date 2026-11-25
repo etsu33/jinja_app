@@ -15,6 +15,16 @@
 
 ---
 
+## 現行フェーズの運用方針（2026-10-25）
+
+現在の開発対象は **Web MVPの継続利用検証** とし、①AIコンシェルジュ、②神社情報・推薦品質、③Web地図・経路案内、④ユーザー獲得・行動分析に集中する。Recommendation品質・Shrine Data Qualityはこの範囲で継続し、Release Readinessでは既存機能のセキュリティと安定性を確認する。
+
+Mobile（Expo / Android / iOS）・実機QA・ストア公開、御朱印画像登録等の画像機能拡張、課金機能拡張は新規開発を保留する。過去の実装済み事実は維持するが、現在の作業順には含めない。**保留はAPI停止を意味しない**ため、公開済みの画像・Mobile関連の入口も安全性確認の対象に残す。再開条件は母艦判断とし、ユーザー数の閾値は未確定とする。
+
+2026-10-25のWebセキュリティ監査（`docs/audit/web-production-security-effectiveness-audit-2026-10-25.md`、PR #3349）で新たなCritical/High所見が報告されている。過去のSecurity Foundation対策完了は**当時の対象範囲**に限る。現行の公開安全性や今回の所見の修正完了を示すものではない。修正・本番検証・マージ判断は独立PRと母艦判断で扱う。
+
+---
+
 ## 現在地
 
 KAMI MUSUBIは、Concierge Firstを起点として、推薦、神社詳細、経路確認、参拝、振り返りまでを接続する主要基盤を実装済みである。
@@ -43,9 +53,12 @@ KAMI MUSUBIは、Concierge Firstを起点として、推薦、神社詳細、経
 
 - Concierge First
 - 相談テーマを主入力とする導線
-- Explore List / Map基盤
+- Explore List / Map基盤（Web: MapLibre GL JS、Mobile: Native地図）
 - 神社詳細画面
-- Recommendation Reason
+- Recommendation Reason（V4構造化表示、Backend契約・Web・Mobile実装済み）
+- Shrine Knowledge Model Foundation（ShrineDeity / ShrineHistory / ShrineKnowledgeSource）
+- Evidence Gate Foundation（Fact単位の利用可否判定・confidence表現制御・disputed表示、Web/Mobile UI接続済み）
+- Concierge相談履歴（Web / Mobile一覧・詳細画面、Analytics計測）
 - Action Suggestion
 - Recommendation Snapshot
 - Favorite / Visit / Reflectionモデル
@@ -59,6 +72,7 @@ KAMI MUSUBIは、Concierge Firstを起点として、推薦、神社詳細、経
 - Web / MobileのPremium導線
 - Billing状態取得基盤
 - Web / MobileのAnalytics送信基盤
+- Runtime Security Baseline（従来の監査対象での対策実績。2026-10-25の新規所見は未解決。正本は`docs/core/runtime-security-baseline.md`）
 
 ### 基盤実装済み・検証継続
 
@@ -76,19 +90,27 @@ KAMI MUSUBIは、Concierge Firstを起点として、推薦、神社詳細、経
 - Recommendation Scoreと行動結果の関係
 - Web / Mobile間の主要体験差
 
+### 実装進行中・完了判定待ち
+
+以下は実装が進行しているが、完了範囲または完了判定に母艦判断を要する。
+
+- Shrine Knowledge Model Foundationの100%完了判定（Real Data Pilotは明治神宮・品川神社の2社で実施済みだが、3〜5社規模のPilot本体、105件Rolloutは未着手）
+- Recommendation Readiness（Governance Capability観測・Coverage集計・Admin表示）は未着手。Fact単位の利用可否判定（Evidence Gate）とRuntime candidate boundary（Shared Recommendation Eligibility）は実装済みであり、いずれもGovernance観測とは別責務として混同しない
+- Mobile Search / MapおよびWeb Map（MapLibre GL JS）は実装が進行しているが、roadmap上のPhase 8（Mobile展開）はPhase 7（Release Readiness）完了後に位置づけられており、実装順序と本書記載の順序が一致していない
+
 ### 現在の主フェーズ
 
-現在の主フェーズは、Recommendation品質改善とShrine Data Qualityである。
+現在の主フェーズはWeb MVPの安全性・推薦品質・神社データ品質・利用継続の検証である。
 
 特に以下を優先する。
 
-- Recommendation Readinessの定義統一
+- Recommendation ReadinessのGovernance観測整備（Coverage集計・Capability観測・Admin表示は未着手。Fact単位のEvidence GateとShared Recommendation Eligibilityは実装済み）
 - Coverageの定義統一
-- Fact / Meaning / Runtime / Governanceの責務分離
-- 神社固有情報を利用したRecommendation Reason
+- Fact / Meaning / Runtime / Governanceの責務分離（Evidence Gateの実装によりFact usability判定は分離済み）
+- 神社固有情報を利用したRecommendation Reason（Reason V4として実装済み、継続改善）
 - Action / Reflectionとの一貫性
-- 神社データの出典・検証・利用可能性
-- Readiness条件とBackend実装の接続
+- 神社データの出典・検証・利用可能性（Shrine Knowledge Model FoundationとEvidence Gateとして実装済み、Pilot拡大は未着手）
+- Governance Coverage / Capability観測とAdmin / Rollout判断の接続
 
 PremiumおよびAnalyticsは独立した一時的フェーズとして終了させず、Recommendation品質、継続利用および収益性を確認する横断的な検証基盤として運用する。
 
@@ -270,7 +292,9 @@ reflection_saved
 
 ### Score v3
 
-Score v3はshadow modeで観測を続ける。
+Score v3はshadow modeで観測を続ける。shadow modeは`SCORE_V3_MODE`のdefaultであり、この状態ではRankingの並び順にScore v3を使用しない（`resolve_score_sort_key()`）。
+
+したがってCurrent Score Authorityは`docs/analytics/recommendation-score-v2-current-design.md` + 現行Backend実装 + 関連テストのままである（`docs/audit/rule-conflict-resolution.md` Decision B）。`docs/analytics/recommendation-score-v3-design.md`はReference / Future Designであり、shadow観測が存在することはv3をCurrent Score正本に昇格させるものではない。
 
 active化は、推薦ログと行動ファネルの実測を確認した後に検討する。
 
@@ -280,7 +304,11 @@ active化は、推薦ログと行動ファネルの実測を確認した後に�
 - FactとMeaningが混在しない
 - Actionが推薦理由と矛盾しない
 - Reflectionが相談・推薦・参拝に接続する
-- Readiness不足の神社を識別できる
+- Knowledge整備が不足している神社をGovernance観測で識別できる
+
+### 現在の状況
+
+Recommendation Reasonの固有性（V4構造化表示）、FactとMeaningの分離（Evidence Gate）、Runtime candidate boundary（Shared Recommendation Eligibility）は実装済み。Knowledge整備不足神社のGovernance観測（Coverage集計・Capability観測）は未着手。
 
 ---
 
@@ -311,6 +339,20 @@ active化は、推薦ログと行動ファネルの実測を確認した後に�
 - 値が入力済みか
 - 出典確認済みか
 - 推薦に利用可能か
+
+### 現在の状況
+
+祭神・由緒のModel Foundation（`ShrineDeity` / `ShrineHistory` / `ShrineKnowledgeSource`）と、出典確認済みかを判別するEvidence Gate（Fact単位の利用可否・confidence表現・disputed表示）は実装済み。Real Data Pilotは明治神宮・品川神社の2社で実施済みだが、3〜5社規模のPilot本体および105件Rolloutは未着手。Foundationとして100%完了とみなせるかは`docs/knowledge/shrine-knowledge-contract.md`の完了条件（Pilot対象確定含む）に基づき母艦判断待ちとする。
+
+位置情報については Gate C（参拝ナビ座標と神社中心座標を分離）を選択済み。PHASE_1の保存構造・状態表現・将来consumer routingは`docs/core/split-anchor-architecture.md`へ正本化され、Schema Foundationも実装済み。PHASE_2のsubject_type × point_method matrixおよびread-only調査・判定手順は正本化済みだが、Batch 01（春日大社・宇佐神宮・日光東照宮）の実調査は未実行。Canonical backfillおよびCompass等のruntime cutoverも未実施であり、それぞれ別のMother Ship指示を必要とする。
+
+神社マスタの書き込みはstaff限定に統一した（MVP Shrine Admin-Only Access）。`/api/shrines/`の直接CRUDに加え、place_idからの取り込み（`/api/shrines/ingest/`）でも新規作成はstaffのみ、公開の`/api/places/resolve/`は神社マスタを作らない。一般ユーザーの追加はShrine Submissionの審査経路に限る。
+
+続けて、認証なしの`POST /api/places/resolve/`（未登録Placeで Google Place Details 呼び出しと PlaceRef / ShrineCandidate 書き込みを伴う）に専用throttle `places-resolve`（10/min、POSTのみ）を追加した。GETとglobalの匿名制限は従来どおりで、`DISABLE_THROTTLE`でも緩めない。PlaceRef / ShrineCandidate の保持・掃除方針は未決定（別Gate）。
+
+神社周辺の歴史スポット（ShrineNearbySpot）は、2026-11-24 に母艦が設計方針・API / UI契約を承認し、仕様を`docs/product/shrine-nearby-spot-spec.md`へ正本化した（PR-0）。モデル・公開判定・神社詳細API・Web UI・Mobile UI（PR-1〜PR-5）は未着手で、各PRの開始にそれぞれ母艦承認を必要とする。初期対象の乃木神社3件の本番公開は範囲外。
+
+**Mobileの例外（2026-11-24 母艦判断）：** 現行のMobile新規開発保留は維持しつつ、ShrineNearbySpotに限ってWebと同じ公開・位置・出典・翻訳・同一神社性のルールを適用し、PR-5でMobile UIを実装することを例外的に対象へ戻す。Backendが公開判定の正本。PR-1（モデル）→PR-2（整合性・Gate）→PR-3（API）→PR-4（Web UI）→PR-5（Mobile UI）の段階実装を想定し、各PRの開始・マージ・本番反映は個別に母艦が判断する。Mobile全体の開発再開・ストア公開・Phase 8の順序変更は承認されていない。
 
 ---
 
@@ -383,8 +425,10 @@ Shrine Data Quality
 ↓
 Release Readiness
 ↓
-Mobile本番配布準備
+Webユーザー獲得・継続利用検証
 ```
+
+Mobile本番配布準備は保留。Phase 8の再開条件は母艦判断とする。
 
 ### 横断的な検証
 
@@ -401,6 +445,14 @@ Mobile本番配布準備
 Phase 1〜4は独立した新規実装フェーズとしては完了している。
 
 ただし、各基盤の品質、利用率、CVRおよび継続価値の検証は完了扱いにせず、後続フェーズでも継続する。
+
+### Cross-cutting: Security Foundation
+
+従来のRuntime/CI/Supply Chain Security ReviewにおけるCritical/High所見への対応とSecurity Contractの正本化は実施済み（`docs/core/runtime-security-baseline.md`）。ただし、新たなWebセキュリティ監査（2026-10-25、PR #3349）でCritical/Highを含む未修正の所見が報告されている。現在の全Critical/Highが解消済みとはみなさず、修正状況は個別監査資料とPRを参照する。
+
+### Phase順序に関する観察事項
+
+Mobile Search / MapおよびWeb Mapの実装は、上記「主フェーズ」の順序（Release Readinessの後にMobile本番配布準備）に先行して既に進行している。この事実のみを記録し、正式なPhase順序の変更は行わない。順序を変更するかどうかは母艦判断（`MOTHER_SHIP_DECISION_REQUIRED`）とする。
 
 ---
 

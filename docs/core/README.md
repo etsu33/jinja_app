@@ -15,9 +15,17 @@ Core文書は、KAMI MUSUBI全体へ横断的に適用されるシステム構�
 ```text
 architecture.md
 ↓
+split-anchor-architecture.md
+↓
+fixed-rules.md
+↓
+desktop-development-contract.md
+↓
 roadmap.md
 ↓
 authentication-flow.md
+↓
+runtime-security-baseline.md
 ↓
 concierge-spec.md
 ↓
@@ -26,6 +34,8 @@ meaning-layer.md
 meaning-layer-connection.md
 ↓
 narrative-guideline.md
+↓
+recommendation-architecture.md
 ↓
 recommendation-readiness.md
 ↓
@@ -43,13 +53,27 @@ openapi-contract-governance.md
 | 文書 | 責務 |
 | --- | --- |
 | `architecture.md` | システム全体構造、レイヤー、技術責務および依存関係 |
+| `fixed-rules.md` | KAMI MUSUBI全体へ適用する横断Fixed Rule、禁止原則およびRule変更手順 |
+| `desktop-development-contract.md` | active local Repository、local DB、再生成経路および開発環境の正本契約 |
 | `roadmap.md` | 開発フェーズ、実装順序、ゴールおよび完了条件 |
+
+### 位置情報
+
+| 文書 | 責務 |
+| --- | --- |
+| `split-anchor-architecture.md` | 参拝ナビ座標と神社中心座標を分離する物理保存構造、状態表現、将来consumer routingおよびno-fallback境界 |
 
 ### 認証
 
 | 文書 | 責務 |
 | --- | --- |
 | `authentication-flow.md` | Web認証アーキテクチャ、Frontend・BFF・Backend責務、JWT・Cookie方針 |
+
+### Security
+
+| 文書 | 責務 |
+| --- | --- |
+| `runtime-security-baseline.md` | 現在有効なruntime/security contract、trust boundary、logging/public response/CI security方針 |
 
 ### Concierge
 
@@ -69,7 +93,8 @@ openapi-contract-governance.md
 
 | 文書 | 責務 |
 | --- | --- |
-| `recommendation-readiness.md` | 推薦可能品質、Readiness Level、Coverageおよび品質責務 |
+| `recommendation-architecture.md` | Recommendation全体（相談入力から知識還元まで）のEnd-to-Endフロー、各段階の責務・正本データおよび引き渡し契約 |
+| `recommendation-readiness.md` | 神社Knowledge CoverageのGovernance観測（Runtime candidate除外には接続しない） |
 | `recommendation-reason-contract.md` | Recommendation ReasonのInput / Output / 保存 / 表示 / 互換責務 |
 
 ### API契約

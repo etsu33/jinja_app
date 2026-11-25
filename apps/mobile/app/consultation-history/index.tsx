@@ -17,10 +17,11 @@ import {
 import { StateCard } from "../../components/common/StateCard";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
 import Button from "../../components/ui/Button";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
+import { typography } from "../../design/typography";
 
 function ConsultationCard({ thread, onPress }: { thread: ConciergeThreadListItem; onPress: () => void }) {
   const title = thread.title?.trim() || "相談タイトル未設定";
@@ -124,14 +125,9 @@ export default function ConsultationHistoryScreen() {
         style={styles.screen}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.gold} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />}
       >
         <View style={styles.header}>
-          <Pressable onPress={() => router.replace("/records")} style={styles.backButton}>
-            <Text style={styles.backText}>← 記録へ戻る</Text>
-          </Pressable>
-
-          <Text style={styles.title}>相談履歴</Text>
           <Text style={styles.subtitle}>
             これまでの相談を新しい順に見返せます。迷いや願いの変化を、次の相談につなげるための記録です。
           </Text>
@@ -221,25 +217,9 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.mdGap,
   },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: spacing.smGap,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  title: {
-    color: theme.gold,
-    fontSize: 26,
-    fontWeight: "900",
-  },
   subtitle: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 23,
-    fontWeight: "600",
   },
   errorBlock: {
     gap: spacing.smGap,
@@ -251,17 +231,15 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   groupLabel: {
-    color: theme.goldSoft,
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 0.8,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   list: {
     gap: spacing.mdGap,
   },
   consultationCard: {
     backgroundColor: theme.surface,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: radius.lg,
     borderWidth: cardSizes.borderWidth,
     padding: cardSizes.cardPaddingLg,
@@ -274,20 +252,16 @@ const styles = StyleSheet.create({
     gap: spacing.tightGap,
   },
   threadTitle: {
-    color: theme.gold,
-    fontSize: 17,
-    fontWeight: "900",
+    ...typography.title,
+    color: theme.accent,
   },
   createdAt: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "700",
   },
   previewText: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
   },
   metaRow: {
     flexDirection: "row",
@@ -304,9 +278,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   messageCountText: {
+    ...typography.footnote,
     color: theme.text,
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.6,
   },
 });
