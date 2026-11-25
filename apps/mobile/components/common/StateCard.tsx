@@ -3,10 +3,11 @@
 import * as React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
+import { typography } from "../../design/typography";
 
 type StateCardProps = {
   title: string;
@@ -32,14 +33,11 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   stateTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 15,
-    fontWeight: "800",
   },
   stateText: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
   },
 });

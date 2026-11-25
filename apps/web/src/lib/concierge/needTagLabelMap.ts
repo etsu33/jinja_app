@@ -18,10 +18,17 @@ export const NEED_TAG_LABEL_MAP: Record<string, string> = {
   learning: "学びや成長を深めたい",
 };
 
-export function toNeedTagLabel(tag: string): string {
-  return NEED_TAG_LABEL_MAP[tag] ?? tag;
+// 未知のASCII識別子(内部tag key)は表示しない。既知mapに無い値でも、日本語の
+// 相談テーマ文字列(ユーザー入力由来)はそのまま安全に表示できるため区別する。
+const RAW_ASCII_TAG_PATTERN = /^[a-z0-9_]+$/i;
+
+export function toNeedTagLabel(tag: string): string | null {
+  const known = NEED_TAG_LABEL_MAP[tag];
+  if (known) return known;
+  if (RAW_ASCII_TAG_PATTERN.test(tag)) return null;
+  return tag;
 }
 
 export function toNeedTagLabels(tags: string[]): string[] {
-  return tags.map(toNeedTagLabel);
+  return tags.map(toNeedTagLabel).filter((label): label is string => Boolean(label));
 }

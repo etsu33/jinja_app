@@ -1,21 +1,29 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import DetailSection from "@/components/shrine/DetailSection";
+import ConciergeHighlightPick from "@/features/concierge/components/ConciergeHighlightPick";
 import PlaceShrineCard from "@/components/shrine/PlaceShrineCard";
 import ShrineSaveButton from "@/components/shrine/ShrineSaveButton";
 import ConciergeFilterPanel from "@/features/concierge/components/ConciergeFilterPanel";
 import ModeBadge from "@/features/concierge/components/ModeBadge";
 import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecommendationReasonViewModel";
+import { adaptReasonFactsForViewModel } from "@/lib/concierge/adaptReasonFactsForViewModel";
 import { buildHeroReasonV4Sections } from "@/features/concierge/buildHeroReasonV4Sections";
+import { buildHeroConclusionLines } from "@/features/concierge/buildHeroConclusion";
+import { buildRuntimeMatchLines } from "@/features/concierge/buildRuntimeMatchLine";
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
+import type {
+  ConciergeThreadSaveError,
+  ConciergeThreadSaveState,
+} from "@/features/concierge/useConciergeThreadSave";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 
-import { labelNeedDisplayTag } from "@/features/concierge/copy/needDisplayCopy";
 import { buildLoginHref } from "@/lib/nav/login";
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
-import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
+import { getVisibilityForCard, type CardVisibilityState } from "@/lib/premium/cardVisibility";
 import ConciergeConsultationSummary from "@/features/concierge/components/ConciergeConsultationSummary";
 import DirectionReferenceCard from "@/features/concierge/components/DirectionReferenceCard";
 
@@ -24,6 +32,11 @@ import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { trackWebDirection } from "@/lib/analytics/directionEvents";
 import { withDirectionRouteContext } from "@/lib/analytics/directionRouteContext";
 import { buildRecommendationReasonDisplay } from "../../../../../../packages/shared/recommendationReasonDisplay";
+import {
+  buildRecommendationImpressionDedupKey,
+  buildRecommendationResultSetId,
+  recommendationAnalyticsProperties,
+} from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 import type {
   ConciergeSectionsPayload,
@@ -35,6 +48,7 @@ import type {
 } from "@/features/concierge/sections/types";
 
 import { buildConciergeCardRoutes } from "@/lib/concierge/conciergeCardRoutes";
+import type { UserOrigin } from "../../../../../../packages/shared/userOrigin";
 
 type MetaMode = NonNullable<ConciergeSectionsPayload["meta"]>["mode"];
 type AnalyticsContext = Pick<
@@ -45,12 +59,21 @@ type AnalyticsContext = Pick<
 // Design Token v1: 実値が完全一致する箇所のみ --kt-* 参照へ置換 (docs/design/design-token.md)
 const conciergeSoftCardClass =
   "rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] shadow-[var(--kt-shadow-medium)] p-4";
-// border-amber-200 / bg-amber-50 は値としてはPremium Tokenと一致するが、
-// 本カードの意味は「Notice(警告・注意喚起)」でありPremiumではないため、
-// 意味の異なるTokenを流用しないよう非適用とする(radius/shadowのみ置換)。
-const conciergeNoticeCardClass = "rounded-[var(--kt-radius-card)] border border-amber-200 bg-amber-50 shadow-[var(--kt-shadow-medium)] p-4";
-const conciergePremiumCardClass =
-  "rounded-[var(--kt-radius-card)] border border-[var(--kt-color-premium-border)] bg-amber-50/80 shadow-[var(--kt-shadow-medium)] p-4";
+// Notice専用Token（--kt-color-notice-*）へ移行済み。
+// 値としてはPremium Tokenと一致していたが、本カードの意味は
+// 「Notice(警告・注意喚起)」でありPremiumではないため、
+// 意味の異なるTokenを流用せず専用Tokenへ分離した。
+const conciergeNoticeCardClass =
+  "rounded-[var(--kt-radius-card)] border border-[var(--kt-color-notice-border)] bg-[var(--kt-color-notice-bg)] shadow-[var(--kt-shadow-medium)] p-4";
+
+// PR-G1 (docs/design/premium-meaning-ui-direction.md §3.2 / §7, Direction C):
+// the recommendation reading flow is carried by typography + spacing, not by
+// stacked bordered cards (audit #2656 A-C1/A-C4/A-C5). Narrative section
+// headings use `<DetailSection variant="plain">` (renders an <h2> at
+// `text-base font-semibold text-[--kt-color-text-primary]`); section bodies use
+// this one combo. `text-[15px]` is not a new value -- it already matches
+// ShrineDetailHeroHeader's body size in the codebase.
+const narrativeBodyClass = "text-[15px] leading-7 text-[var(--kt-color-text-primary)]";
 
 /**
  * Conciergeではfavorite操作を提供しない。
@@ -85,7 +108,9 @@ function pickAnalyticsString(...values: unknown[]): string | undefined {
   return undefined;
 }
 
-function consultationAxisAnalytics(axis: unknown): Pick<CardAnalyticsPayload, "consultationAxis"> | Record<string, never> {
+function consultationAxisAnalytics(
+  axis: unknown,
+): Pick<CardAnalyticsPayload, "consultationAxis"> | Record<string, never> {
   const consultationAxis = pickAnalyticsString(axis);
   return consultationAxis ? { consultationAxis } : {};
 }
@@ -95,36 +120,77 @@ function AstroCard(props: { sunSign?: string; element?: string; reason?: string 
   return (
     <DetailSection title="占星術による選定">
       <div className={conciergeNoticeCardClass}>
-        <div className="text-sm font-semibold text-slate-900">
+        <div className="text-sm font-semibold text-[var(--kt-color-text-primary)]">
           {sunSign || "不明"} / {element || "不明"}
         </div>
-        <div className="mt-2 text-sm leading-7 text-slate-700">{reason || "（理由なし）"}</div>
+        <div className="mt-2 text-sm leading-7 text-[var(--kt-color-text-secondary)]">{reason || "（理由なし）"}</div>
       </div>
     </DetailSection>
   );
 }
 
-function ConciergePremiumEntryCard(props: {
+/**
+ * PR-G2 (docs/design/premium-meaning-ui-direction.md §7 / §10): the single
+ * Free -> Premium seam in the Concierge Result. One restrained boundary into
+ * the deeper meaning layers, carrying CTA-A (Meaning Depth) exactly once.
+ *
+ * - Guest / Free see this instead of standalone shrine_meaning / action_meaning
+ *   sections. The seam itself carries the *allowed teaser* for each card whose
+ *   visibility is "teaser" -- so a "teaser" in cardVisibility.ts always
+ *   corresponds to real teaser content the user can see, matching the
+ *   shrine_meaning / action_meaning card_teaser_view impression events (which
+ *   still fire from the effect below, unchanged). The full bodies are never
+ *   rendered for "teaser" and are never masked -- they exist only under
+ *   "visible".
+ * - Premium never renders the seam (premium_preview = "hidden") and reads the
+ *   full sections directly -- no upsell surface for someone who already has
+ *   depth.
+ *
+ * Restrained by design: a soft `--kt-color-premium-surface` tint, no border,
+ * no shadow, no PREMIUM badge / lock icon; the CTA is a text link, never a
+ * filled button, so the Hero's "神社の詳細を見る" stays the only strong CTA.
+ * CTA-B (continuity, PremiumStateDeltaCard) and CTA-C (quota, isUiPaywall) each
+ * keep a visually distinct treatment.
+ *
+ * Route, analytics event + payload, and the approved CTA labels are unchanged
+ * from the previous ConciergePremiumEntryCard; the per-card teaser sentences
+ * are the same approved strings the standalone teaser sections used before G2.
+ */
+function PremiumSeam(props: {
   shrineId?: number | null;
   tid?: string | null;
   isGuestUser?: boolean;
   accessLevel: "anonymous" | "free" | "premium";
   analyticsContext?: AnalyticsContext;
+  shrineMeaningVisibility: CardVisibilityState;
+  actionMeaningVisibility: CardVisibilityState;
 }) {
   const href = props.isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
-  const ctaLabel = props.isGuestUser ? "ログインして変化を見返す" : "変化を見返せるようにする";
+  const ctaLabel = props.isGuestUser ? "ログインして意味を深掘りする" : "この神社を選ぶ意味を深掘りする";
   return (
-    <section className={conciergePremiumCardClass}>
+    <section
+      className="rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-premium-surface)] px-4 py-4"
+      data-testid="recommendation-premium-preview"
+    >
       <div className="space-y-2">
-        <p className="text-sm font-semibold leading-6 text-amber-950">
-          {props.isGuestUser
-            ? "相談を保存すると、今の状態や選んだ理由をあとから見返せます。"
-            : "Premiumでは、前回との違いや状態の変化をあとから見返せます。"}
+        <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--kt-color-premium-accent)]">
+          ここから、より深い意味へ
         </p>
-        <p className="text-xs leading-6 text-slate-600">相談内容に基づく状態整理、選んだ理由、行動の意味を記録として残せます。</p>
+        {props.shrineMeaningVisibility === "teaser" ? (
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+            この神社が選ばれた深い理由は、Premiumで読めます。
+          </p>
+        ) : null}
+        {props.actionMeaningVisibility === "teaser" ? (
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+            参拝で意識することの意味づけは、Premiumで読めます。
+          </p>
+        ) : null}
+        {/* Text link, not a filled button: Hero's "神社の詳細を見る" must stay the
+            only strong CTA (recommendation-result-information-architecture.md §6/§11). */}
         <a
           href={href}
-          className="inline-flex items-center rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-premium-accent)] px-3 py-2 text-xs font-semibold text-[var(--kt-color-text-inverse)] hover:bg-amber-800"
+          className="inline-flex items-center text-sm font-semibold text-[var(--kt-color-premium-accent)] underline underline-offset-2 hover:opacity-80"
           onClick={() => {
             trackCardEvent({
               event: "premium_preview_click",
@@ -151,13 +217,25 @@ type Props = {
   payload: ConciergeSectionsPayload;
   onAction?: (action: RendererAction) => void;
   sending?: boolean;
+  canApply?: boolean;
+  locationError?: string | null;
   threadId?: number | null;
   isEntryRoute?: boolean;
   isPremiumActive?: boolean;
   analyticsContext?: AnalyticsContext;
+  threadSaveState?: ConciergeThreadSaveState;
 };
 
+const THREAD_SAVE_ERROR_MESSAGES: Record<ConciergeThreadSaveError, string> = {
+  no_thread: "この相談はまだ保存できる状態ではありません。もう一度相談してからお試しください。",
+  not_owned: "この相談をあなたの履歴で確認できませんでした。ログイン後にもう一度相談すると保存されます。",
+  unauthenticated: "ログインの有効期限が切れています。もう一度ログインしてからお試しください。",
+  network: "保存を確認できませんでした。時間をおいてもう一度お試しください。",
+};
 
+// extraCondition (Legacy/Transitional free-text) を表示用トークンへ分解する。
+// 用途は下の appliedLabel（結果の近くに出る「条件: X / Y」チップ）のみで、
+// 入力UIは持たない。参拝Preferenceの入力は ConciergeFilterPanel が正本。
 function parseExtraTokens(extra: string | undefined | null): string[] {
   return (extra || "")
     .split(/[、,\s]+/)
@@ -239,10 +317,13 @@ export default function ConciergeSectionsRenderer({
   payload,
   onAction,
   sending = false,
+  canApply = false,
+  locationError = null,
   threadId = null,
   isEntryRoute = false,
   isPremiumActive: isPremiumActiveProp,
   analyticsContext,
+  threadSaveState,
 }: Props) {
   const trackedImpressionKeysRef = useRef<Set<string>>(new Set());
   const trackedCardEventKeysRef = useRef<Set<string>>(new Set());
@@ -346,18 +427,26 @@ export default function ConciergeSectionsRenderer({
           (item as any).consultationAxis,
           payload.meta?.consultationAxis,
         ),
+        analyticsProvenance: item.analyticsProvenance,
+        recommendationInstanceId: item.recommendationInstanceId ?? null,
+        highlightPick: item.highlightPick ?? null,
       }));
     });
   }, [payload, normalizedModeForTracking]);
 
   const resultSetId = useMemo(() => {
-    const signature = resultImpressions.map((item) => `${item.rank}:${item.position}:${item.shrineId}`).join("|");
-    return `${tid ?? "unknown"}:${signature || "empty"}`;
+    return buildRecommendationResultSetId(tid, resultImpressions);
   }, [resultImpressions, tid]);
 
   useEffect(() => {
     resultImpressions.forEach((item) => {
-      const impressionKey = `${resultSetId}:concierge_result_impression:${item.shrineId}:${item.position}:${item.rank}`;
+      const impressionKey = buildRecommendationImpressionDedupKey({
+        recommendationInstanceId: item.recommendationInstanceId,
+        resultSetId,
+        shrineId: item.shrineId,
+        position: item.position,
+        rank: item.rank,
+      });
       if (trackedImpressionKeysRef.current.has(impressionKey)) return;
 
       trackedImpressionKeysRef.current.add(impressionKey);
@@ -370,7 +459,13 @@ export default function ConciergeSectionsRenderer({
         recommendationRank: item.rank,
         mode: item.mode,
         historyTheme: item.historyTheme ?? analyticsContext?.historyTheme,
+        recommendationInstanceId: item.recommendationInstanceId,
+        // 見どころ単位の推薦 PR-3：「ここで見る」を出したカードと出さなかったカードを比べるため
+        hasHighlightPick: item.highlightPick !== null,
+        highlightId: item.highlightPick?.highlightId ?? null,
+        highlightNeedTag: item.highlightPick?.needTag ?? null,
         ...consultationAxisAnalytics(item.consultationAxis ?? analyticsContext?.consultationAxis),
+        ...(item.analyticsProvenance ? recommendationAnalyticsProperties(item.analyticsProvenance) : {}),
       });
     });
   }, [analyticsContext?.consultationAxis, analyticsContext?.historyTheme, resultImpressions, resultSetId, tid]);
@@ -393,11 +488,14 @@ export default function ConciergeSectionsRenderer({
           source: "concierge_result",
           accessLevel,
           visibility: consultationSummaryRoute.visibility,
+          shrineId: heroItem.shrineId,
+          recommendationRank: heroItem.rank,
           mode: heroItem.mode,
           historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
           ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
           threadId: tid ?? undefined,
           resultSetId,
+          recommendationInstanceId: heroItem.recommendationInstanceId ?? null,
         });
       }
     }
@@ -421,6 +519,7 @@ export default function ConciergeSectionsRenderer({
           ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
           threadId: tid ?? undefined,
           resultSetId,
+          recommendationInstanceId: heroItem.recommendationInstanceId ?? null,
         });
       }
     }
@@ -444,6 +543,7 @@ export default function ConciergeSectionsRenderer({
           ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
           threadId: tid ?? undefined,
           resultSetId,
+          recommendationInstanceId: heroItem.recommendationInstanceId ?? null,
         });
       }
     }
@@ -576,85 +676,29 @@ export default function ConciergeSectionsRenderer({
             const state: ConciergeFilterState = (sec as any).state;
             const title = (sec as any).title ?? "条件を追加して絞る";
 
-            const canApplyCompatFilter =
-              !!state.birthdate?.trim() || (state.selectedTagIds?.length ?? 0) > 0 || !!state.extraCondition?.trim();
-
-            // 閉じ状態（プリセット選択 + 即絞り）
+            // 参拝Preferenceの入力UIは ConciergeFilterPanel が正本。
+            // ここには独立したQuick Preset（短縮ラベル「静か」「駅近」「ひとり」
+            // 「階段少なめ」）を持たない。同じ役割のUIが2系統あると、
+            // 同じ意図に対して異なるSignalが飛ぶため一本化した。
+            //   静か  -> FilterPanelの「静かな時間を過ごしたい」(quiet)
+            //   駅近  -> 「近場がいい」/「アクセスしやすい場所がいい」(nearby)
+            // 「ひとり」「階段少なめ」はShrine側にcapabilityが無く
+            // (Task 13 Shrine Data Capability Check: Hold) canonical tagを持たない
+            // ため、Presetとしては提供しない。自由入力としては引き続き受け付ける
+            // （ConciergeClientFull.tsx / hooks.ts のfree-text互換処理は不変更）。
+            //
+            // Collapsed state is an entry point only (docs/product/
+            // recommendation-result-information-architecture.md §3 Finding 1 follow-up,
+            // §15 PR1): a single way to open the full editor. The current condition (if
+            // any) is already surfaced by the existing appliedLabel chip near the results
+            // below (with its own "クリア" control) -- not repeated here.
             if (!state.isOpen) {
-              const presets = ["静か", "駅近", "ひとり", "階段少なめ"] as const;
-
-              const parts = parseExtraTokens(state.extraCondition);
-              const set = new Set(parts);
-
-              const togglePreset = (p: string) => {
-                const next = new Set(parts);
-                if (next.has(p)) next.delete(p);
-                else next.add(p);
-                onAction?.({ type: "filter_set_extra", extraCondition: Array.from(next).join(" ") });
-              };
-
-              const selectedPresets = presets.filter((p) => set.has(p));
-
               return (
                 <div key={`filter-${i}-closed`}>
                   <DetailSection title="補助条件を添える">
-                    <p className="mb-2 text-xs text-slate-500">必要なものだけ選んでください</p>
-
-                    <div className="mb-3 flex flex-wrap gap-2">
-                      {presets.map((p) => {
-                        const active = set.has(p);
-                        return (
-                          <button
-                            key={p}
-                            type="button"
-                            className={[
-                              "rounded-full border px-3 py-1 text-xs font-semibold transition",
-                              active
-                                ? "bg-emerald-600 text-white border-emerald-600"
-                                : "bg-white text-slate-700 hover:bg-slate-50",
-                            ].join(" ")}
-                            onClick={() => togglePreset(p)}
-                          >
-                            {p}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {selectedPresets.length > 0 && (
-                      <div className={`mb-3 ${conciergeSoftCardClass} text-xs leading-6 text-slate-600`}>
-                        追加済み: {selectedPresets.join(" / ")}
-                      </div>
-                    )}
-
-                    {!isEntryRoute ? (
-                      <button
-                        type="button"
-                        className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold"
-                        onClick={() => {
-                          onAction?.({ type: "back_to_entry" });
-                          scrollToConciergeInput();
-                        }}
-                        disabled={sending}
-                      >
-                        入口に戻る
-                      </button>
-                    ) : null}
-
                     <button
                       type="button"
-                      className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
-                      disabled={!canApplyCompatFilter || sending}
-                      onClick={() => {
-                        onAction?.({ type: "filter_apply" });
-                      }}
-                    >
-                      {sending ? "絞り込み中…" : "この内容で反映する"}
-                    </button>
-
-                    <button
-                      type="button"
-                      className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold"
+                      className="w-full rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold"
                       onClick={() => onAction?.({ type: "add_condition" })}
                     >
                       もう少し詳しく添える
@@ -664,34 +708,64 @@ export default function ConciergeSectionsRenderer({
               );
             }
 
+            // ConciergeFilterPanel already renders its own title + close
+            // control as a self-contained bordered section (see
+            // ConciergeFilterPanel.tsx). Wrapping it in DetailSection here
+            // duplicated the same title text twice and added a second
+            // nested border/padding layer -- Concierge Entry Responsive /
+            // Density Polish Task 6 removed that redundancy; no signal or
+            // behavior change.
             return (
               <div key={`filter-${i}-open`}>
-                <DetailSection title={title}>
-                  <div>
-                    <ConciergeFilterPanel
-                      isOpen
-                      title={title}
-                      onClose={() => onAction?.({ type: "filter_close" })}
-                      onApply={() => {
-                        onAction?.({ type: "filter_apply" });
-                      }}
-                      canApply={canApplyCompatFilter}
-                      birthdate={state.birthdate}
-                      onBirthdateChange={(v: string) => onAction?.({ type: "filter_set_birthdate", birthdate: v })}
-                      element4={state.element4}
-                      goriyakuTags={state.goriyakuTags}
-                      suggestedTags={state.suggestedTags}
-                      selectedTagIds={state.selectedTagIds}
-                      onToggleTag={(tagId: number) => onAction?.({ type: "filter_toggle_tag", tagId })}
-                      tagsLoading={state.tagsLoading}
-                      tagsError={state.tagsError}
-                      extraCondition={state.extraCondition}
-                      onExtraConditionChange={(v: string) =>
-                        onAction?.({ type: "filter_set_extra", extraCondition: v })
-                      }
-                    />
-                  </div>
-                </DetailSection>
+                <ConciergeFilterPanel
+                  isOpen
+                  title={title}
+                  onClose={() => onAction?.({ type: "filter_close" })}
+                  onApply={() => {
+                    onAction?.({ type: "filter_apply" });
+                  }}
+                  canApply={canApply}
+                  applyLabel={isEntryRoute ? "この条件で提案を見る" : "この条件で提案を更新"}
+                  goriyakuTags={state.goriyakuTags}
+                  selectedTagIds={state.selectedTagIds}
+                  onToggleTag={(tagId: number) => onAction?.({ type: "filter_toggle_tag", tagId })}
+                  tagsLoading={state.tagsLoading}
+                  tagsError={state.tagsError}
+                  extraCondition={state.extraCondition}
+                  onExtraConditionChange={(v: string) => onAction?.({ type: "filter_set_extra", extraCondition: v })}
+                  visitPreferences={state.visitPreferences}
+                  onVisitPreferencesChange={(tags: string[]) =>
+                    onAction?.({ type: "filter_set_visit_preferences", visitPreferences: tags })
+                  }
+                  plannedVisitDate={state.plannedVisitDate}
+                  userOrigin={state.userOrigin}
+                  locationError={locationError}
+                  onPlannedVisitDateChange={(value: string) =>
+                    onAction?.({ type: "filter_set_visit_date", plannedVisitDate: value })
+                  }
+                  onOriginChange={(value: UserOrigin | null) =>
+                    onAction?.({ type: "filter_set_origin", userOrigin: value })
+                  }
+                  onUseCurrentLocation={() => onAction?.({ type: "filter_use_current_location" })}
+                />
+
+                {/* 独立したQuick Preset群はここに置かない。
+                    ConciergeFilterPanel が QUICK_PRESET_GROUPS を正本として
+                    持っており、同じ役割のUIを二重に出さないため。 */}
+
+                {!isEntryRoute ? (
+                  <button
+                    type="button"
+                    className="mt-2 w-full rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold"
+                    onClick={() => {
+                      onAction?.({ type: "back_to_entry" });
+                      scrollToConciergeInput();
+                    }}
+                    disabled={sending}
+                  >
+                    入口に戻る
+                  </button>
+                ) : null}
               </div>
             );
           }
@@ -722,35 +796,49 @@ export default function ConciergeSectionsRenderer({
             const otherRegisteredItems = registeredItems.slice(1);
 
             return (
-              <DetailSection key={`recs-${i}`} title={(sec as any).title ?? ""}>
+              <DetailSection key={`recs-${i}`} title={(sec as any).title ?? ""} className="!border-0">
                 <div className="mb-2 flex items-center justify-end">
                   <ModeBadge mode={payload?.meta?.mode} />
                 </div>
 
                 {typeof payload?.meta?.remaining === "number" && payload.meta.remaining > 0 && (
-                  <div className="mb-2 text-xs leading-6 text-slate-500">
+                  <div className="mb-2 text-xs leading-6 text-[var(--kt-color-text-muted)]">
                     あと {payload.meta.remaining}回までは無料で試せます
                   </div>
                 )}
 
                 {bannerText && (
-                  <div className={`mb-3 ${conciergeNoticeCardClass} text-sm leading-6 text-amber-900`}>
+                  <div
+                    className={`mb-3 ${conciergeNoticeCardClass} text-sm leading-6 text-[var(--kt-color-notice-text)]`}
+                  >
                     {bannerText}
                   </div>
                 )}
 
                 {(isFallback || hasDummy) && (
-                  <div className="mt-3 grid grid-cols-2 gap-2">
+                  // PR-G4: 1 column at mobile widths so the JP labels never wrap to
+                  // uneven 2-line buttons at 375px; 2 columns from `sm` up. Same
+                  // pattern as ConciergeTopRecommendationHero / ShrineReflectionPrompt.
+                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <button
                       type="button"
-                      className="rounded-xl border px-4 py-3 text-sm font-semibold"
+                      className="rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold"
                       onClick={() => onAction?.({ type: "open_map" })}
                     >
                       近くの神社を静かに見る
                     </button>
                     <button
                       type="button"
-                      className="rounded-xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white"
+                      /* Fallback escape-hatch CTA Visual Weight Polish (docs/audit/
+                         recommendation-result-ia-v2-final.md Should item, docs/product/
+                         recommendation-result-information-architecture.md §11): this used to be
+                         a solid bg-neutral-900 fill, which read as visually on par with Hero's
+                         Primary CTA (docs/product/recommendation-result-information-architecture.md
+                         §6/§11/§15 PR3 contract: "神社の詳細を見る" must stay the only strong CTA).
+                         Downgraded from filled to the same plain-border/no-fill style already used
+                         by its sibling button above and by "もう少し詳しく添える"/"入口に戻る"
+                         elsewhere in this file -- an existing pattern, not a new one. */
+                      className="rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold"
                       onClick={() => onAction?.({ type: "filter_clear" })}
                     >
                       条件を広げて見直す
@@ -760,12 +848,12 @@ export default function ConciergeSectionsRenderer({
 
                 {appliedLabel && (
                   <div
-                    className={`mb-2 ${conciergeSoftCardClass} flex items-center justify-between text-xs leading-6 text-slate-600`}
+                    className={`mb-2 ${conciergeSoftCardClass} flex items-center justify-between text-xs leading-6 text-[var(--kt-color-text-secondary)]`}
                   >
                     <span>{appliedLabel}</span>
                     <button
                       type="button"
-                      className="rounded-md px-2 py-1 font-semibold text-slate-700 hover:bg-slate-100"
+                      className="rounded-[var(--kt-radius-control)] px-2 py-1 font-semibold text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-surface-elevated)]"
                       onClick={() => onAction?.({ type: "filter_clear" })}
                     >
                       クリア
@@ -794,11 +882,10 @@ export default function ConciergeSectionsRenderer({
                             astro_elements: (heroItem as any).astro_elements ?? null,
                             astro_priority: (heroItem as any).astro_priority ?? null,
                             explanation: (heroItem as any).explanation ?? null,
-                            reason_facts: (heroItem as any).reasonFacts ?? null,
                           },
+                          reasonFacts: heroItem.reasonFacts ?? null,
                           index: 0,
                           mode: normalizedMode,
-                          birthdate: filterState?.birthdate ?? null,
                           needTags: effectiveNeedTags,
                         });
                         const reasonDisplay = buildRecommendationReasonDisplay({
@@ -813,9 +900,19 @@ export default function ConciergeSectionsRenderer({
                           recommendationReasonV4: (heroItem as any).recommendationReasonV4 ?? null,
                           reason: heroItem.description ?? null,
                         });
-                        // primaryReason(相談内容・ご利益との一致)は新設のinterpretation/fact表示と役割が重なるため
-                        // Hero通常経路では使用しない(reasonVm.hero.*等の見出し系は変更しない)
-                        const heroSecondaryReason = heroReasonV4.hasStructured ? null : heroReasonV4.fallbackText;
+                        // Hero Reason Consolidation (docs/product/
+                        // recommendation-result-information-architecture.md §6, §13,
+                        // §15 PR2): compose the single Conclusion block from the same
+                        // already-Authority-decided strings the old 4 separate cards
+                        // used (primaryReason / factReason / interpretationReason /
+                        // legacy fallback) -- no new resolver, no re-prioritization.
+                        const conclusionLines = buildHeroConclusionLines({
+                          hasStructured: heroReasonV4.hasStructured,
+                          interpretationText: heroReasonV4.interpretationText,
+                          factText: heroReasonV4.factText,
+                          primaryReason: reasonVm.list.primaryPhrase,
+                          fallbackText: heroReasonV4.fallbackText,
+                        });
                         const trustMetadata = (heroItem as any).trustMetadata ?? null;
                         const trustLabels = [
                           trustMetadata?.rank_class ?? trustMetadata?.rankClass,
@@ -835,126 +932,200 @@ export default function ConciergeSectionsRenderer({
                             : typeof (heroItem as any).historyContext === "string"
                               ? (heroItem as any).historyContext
                               : null;
+                        // historyContext(Backendから届く生テキスト)はFactに近い扱いを維持する。
+                        // 一方、buildHistoryThemeDisplay()のfallbackは完全にFrontend側で合成した
+                        // 解釈(Derived Meaning)であり、Fact/Meaning境界を明示するため見出しを
+                        // 分ける(Concierge Evidence Explanation PR)。
                         const historyThemeDisplay = historyContext
                           ? {
                               title: "この神社が持つ文脈",
                               body: historyContext,
+                              isInterpretation: false,
                             }
-                          : buildHistoryThemeDisplay(historyTheme);
+                          : (() => {
+                              const fallback = buildHistoryThemeDisplay(historyTheme);
+                              return fallback ? { ...fallback, isInterpretation: true } : null;
+                            })();
+
+                        // "今回の相談との接点"(Runtime Match): 既にBackend/既存Adapterが選定済みの
+                        // 信号(matched_need_tags、reason_facts is_primary goriyaku_tag)だけを使う。
+                        // 新たな一致判定は行わない(Concierge Evidence Explanation PR、
+                        // docs/product/recommendation-signal-authority.md §10)。
+                        const adaptedReasonFacts = adaptReasonFactsForViewModel(heroItem.reasonFacts ?? null);
+                        // 表示には日本語名(shrine_benefit_display_label = label_ja、無ければ label)を使う。
+                        // 内部名だけのときは null になり、名前を入れない文に切り替わる。
+                        const runtimeMatchGoriyakuMatched = adaptedReasonFacts?.primary_fact_type === "goriyaku_tag";
+                        const runtimeMatchGoriyakuLabel = runtimeMatchGoriyakuMatched
+                          ? (adaptedReasonFacts?.shrine_benefit_display_label ?? null)
+                          : heroReasonV4.factSource === "goriyaku"
+                            ? heroReasonV4.factText
+                            : null;
+                        const runtimeMatchLines = buildRuntimeMatchLines({
+                          needTags: effectiveNeedTags,
+                          goriyakuLabel: runtimeMatchGoriyakuLabel,
+                          goriyakuMatched: runtimeMatchGoriyakuMatched,
+                        });
 
                         return (
-                          <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-2">
-                            <ConciergeTopRecommendationHero
-                              name={heroItem.title}
-                              href={withDirectionRouteContext(heroItem.detailHref, heroItem.directionReference, "hero")}
-                              imageUrl={heroItem.imageUrl}
-                              address={null}
-                              topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
-                              eyebrowLabel={reasonVm.hero.eyebrowLabel ?? null}
-                              subtitle={reasonVm.hero.subtitle ?? null}
-                              catchCopy={reasonVm.hero.catchCopy}
-                              whyTop={null}
-                              primaryReason={null}
-                              secondaryReason={heroSecondaryReason}
-                              factReason={heroReasonV4.factText}
-                              interpretationReason={heroReasonV4.interpretationText}
-                              actionReason={heroReasonV4.actionText}
-                              differenceFromOthers={null}
-                              tags={matchedNeedTags.map(labelNeedDisplayTag).slice(0, 3)}
-                              actionSuggestions={(heroItem as any).actionSuggestions ?? []}
-                              actionSuggestionV4Preview={(heroItem as any).actionSuggestionV4Preview ?? null}
-                              analyticsSource="concierge_result"
-                              threadId={tid ?? null}
-                              resultSetId={resultSetId}
-                              shrineId={heroItem.shrineId}
-                              recommendationRank={1}
-                              historyTheme={historyTheme ?? analyticsContext?.historyTheme ?? null}
-                              routeLabel="神社の詳細を見る"
-                              onDetailClick={() =>
-                                { if (heroItem.directionReference?.matched) trackWebDirection("direction_match_detail_opened", { matched: true, recommendation_rank: 1 }); trackSearchEvent("shrine_detail_transition", {
-                                  source: "concierge_result",
-                                  threadId: tid ?? undefined,
-                                  resultSetId,
-                                  position: "hero_primary",
-                                  recommendationRank: 1,
-                                  shrineId: heroItem.shrineId,
-                                  mode: analyticsContext?.mode ?? normalizedMode,
-                                  flow: analyticsContext?.flow,
-                                  hasBirthdate: analyticsContext?.hasBirthdate,
-                                  recommendationCount: analyticsContext?.recommendationCount,
-                                  historyTheme: historyTheme ?? analyticsContext?.historyTheme,
-                                  ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
-                                  firstClick: resolveFirstResultClick(resultSetId),
-                                }); }
-                              }
-                            />
-                            <DirectionReferenceCard reference={reasonDisplay.directionReference} recommendationKey={heroItem.shrineId} rank={1} />
+                          /* PR-G1 (docs/design/premium-meaning-ui-direction.md §7, Direction C):
+                             the recommendation now reads as one vertical narrative --
+                             Recommended shrine -> the consultation it answers -> why this
+                             shrine / how it connects -> meaning -> action -> (evidence).
+                             The reason/meaning layers are borderless <h2> sections separated
+                             by whitespace (space-y-6 = --kt-space-section-y), not repeated
+                             bordered cards (audit #2656 A-C1/A-C2/A-C4/A-C5). No Premium
+                             behaviour, visibility, analytics, or generation change here --
+                             the teaser text and the ConciergePremiumEntryCard box are
+                             untouched (PR-G2 owns the single Free->Premium seam). */
+                          <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-6">
+                            <div className="space-y-3">
+                              <ConciergeTopRecommendationHero
+                                name={heroItem.title}
+                                href={withDirectionRouteContext(
+                                  heroItem.detailHref,
+                                  heroItem.directionReference,
+                                  "hero",
+                                )}
+                                address={null}
+                                topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
+                                eyebrowLabel={reasonVm.hero.eyebrowLabel ?? null}
+                                conclusionLines={conclusionLines}
+                                explanationOnlyFactText={heroReasonV4.explanationOnlyFactText}
+                                actionReason={heroReasonV4.actionText}
+                                actionSuggestionV4Preview={(heroItem as any).actionSuggestionV4Preview ?? null}
+                                analyticsSource="concierge_result"
+                                threadId={tid ?? null}
+                                resultSetId={resultSetId}
+                                shrineId={heroItem.shrineId}
+                                recommendationRank={1}
+                                historyTheme={historyTheme ?? analyticsContext?.historyTheme ?? null}
+                                routeLabel="神社の詳細を見る"
+                                onDetailClick={() => {
+                                  if (heroItem.directionReference?.matched)
+                                    trackWebDirection("direction_match_detail_opened", {
+                                      matched: true,
+                                      recommendation_rank: 1,
+                                    });
+                                  trackSearchEvent("shrine_detail_transition", {
+                                    source: "concierge_result",
+                                    threadId: tid ?? undefined,
+                                    resultSetId,
+                                    position: "hero_primary",
+                                    recommendationRank: 1,
+                                    shrineId: heroItem.shrineId,
+                                    mode: analyticsContext?.mode ?? normalizedMode,
+                                    flow: analyticsContext?.flow,
+                                    hasBirthdate: analyticsContext?.hasBirthdate,
+                                    recommendationCount: analyticsContext?.recommendationCount,
+                                    historyTheme: historyTheme ?? analyticsContext?.historyTheme,
+                                    ...consultationAxisAnalytics(
+                                      heroItem.consultationAxis ?? analyticsContext?.consultationAxis,
+                                    ),
+                                    firstClick: resolveFirstResultClick(resultSetId),
+                                    recommendationInstanceId: heroItem.recommendationInstanceId ?? null,
+                                    ...(heroItem.analyticsProvenance
+                                      ? recommendationAnalyticsProperties(heroItem.analyticsProvenance)
+                                      : {}),
+                                  });
+                                }}
+                              />
+                              <DirectionReferenceCard
+                                reference={reasonDisplay.directionReference}
+                                recommendationKey={heroItem.shrineId}
+                                rank={1}
+                              />
+                            </div>
 
-                            {trustMetadata ? (
-                              <section className={conciergeSoftCardClass}>
-                                <div className="space-y-2">
-                                  <div className="flex flex-wrap gap-1">
-                                    {trustLabels.slice(0, 4).map((label: string) => (
-                                      <span
-                                        key={label}
-                                        className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600"
-                                      >
-                                        {label}
-                                      </span>
-                                    ))}
-                                  </div>
-                                  {trustMetadata.origin_summary || trustMetadata.originSummary ? (
-                                    <p className="text-xs leading-6 text-slate-600">
-                                      {trustMetadata.origin_summary ?? trustMetadata.originSummary}
-                                    </p>
-                                  ) : null}
-                                </div>
-                              </section>
-                            ) : null}
-
-                            {shrineMeaningVisibility !== "hidden" ? (
-                              <section className={conciergeSoftCardClass}>
-                                <div className="space-y-2">
-                                  <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
-                                    相談から見た意味
-                                  </p>
-                                  <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">{reasonVm.detail.shrineMeaning}</p>
-                                </div>
-                              </section>
-                            ) : null}
-
-                            {historyThemeDisplay ? (
-                              <section className={conciergeSoftCardClass}>
-                                <div className="space-y-2">
-                                  <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
-                                    この神社が持つ文脈
-                                  </p>
-
-                                  <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">{historyThemeDisplay.body}</p>
-                                </div>
-                              </section>
-                            ) : null}
-
-                            {actionMeaningVisibility !== "hidden" ? (
-                              <section className={conciergeSoftCardClass}>
-                                <div className="space-y-2">
-                                  <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
-                                    今の自分への問い
-                                  </p>
-                                  <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">
-                                    {actionMeaningVisibility === "teaser"
-                                      ? "この結果を保存すると、今の状態や選んだ理由をあとから見返せます。"
-                                      : (reasonVm.detail.actionMeaning ?? reasonVm.detail.shrineMeaning)}
-                                  </p>
-                                </div>
-                              </section>
-                            ) : null}
-
+                            {/* Layer 1 bridge: the consultation this recommendation answers.
+                                Moved up from below the meaning layers (audit #2656 A-C2); kept
+                                just under the Hero so the shrine + its Primary CTA still lead
+                                the first viewport on mobile. */}
                             {consultationSummaryVisibility !== "hidden" && reasonVm.detail.consultationSummary ? (
                               <ConciergeConsultationSummary
                                 summary={reasonVm.detail.consultationSummary}
                                 modeLabel={normalizedMode === "compat" ? "相性ベース" : "悩みベース"}
                               />
+                            ) : null}
+
+                            {runtimeMatchLines.length > 0 ? (
+                              <div data-testid="recommendation-runtime-match">
+                                <DetailSection variant="plain" title="今回の相談との接点">
+                                  <div className="space-y-2">
+                                    {runtimeMatchLines.map((line) => (
+                                      <p key={line} className={narrativeBodyClass}>
+                                        {line}
+                                      </p>
+                                    ))}
+                                  </div>
+                                </DetailSection>
+                              </div>
+                            ) : null}
+
+                            {historyThemeDisplay ? (
+                              <div data-testid="recommendation-history-theme">
+                                <DetailSection
+                                  variant="plain"
+                                  title={
+                                    historyThemeDisplay.isInterpretation
+                                      ? "この神社をどう捉えるか（KAMI MUSUBIの解釈）"
+                                      : "この神社が持つ文脈"
+                                  }
+                                >
+                                  <p className={narrativeBodyClass}>{historyThemeDisplay.body}</p>
+                                </DetailSection>
+                              </div>
+                            ) : null}
+
+                            {/* 見どころ単位の推薦 PR-3：「ここで見る」（Action Layer）。推薦理由の
+                                見出しの外に置く（順位に寄与していないので理由として見せない）。
+                                無料の層に置くので、Premium の境目より上。 */}
+                            {heroItem.highlightPick ? (
+                              <ConciergeHighlightPick
+                                pick={heroItem.highlightPick}
+                                variant="hero"
+                                shrineId={heroItem.shrineId}
+                                recommendationRank={1}
+                                threadId={tid ?? null}
+                                resultSetId={resultSetId}
+                                recommendationInstanceId={heroItem.recommendationInstanceId ?? null}
+                              />
+                            ) : null}
+
+                            {/* Free -> Premium seam (PR-G2): one restrained boundary, placed
+                                where the FREE reason layers end and the deeper meaning begins.
+                                Guest / Free see the seam here instead of the gated
+                                shrine_meaning / action_meaning bodies; Premium skips it. The
+                                shrine_meaning / action_meaning card_view / card_teaser_view
+                                analytics still fire from the effect above (cardVisibility
+                                routes), independent of this JSX. */}
+                            {premiumPreviewVisibility !== "hidden" ? (
+                              <PremiumSeam
+                                shrineId={heroItem.shrineId}
+                                tid={tid}
+                                isGuestUser={isGuestUser}
+                                accessLevel={accessLevel}
+                                analyticsContext={analyticsContext}
+                                shrineMeaningVisibility={shrineMeaningVisibility}
+                                actionMeaningVisibility={actionMeaningVisibility}
+                              />
+                            ) : null}
+
+                            {/* Full deep-meaning bodies: Premium only ("visible"). "teaser"
+                                (Guest / Free) renders nothing here -- the content is not in
+                                the DOM at all (no masked / withheld-mid-sentence content),
+                                the seam above represents it. */}
+                            {shrineMeaningVisibility === "visible" ? (
+                              <DetailSection variant="plain" title="相談から見た意味（KAMI MUSUBIの解釈）">
+                                <p className={narrativeBodyClass}>{reasonVm.detail.shrineMeaning}</p>
+                              </DetailSection>
+                            ) : null}
+
+                            {actionMeaningVisibility === "visible" ? (
+                              <DetailSection variant="plain" title="今の自分への問い">
+                                <p className={narrativeBodyClass}>
+                                  {reasonVm.detail.actionMeaning ?? reasonVm.detail.shrineMeaning}
+                                </p>
+                              </DetailSection>
                             ) : null}
 
                             <ShrineSaveButton
@@ -963,16 +1134,42 @@ export default function ConciergeSectionsRenderer({
                               tid={tid}
                               nextPath={heroItem.detailHref}
                               variant="subtle"
+                              idleLabel="この神社をお気に入り登録"
+                              recommendationInstanceId={heroItem.recommendationInstanceId ?? null}
+                              analyticsProvenance={heroItem.analyticsProvenance}
                             />
 
-                            {premiumPreviewVisibility !== "hidden" ? (
-                              <ConciergePremiumEntryCard
-                                shrineId={heroItem.shrineId}
-                                tid={tid}
-                                isGuestUser={isGuestUser}
-                                accessLevel={accessLevel}
-                                analyticsContext={analyticsContext}
-                              />
+                            {/* Layer 8 (evidence): shrine-side facts, de-emphasised into a
+                                recessed surface. Previously a conciergeSoftCardClass box
+                                directly under the Hero, grouped with historyTheme
+                                (recommendation-result-information-architecture.md §13); that
+                                grouping is superseded by the Direction-C hierarchy
+                                (docs/design/premium-meaning-ui-direction.md §7/§9) -- trust
+                                metadata is evidence, not part of the reason narrative, so it
+                                moves below it. Still never feeds Conclusion / Primary Reason. */}
+                            {trustMetadata ? (
+                              <section
+                                data-testid="recommendation-trust"
+                                className="rounded-[var(--kt-radius-card)] bg-[var(--kt-color-background-subtle)] p-4"
+                              >
+                                <div className="space-y-2">
+                                  <div className="flex flex-wrap gap-1">
+                                    {trustLabels.slice(0, 4).map((label: string) => (
+                                      <span
+                                        key={label}
+                                        className="rounded-[var(--kt-radius-pill)] bg-[var(--kt-color-surface-default)] px-2 py-0.5 text-[11px] font-semibold text-[var(--kt-color-text-muted)]"
+                                      >
+                                        {label}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  {trustMetadata.origin_summary || trustMetadata.originSummary ? (
+                                    <p className="text-xs leading-6 text-[var(--kt-color-text-muted)]">
+                                      {trustMetadata.origin_summary ?? trustMetadata.originSummary}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              </section>
                             ) : null}
                           </div>
                         );
@@ -996,7 +1193,9 @@ export default function ConciergeSectionsRenderer({
                           <div className="mb-2 mt-3 text-xs font-semibold tracking-[0.16em] text-[var(--kt-color-text-muted)]">
                             ほかの神社
                           </div>
-                          <p className="mb-3 text-xs leading-5 text-[var(--kt-color-text-muted)]">迷った時の参考です。</p>
+                          <p className="mb-3 text-xs leading-5 text-[var(--kt-color-text-muted)]">
+                            迷った時の参考です。
+                          </p>
 
                           <div className="space-y-3">
                             {otherRegisteredItems.map((item: RegisteredShrineItem, compactIdx: number) => {
@@ -1014,18 +1213,36 @@ export default function ConciergeSectionsRenderer({
                                   astro_elements: (item as any).astro_elements ?? null,
                                   astro_priority: (item as any).astro_priority ?? null,
                                   explanation: (item as any).explanation ?? null,
-                                  reason_facts: (item as any).reasonFacts ?? null,
                                 },
+                                reasonFacts: item.reasonFacts ?? null,
                                 index: compactIdx + 1,
                                 mode: normalizedMode,
-                                birthdate: filterState?.birthdate ?? null,
-                                needTags: item.breakdown?.matched_need_tags ?? [],
+                                      needTags: item.breakdown?.matched_need_tags ?? [],
                               });
                               const compactReasonDisplay = buildRecommendationReasonDisplay({
                                 matchReason: compactReasonVm.list.primaryPhrase,
                                 reason: item.description,
                                 directionReference: item.directionReference,
                               });
+                              // Compact Recommendation Reason / Explanation Consistency
+                              // (docs/product/recommendation-result-information-architecture.md
+                              // §15): reuse the exact same Hero adapter to classify the same
+                              // Reason V4 fact -- no new Explanation-only decision, no Compact-local
+                              // priority logic. Only explanationOnlyFactText is consumed here;
+                              // Compact's "why" text stays driven by the existing reason_facts-based
+                              // primaryPhrase (below), never by this adapter's factText/interpretationText
+                              // (that composition is Hero's Conclusion, not ported to Compact).
+                              const compactReasonV4 = buildHeroReasonV4Sections({
+                                detail: (item as any).reasonV4Detail ?? null,
+                                recommendationReasonV4: (item as any).recommendationReasonV4 ?? null,
+                                reason: item.description ?? null,
+                              });
+                              // Single reason source, not two: matchReason (reason_facts-derived,
+                              // already Authority-decided) wins when present; the legacy free-text
+                              // reason field is only shown as a fallback when matchReason is
+                              // unavailable (Finding: Compact previously showed both under separate
+                              // headings, reading as a repeated explanation of the same "why").
+                              const compactReason = compactReasonDisplay.matchReason ?? compactReasonDisplay.reason;
 
                               return (
                                 <div key={`rec-${i}-compact-${item.shrineId}`} className="space-y-2">
@@ -1034,12 +1251,17 @@ export default function ConciergeSectionsRenderer({
                                     href={withDirectionRouteContext(item.detailHref, item.directionReference, "other")}
                                     imageUrl={item.imageUrl}
                                     address={item.address ?? null}
-                                    summary={compactReasonDisplay.reason}
-                                    primaryReason={compactReasonDisplay.matchReason}
+                                    reason={compactReason}
+                                    explanationOnlyFactText={compactReasonV4.explanationOnlyFactText}
                                     tags={[]}
                                     distanceM={(item as any).distance_m ?? null}
-                                    onDetailClick={() =>
-                                      { if (item.directionReference?.matched) trackWebDirection("direction_match_detail_opened", { matched: true, recommendation_rank: compactIdx + 2 }); trackSearchEvent("shrine_detail_transition", {
+                                    onDetailClick={() => {
+                                      if (item.directionReference?.matched)
+                                        trackWebDirection("direction_match_detail_opened", {
+                                          matched: true,
+                                          recommendation_rank: compactIdx + 2,
+                                        });
+                                      trackSearchEvent("shrine_detail_transition", {
                                         source: "concierge_result",
                                         threadId: tid ?? undefined,
                                         resultSetId,
@@ -1060,10 +1282,29 @@ export default function ConciergeSectionsRenderer({
                                           (item as any).consultationAxis ?? analyticsContext?.consultationAxis,
                                         ),
                                         firstClick: resolveFirstResultClick(resultSetId),
-                                      }); }
-                                    }
+                                        recommendationInstanceId: item.recommendationInstanceId ?? null,
+                                        ...(item.analyticsProvenance
+                                          ? recommendationAnalyticsProperties(item.analyticsProvenance)
+                                          : {}),
+                                      });
+                                    }}
                                   />
-                                  <DirectionReferenceCard reference={compactReasonDisplay.directionReference} recommendationKey={item.shrineId} rank={compactIdx + 2} />
+                                  <DirectionReferenceCard
+                                    reference={compactReasonDisplay.directionReference}
+                                    recommendationKey={item.shrineId}
+                                    rank={compactIdx + 2}
+                                  />
+                                  {item.highlightPick ? (
+                                    <ConciergeHighlightPick
+                                      pick={item.highlightPick}
+                                      variant="compact"
+                                      shrineId={item.shrineId}
+                                      recommendationRank={compactIdx + 2}
+                                      threadId={tid ?? null}
+                                      resultSetId={resultSetId}
+                                      recommendationInstanceId={item.recommendationInstanceId ?? null}
+                                    />
+                                  ) : null}
                                 </div>
                               );
                             })}
@@ -1074,9 +1315,10 @@ export default function ConciergeSectionsRenderer({
                   ) : null}
 
                   {placeItems.length > 0 ? (
-                    <div className="space-y-3 pt-4">
-                      {placeItems.map((item: PlaceShrineItem, placeIdx: number) => (
-                        <div key={`rec-${i}-${placeIdx}-place-${item.placeId}`} className="space-y-2">
+                    <section aria-label="参考候補" className="space-y-3 pt-4">
+                      <h3 className="text-sm font-semibold">参考候補</h3>
+                      {placeItems.map((item: PlaceShrineItem) => (
+                        <div key={`place-${item.placeId}`} className="space-y-2">
                           <PlaceShrineCard
                             placeId={item.placeId}
                             title={item.title}
@@ -1088,14 +1330,14 @@ export default function ConciergeSectionsRenderer({
                           />
                         </div>
                       ))}
-                    </div>
+                    </section>
                   ) : null}
 
                   {!isEntryRoute && savePromptVisibility !== "hidden" ? (
                     <div className="pt-4">
                       <button
                         type="button"
-                        className="w-full rounded-xl border px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                        className="w-full rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-background-subtle)]"
                         onClick={() => {
                           trackCardEvent({
                             event: "save_prompt_click",
@@ -1112,10 +1354,32 @@ export default function ConciergeSectionsRenderer({
 
                           onAction?.({ type: "save_concierge_thread" });
                         }}
-                        disabled={sending}
+                        disabled={sending || threadSaveState?.status === "saving"}
+                        aria-busy={threadSaveState?.status === "saving" || undefined}
                       >
-                        {isGuestUser ? "ログインしてあとで見返す" : "あとで見返すために保存"}
+                        {isGuestUser
+                          ? "ログインしてあとで見返す"
+                          : threadSaveState?.status === "saving"
+                            ? "保存を確認しています…"
+                            : threadSaveState?.status === "saved"
+                              ? "保存済み"
+                              : "あとで見返すために保存"}
                       </button>
+                      <div role="status" aria-live="polite" data-testid="concierge-thread-save-feedback">
+                        {!isGuestUser && threadSaveState?.status === "saved" && threadSaveState.historyHref ? (
+                          <p className="pt-2 text-sm text-[var(--kt-color-text-secondary)]">
+                            相談履歴に保存されています。{" "}
+                            <Link href={threadSaveState.historyHref} className="whitespace-nowrap underline">
+                              履歴で見返す
+                            </Link>
+                          </p>
+                        ) : null}
+                        {!isGuestUser && threadSaveState?.status === "error" && threadSaveState.error ? (
+                          <p className="pt-2 text-sm text-[var(--kt-color-text-secondary)]">
+                            {THREAD_SAVE_ERROR_MESSAGES[threadSaveState.error]}
+                          </p>
+                        ) : null}
+                      </div>
                     </div>
                   ) : null}
                 </div>

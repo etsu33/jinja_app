@@ -38,34 +38,3 @@ class ConciergeRecommendationLog(models.Model):
     class Meta:
         db_table = "temples_concierge_recommendation_log"
         ordering = ["-created_at"]
-
-class ConciergeRecommendationClickLog(models.Model):
-    recommendation_log = models.ForeignKey(
-        "temples.ConciergeRecommendationLog",
-        on_delete=models.CASCADE,
-        related_name="click_logs",
-    )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="concierge_recommendation_click_logs",
-    )
-    thread = models.ForeignKey(
-        "temples.ConciergeThread",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="recommendation_click_logs",
-    )
-
-    shrine_id = models.IntegerField(null=True, blank=True)
-    place_id = models.CharField(max_length=255, blank=True, default="")
-    rank = models.IntegerField(null=True, blank=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "temples_concierge_recommendation_click_log"
-        ordering = ["-created_at"]

@@ -21,13 +21,13 @@
 
 import {
   clean,
-  buildConsultationMeaningSlots,
+  buildNeedTagMeaningSlots,
   buildShrineMeaningSlots,
 } from "./buildRecommendationReasonViewModel";
 import type {
   BuildParams,
   Candidate,
-  ConsultationMeaningSlots,
+  NeedTagMeaningSlots,
   ShrineMeaningSlots,
 } from "./buildRecommendationReasonViewModel";
 import { toNeedTagLabel } from "./needTagLabelMap";
@@ -53,7 +53,7 @@ function buildReflectionQuestion(args: {
   mode: BuildParams["mode"];
   need: string | null;
   shrine: ShrineMeaningSlots;
-  consultation: ConsultationMeaningSlots;
+  consultation: NeedTagMeaningSlots;
   primary: Candidate;
   context: ShrineNarrativeContext;
 }): string {
@@ -288,11 +288,18 @@ function buildMeaningCore(args: {
 }): string {
   const needFact = (() => {
     if (args.mode === "compat") return "生年月日から見た相性を補助線にしながら";
-    if (args.need) return `「${toNeedTagLabel(args.need)}」という相談テーマに対して`;
+    if (args.need) {
+      const label = toNeedTagLabel(args.need);
+      if (label) return `「${label}」という相談テーマに対して`;
+    }
     return "今の状態を整理する入口として";
   })();
 
   const shrineFact = (() => {
+    // 表示用の名前を使う。内部名だけ・名前を入れない種類のときは、下の名前を使わない文へ進む。
+    const feature = clean(args.shrine.featureDisplay);
+    if (feature) return `「${feature}」という意味・特徴を持つ場所で`;
+
     const place = (() => {
       if (args.context.place === "mountain") return "山や高低差の文脈";
       if (args.context.place === "forest") return "森や木々に囲まれた文脈";
@@ -362,7 +369,7 @@ function buildMeaningCore(args: {
 function buildWhyNow(args: {
   mode: BuildParams["mode"];
   need: string | null;
-  consultation: ConsultationMeaningSlots;
+  consultation: NeedTagMeaningSlots;
   primary: Candidate;
 }): string {
   if (args.mode === "compat") return "勢いで合う・合わないを決めるほど感覚がぶれやすい今は、";
@@ -388,7 +395,7 @@ function buildActionRole(args: {
   mode: BuildParams["mode"];
   need: string | null;
   shrine: ShrineMeaningSlots;
-  consultation: ConsultationMeaningSlots;
+  consultation: NeedTagMeaningSlots;
   primary: Candidate;
   context: ShrineNarrativeContext;
 }): string {
@@ -464,7 +471,7 @@ export function buildMeaningNarrative(args: {
 }): MeaningNarrative {
   const { params, primary, secondary } = args;
 
-  const consultation = buildConsultationMeaningSlots(params);
+  const consultation = buildNeedTagMeaningSlots(params);
   const shrine       = buildShrineMeaningSlots(params);
   const need         = clean(consultation.needPrimary) || clean(params.needTags?.[0]) || null;
   const context      = resolveShrineContext(params);

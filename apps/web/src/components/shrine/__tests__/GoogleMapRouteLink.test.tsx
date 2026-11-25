@@ -91,6 +91,77 @@ describe("GoogleMapRouteLink direction analytics", () => {
     expect(screen.getByRole("status")).toHaveTextContent("経路リンクを利用できません");
   });
 
+  it("既定では source=\"shrine_detail\" を維持する（Shrine Detail既存契約）", () => {
+    render(<GoogleMapRouteLink href={href} label="Googleマップで経路案内" shrineId={123} />);
+    fireEvent.click(screen.getByRole("link", { name: "Googleマップで経路案内" }));
+
+    expect(trackSearchEvent).toHaveBeenCalledWith(
+      "route_open",
+      expect.objectContaining({ source: "shrine_detail" }),
+    );
+    expect(trackShrineInteraction).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "shrine_detail" }),
+    );
+  });
+
+  it("source=\"map\" はanalyticsとBackend操作記録の双方へ伝播する", () => {
+    render(<GoogleMapRouteLink href={href} label="経路案内" source="map" shrineId={456} />);
+    fireEvent.click(screen.getByRole("link", { name: "経路案内" }));
+
+    expect(trackSearchEvent).toHaveBeenCalledWith(
+      "route_open",
+      expect.objectContaining({ source: "map", routeTarget: "google_maps", shrineId: 456 }),
+    );
+    expect(trackShrineInteraction).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "map", actionType: "route_open", shrineId: 456 }),
+    );
+  });
+
+  it("shrineIdがない候補（Google Places-only）ではanalyticsのみ送りBackendへは送らない", () => {
+    render(<GoogleMapRouteLink href={href} label="経路案内" source="map" />);
+    fireEvent.click(screen.getByRole("link", { name: "経路案内" }));
+
+    expect(trackSearchEvent).toHaveBeenCalledWith(
+      "route_open",
+      expect.objectContaining({ source: "map" }),
+    );
+    expect(trackShrineInteraction).not.toHaveBeenCalled();
+  });
+
+  it("tidはthreadIdとして伝播し、未指定なら送らない", () => {
+    render(<GoogleMapRouteLink href={href} label="経路案内" source="map" shrineId={7} tid="99" />);
+    fireEvent.click(screen.getByRole("link", { name: "経路案内" }));
+
+    expect(trackSearchEvent).toHaveBeenCalledWith("route_open", expect.objectContaining({ threadId: "99" }));
+    expect(trackShrineInteraction).toHaveBeenCalledWith(expect.objectContaining({ threadId: "99" }));
+
+    vi.clearAllMocks();
+    render(<GoogleMapRouteLink href={href} label="経路案内2" source="map" shrineId={7} />);
+    fireEvent.click(screen.getByRole("link", { name: "経路案内2" }));
+
+    expect(trackSearchEvent.mock.calls[0][1].threadId).toBeUndefined();
+    expect(trackShrineInteraction.mock.calls[0][0].threadId).toBeNull();
+  });
+
+  it("URL・座標・住所をanalytics payloadへ含めない", () => {
+    render(<GoogleMapRouteLink href={href} label="経路案内" source="map" shrineId={7} />);
+    fireEvent.click(screen.getByRole("link", { name: "経路案内" }));
+
+    const payload = trackSearchEvent.mock.calls[0][1];
+    const interaction = trackShrineInteraction.mock.calls[0][0];
+    const forbidden = ["href", "url", "routeUrl", "route_url", "lat", "lng", "latitude", "longitude", "address", "destination", "origin"];
+
+    for (const key of forbidden) {
+      expect(payload).not.toHaveProperty(key);
+      expect(interaction).not.toHaveProperty(key);
+      expect(interaction.metadata).not.toHaveProperty(key);
+    }
+
+    const serialized = JSON.stringify([payload, interaction]);
+    expect(serialized).not.toContain("google.com");
+    expect(serialized).not.toContain("35,139");
+  });
+
   it("通常経路分析と操作記録が例外でもリンク操作を維持する", () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     trackSearchEvent.mockImplementationOnce(() => { throw new Error("search analytics unavailable"); });

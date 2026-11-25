@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import ShrineCardCompact from "../ShrineCardCompact";
+import ShrineCardCompact, { formatDistance } from "../ShrineCardCompact";
 
 describe("ShrineCardCompact", () => {
   it("shows address when address is present", () => {
@@ -31,31 +31,88 @@ describe("ShrineCardCompact", () => {
     expect(screen.queryByText(/km$/)).not.toBeInTheDocument();
   });
 
-  it("renders match reason before the standard reason, but not tags", () => {
+  describe("distanceLabel (Compass Result Experience audit Section 26-3, opt-in only)", () => {
+    it("renders distanceLabel alongside address, without disturbing the existing address/distanceM row", () => {
+      render(
+        <ShrineCardCompact
+          name="検証神社"
+          address="東京都千代田区1-1-1"
+          distanceM={500}
+          distanceLabel="約1.2km"
+        />,
+      );
+
+      expect(screen.getByText("約1.2km")).toBeInTheDocument();
+      // The existing address-vs-distanceM row is unchanged: address shown,
+      // the plain "500m" text (derived from distanceM, not distanceLabel)
+      // still does not appear, because address is present.
+      expect(screen.getByText("東京都千代田区1-1-1")).toBeInTheDocument();
+      expect(screen.queryByText("500m")).not.toBeInTheDocument();
+    });
+
+    it("omits the chip when distanceLabel is not provided -- existing callers (e.g. Concierge) are unaffected", () => {
+      render(<ShrineCardCompact name="検証神社" address="東京都千代田区1-1-1" distanceM={500} />);
+
+      expect(screen.queryByText("約1.2km")).not.toBeInTheDocument();
+      expect(screen.queryByText(/km$/)).not.toBeInTheDocument();
+    });
+
+    it("does not fabricate a chip for null/undefined distance (formatDistance fail-safe)", () => {
+      expect(formatDistance(null)).toBeNull();
+      expect(formatDistance(undefined)).toBeNull();
+      expect(formatDistance(NaN)).toBeNull();
+    });
+  });
+
+  it("renders a single reason block, not tags", () => {
     render(
       <ShrineCardCompact
         name="検証神社"
         href="/shrines/1?ctx=concierge"
-        summary="長いMeaning文のサマリー"
-        primaryReason="短い理由"
+        reason="短い理由"
         tags={["mental", "rest"]}
       />,
     );
 
     expect(screen.getByText("短い理由")).toBeInTheDocument();
-    expect(screen.getByText("長いMeaning文のサマリー")).toBeInTheDocument();
     expect(screen.queryByText("mental")).not.toBeInTheDocument();
-    const match = screen.getByTestId("recommendation-match-reason");
-    const reason = screen.getByTestId("recommendation-standard-reason");
-    expect(match.compareDocumentPosition(reason) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId("recommendation-match-reason")).toBeInTheDocument();
+    expect(screen.queryByTestId("recommendation-standard-reason")).not.toBeInTheDocument();
   });
 
-  it("does not render primaryReason when it is null", () => {
+  it("does not render reason when it is null", () => {
     const { container } = render(
-      <ShrineCardCompact name="検証神社" href="/shrines/1?ctx=concierge" primaryReason={null} />,
+      <ShrineCardCompact name="検証神社" href="/shrines/1?ctx=concierge" reason={null} />,
     );
 
     expect(container.querySelectorAll("p")).toHaveLength(0);
+  });
+
+  it("renders explanationOnlyFactText as a small separate line, distinct from the reason block", () => {
+    render(
+      <ShrineCardCompact
+        name="検証神社"
+        href="/shrines/1?ctx=concierge"
+        reason="仕事運のご利益と一致するため、この神社が候補に入っています。"
+        explanationOnlyFactText="須佐之男命"
+      />,
+    );
+
+    const reasonBlock = screen.getByTestId("recommendation-match-reason");
+    expect(reasonBlock).not.toHaveTextContent("須佐之男命");
+
+    const explanationOnly = screen.getByTestId("recommendation-compact-explanation-only-fact");
+    expect(explanationOnly).toHaveTextContent("参考情報");
+    expect(explanationOnly).toHaveTextContent("須佐之男命");
+  });
+
+  it("does not render explanationOnlyFactText when absent", () => {
+    render(
+      <ShrineCardCompact name="検証神社" href="/shrines/1?ctx=concierge" reason="短い理由" explanationOnlyFactText={null} />,
+    );
+
+    expect(screen.queryByTestId("recommendation-compact-explanation-only-fact")).not.toBeInTheDocument();
+    expect(screen.queryByText("参考情報")).not.toBeInTheDocument();
   });
 
   describe("Design Token参照 (Semantic Token契約、CSS文字列全体の比較はしない)", () => {
@@ -65,7 +122,7 @@ describe("ShrineCardCompact", () => {
           name="検証神社"
           href="/shrines/1?ctx=concierge"
           address="東京都千代田区1-1-1"
-          primaryReason="短い理由"
+          reason="短い理由"
         />,
       );
 
@@ -78,6 +135,56 @@ describe("ShrineCardCompact", () => {
       expect(screen.getByText("検証神社").className).toContain("text-[var(--kt-color-text-primary)]");
       expect(screen.getByText("東京都千代田区1-1-1").className).toContain("text-[var(--kt-color-text-muted)]");
       expect(screen.getByText("短い理由").className).toContain("text-[var(--kt-color-text-muted)]");
+    });
+  });
+
+  describe('layout="candidate" (Compass Candidate Card v2, opt-in only)', () => {
+    it("default layout ignores candidate-only props and keeps the existing detail link", () => {
+      render(
+        <ShrineCardCompact
+          name="検証神社"
+          href="/shrines/1?ctx=concierge"
+          address="東京都千代田区1-1-1"
+          reason="仕事運とのご利益一致"
+          detailLabel="神社を見る"
+          secondaryAction={<a href="https://example.com">経路を見る</a>}
+        >
+          <p>candidate-only child</p>
+        </ShrineCardCompact>,
+      );
+
+      expect(screen.getByRole("link", { name: "詳細だけ見る" })).toHaveAttribute("href", "/shrines/1?ctx=concierge");
+      expect(screen.getByTestId("recommendation-match-reason")).toHaveTextContent("仕事運とのご利益一致");
+      expect(screen.queryByText("神社を見る")).not.toBeInTheDocument();
+      expect(screen.queryByText("経路を見る")).not.toBeInTheDocument();
+      expect(screen.queryByText("candidate-only child")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("shrine-card-candidate-location")).not.toBeInTheDocument();
+    });
+
+    it("candidate layout renders name, location, children and CTAs without reason/explanation slots", () => {
+      render(
+        <ShrineCardCompact
+          layout="candidate"
+          name="検証神社"
+          href="/shrines/1?ctx=compass"
+          address="東京都千代田区1-1-1"
+          distanceLabel="約1.2km"
+          reason="使われない理由"
+          explanationOnlyFactText="使われない参考情報"
+          detailLabel="神社を見る"
+          secondaryAction={<a href="https://example.com">経路を見る</a>}
+        >
+          <p>candidate-only child</p>
+        </ShrineCardCompact>,
+      );
+
+      expect(screen.getByRole("heading", { level: 3, name: "検証神社" })).toBeInTheDocument();
+      expect(screen.getByTestId("shrine-card-candidate-location")).toHaveTextContent("東京都千代田区1-1-1 ・ 約1.2km");
+      expect(screen.getByText("candidate-only child")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "神社を見る" })).toHaveAttribute("href", "/shrines/1?ctx=compass");
+      expect(screen.getByRole("link", { name: "経路を見る" })).toBeInTheDocument();
+      expect(screen.queryByText("使われない理由")).not.toBeInTheDocument();
+      expect(screen.queryByText(/使われない参考情報/)).not.toBeInTheDocument();
     });
   });
 });

@@ -9,7 +9,8 @@ describe("OriginSelector", () => {
     render(<OriginSelector origin={null} onChange={onChange} onUseDevice={()=>undefined} deviceError="位置情報が拒否されました。"/>);
     fireEvent.click(screen.getByText("現在地を使用"));
     expect(screen.getByRole("alert")).toHaveTextContent("位置情報が拒否されました");
-    fireEvent.click(screen.getByRole("button", { name: "駅名・住所から指定する" }));
+    // 代替導線は既存のラジオ（エラー領域内に重複CTAを置かない）
+    fireEvent.click(screen.getByRole("radio", { name: "駅名・住所から指定" }));
     fireEvent.change(screen.getByLabelText("駅名または住所"),{target:{value:"東京駅"}});
     expect(onChange).not.toHaveBeenLastCalledWith(expect.objectContaining({latitude:expect.any(Number)}));
     await act(async()=>{await new Promise(resolve=>setTimeout(resolve,450));});

@@ -27,7 +27,7 @@ export default async function Page({ params, searchParams }: Props) {
   if (!Number.isFinite(shrineId) || shrineId <= 0) {
     return (
       <main className="mx-auto max-w-md space-y-6 p-4">
-        <div className="rounded-xl border bg-white p-4 text-center text-sm">不正な神社IDです。</div>
+        <div className="rounded-xl border bg-[var(--kt-color-surface-default)] p-4 text-center text-sm">不正な神社IDです。</div>
       </main>
     );
   }
@@ -63,15 +63,15 @@ export default async function Page({ params, searchParams }: Props) {
       googleDirFallbackText="経路案内を準備できませんでした。"
     >
       <div className="space-y-4">
-        <div className="rounded-xl border bg-slate-50 px-4 py-3">
-          <p className="text-sm font-semibold text-slate-800">この神社に残された御朱印を一覧で見られます。</p>
-          <p className="mt-1 text-xs text-slate-500">まだ公開御朱印がない場合は、最初の記録を残せます。</p>
+        <div className="rounded-xl border bg-[var(--kt-color-background-subtle)] px-4 py-3">
+          <p className="text-sm font-semibold text-[var(--kt-color-text-primary)]">この神社に残された御朱印を一覧で見られます。</p>
+          <p className="mt-1 text-xs text-[var(--kt-color-text-muted)]">まだ公開御朱印がない場合は、最初の記録を残せます。</p>
         </div>
 
         <PublicGoshuinSection items={items} addGoshuinHref={addGoshuinHref} seeAllHref={null} />
 
         <div className="pt-1">
-          <Link href={backHref} className="text-xs text-slate-600 hover:underline">
+          <Link href={backHref} className="text-xs text-[var(--kt-color-text-secondary)] hover:underline">
             ← 神社詳細に戻る
           </Link>
         </div>

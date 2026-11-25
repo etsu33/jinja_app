@@ -1,0 +1,246 @@
+{
+  "schema_version": 1,
+  "purpose": "Reviewed canonical Shrine identity (exact name_jp + address) of Nationwide Candidate Master members for the read-only Recommendation Eligibility verifier (--handoff). A handoff entry contains only Candidate Master members from that source handoff whose G1 identity is reviewed; for value-selected partial processing this does not redefine or imply full frozen Source handoff membership. Not Candidate Master, not the G-5 test-only handoff manifest, not the value-selected processing-group fixture, not Base / Knowledge Seed, not Production state. Does not claim G2 PASS, Knowledge readiness, G5 eligibility, Production existence or CORE_READY.",
+  "handoffs": [
+    {
+      "handoff_id": "NIIGATA-001-H001",
+      "members": [
+        {
+          "candidate_id": "nsrc-000001",
+          "source_position": "page001-row001",
+          "name": "相吉神社",
+          "address": "新潟県中魚沼郡津南町大字谷内4797番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h001-g6-verifier-identity-decision.md",
+            "g1_identity_audit": "docs/audit/niigata-h001-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000002",
+          "source_position": "page001-row002",
+          "name": "青澤神社",
+          "address": "新潟県糸魚川市大字青海2696番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h001-g6-verifier-identity-decision.md",
+            "g1_identity_audit": "docs/audit/niigata-h001-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000003",
+          "source_position": "page001-row003",
+          "name": "蒼柴神社",
+          "address": "新潟県長岡市悠久町707",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h001-g6-verifier-identity-decision.md",
+            "g1_identity_audit": "docs/audit/niigata-h001-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000004",
+          "source_position": "page001-row004",
+          "name": "青海神社",
+          "address": "新潟県加茂市大字加茂字宮山229番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h001-g6-verifier-identity-decision.md",
+            "g1_identity_audit": "docs/audit/niigata-h001-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000005",
+          "source_position": "page001-row005",
+          "name": "青山稲荷神社",
+          "address": "新潟県柏崎市荒浜4丁目1754番地2",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h001-g6-verifier-identity-decision.md",
+            "g1_identity_audit": "docs/audit/niigata-h001-g1-identity-duplicate.md"
+          }
+        }
+      ]
+    },
+    {
+      "handoff_id": "NIIGATA-001-H002",
+      "members": [
+        {
+          "candidate_id": "nsrc-000006",
+          "source_position": "page001-row006",
+          "name": "赤井神社",
+          "address": "新潟県佐渡市加茂歌代2662番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h002-nsrc-000006-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h002-nsrc-000006-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000007",
+          "source_position": "page001-row007",
+          "name": "赤城社",
+          "address": "新潟県十日町市四日町2534番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h002-nsrc-000007-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h002-nsrc-000007-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000008",
+          "source_position": "page001-row008",
+          "name": "赤城社",
+          "address": "新潟県十日町市上組2059番地子",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h002-nsrc-000008-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h002-nsrc-000008-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000009",
+          "source_position": "page001-row009",
+          "name": "赤城社",
+          "address": "新潟県十日町市伊達乙48番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h002-nsrc-000009-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h002-nsrc-000009-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000010",
+          "source_position": "page001-row010",
+          "name": "赤城社",
+          "address": "新潟県南魚沼市芹田79番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h002-nsrc-000010-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h002-nsrc-000010-g1-identity-duplicate.md"
+          }
+        }
+      ]
+    },
+    {
+      "handoff_id": "NIIGATA-001-H003",
+      "members": [
+        {
+          "candidate_id": "nsrc-000011",
+          "source_position": "page002-row001",
+          "name": "赤城神社",
+          "address": "新潟県新潟市江南区二本木1丁目7番16号",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h003-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h003-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000012",
+          "source_position": "page002-row002",
+          "name": "赤城神社",
+          "address": "新潟県長岡市四郎丸2丁目5番33号",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h003-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h003-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000013",
+          "source_position": "page002-row003",
+          "name": "赤城神社",
+          "address": "新潟県長岡市山屋314番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h003-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h003-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000014",
+          "source_position": "page002-row004",
+          "name": "赤城神社",
+          "address": "新潟県五泉市上杉川1310番地2",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h003-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h003-g1-identity-duplicate.md"
+          }
+        },
+        {
+          "candidate_id": "nsrc-000015",
+          "source_position": "page002-row005",
+          "name": "赤城神社",
+          "address": "新潟県魚沼市湯之谷芋川311番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-h003-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-h003-g1-identity-duplicate.md"
+          }
+        }
+      ]
+    },
+    {
+      "handoff_id": "NIIGATA-001-H006",
+      "members": [
+        {
+          "candidate_id": "nsrc-000024",
+          "source_position": "page003-row007",
+          "name": "秋葉神社",
+          "address": "新潟県新潟市秋葉区秋葉3丁目8番19号",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-vpg001-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-vpg001-g1-identity-duplicate.md"
+          }
+        }
+      ]
+    },
+    {
+      "handoff_id": "NIIGATA-001-H012",
+      "members": [
+        {
+          "candidate_id": "nsrc-000023",
+          "source_position": "page006-row010",
+          "name": "熱串彦神社",
+          "address": "新潟県佐渡市長江854番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-vpg001-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-vpg001-g1-identity-duplicate.md"
+          }
+        }
+      ]
+    },
+    {
+      "handoff_id": "NIIGATA-001-H014",
+      "members": [
+        {
+          "candidate_id": "nsrc-000025",
+          "source_position": "page007-row006",
+          "name": "天津神社",
+          "address": "新潟県糸魚川市一の宮1丁目3番34号",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-vpg001-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-vpg001-g1-identity-duplicate.md"
+          }
+        }
+      ]
+    },
+    {
+      "handoff_id": "NIIGATA-001-H015",
+      "members": [
+        {
+          "candidate_id": "nsrc-000021",
+          "source_position": "page008-row003",
+          "name": "荒川神社",
+          "address": "新潟県胎内市桃崎浜187番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-vpg001-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-vpg001-g1-identity-duplicate.md"
+          }
+        }
+      ]
+    },
+    {
+      "handoff_id": "NIIGATA-001-H019",
+      "members": [
+        {
+          "candidate_id": "nsrc-000022",
+          "source_position": "page010-row004",
+          "name": "五十嵐神社",
+          "address": "新潟県三条市大字飯田2283番地",
+          "identity_evidence": {
+            "verifier_identity_authority": "docs/audit/niigata-vpg001-g1-identity-duplicate.md",
+            "g1_identity_audit": "docs/audit/niigata-vpg001-g1-identity-duplicate.md"
+          }
+        }
+      ]
+    }
+  ]
+}

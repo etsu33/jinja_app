@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "SADO_GEINOU_KAMOUTASHIRO_ONIDAIKO",
+      "source_type": "tourism_official",
+      "title": "加茂歌代まつりの鬼太鼓",
+      "publisher": "佐渡芸能アーカイブ",
+      "url": "https://sado-geinou.com/geinou/kamoutashiro/",
+      "language": "ja",
+      "accessed_at": "2026-10-14",
+      "verified_at": "2026-10-14T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    },
+    {
+      "key": "SADO_JINJASHI_1926",
+      "source_type": "local_history",
+      "title": "佐渡神社誌",
+      "publisher": "新潟県神職会佐渡支部",
+      "url": "https://dl.ndl.go.jp/pid/971197",
+      "bibliography": "新潟県神職会佐渡支部 編, 1926（大正15）, NDL書誌ID 000000585602",
+      "language": "ja",
+      "accessed_at": "2026-10-14",
+      "verified_at": "2026-10-14T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "赤井神社",
+        "address": "新潟県佐渡市加茂歌代2662番地"
+      },
+      "deities": [],
+      "histories": [
+        {
+          "history_type": "regional_context",
+          "title": "4月16日の赤井神社例祭と鬼太鼓奉納",
+          "content": "赤井神社の4月16日の例祭では、加茂歌代の上組・中組・下組の鬼太鼓が神社で舞を奉納した後、各地区を門付けする。",
+          "period_text": "",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-14T00:00:00+09:00",
+          "source_keys": [
+            "SADO_GEINOU_KAMOUTASHIRO_ONIDAIKO"
+          ]
+        },
+        {
+          "history_type": "tradition",
+          "title": "元日午前0時の鬼太鼓奉納",
+          "content": "加茂歌代の鬼太鼓は、元日の午前0時にも赤井神社で舞を奉納する。",
+          "period_text": "",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-14T00:00:00+09:00",
+          "source_keys": [
+            "SADO_GEINOU_KAMOUTASHIRO_ONIDAIKO"
+          ]
+        },
+        {
+          "history_type": "regional_context",
+          "title": "加茂の五神社としての記録",
+          "content": "1926年刊『佐渡神社誌』は、堀内・春日・歌代・諏訪・赤井を「加茂の五神社」と記録している。",
+          "period_text": "",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-14T00:00:00+09:00",
+          "source_keys": [
+            "SADO_JINJASHI_1926"
+          ]
+        }
+      ]
+    }
+  ]
+}

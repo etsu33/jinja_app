@@ -1,0 +1,480 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "batch10-okunitama-official",
+      "source_type": "shrine_official",
+      "title": "由緒・歴史｜大國魂神社（東京・府中）",
+      "publisher": "大國魂神社",
+      "url": "https://www.ookunitamajinja.or.jp/yuisho/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T11:10:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "主祭神・配祀六所・創建（景行天皇41年/西暦111年）・武蔵国府設置に伴う武蔵総社としての確立を直接確認。"
+    },
+    {
+      "key": "batch10-samukawa-deities",
+      "source_type": "shrine_official",
+      "title": "御祭神｜八方除 寒川神社",
+      "publisher": "寒川神社",
+      "url": "https://samukawajinjya.jp/about/main-deities.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T11:15:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "寒川比古命・寒川比女命の二柱（寒川大明神）を直接確認。"
+    },
+    {
+      "key": "batch10-samukawa-history",
+      "source_type": "shrine_official",
+      "title": "御由緒｜八方除 寒川神社",
+      "publisher": "寒川神社",
+      "url": "https://samukawajinjya.jp/about/history.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T11:20:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "雄略天皇期・神亀四年（727）の創建伝承と、承和十三年（846）『続日本後紀』の神階奉授記録を直接確認。"
+    },
+    {
+      "key": "batch10-asakusa-official",
+      "source_type": "shrine_official",
+      "title": "浅草神社について – 浅草神社",
+      "publisher": "浅草神社",
+      "url": "https://www.asakusajinja.jp/asakusajinja/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T11:25:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "檜前浜成・檜前武成・土師真中知の三柱、推古天皇36年（628）の観音像感得由緒、明治6年の浅草神社への改称を直接確認。"
+    },
+    {
+      "key": "batch10-kawagoehikawa-official",
+      "source_type": "shrine_official",
+      "title": "川越氷川神社｜氷川神社のご紹介",
+      "publisher": "川越氷川神社",
+      "url": "https://www.kawagoehikawa.jp/shoukai/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T11:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "5柱の家族神（素盞嗚尊・奇稲田姫命・大己貴命・脚摩乳命・手摩乳命）、欽明天皇2年（541）の創建由緒、昭和23年の祭具発掘記録を直接確認。"
+    },
+    {
+      "key": "batch10-shibadaijingu-official",
+      "source_type": "shrine_official",
+      "title": "御由緒｜芝大神宮",
+      "publisher": "芝大神宮",
+      "url": "https://www.shibadaijingu.com/goyuisyo/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T11:35:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "天照皇大御神・豊受大御神の二柱、寛弘二年（1005）の創建、鎌倉時代の源頼朝公による社地寄進を直接確認。"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "大國魂神社",
+        "address": "東京都府中市宮町3-1"
+      },
+      "deities": [
+        {
+          "display_name": "大國魂大神",
+          "canonical_name": "大國魂大神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:10:00+00:00",
+          "note": "武蔵国の国魂の神として祀られる主祭神。公式由緒には他に「御霊大神」「国内諸神」の記載もあるが、個別神格として特定困難な集合的表記のため、本seedでは主祭神と配祀六所の7柱に限定し、これらはFact化していない。",
+          "source_keys": ["batch10-okunitama-official"]
+        },
+        {
+          "display_name": "小野大神",
+          "canonical_name": "小野大神",
+          "role": "secondary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:10:00+00:00",
+          "note": "武蔵総社六所宮を構成する配祀六所の一柱。公式サイトの表記に基づく。",
+          "source_keys": ["batch10-okunitama-official"]
+        },
+        {
+          "display_name": "小河大神",
+          "canonical_name": "小河大神",
+          "role": "secondary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:10:00+00:00",
+          "note": "武蔵総社六所宮を構成する配祀六所の一柱。公式サイトの表記に基づく。",
+          "source_keys": ["batch10-okunitama-official"]
+        },
+        {
+          "display_name": "氷川大神",
+          "canonical_name": "氷川大神",
+          "role": "secondary",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:10:00+00:00",
+          "note": "武蔵総社六所宮を構成する配祀六所の一柱。公式サイトの表記に基づく。",
+          "source_keys": ["batch10-okunitama-official"]
+        },
+        {
+          "display_name": "秩父大神",
+          "canonical_name": "秩父大神",
+          "role": "secondary",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:10:00+00:00",
+          "note": "武蔵総社六所宮を構成する配祀六所の一柱。公式サイトの表記に基づく。",
+          "source_keys": ["batch10-okunitama-official"]
+        },
+        {
+          "display_name": "金佐奈大神",
+          "canonical_name": "金佐奈大神",
+          "role": "secondary",
+          "sort_order": 5,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:10:00+00:00",
+          "note": "武蔵総社六所宮を構成する配祀六所の一柱。公式サイトの表記に基づく。",
+          "source_keys": ["batch10-okunitama-official"]
+        },
+        {
+          "display_name": "杉山大神",
+          "canonical_name": "杉山大神",
+          "role": "secondary",
+          "sort_order": 6,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:10:00+00:00",
+          "note": "武蔵総社六所宮を構成する配祀六所の一柱。公式サイトの表記に基づく。",
+          "source_keys": ["batch10-okunitama-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "景行天皇41年の創建",
+          "content": "大國魂神社の公式由緒は、第12代景行天皇41年（西暦111年）5月5日に、大國魂大神を武蔵国魂の神として祀ったことを創建の由来としている。",
+          "period_text": "景行天皇41年（西暦111年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:10:00+00:00",
+          "note": "景行天皇の在位年代は史料上確定していない古代の伝承的年代のため、history_type=traditionとし確定史実化しない。",
+          "source_keys": ["batch10-okunitama-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "武蔵国府設置に伴う武蔵総社の確立",
+          "content": "孝徳天皇の御代に武蔵国府が現在地へ置かれた際、当社が国衙の斎場となり、六所の神々を配祀して「武蔵総社」の起源が確立されたと公式由緒は伝えている。",
+          "period_text": "孝徳天皇の御代（596-654年）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:10:00+00:00",
+          "note": "武蔵国府設置という制度的な歴史的出来事として扱い、景行天皇41年の創建伝承とは別のFactとして分離する。",
+          "source_keys": ["batch10-okunitama-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "寒川神社",
+        "address": "神奈川県高座郡寒川町宮山3916"
+      },
+      "deities": [
+        {
+          "display_name": "寒川比古命",
+          "canonical_name": "寒川比古命",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:15:00+00:00",
+          "note": "寒川比女命とともに「寒川大明神」と奉称される。公式表記に主祭神・配祀の序列記載はなく、対等な二柱として列挙する。",
+          "source_keys": ["batch10-samukawa-deities"]
+        },
+        {
+          "display_name": "寒川比女命",
+          "canonical_name": "寒川比女命",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:15:00+00:00",
+          "note": "寒川比古命とともに「寒川大明神」と奉称される。公式表記に主祭神・配祀の序列記載はなく、対等な二柱として列挙する。",
+          "source_keys": ["batch10-samukawa-deities"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "雄略天皇期・神亀四年の創建伝承",
+          "content": "寒川神社の公式由緒は、正確な創祀年代は現存資料にないとしつつ、雄略天皇の御代（456〜479年）に幣帛が奉納されたとの伝承、および神亀四年（727）に社殿が建立されたとの伝承を紹介している。",
+          "period_text": "雄略天皇の御代（456〜479年）／神亀四年（727）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:20:00+00:00",
+          "note": "公式自身が伝承と位置づけているため、history_type=traditionとし確定史実化しない。",
+          "source_keys": ["batch10-samukawa-history"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "承和十三年の神階奉授記録",
+          "content": "寒川神社の公式由緒は、仁明天皇承和十三年（846）に神階従五位下を授けられたことが『続日本後紀』に記録されており、これが確認できる最初の公式記録であるとしている。",
+          "period_text": "承和十三年（846）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:20:00+00:00",
+          "note": "史料名（『続日本後紀』）を伴う公式記録の初見のため、伝承（tradition）ではなくhistorical_eventとして分離する。",
+          "source_keys": ["batch10-samukawa-history"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "浅草神社",
+        "address": "東京都台東区浅草2-3-1"
+      },
+      "deities": [
+        {
+          "display_name": "檜前浜成",
+          "canonical_name": "檜前浜成",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:25:00+00:00",
+          "note": "檜前武成・土師真中知とともに「三社権現」「三社明神」と呼ばれた三柱の一柱。公式表記に序列の記載はなく、対等な三柱として列挙する。",
+          "source_keys": ["batch10-asakusa-official"]
+        },
+        {
+          "display_name": "檜前武成",
+          "canonical_name": "檜前武成",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:25:00+00:00",
+          "note": "檜前浜成・土師真中知とともに「三社権現」「三社明神」と呼ばれた三柱の一柱。公式表記に序列の記載はなく、対等な三柱として列挙する。",
+          "source_keys": ["batch10-asakusa-official"]
+        },
+        {
+          "display_name": "土師真中知",
+          "canonical_name": "土師真中知",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:25:00+00:00",
+          "note": "檜前浜成・檜前武成とともに「三社権現」「三社明神」と呼ばれた三柱の一柱。公式表記に序列の記載はなく、対等な三柱として列挙する。",
+          "source_keys": ["batch10-asakusa-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "推古天皇36年の観音像感得由緒",
+          "content": "浅草神社の公式由緒は、推古天皇36年（628）3月18日、漁師の檜前浜成・武成兄弟が観音像を捧持して上陸し、槐の木の切り株に安置したことを起源としている。",
+          "period_text": "推古天皇36年（628）3月18日",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:25:00+00:00",
+          "note": "古代の感得伝承であり、三社権現社自体の創建年代は公式も不明としているため、history_type=traditionとする。",
+          "source_keys": ["batch10-asakusa-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "明治6年の浅草神社改称と総鎮守制定",
+          "content": "浅草神社の公式由緒は、明治元年に社名を三社明神社と改め、明治5年に郷社に列せられ、翌明治6年に浅草郷の総鎮守として現在の浅草神社に定められたとしている。",
+          "period_text": "明治元年〜明治6年",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:25:00+00:00",
+          "note": "近代の社格・社号変更という制度的出来事のため、古代の感得伝承とは別のFactとして分離する。",
+          "source_keys": ["batch10-asakusa-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "川越氷川神社",
+        "address": "埼玉県川越市宮下町2-11-3"
+      },
+      "deities": [
+        {
+          "display_name": "素盞嗚尊",
+          "canonical_name": "素盞嗚尊",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:30:00+00:00",
+          "note": "公式サイトが「主祭神」と明記する。",
+          "source_keys": ["batch10-kawagoehikawa-official"]
+        },
+        {
+          "display_name": "奇稲田姫命",
+          "canonical_name": "奇稲田姫命",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:30:00+00:00",
+          "note": "素盞嗚尊の妃として公式サイトに記載。",
+          "source_keys": ["batch10-kawagoehikawa-official"]
+        },
+        {
+          "display_name": "大己貴命",
+          "canonical_name": "大己貴命",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:30:00+00:00",
+          "note": "素盞嗚尊と奇稲田姫命の子として公式サイトに記載。",
+          "source_keys": ["batch10-kawagoehikawa-official"]
+        },
+        {
+          "display_name": "脚摩乳命",
+          "canonical_name": "脚摩乳命",
+          "role": "enshrined",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:30:00+00:00",
+          "note": "奇稲田姫命の親として公式サイトに記載。",
+          "source_keys": ["batch10-kawagoehikawa-official"]
+        },
+        {
+          "display_name": "手摩乳命",
+          "canonical_name": "手摩乳命",
+          "role": "enshrined",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:30:00+00:00",
+          "note": "奇稲田姫命の親として公式サイトに記載。",
+          "source_keys": ["batch10-kawagoehikawa-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "欽明天皇2年の創建伝承",
+          "content": "川越氷川神社の公式由緒は、欽明天皇2年（541）、入間川の川底に光り輝くものが出現し、これを氷川の御霊光として崇め現在地に勧請したことを創建としている。",
+          "period_text": "欽明天皇2年（541）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:30:00+00:00",
+          "note": "神霊の出現を伴う古代の創建伝承のため、history_type=traditionとし確定史実化しない。",
+          "source_keys": ["batch10-kawagoehikawa-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "昭和23年の古代祭具発掘",
+          "content": "川越氷川神社の公式由緒は、昭和23年に境内で古代の祭具が発掘され、当地における古くからの祭祀の実績が確認されたとしている。",
+          "period_text": "昭和23年（1948）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:30:00+00:00",
+          "note": "近代の考古学的発見という確認可能な出来事のため、欽明天皇2年の創建伝承とは別のFactとして分離する。",
+          "source_keys": ["batch10-kawagoehikawa-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "芝大神宮",
+        "address": "東京都港区芝大門1-12-7"
+      },
+      "deities": [
+        {
+          "display_name": "天照皇大御神",
+          "canonical_name": "天照皇大御神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:35:00+00:00",
+          "note": "内宮の御祭神として公式サイトに記載。",
+          "source_keys": ["batch10-shibadaijingu-official"]
+        },
+        {
+          "display_name": "豊受大御神",
+          "canonical_name": "豊受大御神",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:35:00+00:00",
+          "note": "外宮の御祭神として公式サイトに記載。",
+          "source_keys": ["batch10-shibadaijingu-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "寛弘二年の創建",
+          "content": "芝大神宮の公式由緒は、一条天皇の御代の寛弘二年（1005）9月16日に創建されたとしている。",
+          "period_text": "寛弘二年（1005）9月16日",
+          "event_date": "1005-09-16",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:35:00+00:00",
+          "note": "公式が具体的な年月日を創建年として明示しており、古代の神霊出現・感得を伴う伝承ではないため、history_type=foundingとする。",
+          "source_keys": ["batch10-shibadaijingu-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "鎌倉時代の源頼朝公による社地寄進",
+          "content": "芝大神宮の公式由緒は、鎌倉時代に源頼朝公から篤い信仰を受け、社地の寄贈があったとしている。江戸時代には徳川幕府の保護のもと、大江戸の産土神として関東一円の庶民信仰を集めたとも記している。",
+          "period_text": "鎌倉時代",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T11:35:00+00:00",
+          "note": "特定の歴史的人物・出来事に基づく記録のため、創建年のFactとは別に分離する。",
+          "source_keys": ["batch10-shibadaijingu-official"]
+        }
+      ]
+    }
+  ]
+}

@@ -47,8 +47,8 @@ export function ExploreLayout({
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">EXPLORE</p>
-        <h1 className="text-xl font-medium text-stone-900">神社をたどる</h1>
+        <p className="text-[11px] font-medium tracking-[0.2em] text-[var(--kt-color-text-muted)]">EXPLORE</p>
+        <h1 className="text-xl font-medium text-[var(--kt-color-text-primary)]">神社をたどる</h1>
       </header>
 
       <ExperienceFilterSection activeTag={activeTag} onSelectTag={onSelectTag} />

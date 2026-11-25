@@ -118,12 +118,13 @@ it("reason_facts を recommendation item に通す", () => {
           shrine_id: 10,
           display_name: "S1",
           reason: "R1",
-          reason_facts: {
-            version: 1,
-            primary_axis: "need",
-            matched_need_tags: ["厄除け"],
-            shrine_feature: "静かに歩ける",
-          },
+          reason_facts: [{
+            type: "need_tag",
+            label: "厄除け",
+            evidence: ["厄除け"],
+            score: 2,
+            is_primary: true,
+          }],
         },
       ],
     },
@@ -132,12 +133,9 @@ it("reason_facts を recommendation item に通す", () => {
 
   const p = buildPayloadFromUnified(u, baseFilterState);
   const recSec = p?.sections.find((s: any) => s.type === "recommendations") as any;
-  expect(recSec.items[0].reasonFacts).toEqual(
-    expect.objectContaining({
-      primary_axis: "need",
-      matched_need_tags: ["厄除け"],
-    }),
-  );
+  expect(recSec.items[0].reasonFacts).toEqual([
+    expect.objectContaining({ type: "need_tag", label: "厄除け", is_primary: true }),
+  ]);
 });
 
 it("recommendation_reason_v4_detail と recommendation_reason_v4 を recommendation item に通す", () => {
@@ -281,7 +279,7 @@ it("place候補の詳細情報とresult_stateをpayloadへ通す", () => {
           photo_url: "https://example.com/photo.jpg",
           breakdown: { score_total: 1 },
           breakdownDetail: { features: { visit_style: "quiet" } },
-          reasonFacts: { primary_axis: "feature" },
+          reasonFacts: [{ type: "history_theme", label: "静寂", evidence: ["history_theme"], score: 4, is_primary: true }],
           trustMetadata: { rank_class: "local" },
           historyTheme: "静寂",
           historyContext: "静けさの文脈",
@@ -370,14 +368,8 @@ it("reason_facts を reasonFacts より優先する", () => {
           shrine_id: 10,
           display_name: "S1",
           reason: "R1",
-          reason_facts: {
-            primary_axis: "need",
-            shrine_feature: "snake_case側",
-          },
-          reasonFacts: {
-            primary_axis: "feature",
-            shrine_feature: "camelCase側",
-          },
+          reason_facts: [{ type: "need_tag", label: "snake_case側", evidence: ["need_tag"], score: 2, is_primary: true }],
+          reasonFacts: [{ type: "history_theme", label: "camelCase側", evidence: ["history_theme"], score: 4, is_primary: true }],
         },
       ],
     },
@@ -387,10 +379,7 @@ it("reason_facts を reasonFacts より優先する", () => {
   const p = buildPayloadFromUnified(u, baseFilterState);
   const recSec = p?.sections.find((s: any) => s.type === "recommendations") as any;
 
-  expect(recSec.items[0].reasonFacts).toEqual(
-    expect.objectContaining({
-      primary_axis: "need",
-      shrine_feature: "snake_case側",
-    }),
-  );
+  expect(recSec.items[0].reasonFacts).toEqual([
+    expect.objectContaining({ type: "need_tag", label: "snake_case側" }),
+  ]);
 });

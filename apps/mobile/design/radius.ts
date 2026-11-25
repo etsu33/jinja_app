@@ -25,11 +25,13 @@ export const SEMANTIC_RADIUS_KEYS = ["control", "card", "panel", "modal", "image
 export type SemanticRadiusKey = (typeof SEMANTIC_RADIUS_KEYS)[number];
 export type PlatformRadiusTheme = Record<SemanticRadiusKey, number>;
 
+// docs/design/ios-ui-spec-v2.md 36節:
+//   Selection Card 16〜20 / Photo Card 18〜20 / Modal 20〜24 / CTA 26〜28
 export const semanticRadius: PlatformRadiusTheme = {
-  control: radius.md,
+  control: radius.cardLg,
   card: radius.xl,
   panel: radius.lg,
-  modal: radius.cardLg,
-  image: radius.xs,
+  modal: radius.xxl,
+  image: radius.lg,
   pill: radius.pill,
 };

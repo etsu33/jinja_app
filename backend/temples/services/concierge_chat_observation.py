@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from temples.domain.shrine_identity import resolve_shrine_id
+
 
 log = logging.getLogger(__name__)
 
@@ -91,7 +93,7 @@ def observe_candidate_pool(
         )
         pool_detail = [
             (
-                c.get("shrine_id") or c.get("id"),
+                resolve_shrine_id(c, policy="live_candidate"),
                 c.get("visit_style_tags") or [],
                 sorted(set(c.get("visit_style_tags") or []) & set(visit_style_tags)),
             )
@@ -136,7 +138,7 @@ def observe_candidate_pool_debug(
         score_top10 = [
             {
                 "rank": idx,
-                "shrine_id": c.get("shrine_id") or c.get("id"),
+                "shrine_id": resolve_shrine_id(c, policy="live_candidate"),
                 "place_id": c.get("place_id"),
                 "name": c.get("name"),
                 "distance_m": c.get("distance_m"),
@@ -221,7 +223,7 @@ def observe_ranking_breakdown(
             rows.append(
                 {
                     "rank": idx,
-                    "shrine_id": rec.get("shrine_id") or rec.get("id"),
+                    "shrine_id": resolve_shrine_id(rec, policy="live_candidate"),
                     "name": rec.get("name"),
                     "score_raw": float(rec.get("_score_total") or 0.0),
                     "score_total": float(breakdown.get("score_total") or 0.0),

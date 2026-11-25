@@ -7,19 +7,27 @@ import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import { buildLoginHref } from "@/lib/nav/login";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { track } from "@/lib/analytics/track";
+import {
+  recommendationAnalyticsProperties,
+  type RecommendationAnalyticsProvenance,
+} from "../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 type Props = {
   shrineId: number;
-  ctx?: "map" | "concierge" | null;
+  ctx?: "map" | "concierge" | "compass" | null;
   tid?: string | null;
   nextPath?: string;
   guestMode?: boolean;
   variant?: "default" | "subtle";
+  // ログイン済み・未保存時のラベル。呼び出し側で文脈に合わせて上書きする（既定は Shrine Detail と同じ）。
+  idleLabel?: string;
   initial?: {
     fav: boolean;
     favorite_id: number | null;
   };
   onToggleSuccess?: (nextFav: boolean) => void;
+  analyticsProvenance?: RecommendationAnalyticsProvenance;
+  recommendationInstanceId?: string | null;
 };
 
 export default function ShrineSaveButton({
@@ -29,8 +37,11 @@ export default function ShrineSaveButton({
   nextPath,
   guestMode,
   variant = "default",
+  idleLabel = "あとで見返すために保存",
   initial,
   onToggleSuccess,
+  analyticsProvenance,
+  recommendationInstanceId = null,
 }: Props) {
   const router = useRouter();
   const { isLoggedIn, loading } = useAuth();
@@ -51,14 +62,21 @@ export default function ShrineSaveButton({
       const prevFav = fav;
       const nextFav = !prevFav;
       await toggle();
+      // PR-C (docs/analytics/compass-analytics-contract.md): source only
+      // distinguishes "compass" from everything else. Concierge/map/direct
+      // keep their existing "shrine_detail" value unchanged -- widening this
+      // to a full ctx-derived value is out of PR-C's scope.
+      const source = ctx === "compass" ? "compass" : "shrine_detail";
       track("favorite_click", {
         shrineId,
         ctx,
         tid,
         nextFav,
-        source: "shrine_detail",
+        source,
         cardId: "saved_record",
         accessLevel,
+        recommendationInstanceId,
+        ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
       });
 
       if (nextFav) {
@@ -67,6 +85,9 @@ export default function ShrineSaveButton({
           action: "save",
           ctx,
           tid,
+          source,
+          recommendationInstanceId,
+          ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
         });
       }
 
@@ -82,20 +103,26 @@ export default function ShrineSaveButton({
     }
   };
 
+  // "subtle" variant: Recommendation Result Hero-only (docs/product/
+  // recommendation-result-information-architecture.md §6/§11/§15 PR3). This must read
+  // as clearly subordinate to the Hero's Primary CTA ("神社の詳細を見る", solid
+  // bg-action-primary) -- a text-link, not a bordered/filled button, so it never
+  // competes with it. Shrine Detail's own Save button uses the "default" variant below,
+  // unaffected by this styling.
   const buttonClass =
     variant === "subtle"
-      ? `inline-flex w-full items-center justify-center rounded-[var(--kt-radius-panel)] border px-4 py-2.5 text-xs font-semibold transition
+      ? `inline-flex w-full items-center justify-center px-1 py-1.5 text-xs font-semibold underline underline-offset-2 transition
           ${
             fav
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-muted)] hover:bg-slate-50 hover:text-slate-700"
+              ? "text-[var(--kt-color-saved-text)]"
+              : "text-[var(--kt-color-text-muted)] hover:text-[var(--kt-color-text-secondary)]"
           }
           disabled:opacity-60`
       : `inline-flex w-full items-center justify-center rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold transition
           ${
             fav
-              ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-              : "border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-primary)] hover:bg-slate-50"
+              ? "border-[var(--kt-color-saved-border)] bg-[var(--kt-color-saved-background)] text-[var(--kt-color-saved-text)]"
+              : "border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-primary)] hover:bg-[var(--kt-color-background-subtle)]"
           }
           disabled:opacity-60`;
 
@@ -108,7 +135,7 @@ export default function ShrineSaveButton({
             ? "保存しました"
             : effectiveGuestMode
               ? "ログインしてあとで見返す"
-              : "あとで見返すために保存"}
+              : idleLabel}
       </button>
 
       {err ? <p className="text-xs text-[var(--kt-color-status-error)]">{err}</p> : null}

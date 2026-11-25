@@ -1,21 +1,26 @@
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
 import { useProfileStore } from "../../store/profileStore";
 import { normalizeBirthday } from "../../lib/profile";
 import { ProfilePickerModal } from "../../components/profile/ProfilePickerModal";
+import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// 保存済みの印。グリフの ✓ は端末のフォント次第で字形が変わるため Ionicons を使う。
+const SAVE_ICON_SIZE = 16;
+
+// リストの送り記号。旧実装は "›" のグリフだった。
+const CHEVRON_SIZE = 20;
 
 const PREFECTURES = ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"];
-const WORSHIP_STYLES = ["朝参り", "日中の参拝", "夕参り", "静かに参拝", "御朱印巡り"];
 type PickerKind = "year" | "month" | "day" | "time" | "place" | null;
 
 export default function ProfileScreen() {
-  const router = useRouter();
-  const { userProfile, derivedProfile, directionProfile, setBirthday, setBirthTime, setBirthPlace, setWorshipStyle } =
+  const { userProfile, derivedProfile, directionProfile, setBirthday, setBirthTime, setBirthPlace } =
     useProfileStore();
   const normalizedBirthday = normalizeBirthday(userProfile.birthday);
   const birthdayParts = normalizedBirthday?.split("-") ?? [];
@@ -48,16 +53,12 @@ export default function ProfileScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.replace("/mypage")} style={styles.backButton}>
-          <Text style={styles.backText}>← マイページへ戻る</Text>
-        </Pressable>
-        <Text style={styles.eyebrow}>PROFILE</Text>
-        <Text style={styles.title}>プロフィール</Text>
         <Text style={styles.subtitle}>
           あなたの基本情報を入力すると、神社提案に活用されます。
         </Text>
         <View style={styles.saveNotice}>
-          <Text style={styles.saveNoticeText}>✓ 入力内容はこの端末に自動保存されます</Text>
+          <Ionicons name="checkmark-circle-outline" size={SAVE_ICON_SIZE} color={theme.cedar} />
+          <Text style={styles.saveNoticeText}>入力内容はこの端末に自動保存されます</Text>
         </View>
       </View>
 
@@ -71,7 +72,7 @@ export default function ProfileScreen() {
             <Text style={[styles.selectText, !normalizedBirthday && styles.placeholder]}>
               {normalizedBirthday ? `${birthdayParts[0]}年${Number(birthdayParts[1])}月${Number(birthdayParts[2])}日` : "選択してください"}
             </Text>
-            <Text style={styles.chevron}>›</Text>
+            <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.accent} />
           </Pressable>
         </View>
 
@@ -79,7 +80,7 @@ export default function ProfileScreen() {
           <Text style={styles.label}>出生時間</Text>
           <Pressable style={styles.selectButton} onPress={() => setPicker("time")} accessibilityRole="button">
             <Text style={[styles.selectText, !userProfile.birthTime && styles.placeholder]}>{userProfile.birthTime || "不明・未設定"}</Text>
-            <Text style={styles.chevron}>›</Text>
+            <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.accent} />
           </Pressable>
         </View>
 
@@ -87,19 +88,8 @@ export default function ProfileScreen() {
           <Text style={styles.label}>出生地</Text>
           <Pressable style={styles.selectButton} onPress={() => setPicker("place")} accessibilityRole="button">
             <Text style={[styles.selectText, !userProfile.birthPlace && styles.placeholder]}>{userProfile.birthPlace || "都道府県を選択"}</Text>
-            <Text style={styles.chevron}>›</Text>
+            <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.accent} />
           </Pressable>
-        </View>
-
-        <View style={styles.row}>
-          <Text style={styles.label}>参拝スタイル</Text>
-          <View style={styles.chips}>
-            {WORSHIP_STYLES.map((style) => (
-              <Pressable key={style} style={[styles.chip, userProfile.worshipStyle === style && styles.chipSelected]} onPress={() => setWorshipStyle(userProfile.worshipStyle === style ? "" : style)}>
-                <Text style={[styles.chipText, userProfile.worshipStyle === style && styles.chipTextSelected]}>{style}</Text>
-              </Pressable>
-            ))}
-          </View>
         </View>
       </View>
 
@@ -163,34 +153,13 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.mdGap,
   },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: spacing.smGap,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  eyebrow: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 2,
-  },
-  title: {
-    color: theme.gold,
-    fontSize: 26,
-    fontWeight: "900",
-  },
   subtitle: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 23,
-    fontWeight: "600",
   },
-  saveNotice: { alignSelf: "flex-start", backgroundColor: "rgba(221, 178, 82, 0.1)", borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8 },
-  saveNoticeText: { color: theme.goldSoft, fontSize: 12, fontWeight: "700" },
+  // 印(Ionicons)と文字が横に並ぶ。
+  saveNotice: { alignSelf: "flex-start", backgroundColor: theme.cedarSurface, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 6 },
+  saveNoticeText: { ...typography.footnote, color: theme.cedar },
   sectionCard: {
     backgroundColor: theme.surface,
     borderWidth: cardSizes.borderWidth,
@@ -200,9 +169,8 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   sectionTitle: {
-    color: theme.gold,
-    fontSize: 15,
-    fontWeight: "900",
+    ...typography.title,
+    color: theme.accent,
     marginBottom: spacing.tightGap,
   },
   row: {
@@ -213,30 +181,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: cardSizes.borderWidth,
     borderBottomColor: theme.borderHeader,
   },
-  selectButton: { minWidth: 180, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8, paddingVertical: 8 },
-  selectText: { color: theme.text, fontSize: 14, fontWeight: "700" },
+  // HIGの最小タップ領域44pt。文字と余白だけでは37ptにしかならない。
+  selectButton: { minHeight: 44, minWidth: 180, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8, paddingVertical: 8 },
+  selectText: { ...typography.label, color: theme.text },
   placeholder: { color: theme.muted },
-  chevron: { color: theme.gold, fontSize: 22, lineHeight: 22 },
-  chips: { flex: 1, flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 7 },
-  chip: { borderWidth: 1, borderColor: theme.borderHeader, borderRadius: radius.lg, paddingHorizontal: 10, paddingVertical: 7 },
-  chipSelected: { borderColor: theme.gold, backgroundColor: "rgba(221, 178, 82, 0.14)" },
-  chipText: { color: theme.muted, fontSize: 12, fontWeight: "700" },
-  chipTextSelected: { color: theme.gold },
   label: {
+    ...typography.label,
     color: theme.text,
-    fontSize: 14,
-    fontWeight: "700",
     flex: 1,
   },
   value: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 14,
-    fontWeight: "600",
   },
   noticeText: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
   },
 });

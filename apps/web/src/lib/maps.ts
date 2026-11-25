@@ -1,4 +1,7 @@
 // 目的地/出発地/手段から Google マップの経路URLを生成
+// origin は originContract.ts の共通契約を通したものだけを付与する。
+import { toValidOrigin } from "./maps/originContract";
+
 export type TravelMode = "walk" | "car" | "bicycle" | "transit";
 
 function toGoogleTravelMode(mode?: TravelMode) {
@@ -11,7 +14,7 @@ function toGoogleTravelMode(mode?: TravelMode) {
 
 export function gmapsDirUrl(opts: {
   dest: { lat: number; lng: number };
-  origin?: { lat: number; lng: number };
+  origin?: { lat?: number | null; lng?: number | null } | null;
   mode?: TravelMode;
 }) {
   const usp = new URLSearchParams({
@@ -22,7 +25,8 @@ export function gmapsDirUrl(opts: {
   const travelmode = toGoogleTravelMode(opts.mode);
   if (travelmode) usp.set("travelmode", travelmode);
 
-  if (opts.origin) usp.set("origin", `${opts.origin.lat},${opts.origin.lng}`);
+  const origin = toValidOrigin(opts.origin);
+  if (origin) usp.set("origin", `${origin.lat},${origin.lng}`);
 
   return `https://www.google.com/maps/dir/?${usp.toString()}`;
 }

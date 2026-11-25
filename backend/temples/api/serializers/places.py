@@ -50,3 +50,38 @@ class PlaceLiteSerializer(serializers.Serializer):
 
 class PlaceLiteResponseSerializer(serializers.Serializer):
     results = PlaceLiteSerializer(many=True)
+
+
+class ShrineCollisionConflictSerializer(serializers.Serializer):
+    """F-6B: place_id 解決が collision で拒否されたときの 409 body。
+
+    `POST /api/places/resolve/` と `POST /api/shrines/ingest/` の両方が
+    この形を返す。
+
+    候補 Shrine の id は **意図的に含めない**。含めると client 側が
+    「候補が 1 件だから」と自動束縛しうるため
+    （AUTO_BIND_ON_SINGLE_CANDIDATE = PROHIBITED）。レビューは server log。
+
+    docs/audit/place-id-shadow-identity-hardening.md §14.5
+    """
+
+    detail = serializers.CharField()
+    code = serializers.CharField(help_text="shrine_collision_review_required")
+
+
+class ShrineNotRegisteredSerializer(serializers.Serializer):
+    """`POST /api/shrines/ingest/` の 404 body（Shrine マスタ未登録、作成権限なし）。
+
+    Shrine マスタの新規作成は staff 限定。staff 以外が未登録の place_id を渡すと、
+    Shrine は作られずこの body が返る。
+    """
+
+    detail = serializers.CharField()
+    code = serializers.CharField(help_text="shrine_not_registered")
+    place_id = serializers.CharField()
+
+
+class ShrineIngestRequestSerializer(serializers.Serializer):
+    """F-6B: `POST /api/shrines/ingest/` の request body（schema 記述用）。"""
+
+    place_id = serializers.CharField()
