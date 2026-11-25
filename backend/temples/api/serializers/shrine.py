@@ -12,7 +12,7 @@ from temples.models import (
     ShrineKnowledgeSource,
     Visit,
 )
-from temples.services import evidence_gate
+from temples.services import evidence_gate, highlight_publication
 
 from rest_framework import serializers
 from temples.models import GoriyakuTag, Shrine
@@ -225,6 +225,82 @@ class ShrineListSerializer(ShrineBaseSerializer):
         )
 
 
+# 神社詳細で見どころを出す言語。英語は旅行パス・英語版の画面で使う（今は日本語だけ）。
+HIGHLIGHT_DETAIL_LANGUAGE = "ja"
+
+
+def _detail_displayed_histories(obj) -> list[ShrineHistory]:
+    """神社詳細に出す由緒・歴史（full / disputed）。histories と highlights で同じ判定を使う。"""
+    return [
+        h
+        for h in obj.histories.all()
+        if evidence_gate.decide_detail_display_state(
+            verification_status=h.verification_status,
+            source_verification_statuses=(s.verification_status for s in h.sources.all()),
+        )
+        in ("full", "disputed")
+    ]
+
+
+class ShrineHighlightDetailSerializer(serializers.Serializer):
+    """神社詳細の見どころ（Highlights PR-4）。公開判定は highlight_publication で済ませてから渡す。
+
+    - 文章（name / description / historical_connection / location_hint）は承認済みの翻訳から出す
+    - sources は公開の根拠になる出典だけ（現地観察は observed_on の日付として別に出す）
+    - linked_history_ids は、同じ神社で神社詳細に実際に出ている由緒・歴史の id だけ
+    """
+
+    id = serializers.IntegerField()
+    category = serializers.CharField()
+    sort_order = serializers.IntegerField()
+    name = serializers.CharField()
+    description = serializers.CharField()
+    historical_connection = serializers.CharField()
+    location_hint = serializers.CharField()
+    linked_history_ids = serializers.ListField(child=serializers.IntegerField())
+    sources = ShrineKnowledgeSourceSerializer(many=True)
+    observed_on = serializers.DateField(allow_null=True)
+
+
+def build_highlight_detail_items(
+    obj, *, language_code: str, displayed_histories: list[ShrineHistory]
+) -> list[dict]:
+    displayed_history_order = {h.pk: i for i, h in enumerate(displayed_histories)}
+    items: list[dict] = []
+    highlights = sorted(obj.highlights.all(), key=lambda h: (h.sort_order, h.pk))
+    for highlight in highlights:
+        decision = highlight_publication.decide_for_highlight(highlight, language_code)
+        if not decision.displayable:
+            continue
+        translation = highlight_publication.find_translation(
+            highlight.translations.all(), language_code
+        )
+        sources = [link.source for link in highlight.source_links.all()]
+        linked = sorted(
+            {
+                link.history_id
+                for link in highlight.history_links.all()
+                if link.shrine_id == obj.pk and link.history_id in displayed_history_order
+            },
+            key=displayed_history_order.__getitem__,
+        )
+        items.append(
+            {
+                "id": highlight.pk,
+                "category": highlight.category,
+                "sort_order": highlight.sort_order,
+                "name": translation.name,
+                "description": translation.description,
+                "historical_connection": translation.historical_connection,
+                "location_hint": translation.location_hint,
+                "linked_history_ids": linked,
+                "sources": highlight_publication.public_evidence_sources(sources),
+                "observed_on": highlight_publication.latest_observed_on(sources),
+            }
+        )
+    return items
+
+
 class ShrineDetailSerializer(ShrineBaseSerializer):
     """Shrine Detail API専用。deities/historiesはtemples.services.evidence_gateの
     decide_detail_display_state()判定（"full"または"disputed"）を満たすものだけを
@@ -247,6 +323,7 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
 
     deities = serializers.SerializerMethodField(read_only=True)
     histories = serializers.SerializerMethodField(read_only=True)
+    highlights = serializers.SerializerMethodField(read_only=True)
     deity_collectives = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -268,6 +345,7 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
             "kyusei",
             "deities",
             "histories",
+            "highlights",
             "deity_collectives",
         ]
 
@@ -286,16 +364,17 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
 
     @extend_schema_field(ShrineHistorySerializer(many=True))
     def get_histories(self, obj):
-        items = [
-            h
-            for h in obj.histories.all()
-            if evidence_gate.decide_detail_display_state(
-                verification_status=h.verification_status,
-                source_verification_statuses=(s.verification_status for s in h.sources.all()),
-            )
-            in ("full", "disputed")
-        ]
+        items = _detail_displayed_histories(obj)
         return ShrineHistorySerializer(items, many=True, context=self.context).data
+
+    @extend_schema_field(ShrineHighlightDetailSerializer(many=True))
+    def get_highlights(self, obj):
+        items = build_highlight_detail_items(
+            obj,
+            language_code=HIGHLIGHT_DETAIL_LANGUAGE,
+            displayed_histories=_detail_displayed_histories(obj),
+        )
+        return ShrineHighlightDetailSerializer(items, many=True, context=self.context).data
 
     @extend_schema_field(ShrineDeityCollectiveSerializer(many=True))
     def get_deity_collectives(self, obj):

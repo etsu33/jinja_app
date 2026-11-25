@@ -2,6 +2,7 @@
 import { resolveShrineIdentity } from "@/lib/identity/resolveShrineId";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import { buildShrineResolveHref } from "@/lib/nav/buildShrineResolveHref";
+import { shrineHighlightAnchorId } from "@/lib/shrine/buildShrineHighlightSection";
 
 /**
  * Concierge recommendation → detail href (product spec)
@@ -71,4 +72,34 @@ export function detailHrefFromRecommendation(
   }
 
   return null;
+}
+
+/**
+ * 見どころ単位の推薦（PR-3）：推薦カードの「ここで見る」→ 神社詳細の見どころの位置。
+ *
+ * - 登録済みの神社（status=resolved）だけ。/shrines/:id?...#shrine-highlight-{highlightId}
+ * - 未登録・壊れた・食い違う identity は null（place_id の詳細ページには見どころが無い）
+ * - expectedShrineId（見どころの神社）があり、推薦の神社と違うときも null
+ * - ctx / tid は神社の詳細リンクと同じものを載せる
+ */
+export function highlightHrefFromRecommendation(
+  item: AnyObj,
+  highlightId: number,
+  ctx?: {
+    ctx?: string;
+    tid?: string | number;
+    expectedShrineId?: number | null;
+  },
+): string | null {
+  if (!Number.isInteger(highlightId) || highlightId <= 0) return null;
+
+  const identity = resolveShrineIdentity(item, "registered_compat");
+  if (identity.status !== "resolved") return null;
+  if (ctx?.expectedShrineId != null && ctx.expectedShrineId !== identity.shrineId) return null;
+
+  return buildShrineHref(identity.shrineId, {
+    ctx: ctx?.ctx,
+    tid: ctx?.tid ?? undefined,
+    hash: shrineHighlightAnchorId(highlightId),
+  });
 }

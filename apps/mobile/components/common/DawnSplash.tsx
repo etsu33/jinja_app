@@ -24,34 +24,51 @@ export function DawnSplash({ onDone }: Props) {
 
   React.useEffect(() => {
     let cancelled = false;
-    // 自前のSplashが出てからネイティブのSplashを隠す。白い瞬きを挟まないため。
-    // 失敗してもネイティブSplashに留まらないよう、必ず握りつぶす。
-    void SplashScreen.hideAsync().catch(() => undefined);
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
     const finish = () => {
       if (!cancelled) onDone();
     };
 
-    const timer = setTimeout(() => {
-      void AccessibilityInfo.isReduceMotionEnabled()
-        .then((reduceMotion) => {
-          if (cancelled) return;
-          if (reduceMotion) {
-            finish();
-            return;
-          }
-          Animated.timing(opacity, {
-            toValue: 0,
-            duration: FADE_MS,
-            useNativeDriver: true,
-          }).start(finish);
-        })
-        .catch(finish);
-    }, HOLD_MS);
+    const startHold = () => {
+      timer = setTimeout(() => {
+        void AccessibilityInfo.isReduceMotionEnabled()
+          .then((reduceMotion) => {
+            if (cancelled) return;
+            if (reduceMotion) {
+              finish();
+              return;
+            }
+            Animated.timing(opacity, {
+              toValue: 0,
+              duration: FADE_MS,
+              useNativeDriver: true,
+            }).start(finish);
+          })
+          .catch(finish);
+      }, HOLD_MS);
+    };
+
+    // ネイティブSplashを隠し、「隠し終わってから」保持時間を数え始める。
+    //
+    // hideAsync() を投げっぱなしにして即タイマーを started すると、最前面の
+    // ネイティブSplashが消えるまでの間に HOLD_MS + FADE_MS を消化してしまい、
+    // この画面が一度も見えないまま本編へ抜ける。app.config.ts に
+    // expo-splash-screen の plugin を入れてネイティブSplashが実在するように
+    // なってから、実機(release build)で実際に起きた。
+    //
+    // 失敗してもネイティブSplashに留まらないよう、拒否は握りつぶしたうえで
+    // 同じように保持へ進める。
+    void SplashScreen.hideAsync()
+      .catch(() => undefined)
+      .then(() => {
+        if (cancelled) return;
+        startHold();
+      });
 
     return () => {
       cancelled = true;
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
     };
   }, [onDone, opacity]);
 

@@ -15,6 +15,7 @@ from guard import (  # noqa: E402
     is_safe_dump_path,
     is_safe_restore_target,
     pg_env_exports,
+    _strip_sql_comments,
     redact_url,
 )
 
@@ -301,3 +302,30 @@ class TestTemples0095_0098PreflightSqlIsReadonly:
             sql_text = f.read()
         ok, reason = is_readonly_sql(sql_text)
         assert ok is True, reason
+
+
+class TestUsers0011_0015SqlIsReadonlySingleStatement:
+    """users 0011-0015 preflight/postcheck are pasted into the Supabase SQL
+    Editor (no `readonly_query.sh` in that path), so the read-only allow-list
+    is checked here, and each file must stay ONE statement: the Editor shows
+    the result of the last statement only."""
+
+    SQL_DIR = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sql"
+    )
+    FILES = ("users_0011_0015_preflight.sql", "users_0011_0015_postcheck.sql")
+
+    def _read(self, name):
+        with open(os.path.join(self.SQL_DIR, name), encoding="utf-8") as f:
+            return f.read()
+
+    def test_files_are_readonly(self):
+        for name in self.FILES:
+            ok, reason = is_readonly_sql(self._read(name))
+            assert ok is True, f"{name}: {reason}"
+
+    def test_files_are_single_statement(self):
+        for name in self.FILES:
+            body = _strip_sql_comments(self._read(name))
+            statements = [s for s in body.split(";") if s.strip()]
+            assert len(statements) == 1, f"{name}: {len(statements)} statements"

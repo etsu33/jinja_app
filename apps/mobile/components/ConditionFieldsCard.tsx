@@ -8,6 +8,9 @@ import type { UserOrigin } from "../../../packages/shared/userOrigin";
 import { typography } from "../design/typography";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+// 選択中の印。グリフの ✓ は端末のフォント次第で字形が変わるため Ionicons を使う。
+const CHECK_ICON_SIZE = 15;
+
 // リストの送り記号。旧実装は "›" のグリフだった。
 const CHEVRON_SIZE = 20;
 
@@ -137,7 +140,12 @@ export function ConditionFieldsCard({
                 accessibilityState={{ checked: active, disabled: !!disabled }}
                 accessibilityLabel={option}
               >
-                <Text style={[styles.pillText, active && styles.pillTextActive]}>{active ? `✓ ${option}` : option}</Text>
+                <>
+                  {active ? (
+                    <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={theme.accent} />
+                  ) : null}
+                  <Text style={[styles.pillText, active && styles.pillTextActive]}>{option}</Text>
+                </>
               </Pressable>
             );
           })}
@@ -164,7 +172,12 @@ export function ConditionFieldsCard({
                 accessibilityState={{ checked: active, disabled: !!disabled }}
                 accessibilityLabel={option}
               >
-                <Text style={[styles.pillText, active && styles.pillTextActive]}>{active ? `✓ ${option}` : option}</Text>
+                <>
+                  {active ? (
+                    <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={theme.accent} />
+                  ) : null}
+                  <Text style={[styles.pillText, active && styles.pillTextActive]}>{option}</Text>
+                </>
               </Pressable>
             );
           })}
@@ -277,6 +290,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 11,
     paddingVertical: 10,
+    // 選択中は印(Ionicons)と文字が横に並ぶ。
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     justifyContent: "center",
     backgroundColor: "transparent",
   },

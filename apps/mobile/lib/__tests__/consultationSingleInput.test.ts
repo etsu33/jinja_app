@@ -90,3 +90,32 @@ describe("条件の往復", () => {
     expect(concierge).toContain("location: toOriginPayload(applied.origin)");
   });
 });
+
+describe("STEP 1 を二度出さない", () => {
+  const home = withoutComments(read("app/(tabs)/index.tsx"));
+
+  // ホームの自由入力と STEP 1 の問いは同じ(「今、どんなことを整理したいですか？」)。
+  // 書いた直後にもう一度同じことを聞かないよう、ホームからは topicDone を付ける。
+  it("ホームは相談文を書いたときだけ topicDone を付ける", () => {
+    expect(home).toContain("topicDone=1");
+    // 空のまま進んだ場合は STEP 1 で選ばせるので、付けずに開く。
+    expect(home).toMatch(/if \(!text\) \{[\s\S]{0,120}?router\.push\("\/consultation"\)/);
+  });
+
+  it("相談画面は topicDone を受け取って STEP 1 を飛ばす", () => {
+    expect(consultation).toContain("topicDone?: string");
+    expect(consultation).toMatch(/const firstStep = topicDone \? 1 : 0/);
+    expect(consultation).toMatch(/React\.useState\(firstStep\)/);
+  });
+
+  it("飛ばした STEP 1 へは戻らず、ホームへ戻る", () => {
+    // step > 0 のままだと、飛ばしたはずの STEP 1 が戻るボタンで出てしまう。
+    expect(consultation).toMatch(/if \(step > firstStep\)/);
+    expect(consultation).not.toMatch(/if \(step > 0\)/);
+  });
+
+  it("Concierge の「条件を変える」は topicDone を付けない", () => {
+    // 付けると STEP 1 が出ず、相談文そのものを直す手段が無くなる。
+    expect(concierge).not.toContain("topicDone");
+  });
+});

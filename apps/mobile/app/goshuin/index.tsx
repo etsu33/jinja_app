@@ -6,6 +6,10 @@ import { getStamps } from "../../lib/storage";
 import { appColors as theme } from "../../design/theme";
 import Button from "../../components/ui/Button";
 import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// 空状態の印の大きさ。
+const EMPTY_ICON_SIZE = 32;
 
 const GAP = 10;
 const COLS = 3;
@@ -83,7 +87,7 @@ export default function GoshuinList() {
         </View>
       ) : (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>□</Text>
+          <Ionicons name="images-outline" size={EMPTY_ICON_SIZE} color={theme.muted} />
           <Text style={styles.emptyTitle}>まだ記録はありません</Text>
           <Text style={styles.emptyText}>参拝した神社や御朱印を残すと、あとから自分の流れを振り返れます。</Text>
           <Button
@@ -178,12 +182,6 @@ const styles = StyleSheet.create({
     padding: 22,
     alignItems: "center",
     gap: 10,
-  },
-  emptyIcon: {
-    color: theme.accent,
-    fontSize: 28,
-    fontWeight: "900",
-    marginBottom: 6,
   },
   emptyTitle: {
     ...typography.subheading,

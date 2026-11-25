@@ -1,5 +1,6 @@
 // apps/web/src/app/concierge/ConciergeClientFull.tsx
 "use client";
+import { normalizeConciergeCandidates } from "../../../../../packages/shared/conciergeCandidates";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -43,6 +44,7 @@ import { isAuthRequiredForAction } from "@/lib/auth/actionGuards";
 import { initialConciergeSessionState, type ConciergeSessionState } from "@/features/concierge/types";
 import { resolveDisplayLabel, resolveDisplayName } from "@/lib/profile/resolveDisplayName";
 import type { UserOrigin } from "../../../../../packages/shared/userOrigin";
+import { consumeHomeOriginHandoff } from "@/lib/concierge/homeOriginHandoff";
 
 import { conciergeLog } from "@/lib/log/concierge";
 import { EVT_CLOSE_CONCIERGE } from "@/lib/events";
@@ -497,6 +499,14 @@ export default function ConciergeClientFull() {
     autoSubmitThemeRef.current = theme;
     setNeedText((current) => (current.trim() ? current : theme));
   }, [sp]);
+
+  // トップページで選んだ出発地を1回だけ受け取る（2026-11-23）。自動送信はこれを読んでから行う。
+  const [homeOriginHandoffChecked, setHomeOriginHandoffChecked] = useState(false);
+  useEffect(() => {
+    const handedOver = consumeHomeOriginHandoff();
+    if (handedOver) setUserOrigin(handedOver);
+    setHomeOriginHandoffChecked(true);
+  }, []);
 
   useEffect(() => {
     const openFilter = (sp.get("openFilter") ?? "").trim();
@@ -1140,7 +1150,7 @@ export default function ConciergeClientFull() {
     const modeRaw = (displayUnified?.data as any)?._signals?.mode;
     const mode = modeRaw?.mode === "need" || modeRaw?.mode === "compat" ? modeRaw.mode : undefined;
     const flow = modeRaw?.flow === "A" || modeRaw?.flow === "B" ? modeRaw.flow : undefined;
-    const topRecommendation = displayRecommendations[0] as Record<string, unknown> | undefined;
+    const topRecommendation = normalizeConciergeCandidates(displayRecommendations).registered[0]?.record as Record<string, unknown> | undefined;
     const data = (displayUnified?.data as any) ?? {};
     const signals = data?._signals ?? {};
     const resultState = signals?.result_state ?? signals?.resultState ?? {};
@@ -1229,7 +1239,7 @@ export default function ConciergeClientFull() {
           : [];
 
       const completedModeRaw = (u.data as any)?._signals?.mode;
-      const completedTopRecommendation = completedRecommendations[0] as Record<string, unknown> | undefined;
+      const completedTopRecommendation = normalizeConciergeCandidates(completedRecommendations).registered[0]?.record as Record<string, unknown> | undefined;
       const completedData = (u.data as any) ?? {};
       const completedSignals = completedData?._signals ?? {};
       const completedResultState = completedSignals?.result_state ?? completedSignals?.resultState ?? {};
@@ -1437,6 +1447,7 @@ export default function ConciergeClientFull() {
     const theme = autoSubmitThemeRef.current;
     if (!theme) return;
     if (!hydrated) return;
+    if (!homeOriginHandoffChecked) return;
     if (!isEntryRoute) return;
     if (!canSend) {
       // 送信できない状態（paywall 等）では自動送信しない。待機表示を解き、従来の入口表示へ戻す。
@@ -1453,7 +1464,7 @@ export default function ConciergeClientFull() {
     void safeSend(theme, { kind: "home_theme_submit", textLen: theme.length }).finally(() => {
       setAutoSubmitSettledTheme(theme);
     });
-  }, [canSend, entrySubmitting, hydrated, isEntryRoute, safeSend, sending]);
+  }, [canSend, entrySubmitting, homeOriginHandoffChecked, hydrated, isEntryRoute, safeSend, sending]);
 
   /* ----------------------------------------
    * UI表示の判定

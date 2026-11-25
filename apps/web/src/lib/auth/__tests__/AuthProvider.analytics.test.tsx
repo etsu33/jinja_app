@@ -97,7 +97,9 @@ describe("AuthProvider analytics identity", () => {
     await renderReady();
 
     expect(screen.getByTestId("logged-in")).toHaveTextContent("yes");
-    expect(identify).toHaveBeenCalledTimes(1);
+    // 認証状態の描画と analytics identify は別の effect。
+    // 描画直後に同期的に検証すると、並列テスト実行時に競合することがある。
+    await waitFor(() => expect(identify).toHaveBeenCalledTimes(1));
     expect(identify.mock.calls[0]).toEqual(["42"]);
 
     const serializedArgs = JSON.stringify(identify.mock.calls);

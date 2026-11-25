@@ -98,7 +98,8 @@ describe("相談フロー (ios-ui-spec-v2.md 08節)", () => {
   it("ホームは相談フローへ渡すだけで、条件入力を持たない", () => {
     const home = read("app/(tabs)/index.tsx");
 
-    expect(home).toContain('router.push(text ? `/consultation?q=');
+    expect(home).toContain("/consultation?q=");
+    expect(home).toContain("encodeURIComponent(text)");
     expect(home).not.toContain("ConditionFieldsCard");
     expect(home).not.toContain("selectedVisitStyle");
     expect(home).not.toContain("selectedGoriyaku");

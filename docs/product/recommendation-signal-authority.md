@@ -192,7 +192,7 @@ Candidate/Rankを一切変えず、推薦理由の説明にのみ使用するSig
 | `knowledge_histories` | `shrine_history`の入力元（同上） | **Explanation-only（現状維持、A）** | §8で詳述 | High |
 | `birthdate` | Secondary（`score_element*w1`。`public_mode="compat"`時のみ`astro_bonus`追加）。`reason_facts` priority 6 | **Personalization** | 継続的なユーザー属性（生年月日は不変）であり、セッションを跨いで意味を持つ。現行のSecondary的スコア実装はそのままで良いが、分類ラベルとしてはPersonalizationが実体に即している | Medium |
 | `visit_style` | Secondary（`score_visit_style*w5=0.35`固定）。`reason_facts` priority 7（fallback一歩手前） | **Secondary/Personalization境界**（今回セッションの入力なら Context寄り、保存済みProfile由来ならPersonalization寄り。現状は毎回入力のためContext/Secondary） | 現状`visit_preferences`はrequest単位で送信され継続保存されない（`docs/product/concierge-input-architecture.md` Level 2定義と整合）。Personal Profileへの永続化は現状のスコープ外 | Medium |
-| `distance` | Secondary（`score_distance*w4`）+ Candidate Retrieval段階の候補並び順（Conciergeでは候補membershipを決めない） | **Context** | 「今回どこにいるか」というsession依存の現実世界情報であり、ユーザー属性ではない | High |
+| `distance` | Secondary（`score_distance*w4`）+ Candidate Retrieval段階の候補並び順 + **場所ごとの物差しによる候補の範囲（2026-11-23〜、§9「Semantic Fit vs Distance」）**。相談した人の位置が無いときは候補membershipを決めない | **Context** | 「今回どこにいるか」というsession依存の現実世界情報であり、ユーザー属性ではない | High |
 | `direction` | Context（`direction_signal_score`のみ実効、max+0.02。`direction_bonus`経路は死んでいる） | **Context** | 今回の参拝予定日・出発地点というsession依存情報。現状のContext分類は妥当。ただし`direction_bonus`のdead code整理はGap（§12） | High |
 | `popularity` | Secondary（`score_popular*w3`）+ 候補並び順のtie-break（同距離時 / 座標なし時の並び、prefilter同点時、refill順）。**候補membershipのAuthorityではない**（Conciergeは人気順の件数上限で候補を切らない。Compass現行経路に残る人気順上限は既知のF2 gapで別PRで解消） | **Secondary** | 神社側の静的属性であり、ユーザー固有でも今回固有でもない、候補全体に対する品質のtie-breaker | High |
 | `behavior` | Secondary、`min(base*0.3, 0.5)`でcap | **Personalization** | 複数セッションを跨いだユーザー固有の行動履歴であり、継続的信号。Cap設計（Level 1〜3を上回らない）は`concierge-input-architecture.md` Rule 5と整合、現状維持が妥当 | Medium |
@@ -311,6 +311,20 @@ Authorityとしての規則ではない。**Desired Contract**: Semantic Fitが
 Context（distance含む）に構造的に劣後することがないよう、
 将来のweight変更時にもこの関係を壊さないことをGuardとして明文化
 する（Should、§13）。
+
+#### 場所ごとの物差しによる候補の範囲（2026-11-23 えつこさん決定）
+
+都市で、相談の種類が1つ多く当たるだけの遠い神社（新宿駅の近くからの相談で約44〜310km）が1位になることがあった（2026-11-22 本番で確認）。近さの点（`score_distance*w4`、最大0.35）は相談の種類1つ分の差（約0.6）に届かないため。そこで、Semantic Fit と distance の点数の関係は変えずに、候補の範囲だけを次のとおり決める。
+
+- 物差し：相談した人の位置から近い方に **10社目** の神社までの距離
+- 候補に残す範囲：物差しの **3倍** 以内。範囲の外の神社は候補から外す
+- 決まったkmにしない理由：神社の数は地域で大きく違う（本番131社のうち東京都が29社。広島・仙台の近くは1〜2社）。30kmのように決めると、地方では候補が1〜3社になる
+- 相談した人の位置が無いとき、位置の付いた候補が10社に満たないときは、範囲で絞らない（今までどおり）
+- 距離が分からない候補（`distance_m` が無い）は外さない
+- 英語の相談（travel モード）には当てない（旅行の計画は今いる場所の近くとは限らないため。扱いは別に決める）
+- 試算：KAMIMUSUBI フォルダ「KAMI MUSUBI 場所ごとの物差しの試算（2026-11-23）」。N＝10・倍率＝3 なら新宿は約17km、京都は約42km、新潟は約233km、広島は約611km
+- 近さの点の式（`_distance_decay`、2.5kmで減る）は今回変えない
+- 実装：`temples/services/concierge_adaptive_radius.py`（`build_chat_recommendations` で候補を受け取った直後に適用）
 
 ### Semantic Fit vs Popularity
 
