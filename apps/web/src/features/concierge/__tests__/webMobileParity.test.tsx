@@ -70,6 +70,9 @@ function mobileFunctions(post: (...args: any[]) => any) {
     ...reasonV4,
     ...candidateAdapter,
     post,
+    // Mobile は lib/conciergeChatRequest.ts の postConciergeChat で送る（ログイン中は postAuth）。
+    // ここではログインしていない経路（post）として扱う。
+    postConciergeChat: (body: unknown) => post("/concierge/chat/", body),
     React,
     View: NativeView,
     Text: NativeText,
