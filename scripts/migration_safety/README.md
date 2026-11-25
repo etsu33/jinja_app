@@ -30,6 +30,8 @@ Background reading (read in this order):
 | `sql/pre_migration_snapshot.sql` | SELECT-only. **Historical runbook for `users 0006` / `temples 0090-0093` only.** Run immediately before that backup/migration attempt; records the baseline to compare against later. Not used for, and not updated for, the `temples 0095-0098` preflight below — that is a separate, later migration boundary with its own file. |
 | `sql/post_migration_verification.sql` | SELECT-only. **Historical runbook for `users 0006` / `temples 0090-0093` only**, paired with `pre_migration_snapshot.sql` above. Run after that migration; every value must match the pre-migration snapshot except the two migrations intentionally applied. Same scope note as above — not reused for `temples 0095-0098`. |
 | `sql/temples_0095_0098_preflight.sql` | SELECT-only. **`temples` 0095→0096→0097→0098 Production-apply preflight — use this immediately before applying those four, and only those four.** Confirms `temples` migration ledger position (0094 applied, 0095-0098 not) and, section by section, the exact precondition each of the four migrations' own `forward` implementation checks before mutating anything — derived by reading each migration's code and tests, not guessed. See "Runbook: temples 0095-0098 Preflight" below. |
+| `sql/users_0011_0015_preflight.sql` | SELECT-only, **one statement**. `users` 0011→0015 Production-apply preflight for the Supabase SQL Editor route (no credential on the operator's machine). Every FAIL row mirrors one `RuntimeError` condition in 0011/0013/0015; output is counts and fixed labels only. See "Runbook: `users` 0011-0015 via Dashboard + Render Shell" below. |
+| `sql/users_0011_0015_postcheck.sql` | SELECT-only, one statement. Post-apply verification paired with the preflight above; its `5 compare` rows must equal the preflight's `5 expect` rows. |
 | `tests/test_guard.py` | Unit tests for `guard.py`, including the credential-bridge functions (`describe_url_shape`, `is_readonly_sql`, `pg_env_exports`). No DB required. |
 | `tests/test_backup_restore_e2e.sh` | End-to-end local test: builds a `users=0005`/`temples=0089` local database, dumps it, restores it into a second isolated database through the actual guarded scripts, verifies they match, applies `users 0006` + `temples 0090-0093` to the restored copy, verifies again, rolls back. Never touches Production. |
 | `tests/test_credential_bridge_e2e.sh` | End-to-end local test of the credential bridge using a fake local credential (never Production): presence check leaks nothing, a read-only query actually connects, writes/`EXPLAIN ANALYZE`/wrong-permissions/in-repo-path are all refused pre-connection. |
@@ -292,6 +294,57 @@ scripts/migration_safety/readonly_query.sh \
 Run it once well ahead of the migration window, and again immediately
 before the actual `migrate` command — treat any change in Section 0's
 ledger output between the two runs as a reason to stop and re-derive.
+
+## Runbook: `users` 0011-0015 via Dashboard + Render Shell
+
+Used when the operator's machine has **no Production credential**. Nothing
+here sources a credential file, so `readonly_query.sh` / `dump_readonly.sh`
+are not in the path; the same safety properties are kept another way:
+
+- **Read-only**: the SQL files are checked locally with
+  `python3 scripts/migration_safety/guard.py check-readonly-sql <file>` (no
+  credential involved) and pasted into the Supabase SQL Editor unchanged.
+  Each file is a single `SELECT` because the Editor shows only the last
+  statement's result. `tests/test_guard.py` pins both properties. The Editor
+  session itself is privileged, so read-only-ness is enforced at the SQL
+  layer only, as with `readonly_query.sh`.
+- **No connection target in logs**: no connection string is ever handled.
+  In Render Shell, never run `env`, `printenv`, `echo $DATABASE_URL` or
+  `dbshell`; `showmigrations` / `migrate --plan` / `migrate` print no target.
+- **Personal data**: preflight/postcheck output is counts only and may be
+  shared. The CSV backups contain personal data: keep them outside the repo
+  and never paste their contents into a chat.
+
+Steps (record times, counts and verdicts in the audit doc):
+
+0. Render Shell (prompt starts with `render@srv-`): `python manage.py
+   showmigrations users` (0010 applied, 0011-0015 not),
+   `echo "RUN_MIGRATIONS_ON_START=${RUN_MIGRATIONS_ON_START:-unset}"` (must be
+   `0`), `python manage.py migrate users 0015 --plan` (exactly the five).
+1. SQL Editor: run `sql/users_0011_0015_preflight.sql`. Any FAIL -> stop.
+2. SQL Editor: `SELECT * FROM users_userprofile ORDER BY id` and
+   `SELECT * FROM users_premiumpasspurchase ORDER BY id`, Export -> CSV each,
+   save outside the repo, confirm row counts equal the preflight's
+   `profiles total` / `Pass purchases total`. Then confirm the files really
+   exist on disk (`wc -l <file>` = rows + 1 header); viewing the result grid
+   is not a backup — on 2026-11-21 no file was actually written. (Supabase Free has no
+   Dashboard backup/PITR; these two tables are the only existing data the
+   five migrations rewrite.)
+3. Re-run the preflight; `5 expect` must be unchanged.
+4. Render Shell: `python manage.py migrate users 0011 --noinput`, then 0012,
+   0013, 0014, 0015, one at a time; stop on anything but `OK`. Never run
+   `migrate` without an app label.
+5. SQL Editor: run `sql/users_0011_0015_postcheck.sql`. All PASS and
+   `5 compare` == `5 expect`.
+
+Rollback (`migrate users 0010`) is only safe right after step 5: the 0011
+reverse refuses if any `account_entitlement_disabled` is set, 0014's
+reverse refuses once Apple billing data exists, and 0012's reverse drops
+`users_premiumsubscription`. Roll back the Render deploy together with the
+DB. The CSVs are for the case where the reverse migration itself refuses.
+
+Executed against Production on 2026-11-21: see
+[`docs/audit/users-0011-0015-production-apply.md`](../../docs/audit/users-0011-0015-production-apply.md).
 
 ## Runbook: Migration Execution Candidates (Phase 4) — reference only, not endorsement
 

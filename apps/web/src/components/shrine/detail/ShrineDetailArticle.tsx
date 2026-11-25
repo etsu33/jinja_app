@@ -48,6 +48,7 @@ import ShrineProposalSection from "@/components/shrine/detail/ShrineProposalSect
 import ShrineReasonSection from "@/components/shrine/detail/ShrineReasonSection";
 import ShrineSupplementSection from "@/components/shrine/detail/ShrineSupplementSection";
 import ShrineFactSection from "@/components/shrine/detail/ShrineFactSection";
+import ShrineHighlightSection from "@/components/shrine/detail/ShrineHighlightSection";
 import { RecommendationMetaSection } from "@/components/shrine/detail/RecommendationMetaSection";
 import ShrineDetailHeroCard from "@/components/shrine/detail/ShrineDetailHeroCard";
 import DetailDisclosureBlock from "@/components/shrine/DetailDisclosureBlock";
@@ -58,7 +59,11 @@ import { buildLoginHref } from "@/lib/nav/login";
 
 import type { ShrineTag } from "@/lib/shrine/tags/types";
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
-import type { DetailFactSection, ShrineDetailSectionModel } from "@/components/shrine/detail/types";
+import type {
+  DetailFactSection,
+  DetailHighlightSection,
+  ShrineDetailSectionModel,
+} from "@/components/shrine/detail/types";
 
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 import { getVisibilityForCard, type CardId, type CardVisibilityState } from "@/lib/premium/cardVisibility";
@@ -509,6 +514,7 @@ export default function ShrineDetailArticle({
   actionState,
   directionSupportCopy = null,
   factSection = null,
+  highlightSection = null,
   guestMode,
 }: {
   cardProps: ShrineCardAdapterProps;
@@ -543,6 +549,7 @@ export default function ShrineDetailArticle({
   actionState?: "none" | "detail_viewed" | "saved" | "route_opened" | "visited" | "reflected" | null;
   directionSupportCopy?: string | null;
   factSection?: DetailFactSection | null;
+  highlightSection?: DetailHighlightSection | null;
   // SSR-resolved auth context (true = anonymous / no valid session). Passed to
   // the Premium CTA so an authenticated Free user is not shown the login CTA.
   guestMode?: boolean;
@@ -779,6 +786,9 @@ export default function ShrineDetailArticle({
     historyTheme,
   ]);
 
+  // 見どころのリンク・表示の計測に使う神社id（Highlights PR-5）
+  const highlightShrineId = typeof cardProps.shrineId === "number" ? cardProps.shrineId : null;
+
   // Determine if after-visit copy should be shown
   const showAfterVisitCopy =
     actionState === "visited" || actionState === "reflected";
@@ -818,7 +828,12 @@ export default function ShrineDetailArticle({
           Hero直後・解釈レイヤーの前に置く。Interpretation/Recommendation/Actionとは
           独立した表示責務で、Fact は spine としてカード表示を維持する（Fact/Meaning境界）。
           Premium gatingの対象にせず、Knowledge未登録（deities/historiesとも空）ならnullで非表示。 */}
-      {factSection ? <ShrineFactSection section={factSection} /> : null}
+      {factSection ? <ShrineFactSection section={factSection} shrineId={highlightShrineId} /> : null}
+
+      {/* 見どころ（Highlights PR-5）。Fact（由緒・歴史）のすぐ下・解釈レイヤーの前に置き、
+          読んだ話を境内のどこで確かめられるかを示す。Fact と同じく Premium で隠さない。
+          由緒・歴史が無い神社でも、見どころがあれば単独で表示する。 */}
+      {highlightSection ? <ShrineHighlightSection section={highlightSection} shrineId={highlightShrineId} /> : null}
 
       {hasContextReasonSections ? <ShrineDetailSections sections={contextReasonSections} /> : null}
 

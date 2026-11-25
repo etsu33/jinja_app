@@ -10,7 +10,7 @@
 2. 外部API(Stripe)と DB は同じ transaction に入れられない。
    Stripe を止めたあとで DB 削除が失敗する partial failure は
    構造上ゼロにできない。そのため:
-     - Stripe 成功直後に、ローカルの billing mirror を canceled 相当へ倒す
+     - Stripe 成功直後に、ローカルの billing mirror を更新し、全 Premium 権限を停止する
        （別 transaction で確定させる）。DB 削除が失敗して Account が残っても
        Premium active のまま見えないようにするため。
      - DB 削除の失敗は「成功」として返さない。retry 可能な例外を返す。
@@ -37,7 +37,6 @@ from rest_framework_simplejwt.token_blacklist.models import (
     BlacklistedToken,
     OutstandingToken,
 )
-
 from temples.models import ConciergeRecommendationLog
 from users.models import UserProfile
 
@@ -207,7 +206,7 @@ def _cleanup_billing(*, profile: Optional[UserProfile]) -> bool:
     customer_id = (getattr(profile, "stripe_customer_id", "") or "").strip()
 
     if not subscription_id and not customer_id:
-        # Stripe と紐づいていない。外部呼び出しなしで DB 削除へ進める。
+        _sync_billing_mirror(profile=profile)
         return False
 
     stripe = _stripe_module()
@@ -288,7 +287,7 @@ def _sync_billing_mirror(*, profile: Optional[UserProfile]) -> None:
 
 
 def _mark_billing_canceled(*, profile: Optional[UserProfile]) -> None:
-    """ローカルの billing mirror を canceled 相当へ倒す。
+    """ローカルの billing mirror を更新し、アカウントの全 Premium 権限を停止する。
 
     DB 削除が失敗して UserProfile が残った場合でも、Premium active のまま
     見えないようにするための保険。削除 transaction とは別に確定させる
@@ -300,6 +299,7 @@ def _mark_billing_canceled(*, profile: Optional[UserProfile]) -> None:
         return
 
     UserProfile.objects.filter(pk=profile.pk).update(
+        account_entitlement_disabled=True,
         subscription_status=CANCELED_SUBSCRIPTION_STATUS,
         current_period_end=None,
         cancel_at_period_end=False,

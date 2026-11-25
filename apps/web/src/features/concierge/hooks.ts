@@ -1,4 +1,5 @@
 "use client";
+import { normalizeConciergeCandidates } from "../../../../../packages/shared/conciergeCandidates";
 
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
@@ -17,7 +18,6 @@ import {
 
 import type { ConciergeChatRequestV1, ConciergeChatFilters } from "@/features/concierge/types/chatRequest";
 import { trackRecommendationQuality } from "@/lib/analytics/searchEvents";
-import { resolveShrineId } from "@/lib/identity/resolveShrineId";
 import {
   buildRecommendationResultSetId,
   normalizeRecommendationInstanceId,
@@ -141,8 +141,8 @@ export function normalizeAccessLevel(value: unknown): ConciergeAccessLevel {
  * ここでは使わない（F-7 が backend 側で
  * candidate["id"] == candidate["shrine_id"] == Shrine.id を固定しており、
  * live recommendation はその共有 producer 由来）。
- * shrine_id が解決できない場合は shrineId を fabricate せず null のままにする
- * （serializeSearchAnalyticsPayload が null を送信前に落とす既存契約）。
+ * 確認済みの登録候補だけを共有表示契約で重複排除し、登録連番と最初の attribution を送る。
+ * 外部・不正・競合 identity は registered quality event の対象にしない。
  *
  * docs/audit/shared-shrine-identity-resolver-design.md §14
  */
@@ -151,19 +151,17 @@ export function trackRecommendationQualityFromRecommendations(args: {
   threadId: string | null;
   accessLevel: ConciergeAccessLevel;
 }) {
-  const resultSetId = buildRecommendationResultSetId(
-    args.threadId,
-    args.recommendations.map((rec) => ({ shrineId: resolveShrineId(rec, "registered_compat") })),
-  );
-  args.recommendations.forEach((rec, index) => {
+  const registered = normalizeConciergeCandidates(args.recommendations).registered;
+  const resultSetId = buildRecommendationResultSetId(args.threadId, registered.map(c => ({shrineId:c.shrineId})));
+  registered.forEach(({record:rec, shrineId, recommendationRank}) => {
     const quality = rec.recommendation_reason_quality;
     if (!quality || typeof quality !== "object") return;
 
     trackRecommendationQuality({
       source: "concierge_result",
       threadId: args.threadId,
-      shrineId: resolveShrineId(rec, "registered_compat"),
-      recommendationRank: index + 1,
+      shrineId,
+      recommendationRank,
       resultSetId,
       accessLevel: args.accessLevel,
       shrine_data_rate: quality.shrine_data_rate ?? null,

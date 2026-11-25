@@ -70,9 +70,14 @@ def _fillers(
 
 
 def _target(
-    *, lat: float = 36.5, address: str = "東京都試験区9-9-9", goriyaku: str = "", eligible=True
+    *, lat: float = 35.5, address: str = "東京都試験区9-9-9", goriyaku: str = "", eligible=True
 ) -> Shrine:
-    """旧 pool の外に落ちる（popular_score=0.0、id 最大）対象 Shrine。"""
+    """旧 pool の外に落ちる（popular_score=0.0、id 最大）対象 Shrine。
+
+    既定の位置（約56km先）は、すべての filler（約22〜33km先）より遠いが、場所ごとの物差しの
+    候補の範囲（近い方から10社目の距離の3倍。この fixture では約70km）の内側に置く
+    （docs/product/recommendation-signal-authority.md §9、2026-11-23）。
+    """
     shrine = Shrine.objects.create(
         name_jp=TARGET,
         kind="shrine",

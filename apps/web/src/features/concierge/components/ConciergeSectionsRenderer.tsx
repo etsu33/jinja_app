@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import DetailSection from "@/components/shrine/DetailSection";
+import ConciergeHighlightPick from "@/features/concierge/components/ConciergeHighlightPick";
 import PlaceShrineCard from "@/components/shrine/PlaceShrineCard";
 import ShrineSaveButton from "@/components/shrine/ShrineSaveButton";
 import ConciergeFilterPanel from "@/features/concierge/components/ConciergeFilterPanel";
@@ -429,6 +430,7 @@ export default function ConciergeSectionsRenderer({
         ),
         analyticsProvenance: item.analyticsProvenance,
         recommendationInstanceId: item.recommendationInstanceId ?? null,
+        highlightPick: item.highlightPick ?? null,
       }));
     });
   }, [payload, normalizedModeForTracking]);
@@ -459,6 +461,10 @@ export default function ConciergeSectionsRenderer({
         mode: item.mode,
         historyTheme: item.historyTheme ?? analyticsContext?.historyTheme,
         recommendationInstanceId: item.recommendationInstanceId,
+        // 見どころ単位の推薦 PR-3：「ここで見る」を出したカードと出さなかったカードを比べるため
+        hasHighlightPick: item.highlightPick !== null,
+        highlightId: item.highlightPick?.highlightId ?? null,
+        highlightNeedTag: item.highlightPick?.needTag ?? null,
         ...consultationAxisAnalytics(item.consultationAxis ?? analyticsContext?.consultationAxis),
         ...(item.analyticsProvenance ? recommendationAnalyticsProperties(item.analyticsProvenance) : {}),
       });
@@ -1083,6 +1089,21 @@ export default function ConciergeSectionsRenderer({
                               </div>
                             ) : null}
 
+                            {/* 見どころ単位の推薦 PR-3：「ここで見る」（Action Layer）。推薦理由の
+                                見出しの外に置く（順位に寄与していないので理由として見せない）。
+                                無料の層に置くので、Premium の境目より上。 */}
+                            {heroItem.highlightPick ? (
+                              <ConciergeHighlightPick
+                                pick={heroItem.highlightPick}
+                                variant="hero"
+                                shrineId={heroItem.shrineId}
+                                recommendationRank={1}
+                                threadId={tid ?? null}
+                                resultSetId={resultSetId}
+                                recommendationInstanceId={heroItem.recommendationInstanceId ?? null}
+                              />
+                            ) : null}
+
                             {/* Free -> Premium seam (PR-G2): one restrained boundary, placed
                                 where the FREE reason layers end and the deeper meaning begins.
                                 Guest / Free see the seam here instead of the gated
@@ -1292,6 +1313,17 @@ export default function ConciergeSectionsRenderer({
                                     recommendationKey={item.shrineId}
                                     rank={compactIdx + 2}
                                   />
+                                  {item.highlightPick ? (
+                                    <ConciergeHighlightPick
+                                      pick={item.highlightPick}
+                                      variant="compact"
+                                      shrineId={item.shrineId}
+                                      recommendationRank={compactIdx + 2}
+                                      threadId={tid ?? null}
+                                      resultSetId={resultSetId}
+                                      recommendationInstanceId={item.recommendationInstanceId ?? null}
+                                    />
+                                  ) : null}
                                 </div>
                               );
                             })}
@@ -1302,9 +1334,10 @@ export default function ConciergeSectionsRenderer({
                   ) : null}
 
                   {placeItems.length > 0 ? (
-                    <div className="space-y-3 pt-4">
-                      {placeItems.map((item: PlaceShrineItem, placeIdx: number) => (
-                        <div key={`rec-${i}-${placeIdx}-place-${item.placeId}`} className="space-y-2">
+                    <section aria-label="参考候補" className="space-y-3 pt-4">
+                      <h3 className="text-sm font-semibold">参考候補</h3>
+                      {placeItems.map((item: PlaceShrineItem) => (
+                        <div key={`place-${item.placeId}`} className="space-y-2">
                           <PlaceShrineCard
                             placeId={item.placeId}
                             title={item.title}
@@ -1316,7 +1349,7 @@ export default function ConciergeSectionsRenderer({
                           />
                         </div>
                       ))}
-                    </div>
+                    </section>
                   ) : null}
 
                   {!isEntryRoute && savePromptVisibility !== "hidden" ? (

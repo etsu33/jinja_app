@@ -1,10 +1,10 @@
 // apps/mobile/app/shrines/[id].tsx
 import * as React from "react";
-import { View, Text, Image, Pressable, StyleSheet, ScrollView, Linking, Platform, TextInput } from "react-native";
-import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { View, Text, Image, Pressable, StyleSheet, ScrollView, Linking, Platform, TextInput, AccessibilityInfo } from "react-native";
+import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { SHRINES } from "../../data/shrines";
 import { incVisits, isFavorite, toggleFavorite, pushRecent } from "../../lib/storage";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { get, isUnauthenticatedError } from "../../lib/http";
 import { isLoggedIn } from "../../lib/authTokens";
 import { trackShrineDetailView, trackShrineRouteOpen } from "../../lib/shrineInteractions";
@@ -33,6 +33,11 @@ import {
 } from "../../lib/recommendationReasonV4";
 import { buildShrineFactViewModel, type ShrineDeity, type ShrineHistory } from "../../lib/shrineKnowledgeFact";
 import { track } from "../../lib/analytics";
+import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// お気に入りの印。旧実装は "♡" のグリフを文字列に混ぜていた。
+const FAV_ICON_SIZE = 18;
 import {
   buildReasonFactItems,
   findPrimaryReasonFact,
@@ -542,6 +547,7 @@ export default function ShrineDetail() {
           provenance: analyticsProvenance,
           recommendationInstanceId: contextRecommendationInstanceId,
         });
+        AccessibilityInfo.announceForAccessibility("振り返りを保存しました");
       }
     } catch (error) {
       if (isUnauthenticatedError(error)) {
@@ -632,38 +638,37 @@ export default function ShrineDetail() {
     return (
       <View style={styles.errorScreen}>
         <Text style={styles.errorText}>該当の神社が見つかりませんでした。</Text>
-        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/")} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← 戻る</Text>
-        </Pressable>
       </View>
     );
   }
 
   return (
     <>
+      <Stack.Screen options={{ title: shrine.name }} />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        {/* ヒーロー画像 */}
+        {/* ヒーロー画像。出典と権利を確認した写真がある場合だけ出す。
+            無い間は帯ごと出さず、名前から始める。16:10の空の帯に絵文字を置くと、
+            写真が無いことを画面いっぱいに見せることになる。 */}
         {shrine.imageUrl ? (
           <Image source={{ uri: shrine.imageUrl }} style={styles.heroImage} />
-        ) : (
-          <View style={styles.heroPlaceholder}>
-            <Text style={styles.heroPlaceholderText}>⛩</Text>
-          </View>
-        )}
+        ) : null}
 
-        {/* ヘッダー（戻る + お気に入り） */}
+        {/* ヘッダー（お気に入り）。戻るはネイティブヘッダーが持つ。 */}
         <View style={styles.headerBar}>
-          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← 戻る</Text>
-          </Pressable>
           <Pressable
             onPress={onToggleFav}
             style={[styles.favBtn, fav && styles.favBtnActive]}
             accessibilityRole="button"
             accessibilityLabel="お気に入りの切り替え"
+            accessibilityState={{ selected: fav }}
           >
+            <Ionicons
+              name={fav ? "heart" : "heart-outline"}
+              size={FAV_ICON_SIZE}
+              color={fav ? theme.accent : theme.muted}
+            />
             <Text style={[styles.favBtnText, fav && styles.favBtnTextActive]}>
-              {fav ? "♡ 登録済み" : "♡ お気に入り"}
+              {fav ? "登録済み" : "お気に入り"}
             </Text>
           </Pressable>
         </View>
@@ -766,34 +771,20 @@ export default function ShrineDetail() {
           </View>
         ) : null}
 
-        {/* action suggestion */}
+        {/* 参拝前の問い。
+            旧実装はここに「参拝前にできること」として、まずやること・次にできること・
+            参拝前の問いを並べていた。同じ3つが推薦結果にも出ており、内容がほぼ同じ
+            まま2画面に重複していた。しかも1つめは「まず詳細を見て…」で、詳細を
+            開いている画面で言うことではない。
+            推薦結果は次の一歩へ導く場所、ここは参拝そのものへ向かう場所なので、
+            持って行く問いだけを残す。英語の見出し(NEXT ACTION)もやめた。 */}
         {shouldShowActionSuggestionV4 ? (
-          <View style={styles.actionCard}>
-            <Text style={styles.cardEyebrow}>NEXT ACTION</Text>
-            <Text style={styles.cardTitle}>参拝前にできること</Text>
-            {asTrimmedString(primaryAction?.label) ? (
-              <Text style={styles.actionV4Title}>{primaryAction?.label}</Text>
-            ) : null}
-            {asTrimmedString(primaryAction?.description) ? (
-              <Text style={styles.cardBody}>{primaryAction?.description}</Text>
-            ) : null}
-            {asTrimmedString(secondaryAction?.label) || asTrimmedString(secondaryAction?.description) ? (
-              <View style={styles.actionV4SecondaryBlock}>
-                {asTrimmedString(secondaryAction?.label) ? (
-                  <Text style={styles.actionV4SubTitle}>{secondaryAction?.label}</Text>
-                ) : null}
-                {asTrimmedString(secondaryAction?.description) ? (
-                  <Text style={styles.cardBody}>{secondaryAction?.description}</Text>
-                ) : null}
-              </View>
-            ) : null}
-            {asTrimmedString(reflectionPrompt?.question) ? (
-              <View style={styles.actionV4SecondaryBlock}>
-                <Text style={styles.meaningActionLabel}>参拝前の問い</Text>
-                <Text style={styles.cardBody}>{reflectionPrompt?.question}</Text>
-              </View>
-            ) : null}
-          </View>
+          asTrimmedString(reflectionPrompt?.question) ? (
+            <View style={styles.actionCard}>
+              <Text style={styles.cardTitle}>参拝前の問い</Text>
+              <Text style={styles.cardBody}>{reflectionPrompt?.question}</Text>
+            </View>
+          ) : null
         ) : (
           <View style={styles.actionCard}>
             <Text style={styles.cardTitle}>参拝前にできること</Text>
@@ -839,6 +830,7 @@ export default function ShrineDetail() {
               参拝して感じたことを残しておくと、次の相談や再訪時に自分の変化を見返しやすくなります。
             </Text>
             <TextInput
+              accessibilityLabel="参拝後の振り返り"
               value={reflectionAnswer}
               onChangeText={(text) => {
                 setReflectionAnswer(text);
@@ -895,9 +887,8 @@ const styles = StyleSheet.create({
     gap: spacing.xlGap,
   },
   errorText: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 15,
-    fontWeight: "600",
   },
 
   // ヒーロー
@@ -905,42 +896,20 @@ const styles = StyleSheet.create({
     width: "100%",
     aspectRatio: 16 / 10,
   },
-  heroPlaceholder: {
-    width: "100%",
-    aspectRatio: 16 / 10,
-    backgroundColor: theme.surface,
-    alignItems: "center",
-    justifyContent: "center",
-    borderBottomWidth: cardSizes.borderWidth,
-    borderBottomColor: theme.border,
-  },
-  heroPlaceholderText: {
-    fontSize: 48,
-  },
 
   // ヘッダーバー
   headerBar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     paddingHorizontal: spacing.screenX,
     paddingTop: spacing.xlGap,
     paddingBottom: spacing.smGap,
   },
-  backBtn: {
-    paddingVertical: ctaSizes.pillPaddingY,
-    paddingHorizontal: ctaSizes.pillPaddingX,
-    borderRadius: radius.pill,
-    borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
-    backgroundColor: "transparent",
-  },
-  backBtnText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
-  },
   favBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.tightGap + 2,
     paddingVertical: ctaSizes.pillPaddingY,
     paddingHorizontal: cardSizes.cardPaddingMd,
     borderRadius: radius.pill,
@@ -949,16 +918,15 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   favBtnActive: {
-    borderColor: theme.borderGold,
-    backgroundColor: theme.borderGoldDark,
+    borderColor: theme.borderAccent,
+    backgroundColor: theme.borderAccentDark,
   },
   favBtnText: {
+    ...typography.footnoteStrong,
     color: theme.muted,
-    fontSize: 13,
-    fontWeight: "700",
   },
   favBtnTextActive: {
-    color: theme.gold,
+    color: theme.accent,
   },
 
   // 神社名・所在地
@@ -969,17 +937,12 @@ const styles = StyleSheet.create({
     gap: spacing.tightGap,
   },
   shrineName: {
+    ...typography.display,
     color: theme.text,
-    fontSize: 26,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-    lineHeight: 34,
   },
   shrineArea: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-    fontWeight: "600",
-    letterSpacing: 0.3,
   },
 
   // タグ
@@ -995,14 +958,12 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: radius.pill,
     borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     backgroundColor: "transparent",
   },
   tagText: {
-    color: theme.goldSoft,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.3,
+    ...typography.footnoteStrong,
+    color: theme.accentSoft,
   },
 
   // v2カード共通
@@ -1012,7 +973,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surfaceSoft,
     borderRadius: radius.xl,
     borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     padding: cardSizes.cardPaddingLg,
     gap: spacing.smGap,
   },
@@ -1042,49 +1003,17 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderRadius: radius.xl,
     borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     padding: cardSizes.cardPaddingLg,
     gap: spacing.smGap,
   },
-  meaningActionLabel: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.1,
-  },
-  cardEyebrow: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.4,
-  },
   cardTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: "900",
   },
   cardBody: {
+    ...typography.body,
     color: theme.mutedSoft,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
-  },
-  actionV4Title: {
-    color: theme.text,
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: "900",
-  },
-  actionV4SubTitle: {
-    color: theme.goldSoft,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: "900",
-  },
-  actionV4SecondaryBlock: {
-    marginTop: spacing.smGap,
-    gap: spacing.tightGap,
   },
   reasonFactsCard: {
     marginHorizontal: spacing.screenX,
@@ -1097,25 +1026,19 @@ const styles = StyleSheet.create({
     gap: spacing.mdGap,
   },
   reasonFactsLabel: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.1,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   reasonFactItem: {
     gap: spacing.tightGap,
   },
   reasonFactLabel: {
+    ...typography.eyebrow,
     color: theme.muted,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.4,
   },
   reasonFactText: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
   },
 
   noticeCard: {
@@ -1129,10 +1052,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lgGap,
   },
   noticeText: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
   },
 
   // CTA
@@ -1142,10 +1063,8 @@ const styles = StyleSheet.create({
     gap: spacing.mdGap,
   },
   ctaCaption: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
     textAlign: "center",
   },
   reflectionCard: {
@@ -1154,7 +1073,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderRadius: radius.xl,
     borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     padding: cardSizes.cardPaddingLg,
     gap: spacing.mdGap,
   },
@@ -1162,15 +1081,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.smGap,
   },
   reflectionInput: {
+    ...typography.bodyStrong,
     minHeight: 96,
     borderRadius: radius.lg,
     borderWidth: cardSizes.borderWidth,
     borderColor: theme.borderSoft,
     backgroundColor: theme.surfaceSoft,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
     paddingHorizontal: cardSizes.cardPaddingMd,
     paddingVertical: spacing.mdGap,
   },

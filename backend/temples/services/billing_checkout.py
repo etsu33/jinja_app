@@ -65,6 +65,14 @@ def _stripe_pass_price_id(pass_type: str) -> str:
     return (getattr(settings, setting_name, "") or "").strip() if setting_name else ""
 
 
+def _is_missing_customer(exc: Exception) -> bool:
+    """Stripe が「その客はこのモードに居ない」と明示したときだけ True。
+
+    message の文言は照合しない。code と param だけを根拠にする。
+    """
+    return getattr(exc, "code", None) == "resource_missing" and getattr(exc, "param", None) == "customer"
+
+
 def _field(obj: Any, name: str) -> str:
     value = getattr(obj, name, None)
     if value is None and isinstance(obj, dict):
@@ -77,6 +85,8 @@ def create_checkout_session(*, user, pass_type: str, success_url: str, cancel_ur
 
     - mode="payment"（自動更新しない）。支払い方法はカードだけ。
     - 客（Customer）を必ず作る（customer_creation="always"）。退会のときに Stripe の客を消す経路で使うため。
+    - 保存済みの客が今のキーのモードに居ない（サンドボックスで作った客を本番のキーで使う等）ときは、
+      その ID を消して客を作り直す。新しい客 ID は Webhook が保存する。
     - パスの種類は metadata と payment_intent_data.metadata に入れる。
       期限を延ばすのは Webhook（checkout.session.completed で payment_status が paid のとき）。
     """
@@ -120,16 +130,30 @@ def create_checkout_session(*, user, pass_type: str, success_url: str, cancel_ur
         "metadata": metadata,
         "payment_intent_data": {"metadata": metadata},
     }
-    if customer_id:
-        params["customer"] = customer_id
-    else:
-        # customer_creation は payment / setup のときだけ指定できる（Stripe の仕様）。
-        params["customer_creation"] = "always"
-        if email:
-            params["customer_email"] = email
+
+    def _with_customer(cid: str) -> dict[str, Any]:
+        p = dict(params)
+        if cid:
+            p["customer"] = cid
+        else:
+            # customer_creation は payment / setup のときだけ指定できる（Stripe の仕様）。
+            p["customer_creation"] = "always"
+            if email:
+                p["customer_email"] = email
+        return p
 
     try:
-        session = stripe.checkout.Session.create(**params)
+        try:
+            session = stripe.checkout.Session.create(**_with_customer(customer_id))
+        except stripe.StripeError as exc:
+            # 保存済みの客が、今のキーのモード（サンドボックス／本番）に居ないときだけ作り直す。
+            # Stripe が customer の欄を名指しで resource_missing と返したときに限る。
+            # 値段の ID の誤り（param が line_items）などは、ここでは扱わず外側で失敗にする。
+            if not (customer_id and _is_missing_customer(exc)):
+                raise
+            log.warning("[stripe] stored customer is missing in the current mode; creating a new one")
+            UserProfile.objects.filter(pk=profile.pk, stripe_customer_id=customer_id).update(stripe_customer_id="")
+            session = stripe.checkout.Session.create(**_with_customer(""))
     except stripe.StripeError as exc:
         # エラーの本文は値段の ID などを含みうるので、ログにも出さない。種類・code・request id だけを残す。
         log.error(

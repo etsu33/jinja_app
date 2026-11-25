@@ -2,10 +2,11 @@ import * as React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme, appSemanticTheme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { radius } from "../../design/radius";
 import Button from "../ui/Button";
+import { typography } from "../../design/typography";
 
 type AuthPromptProps = {
   visible: boolean;
@@ -65,7 +66,7 @@ export function AuthPrompt({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(7, 16, 31, 0.72)",
+    backgroundColor: appSemanticTheme["overlay.default"],
     alignItems: "center",
     justifyContent: "center",
     padding: spacing.screenX,
@@ -74,21 +75,19 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 360,
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: radius.cardLg,
     backgroundColor: theme.surface,
     padding: spacing.contentX,
     gap: spacing.mdGap,
   },
   title: {
-    color: theme.gold,
-    fontSize: 18,
-    fontWeight: "800",
+    ...typography.subheading,
+    color: theme.accent,
   },
   description: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 21,
   },
   signupButton: {
     minHeight: 44,
@@ -96,9 +95,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   signupButtonText: {
-    color: theme.gold,
-    fontSize: 14,
-    fontWeight: "700",
+    ...typography.label,
+    color: theme.accent,
   },
   closeButton: {
     minHeight: 44,
@@ -106,9 +104,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   closeButtonText: {
+    ...typography.label,
     color: theme.muted,
-    fontSize: 14,
-    fontWeight: "700",
   },
   loginButtonSpacing: {
     marginTop: spacing.smGap,

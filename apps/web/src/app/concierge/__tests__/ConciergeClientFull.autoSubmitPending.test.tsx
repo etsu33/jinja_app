@@ -59,6 +59,7 @@ vi.mock("@/lib/analytics/searchEvents", async (importOriginal) => {
 import ConciergeClientFull from "../ConciergeClientFull";
 import ConciergeRouteFallback from "../ConciergeRouteFallback";
 import { readAutoSubmitTheme } from "@/features/concierge/components/ConciergeAutoSubmitPending";
+import { HOME_ORIGIN_HANDOFF_KEY, saveHomeOriginHandoff } from "@/lib/concierge/homeOriginHandoff";
 
 const THEME = "仕事の迷いを整理したい";
 
@@ -176,6 +177,37 @@ describe("/concierge?theme=... bootstrap（hydrate 前）", () => {
 });
 
 describe("/concierge?theme=... 自動送信", () => {
+  it("トップで選んだ出発地を、1回目の送信に位置として載せる（受け取ったら消す）", async () => {
+    saveHomeOriginHandoff({
+      latitude: 35.6896,
+      longitude: 139.7006,
+      source: "station",
+      displayName: "新宿駅",
+      accuracy: "precise",
+    });
+    setSearch(`theme=${THEME}`);
+    api.postConciergeChat.mockResolvedValue(chatPayload(recs));
+
+    render(<ConciergeClientFull />);
+
+    await waitFor(() => expect(api.postConciergeChat).toHaveBeenCalledTimes(1));
+    expect(api.postConciergeChat.mock.calls[0][0]).toMatchObject({
+      query: THEME,
+      location: { lat: 35.6896, lng: 139.7006 },
+    });
+    expect(sessionStorage.getItem(HOME_ORIGIN_HANDOFF_KEY)).toBeNull();
+  });
+
+  it("出発地を渡していなければ、1回目の送信に位置は載せない", async () => {
+    setSearch(`theme=${THEME}`);
+    api.postConciergeChat.mockResolvedValue(chatPayload(recs));
+
+    render(<ConciergeClientFull />);
+
+    await waitFor(() => expect(api.postConciergeChat).toHaveBeenCalledTimes(1));
+    expect(api.postConciergeChat.mock.calls[0][0].location).toBeUndefined();
+  });
+
   it("待機表示のまま送信し、入力フォームを一度も挟まずに結果へ進む", async () => {
     setSearch(`theme=${THEME}`);
     const chat = deferred<unknown>();

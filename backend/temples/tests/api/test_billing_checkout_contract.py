@@ -60,9 +60,10 @@ def test_billing_checkout_requires_a_known_pass_type(monkeypatch, body):
 class _FakeStripeError(Exception):
     """stripe.StripeError の代わり（code / http_status / request_id を持つ）。"""
 
-    def __init__(self, message, *, code=None, http_status=None, request_id=None):
+    def __init__(self, message, *, code=None, http_status=None, request_id=None, param=None):
         super().__init__(message)
         self.code = code
+        self.param = param
         self.http_status = http_status
         self.request_id = request_id
 
@@ -74,10 +75,13 @@ class _FakeInvalidRequestError(_FakeStripeError):
 class _FakeSession:
     calls: list = []
     error: Exception | None = None
+    errors: list = []  # 1回ごとに先頭から投げる（空なら error を使う）
 
     @classmethod
     def create(cls, **params):
         cls.calls.append(params)
+        if cls.errors:
+            raise cls.errors.pop(0)
         if cls.error is not None:
             raise cls.error
         return {"id": "cs_fake", "url": "https://checkout.stripe.com/c/pay/cs_fake"}
@@ -92,6 +96,7 @@ def fake_stripe(settings, monkeypatch):
     settings.STRIPE_PASS_PRICE_ID_14D = "price_14d"
     _FakeSession.calls = []
     _FakeSession.error = None
+    _FakeSession.errors = []
     module = types.ModuleType("stripe")
     module.checkout = types.SimpleNamespace(Session=_FakeSession)
     module.StripeError = _FakeStripeError
@@ -194,3 +199,66 @@ def test_stripe_create_error_returns_checkout_unavailable_and_logs_safely(fake_s
     assert "request_id=req_test_123" in messages
     # Stripe のエラーの本文（値段の ID などを含みうる）はログにも出さない。
     assert "prod_SECRET_LIKE_VALUE" not in messages
+
+
+@pytest.mark.django_db
+def test_stripe_checkout_recreates_a_customer_missing_in_the_current_mode(fake_stripe, caplog):
+    """サンドボックスで保存した客 ID は、本番のキーでは見つからない。作り直して決済を続ける。"""
+    user, client = _client()
+    UserProfile.objects.update_or_create(user=user, defaults={"stripe_customer_id": "cus_from_sandbox"})
+    fake_stripe.errors = [
+        _FakeInvalidRequestError("No such customer: 'cus_from_sandbox'", code="resource_missing", param="customer")
+    ]
+
+    with caplog.at_level(logging.WARNING):
+        res = client.post(CHECKOUT_URL, {"pass_type": "1d", **URLS}, format="json")
+
+    assert res.status_code == 200
+    first, second = fake_stripe.calls
+    assert first["customer"] == "cus_from_sandbox"
+    assert "customer" not in second
+    assert second["customer_creation"] == "always"
+    assert second["customer_email"] == user.email
+    # 古い ID を消し、Webhook が新しい客 ID を保存できるようにする。
+    assert UserProfile.objects.get(user=user).stripe_customer_id == ""
+    messages = "\n".join(record.getMessage() for record in caplog.records)
+    assert "stored customer is missing" in messages
+    assert "cus_from_sandbox" not in messages
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "error",
+    [
+        _FakeInvalidRequestError("No such price", code="resource_missing", param="line_items[0][price]"),
+        _FakeInvalidRequestError("bad customer", code="parameter_invalid_string", param="customer"),
+        _FakeStripeError("network", code=None),
+    ],
+)
+def test_stripe_checkout_keeps_the_customer_on_other_errors(fake_stripe, error):
+    """客が居ないと Stripe が明示したとき以外は、作り直さず、保存済みの ID も消さない。"""
+    user, client = _client()
+    UserProfile.objects.update_or_create(user=user, defaults={"stripe_customer_id": "cus_existing"})
+    fake_stripe.errors = [error]
+
+    res = client.post(CHECKOUT_URL, {"pass_type": "1d", **URLS}, format="json")
+
+    assert res.status_code == 503
+    assert len(fake_stripe.calls) == 1
+    assert UserProfile.objects.get(user=user).stripe_customer_id == "cus_existing"
+
+
+@pytest.mark.django_db
+def test_stripe_checkout_fails_when_the_recreated_customer_also_fails(fake_stripe):
+    """作り直しても失敗したら、1回だけで止めて失敗を返す。"""
+    user, client = _client()
+    UserProfile.objects.update_or_create(user=user, defaults={"stripe_customer_id": "cus_from_sandbox"})
+    fake_stripe.errors = [
+        _FakeInvalidRequestError("No such customer", code="resource_missing", param="customer"),
+        _FakeInvalidRequestError("No such price", code="resource_missing", param="line_items[0][price]"),
+    ]
+
+    res = client.post(CHECKOUT_URL, {"pass_type": "1d", **URLS}, format="json")
+
+    assert res.status_code == 503
+    assert len(fake_stripe.calls) == 2

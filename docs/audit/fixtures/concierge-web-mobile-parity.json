@@ -1,0 +1,954 @@
+{
+  "query": "仕事の迷いを整理したい",
+  "scenarios": [
+    {
+      "name": "text-only",
+      "state": {},
+      "canonical_equal": true,
+      "web": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい"
+      },
+      "mobile": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {},
+        "profile_context": {
+          "user_profile": {},
+          "derived_profile": {}
+        }
+      },
+      "expected_responses": {
+        "web": "response-1",
+        "mobile": "response-1"
+      }
+    },
+    {
+      "name": "benefit-tags",
+      "state": {
+        "goriyakuTagIds": [7],
+        "goriyakuLabel": "仕事運"
+      },
+      "canonical_equal": false,
+      "web": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {
+          "goriyaku_tag_ids": [7]
+        },
+        "goriyaku_tag_ids": [7]
+      },
+      "mobile": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {
+          "goriyaku_tag_ids": [7],
+          "extra_condition": "ご利益: 仕事運",
+          "free_text": "ご利益: 仕事運"
+        },
+        "profile_context": {
+          "user_profile": {
+            "goriyaku_tag_ids": [7]
+          },
+          "derived_profile": {
+            "raw_extra": "ご利益: 仕事運"
+          }
+        },
+        "goriyaku_tag_ids": [7],
+        "extra_condition": "ご利益: 仕事運"
+      },
+      "expected_responses": {
+        "web": "response-1",
+        "mobile": "response-1"
+      }
+    },
+    {
+      "name": "additional-conditions",
+      "state": {
+        "supportText": "静かな場所がいい",
+        "webExtra": "静かな雰囲気で、気持ちを落ち着けて整理できる場所がいい",
+        "webVisitPreferences": ["quiet"]
+      },
+      "canonical_equal": false,
+      "web": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {
+          "extra_condition": "静かな雰囲気で、気持ちを落ち着けて整理できる場所がいい",
+          "free_text": "静かな雰囲気で、気持ちを落ち着けて整理できる場所がいい"
+        },
+        "extra_condition": "静かな雰囲気で、気持ちを落ち着けて整理できる場所がいい",
+        "visit_preferences": ["quiet"]
+      },
+      "mobile": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {
+          "extra_condition": "補助条件: 静かな場所がいい",
+          "free_text": "補助条件: 静かな場所がいい"
+        },
+        "profile_context": {
+          "user_profile": {},
+          "derived_profile": {
+            "raw_extra": "補助条件: 静かな場所がいい"
+          }
+        },
+        "extra_condition": "補助条件: 静かな場所がいい"
+      },
+      "expected_responses": {
+        "web": "response-2",
+        "mobile": "response-2"
+      }
+    },
+    {
+      "name": "specified-location",
+      "state": {
+        "origin": {
+          "latitude": 35.68,
+          "longitude": 139.76,
+          "source": "station",
+          "accuracy": "precise"
+        }
+      },
+      "canonical_equal": true,
+      "web": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "location": {
+          "lat": 35.68,
+          "lng": 139.76
+        }
+      },
+      "mobile": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {},
+        "profile_context": {
+          "user_profile": {},
+          "derived_profile": {}
+        },
+        "location": {
+          "lat": 35.68,
+          "lng": 139.76
+        }
+      },
+      "expected_responses": {
+        "web": "response-1",
+        "mobile": "response-1"
+      }
+    },
+    {
+      "name": "planned-date",
+      "state": {
+        "plannedVisitDate": "2026-12-01"
+      },
+      "canonical_equal": false,
+      "web": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "visit_date": "2026-12-01"
+      },
+      "mobile": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {
+          "extra_condition": "参拝予定日: 2026-12-01",
+          "free_text": "参拝予定日: 2026-12-01"
+        },
+        "profile_context": {
+          "user_profile": {},
+          "derived_profile": {
+            "raw_extra": "参拝予定日: 2026-12-01"
+          }
+        },
+        "extra_condition": "参拝予定日: 2026-12-01",
+        "visit_date": "2026-12-01"
+      },
+      "expected_responses": {
+        "web": "response-1",
+        "mobile": "response-1"
+      }
+    },
+    {
+      "name": "empty-optionals",
+      "state": {
+        "goriyakuTagIds": [],
+        "supportText": "  ",
+        "plannedVisitDate": ""
+      },
+      "canonical_equal": true,
+      "web": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい"
+      },
+      "mobile": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {
+          "goriyaku_tag_ids": []
+        },
+        "profile_context": {
+          "user_profile": {
+            "goriyaku_tag_ids": []
+          },
+          "derived_profile": {}
+        },
+        "goriyaku_tag_ids": []
+      },
+      "expected_responses": {
+        "web": "response-1",
+        "mobile": "response-1"
+      }
+    },
+    {
+      "name": "unavailable-location",
+      "state": {
+        "origin": null
+      },
+      "canonical_equal": true,
+      "web": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい"
+      },
+      "mobile": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {},
+        "profile_context": {
+          "user_profile": {},
+          "derived_profile": {}
+        }
+      },
+      "expected_responses": {
+        "web": "response-1",
+        "mobile": "response-1"
+      }
+    },
+    {
+      "name": "invalid-location",
+      "state": {
+        "origin": {
+          "latitude": 91,
+          "longitude": 181,
+          "source": "device",
+          "accuracy": "approximate"
+        }
+      },
+      "canonical_equal": true,
+      "web": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい"
+      },
+      "mobile": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {},
+        "profile_context": {
+          "user_profile": {},
+          "derived_profile": {}
+        }
+      },
+      "expected_responses": {
+        "web": "response-1",
+        "mobile": "response-1"
+      }
+    },
+    {
+      "name": "visit-style-quiet",
+      "state": {
+        "visitStyleLabel": "静かに整えたい",
+        "webExtra": "静かな雰囲気で、気持ちを落ち着けて整理できる場所がいい",
+        "webVisitPreferences": ["quiet"]
+      },
+      "canonical_equal": false,
+      "web": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {
+          "extra_condition": "静かな雰囲気で、気持ちを落ち着けて整理できる場所がいい",
+          "free_text": "静かな雰囲気で、気持ちを落ち着けて整理できる場所がいい"
+        },
+        "extra_condition": "静かな雰囲気で、気持ちを落ち着けて整理できる場所がいい",
+        "visit_preferences": ["quiet"]
+      },
+      "mobile": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {
+          "visit_style_tags": ["quiet"],
+          "extra_condition": "参拝スタイル: 静かに整えたい",
+          "free_text": "参拝スタイル: 静かに整えたい"
+        },
+        "profile_context": {
+          "user_profile": {
+            "visit_style_tags": ["quiet"]
+          },
+          "derived_profile": {
+            "raw_extra": "参拝スタイル: 静かに整えたい"
+          }
+        },
+        "extra_condition": "参拝スタイル: 静かに整えたい"
+      },
+      "expected_responses": {
+        "web": "response-2",
+        "mobile": "response-2"
+      }
+    },
+    {
+      "name": "web-only-reset",
+      "state": {
+        "webVisitPreferences": ["reset"],
+        "webExtra": "気持ちを切り替えて、前向きになれる場所がいい"
+      },
+      "canonical_equal": false,
+      "web": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {
+          "extra_condition": "気持ちを切り替えて、前向きになれる場所がいい",
+          "free_text": "気持ちを切り替えて、前向きになれる場所がいい"
+        },
+        "extra_condition": "気持ちを切り替えて、前向きになれる場所がいい",
+        "visit_preferences": ["reset"]
+      },
+      "mobile": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {},
+        "profile_context": {
+          "user_profile": {},
+          "derived_profile": {}
+        }
+      },
+      "expected_responses": {
+        "web": "response-1",
+        "mobile": "response-1"
+      }
+    },
+    {
+      "name": "mobile-birthday",
+      "state": {
+        "birthdate": "1990-01-01"
+      },
+      "canonical_equal": false,
+      "web": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい"
+      },
+      "mobile": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {
+          "birthdate": "1990-01-01",
+          "extra_condition": "誕生日: 1990-01-01",
+          "free_text": "誕生日: 1990-01-01"
+        },
+        "profile_context": {
+          "user_profile": {
+            "birthday": "1990-01-01",
+            "birthdate": "1990-01-01"
+          },
+          "derived_profile": {
+            "raw_extra": "誕生日: 1990-01-01",
+            "gogyo": "水",
+            "kyusei": "一白水星",
+            "lifePath": "3"
+          }
+        },
+        "birthdate": "1990-01-01",
+        "extra_condition": "誕生日: 1990-01-01"
+      },
+      "expected_responses": {
+        "web": "response-1",
+        "mobile": "response-1"
+      }
+    },
+    {
+      "name": "mobile-saved-profile",
+      "state": {
+        "globalUserProfile": {
+          "birthday": "1990-01-01",
+          "birthTime": "05:25",
+          "birthPlace": "東京都"
+        }
+      },
+      "canonical_equal": true,
+      "web": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい"
+      },
+      "mobile": {
+        "version": 1,
+        "mode": "need",
+        "query": "仕事の迷いを整理したい",
+        "filters": {},
+        "profile_context": {
+          "user_profile": {
+            "birthday": "1990-01-01",
+            "birthdate": "1990-01-01",
+            "birthTime": "05:25",
+            "birthPlace": "東京都"
+          },
+          "derived_profile": {
+            "kyusei": "一白水星",
+            "gogyo": "水",
+            "lifePath": "3"
+          }
+        }
+      },
+      "expected_responses": {
+        "web": "response-1",
+        "mobile": "response-1"
+      }
+    }
+  ],
+  "responses": {
+    "response-1": [
+      {
+        "id": 31,
+        "shrine_id": 31,
+        "name": "audit-career",
+        "reason": "仕事運のご利益で知られるaudit-careerは、仕事や転機を願う参拝先として適しています。",
+        "reason_facts": [
+          {
+            "type": "need_tag",
+            "label": "career",
+            "label_ja": "転機・仕事",
+            "evidence": ["career"],
+            "score": 2.0,
+            "is_primary": true,
+            "matched_benefit_names": []
+          },
+          {
+            "type": "text_hint",
+            "label": "career",
+            "label_ja": "転機・仕事",
+            "evidence": ["text_score:1"],
+            "score": 1.0,
+            "is_primary": false,
+            "matched_benefit_names": ["仕事運"]
+          }
+        ],
+        "recommendation_reason_v4": "audit-careerには、仕事運に関する情報があります。昔ながらの神社らしさを感じやすいも確認材料になります。仕事や働き方を見直したい相談として受け取れます。相談の言葉からは、判断に迷う様子が感じられます。次に取る行動として、問いを一つに絞って整理したいことを小さく確認します。"
+      },
+      {
+        "id": 24,
+        "shrine_id": 24,
+        "name": "audit-nature",
+        "reason": "仕事運のご利益で知られるaudit-natureは、仕事や転機を願う参拝先として適しています。",
+        "reason_facts": [
+          {
+            "type": "need_tag",
+            "label": "career",
+            "label_ja": "転機・仕事",
+            "evidence": ["career"],
+            "score": 2.0,
+            "is_primary": true,
+            "matched_benefit_names": []
+          },
+          {
+            "type": "text_hint",
+            "label": "career",
+            "label_ja": "転機・仕事",
+            "evidence": ["text_score:1"],
+            "score": 1.0,
+            "is_primary": false,
+            "matched_benefit_names": ["仕事運"]
+          }
+        ],
+        "recommendation_reason_v4": "audit-natureには、仕事運に関する情報があります。自然を感じながら過ごしやすいも確認材料になります。仕事や働き方を見直したい相談として受け取れます。相談の言葉からは、判断に迷う様子が感じられます。次に取る行動として、問いを一つに絞って整理したいことを小さく確認します。"
+      },
+      {
+        "id": 12,
+        "shrine_id": 12,
+        "name": "audit-quiet",
+        "reason": "仕事運のご利益で知られるaudit-quietは、仕事や転機を願う参拝先として適しています。",
+        "reason_facts": [
+          {
+            "type": "need_tag",
+            "label": "career",
+            "label_ja": "転機・仕事",
+            "evidence": ["career"],
+            "score": 2.0,
+            "is_primary": true,
+            "matched_benefit_names": []
+          },
+          {
+            "type": "text_hint",
+            "label": "career",
+            "label_ja": "転機・仕事",
+            "evidence": ["text_score:1"],
+            "score": 1.0,
+            "is_primary": false,
+            "matched_benefit_names": ["仕事運"]
+          }
+        ],
+        "recommendation_reason_v4": "audit-quietには、仕事運に関する情報があります。静かに参拝しやすいも確認材料になります。仕事や働き方を見直したい相談として受け取れます。相談の言葉からは、判断に迷う様子が感じられます。次に取る行動として、問いを一つに絞って整理したいことを小さく確認します。"
+      }
+    ],
+    "response-2": [
+      {
+        "id": 12,
+        "shrine_id": 12,
+        "name": "audit-quiet",
+        "reason": "仕事運のご利益で知られるaudit-quietは、仕事や転機を願う参拝先として適しています。",
+        "reason_facts": [
+          {
+            "type": "need_tag",
+            "label": "career",
+            "label_ja": "転機・仕事",
+            "evidence": ["career"],
+            "score": 2.0,
+            "is_primary": true,
+            "matched_benefit_names": []
+          },
+          {
+            "type": "text_hint",
+            "label": "career",
+            "label_ja": "転機・仕事",
+            "evidence": ["text_score:1"],
+            "score": 1.0,
+            "is_primary": false,
+            "matched_benefit_names": ["仕事運"]
+          },
+          {
+            "type": "visit_style",
+            "label": "visit_style",
+            "label_ja": "参拝スタイル",
+            "evidence": ["quiet"],
+            "score": 1.0,
+            "is_primary": false,
+            "matched_benefit_names": []
+          }
+        ],
+        "recommendation_reason_v4": "audit-quietには、仕事運に関する情報があります。静かに参拝しやすいも確認材料になります。仕事や働き方を見直したい相談として受け取れます。相談の言葉からは、判断に迷う様子が感じられます。次に取る行動として、問いを一つに絞って整理したいことを小さく確認します。"
+      },
+      {
+        "id": 31,
+        "shrine_id": 31,
+        "name": "audit-career",
+        "reason": "仕事運のご利益で知られるaudit-careerは、仕事や転機を願う参拝先として適しています。",
+        "reason_facts": [
+          {
+            "type": "need_tag",
+            "label": "career",
+            "label_ja": "転機・仕事",
+            "evidence": ["career"],
+            "score": 2.0,
+            "is_primary": true,
+            "matched_benefit_names": []
+          },
+          {
+            "type": "text_hint",
+            "label": "career",
+            "label_ja": "転機・仕事",
+            "evidence": ["text_score:1"],
+            "score": 1.0,
+            "is_primary": false,
+            "matched_benefit_names": ["仕事運"]
+          }
+        ],
+        "recommendation_reason_v4": "audit-careerには、仕事運に関する情報があります。昔ながらの神社らしさを感じやすいも確認材料になります。仕事や働き方を見直したい相談として受け取れます。相談の言葉からは、判断に迷う様子が感じられます。次に取る行動として、問いを一つに絞って整理したいことを小さく確認します。"
+      },
+      {
+        "id": 24,
+        "shrine_id": 24,
+        "name": "audit-nature",
+        "reason": "仕事運のご利益で知られるaudit-natureは、仕事や転機を願う参拝先として適しています。",
+        "reason_facts": [
+          {
+            "type": "need_tag",
+            "label": "career",
+            "label_ja": "転機・仕事",
+            "evidence": ["career"],
+            "score": 2.0,
+            "is_primary": true,
+            "matched_benefit_names": []
+          },
+          {
+            "type": "text_hint",
+            "label": "career",
+            "label_ja": "転機・仕事",
+            "evidence": ["text_score:1"],
+            "score": 1.0,
+            "is_primary": false,
+            "matched_benefit_names": ["仕事運"]
+          }
+        ],
+        "recommendation_reason_v4": "audit-natureには、仕事運に関する情報があります。自然を感じながら過ごしやすいも確認材料になります。仕事や働き方を見直したい相談として受け取れます。相談の言葉からは、判断に迷う様子が感じられます。次に取る行動として、問いを一つに絞って整理したいことを小さく確認します。"
+      }
+    ]
+  },
+  "presentation_cases": [
+    {
+      "name": "registered-order",
+      "records": [
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first",
+          "distance_m": 9999,
+          "popular_score": 0
+        },
+        {
+          "shrine_id": 12,
+          "name": "same name",
+          "reason": "first-12",
+          "recommendation_instance_id": "instance-first",
+          "distance_m": 1,
+          "popular_score": 999
+        },
+        {
+          "shrine_id": 7,
+          "name": "same name",
+          "reason": "first-7",
+          "recommendation_instance_id": "instance-first"
+        }
+      ],
+      "registered": [31, 12, 7],
+      "references": [],
+      "ranks": [1, 2, 3]
+    },
+    {
+      "name": "mixed-and-nonadjacent-duplicates",
+      "records": [
+        {
+          "place_id": "A",
+          "name": "same name",
+          "reason": "external-first"
+        },
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first"
+        },
+        {
+          "shrine_id": 12,
+          "name": "same name",
+          "reason": "first-12",
+          "recommendation_instance_id": "instance-first"
+        },
+        {
+          "shrine_id": 31,
+          "name": "later",
+          "reason": "conflict",
+          "recommendation_instance_id": "later"
+        },
+        {
+          "place_id": "B",
+          "name": "same name",
+          "reason": "external-first"
+        },
+        {
+          "place_id": "A",
+          "name": "same name",
+          "reason": "external-first"
+        }
+      ],
+      "registered": [31, 12],
+      "references": ["A", "B"],
+      "ranks": [1, 2]
+    },
+    {
+      "name": "registered-only",
+      "records": [
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first"
+        }
+      ],
+      "registered": [31],
+      "references": [],
+      "ranks": [1]
+    },
+    {
+      "name": "external-only",
+      "records": [
+        {
+          "place_id": "A",
+          "name": "same name",
+          "reason": "external-first"
+        },
+        {
+          "place_id": "B",
+          "name": "same name",
+          "reason": "external-first"
+        }
+      ],
+      "registered": [],
+      "references": ["A", "B"],
+      "ranks": []
+    },
+    {
+      "name": "empty",
+      "records": [],
+      "registered": [],
+      "references": [],
+      "ranks": []
+    },
+    {
+      "name": "registered-linked",
+      "records": [
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first",
+          "place_id": "A"
+        }
+      ],
+      "registered": [31],
+      "references": [],
+      "ranks": [1]
+    },
+    {
+      "name": "linked-place-first",
+      "records": [
+        {
+          "place_id": "A",
+          "name": "same name",
+          "reason": "external-first"
+        },
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first",
+          "place_id": "A"
+        }
+      ],
+      "registered": [31],
+      "references": [],
+      "ranks": [1]
+    },
+    {
+      "name": "linked-registered-first",
+      "records": [
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first",
+          "place_id": "A"
+        },
+        {
+          "place_id": "A",
+          "name": "same name",
+          "reason": "external-first"
+        }
+      ],
+      "registered": [31],
+      "references": [],
+      "ranks": [1]
+    },
+    {
+      "name": "duplicate-does-not-enrich",
+      "records": [
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first"
+        },
+        {
+          "shrine_id": 31,
+          "place_id": "B",
+          "name": "later",
+          "reason": "later",
+          "recommendation_instance_id": "later"
+        },
+        {
+          "place_id": "B",
+          "name": "same name",
+          "reason": "external-first"
+        }
+      ],
+      "registered": [31],
+      "references": ["B"],
+      "ranks": [1]
+    },
+    {
+      "name": "legacy-id-only",
+      "records": [
+        {
+          "id": 88,
+          "name": "legacy"
+        }
+      ],
+      "registered": [],
+      "references": [],
+      "ranks": []
+    },
+    {
+      "name": "missing-identity",
+      "records": [
+        {
+          "name": "missing"
+        },
+        null,
+        {},
+        "invalid"
+      ],
+      "registered": [],
+      "references": [],
+      "ranks": []
+    },
+    {
+      "name": "invalid-identity",
+      "records": [
+        {
+          "shrine_id": 0,
+          "place_id": "A"
+        },
+        {
+          "shrine_id": true,
+          "place_id": "B"
+        },
+        {
+          "shrine_id": 1.5
+        },
+        {
+          "shrine_id": "bad",
+          "place_id": "C"
+        },
+        {
+          "place_id": 12
+        },
+        {
+          "place_id": " "
+        }
+      ],
+      "registered": [],
+      "references": [],
+      "ranks": []
+    },
+    {
+      "name": "conflicting-aliases",
+      "records": [
+        {
+          "shrine_id": 31,
+          "shrineId": 12,
+          "place_id": "A"
+        },
+        {
+          "place_id": "A",
+          "placeId": "B"
+        }
+      ],
+      "registered": [],
+      "references": [],
+      "ranks": []
+    },
+    {
+      "name": "documented-aliases",
+      "records": [
+        {
+          "shrineId": "31",
+          "name": "alias"
+        },
+        {
+          "shrine": {
+            "id": 12
+          },
+          "name": "nested"
+        }
+      ],
+      "registered": [31, 12],
+      "references": [],
+      "ranks": [1, 2]
+    },
+    {
+      "name": "same-name-distinct-identities",
+      "records": [
+        {
+          "shrine_id": 31,
+          "name": "same name",
+          "reason": "first-31",
+          "recommendation_instance_id": "instance-first"
+        },
+        {
+          "shrine_id": 12,
+          "name": "same name",
+          "reason": "first-12",
+          "recommendation_instance_id": "instance-first"
+        },
+        {
+          "place_id": "A",
+          "name": "same name",
+          "reason": "external-first"
+        },
+        {
+          "place_id": "B",
+          "name": "same name",
+          "reason": "external-first"
+        }
+      ],
+      "registered": [31, 12],
+      "references": ["A", "B"],
+      "ranks": [1, 2]
+    },
+    {
+      "name": "opaque-case-sensitive-place-ids",
+      "records": [
+        {
+          "place_id": "A",
+          "name": "same name",
+          "reason": "external-first"
+        },
+        {
+          "place_id": "a",
+          "name": "same name",
+          "reason": "external-first"
+        },
+        {
+          "place_id": " A ",
+          "name": "same name",
+          "reason": "external-first"
+        }
+      ],
+      "registered": [],
+      "references": ["A", "a"],
+      "ranks": []
+    },
+    {
+      "name": "null-shrine-external",
+      "records": [
+        {
+          "shrine_id": null,
+          "place_id": "A",
+          "name": "external"
+        }
+      ],
+      "registered": [],
+      "references": ["A"],
+      "ranks": []
+    }
+  ]
+}

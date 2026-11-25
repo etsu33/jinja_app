@@ -9,9 +9,10 @@ import {
   validateSignupInput,
   type SignupFieldErrors,
 } from "../lib/signup";
-import { kamimusubiDark as theme } from "../design/theme";
+import { appColors as theme } from "../design/theme";
 import { spacing } from "../design/spacing";
 import { radius } from "../design/radius";
+import { typography } from "../design/typography";
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -76,7 +77,7 @@ export default function SignupScreen() {
               style={styles.input}
               accessibilityLabel="ユーザー名"
             />
-            {errors.username ? <Text style={styles.errorText}>{errors.username}</Text> : null}
+            {errors.username ? <Text accessibilityRole="alert" style={styles.errorText}>{errors.username}</Text> : null}
           </View>
 
           <View style={styles.field}>
@@ -95,7 +96,7 @@ export default function SignupScreen() {
               style={styles.input}
               accessibilityLabel="メールアドレス"
             />
-            {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+            {errors.email ? <Text accessibilityRole="alert" style={styles.errorText}>{errors.email}</Text> : null}
           </View>
 
           <View style={styles.field}>
@@ -115,10 +116,10 @@ export default function SignupScreen() {
               accessibilityLabel="パスワード"
             />
             <Text style={styles.hint}>{PASSWORD_MIN_LENGTH}文字以上</Text>
-            {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+            {errors.password ? <Text accessibilityRole="alert" style={styles.errorText}>{errors.password}</Text> : null}
           </View>
 
-          {errors.form ? <Text style={styles.errorText}>{errors.form}</Text> : null}
+          {errors.form ? <Text accessibilityRole="alert" style={styles.errorText}>{errors.form}</Text> : null}
 
           <Button
             title="アカウントを作成する"
@@ -135,13 +136,6 @@ export default function SignupScreen() {
             accessibilityRole="link"
           >
             <Text style={styles.linkButtonText}>アカウントをお持ちの方は ログインはこちら</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace("/mypage"))}
-            style={styles.backButton}
-          >
-            <Text style={styles.backButtonText}>戻る</Text>
           </Pressable>
         </View>
       </View>
@@ -168,20 +162,16 @@ const styles = StyleSheet.create({
     gap: spacing.mdGap,
   },
   eyebrow: {
-    color: theme.gold,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.4,
+    ...typography.eyebrow,
+    color: theme.accent,
   },
   title: {
+    ...typography.display,
     color: theme.text,
-    fontSize: 28,
-    fontWeight: "800",
   },
   subtitle: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 14,
-    lineHeight: 21,
   },
   form: {
     gap: spacing.mdGap,
@@ -191,11 +181,11 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   label: {
+    ...typography.label,
     color: theme.text,
-    fontSize: 13,
-    fontWeight: "700",
   },
   input: {
+    ...typography.bodyStrong,
     minHeight: 48,
     borderWidth: 1,
     borderColor: theme.border,
@@ -203,16 +193,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.contentX,
     color: theme.text,
     backgroundColor: theme.background,
-    fontSize: 16,
   },
   hint: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
   },
   errorText: {
-    color: "#FCA5A5",
-    fontSize: 13,
-    lineHeight: 19,
+    ...typography.subhead,
+    color: theme.error,
   },
   linkButton: {
     minHeight: 44,
@@ -220,18 +208,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   linkButtonText: {
-    color: theme.gold,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  backButton: {
-    minHeight: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backButtonText: {
-    color: theme.muted,
-    fontSize: 14,
-    fontWeight: "700",
+    ...typography.label,
+    color: theme.accent,
   },
 });
