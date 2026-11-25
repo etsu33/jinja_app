@@ -53,6 +53,8 @@ compass-product-logic-evaluation-framework.md
 ```text
 shrine-detail-layer.md
 ↓
+shrine-nearby-spot-spec.md
+↓
 shrine-detail-v3-design.md
 ↓
 shrine-submission-flow.md
@@ -106,6 +108,7 @@ billing-paywall.md
 | ファイル                     | 役割                                                                         |
 | ---------------------------- | ---------------------------------------------------------------------------- |
 | `shrine-detail-layer.md`     | Shrine DetailのPublic / Context / Personal Layer契約                         |
+| `shrine-nearby-spot-spec.md` | 神社周辺の歴史スポット（ShrineNearbySpot）のデータ・公開判定・API / UI契約（承認済み・実装未着手） |
 | `shrine-detail-v3-design.md` | Shrine Detail v3のUX・Analytics・Premium接続設計                             |
 | `shrine-submission-flow.md`  | 神社追加、重複候補および投稿後導線の現行仕様                                 |
 | `visit-reflection-flow.md`   | 参拝から振り返りまでの体験・保存・イベント契約                               |

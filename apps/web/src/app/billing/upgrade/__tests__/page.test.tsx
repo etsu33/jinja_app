@@ -28,7 +28,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/api/billing", () => ({
-  startBillingCheckout: () => startBillingCheckoutMock(),
+  startBillingCheckout: (passType: string) => startBillingCheckoutMock(passType),
 }));
 
 vi.mock("@/lib/auth/AuthProvider", () => ({
@@ -71,21 +71,23 @@ describe("BillingUpgradePage", () => {
     expect(screen.getByText("前回からの自分の変化を振り返る")).toBeInTheDocument();
   });
 
-  it("β Early User価格として780円/月を表示する", () => {
+  it("1日・7日・14日の旅行パスを米ドルの値段で表示する", () => {
     render(<BillingUpgradePage />);
 
-    expect(screen.getByText("β Early User価格")).toBeInTheDocument();
-    expect(screen.getByText("780円 / 月")).toBeInTheDocument();
-    expect(screen.getByText("β期間中の初期ユーザー向け価格です。")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /1日パス/ })).toHaveTextContent("$2.99");
+    expect(screen.getByRole("button", { name: /7日パス/ })).toHaveTextContent("$7.99");
+    expect(screen.getByRole("button", { name: /14日パス/ })).toHaveTextContent("$11.99");
   });
 
-  it("CTAと解約導線の補足を表示する", () => {
-    render(<BillingUpgradePage />);
+  it("自動更新が無いことを書き、月額・解約の案内を出さない", () => {
+    const { container } = render(<BillingUpgradePage />);
+    const text = container.textContent ?? "";
 
-    expect(screen.getByRole("button", { name: "Premiumを始める" })).toBeInTheDocument();
-    expect(
-      screen.getByText("プランはStripeの管理画面から変更・解約できます。"),
-    ).toBeInTheDocument();
+    expect(text).toContain("自動更新はありません");
+    expect(text).toContain("お支払いはクレジットカードのみです");
+    for (const banned of ["780円", "/ 月", "解約", "Stripeの管理画面", "β Early User価格"]) {
+      expect(text).not.toContain(banned);
+    }
     expect(screen.getByRole("link", { name: "プラン状況を確認する" })).toHaveAttribute("href", "/billing");
   });
 
@@ -97,12 +99,13 @@ describe("BillingUpgradePage", () => {
       "href",
       "/privacy",
     );
+    expect(screen.getByRole("link", { name: "特定商取引法に基づく表記" })).toHaveAttribute("href", "/tokushoho");
   });
 
   it("LegalリンクはCTAより視覚的に弱い", () => {
     render(<BillingUpgradePage />);
 
-    const cta = screen.getByRole("button", { name: "Premiumを始める" });
+    const cta = screen.getByRole("button", { name: /7日パス/ });
     const legal = screen.getByRole("link", { name: "利用規約" });
 
     // CTAは面を持つ塗りボタン（Worldview の強調面）、Legalは下線テキストのみ
@@ -138,7 +141,7 @@ describe("BillingUpgradePage", () => {
 
     render(<BillingUpgradePage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Premiumを始める" }));
+    fireEvent.click(screen.getByRole("button", { name: /7日パス/ }));
 
     expect(pushMock).toHaveBeenCalledWith("/auth/login?returnTo=%2Fbilling%2Fupgrade");
     expect(startBillingCheckoutMock).not.toHaveBeenCalled();
@@ -152,10 +155,28 @@ describe("BillingUpgradePage", () => {
 
     render(<BillingUpgradePage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Premiumを始める" }));
+    fireEvent.click(screen.getByRole("button", { name: /7日パス/ }));
 
     await waitFor(() => {
       expect(assignMock).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_test_123");
+    });
+    expect(startBillingCheckoutMock).toHaveBeenCalledWith("7d");
+  });
+
+  it.each([
+    [/1日パス/, "1d"],
+    [/14日パス/, "14d"],
+  ])("選んだパス（%s）の種類で購入を始める", async (name, passType) => {
+    startBillingCheckoutMock.mockResolvedValue({
+      session_id: "cs_test_pass",
+      checkout_url: "https://checkout.stripe.com/c/pay/cs_test_pass",
+    });
+
+    render(<BillingUpgradePage />);
+    fireEvent.click(screen.getByRole("button", { name }));
+
+    await waitFor(() => {
+      expect(startBillingCheckoutMock).toHaveBeenCalledWith(passType);
     });
   });
 
@@ -167,7 +188,7 @@ describe("BillingUpgradePage", () => {
 
     render(<BillingUpgradePage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Premiumを始める" }));
+    fireEvent.click(screen.getByRole("button", { name: /7日パス/ }));
 
     await waitFor(() => {
       expect(assignMock).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_test_123");
@@ -181,6 +202,7 @@ describe("BillingUpgradePage", () => {
       entryHistoryTheme: null,
     });
     expect(trackBillingEventMock).toHaveBeenCalledWith("upgrade_click", {
+      passType: "7d",
       source: null,
       funnelStep: null,
       cardId: null,
@@ -188,6 +210,7 @@ describe("BillingUpgradePage", () => {
     });
     expect(trackBillingEventMock).toHaveBeenCalledWith("checkout_started", {
       checkoutSessionId: "cs_test_123",
+      passType: "7d",
       source: null,
       funnelStep: null,
       cardId: null,
@@ -206,7 +229,7 @@ describe("BillingUpgradePage", () => {
 
     render(<BillingUpgradePage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Premiumを始める" }));
+    fireEvent.click(screen.getByRole("button", { name: /7日パス/ }));
 
     await waitFor(() => {
       expect(assignMock).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_test_456");
@@ -219,6 +242,7 @@ describe("BillingUpgradePage", () => {
       entryHistoryTheme: "work",
     });
     expect(trackBillingEventMock).toHaveBeenCalledWith("upgrade_click", {
+      passType: "7d",
       source: "shrine_detail",
       funnelStep: "comparison_preview",
       cardId: "card_1",
@@ -226,6 +250,7 @@ describe("BillingUpgradePage", () => {
     });
     expect(trackBillingEventMock).toHaveBeenCalledWith("checkout_started", {
       checkoutSessionId: "cs_test_456",
+      passType: "7d",
       source: "shrine_detail",
       funnelStep: "comparison_preview",
       cardId: "card_1",
@@ -239,7 +264,7 @@ describe("BillingUpgradePage", () => {
 
     render(<BillingUpgradePage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Premiumを始める" }));
+    fireEvent.click(screen.getByRole("button", { name: /7日パス/ }));
 
     const [href] = pushMock.mock.calls[0] as [string];
     expect(decodeURIComponent(href)).toBe(
@@ -253,7 +278,7 @@ describe("BillingUpgradePage", () => {
 
     render(<BillingUpgradePage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Premiumを始める" }));
+    fireEvent.click(screen.getByRole("button", { name: /7日パス/ }));
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("決済画面を開始できませんでした。時間をおいて再度お試しください。");

@@ -99,6 +99,12 @@ python manage.py evidence_coverage_audit --data-origin repository-seed-local --f
 
 - 接続先は SELECT 権限だけを持つ専用ロール `kamimusubi_audit_ro` にする（未作成。作成と GRANT には別の承認が必要）。SELECT の範囲は承認時点の `audited_tables()` と完全に一致させる。credential は repo 外のファイル（mode 600）から環境変数として読み込み、argv・ログ・出力に出さない（`scripts/migration_safety/README.md` と同じ規律）。
 - 書き込みが可能なロールしか無い場合は実行しない。
+- **G-7 Gate 1（接続しない確認）：** 実行前に、オーナーの手元で次を実行する。DB・DNS・ネットワークには一切アクセスしない。接続文字列は環境変数からだけ読み、承認済みの target は repo の外の JSON（group / other から読めないこと）に置く。出力は各項目の PASS / FAIL / UNKNOWN だけで、全項目 PASS のときだけ終了コード 0 になる。G7-B1 / B2 は別に必要で、この確認だけでは G-7 を満たさない（readiness §12）。
+
+  ```bash
+  python scripts/g7_gate1_identity_check.py --target <承認済み target の JSON>
+  ```
+- **専用 preflight runner（OP-6）：** `scripts/g7_dedicated_preflight_runner.py` はオフライン実装だけで、Production への接続経路を持たない（CLI は固定の STOP トークンを出して終了コード 2 で終わる）。これは AG-3 / AG-4 の承認ではなく、G-6 / G-7 を満たすものでもない（readiness §15）。
 - 実行前の gate（専用ロール、権限境界、TLS、接続先の確認、credential の扱い）と STOP / GO 条件は `docs/audit/evidence-coverage-production-readiness-2026-11-01.md` を参照する。2026-11-01 時点では **STOP**。
 
 ```bash

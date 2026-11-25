@@ -1,10 +1,18 @@
 import * as React from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
-import { kamimusubiDark as theme } from "../design/theme";
+import { appColors as theme } from "../design/theme";
 import { VISIT_STYLE_OPTIONS, GORIYAKU_OPTIONS } from "../lib/conditionPayload";
 import { ProfilePickerModal } from "./profile/ProfilePickerModal";
 import { MobileOriginSelector } from "./MobileOriginSelector";
 import type { UserOrigin } from "../../../packages/shared/userOrigin";
+import { typography } from "../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// 選択中の印。グリフの ✓ は端末のフォント次第で字形が変わるため Ionicons を使う。
+const CHECK_ICON_SIZE = 15;
+
+// リストの送り記号。旧実装は "›" のグリフだった。
+const CHEVRON_SIZE = 20;
 
 // Home画面・Concierge結果画面で共通の条件レイヤー入力（誕生日・参拝スタイル・ご利益・補助条件）
 export type ConditionFieldsCardProps = {
@@ -95,7 +103,7 @@ export function ConditionFieldsCard({
         </View>
         <Pressable onPress={openDatePicker} disabled={disabled} style={styles.selectInput} accessibilityRole="button" accessibilityLabel="参拝予定日を選択" accessibilityValue={{ text: plannedVisitDate || "未選択" }} accessibilityState={{ disabled: !!disabled }}>
           <Text style={plannedVisitDate ? styles.selectInputText : styles.selectPlaceholder}>{plannedVisitDate || "日付を選択"}</Text>
-          <Text style={styles.selectChevron}>›</Text>
+          <Ionicons name="chevron-forward" size={CHEVRON_SIZE} color={theme.accent} />
         </Pressable>
         {plannedVisitDate ? <Pressable onPress={() => onChangePlannedVisitDate("")} style={styles.clearButton} accessibilityRole="button" accessibilityLabel="予定日を解除"><Text style={styles.clearText}>予定日を解除</Text></Pressable> : null}
       </View>
@@ -132,7 +140,12 @@ export function ConditionFieldsCard({
                 accessibilityState={{ checked: active, disabled: !!disabled }}
                 accessibilityLabel={option}
               >
-                <Text style={[styles.pillText, active && styles.pillTextActive]}>{active ? `✓ ${option}` : option}</Text>
+                <>
+                  {active ? (
+                    <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={theme.accent} />
+                  ) : null}
+                  <Text style={[styles.pillText, active && styles.pillTextActive]}>{option}</Text>
+                </>
               </Pressable>
             );
           })}
@@ -159,7 +172,12 @@ export function ConditionFieldsCard({
                 accessibilityState={{ checked: active, disabled: !!disabled }}
                 accessibilityLabel={option}
               >
-                <Text style={[styles.pillText, active && styles.pillTextActive]}>{active ? `✓ ${option}` : option}</Text>
+                <>
+                  {active ? (
+                    <Ionicons name="checkmark" size={CHECK_ICON_SIZE} color={theme.accent} />
+                  ) : null}
+                  <Text style={[styles.pillText, active && styles.pillTextActive]}>{option}</Text>
+                </>
               </Pressable>
             );
           })}
@@ -198,23 +216,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   introBadge: {
-    color: theme.goldSoft,
+    color: theme.accentSoft,
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 0.5,
     borderWidth: 1,
-    borderColor: theme.borderGoldDark,
+    borderColor: theme.borderAccentDark,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
     overflow: "hidden",
   },
   introText: {
+    ...typography.footnote,
     flex: 1,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "500",
   },
   divider: {
     height: 1,
@@ -224,6 +240,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   input: {
+    ...typography.bodyStrong,
     minHeight: 44,
     backgroundColor: theme.surface,
     borderWidth: 1,
@@ -232,21 +249,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "700",
   },
   selectInput: { minHeight: 44, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  selectInputText: { color: theme.text, fontSize: 14, fontWeight: "700" },
-  selectPlaceholder: { color: theme.mutedDark, fontSize: 14 },
-  selectChevron: { color: theme.gold, fontSize: 22 },
-  clearText: { color: theme.muted, fontSize: 12, fontWeight: "700", alignSelf: "flex-end" },
+  selectInputText: { ...typography.bodyStrong, color: theme.text },
+  selectPlaceholder: { ...typography.label, color: theme.mutedDark },
+  clearText: { ...typography.label, color: theme.muted, alignSelf: "flex-end" },
   clearButton: { minHeight: 44, alignSelf: "flex-end", justifyContent: "center", paddingHorizontal: 8 },
   locationButton: { minHeight: 44, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: theme.surface },
-  locationButtonReady: { borderColor: theme.borderGold, backgroundColor: theme.gold },
-  locationButtonText: { color: theme.text, fontSize: 13, fontWeight: "800" },
+  locationButtonReady: { borderColor: theme.borderAccent, backgroundColor: theme.accent },
+  locationButtonText: { ...typography.label, color: theme.text },
   locationButtonTextReady: { color: theme.background },
-  locationError: { color: "#ef8f8f", fontSize: 11, lineHeight: 16 },
+  locationError: { ...typography.footnote, color: theme.error },
   textarea: {
     minHeight: 76,
     textAlignVertical: "top",
@@ -258,16 +271,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   label: {
+    ...typography.eyebrow,
     color: theme.mutedSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.6,
   },
   caption: {
+    ...typography.caption,
     color: theme.mutedDark,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: "500",
   },
   row: {
     flexDirection: "row",
@@ -281,17 +290,20 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 11,
     paddingVertical: 10,
+    // 選択中は印(Ionicons)と文字が横に並ぶ。
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     justifyContent: "center",
     backgroundColor: "transparent",
   },
   pillActive: {
-    borderColor: theme.borderGold,
-    backgroundColor: theme.gold,
+    borderColor: theme.borderAccent,
+    backgroundColor: theme.accent,
   },
   pillText: {
+    ...typography.footnoteStrong,
     color: theme.mutedSoft,
-    fontSize: 12,
-    fontWeight: "700",
   },
   pillTextActive: {
     color: theme.background,

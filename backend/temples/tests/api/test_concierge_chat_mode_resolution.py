@@ -172,7 +172,9 @@ def patch_chat_dependencies(monkeypatch):
 
 
 @pytest.mark.django_db
-def test_chat_birthdate_only_resolves_to_compat(client, patch_chat_dependencies):
+def test_chat_birthdate_only_is_not_a_consultation(client, patch_chat_dependencies):
+    """コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）。
+    生年月日だけでは相性モードにならず、相談の文が無いので 400 になる。"""
     res = client.post(
         "/api/concierge/chat/",
         {
@@ -183,26 +185,13 @@ def test_chat_birthdate_only_resolves_to_compat(client, patch_chat_dependencies)
         format="json",
     )
 
-    assert res.status_code == 200, res.content
-
-    body = res.json()
-
-    assert body["_debug"]["mode"] == "compat"
-    assert body["_debug"]["flow"] == "B"
-
-    assert patch_chat_dependencies["public_mode"] == "compat"
-    assert patch_chat_dependencies["flow"] == "B"
-    assert patch_chat_dependencies["birthdate"] == "1991-05-10"
-    assert patch_chat_dependencies["query"] == ""
-
-    signals = body["data"].get("_signals") or {}
-    mode_meta = signals.get("mode") or {}
-    assert mode_meta.get("mode") == "compat"
-    assert mode_meta.get("flow") == "B"
+    assert res.status_code == 400, res.content
+    assert "public_mode" not in patch_chat_dependencies
 
 
 @pytest.mark.django_db
-def test_chat_birthdate_rescue_from_query_resolves_to_compat(client, patch_chat_dependencies):
+def test_chat_date_only_query_is_not_rescued_as_birthdate(client, patch_chat_dependencies):
+    """日付だけの相談文は生年月日として扱わない（相性モードにしない）。相談の文が無い扱いで 400。"""
     res = client.post(
         "/api/concierge/chat/",
         {
@@ -213,25 +202,8 @@ def test_chat_birthdate_rescue_from_query_resolves_to_compat(client, patch_chat_
         format="json",
     )
 
-    assert res.status_code == 200, res.content
-
-    body = res.json()
-
-    assert body["_debug"]["mode"] == "compat"
-    assert body["_debug"]["flow"] == "B"
-
-    assert patch_chat_dependencies["public_mode"] == "compat"
-    assert patch_chat_dependencies["flow"] == "B"
-    assert patch_chat_dependencies["birthdate"] == "1991-05-10"
-    assert patch_chat_dependencies["query"] == ""
-
-    # append_chat に保存される query も rescue 後の文脈になっていることを確認
-    assert patch_chat_dependencies["saved_query"] == "生年月日から相性を見てほしい"
-
-    signals = body["data"].get("_signals") or {}
-    mode_meta = signals.get("mode") or {}
-    assert mode_meta.get("mode") == "compat"
-    assert mode_meta.get("flow") == "B"
+    assert res.status_code == 400, res.content
+    assert "public_mode" not in patch_chat_dependencies
 
 
 @pytest.mark.django_db
@@ -256,7 +228,8 @@ def test_chat_explicit_need_wins_even_with_birthdate(client, patch_chat_dependen
     assert patch_chat_dependencies["public_mode"] == "need"
     assert patch_chat_dependencies["flow"] == "A"
     assert patch_chat_dependencies["query"] == "試験に向けて気持ちを整えたい"
-    assert patch_chat_dependencies["birthdate"] == "1991-05-10"
+    # コンシェルジュでは生年月日を使わない。
+    assert patch_chat_dependencies["birthdate"] is None
 
 
 @pytest.mark.django_db

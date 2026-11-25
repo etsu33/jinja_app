@@ -352,8 +352,9 @@ def _build_interpretation(
     if state_copy:
         if primary_need and not shrine_context_need and not consultation_axis_copy:
             parts.append(f"{primary_need}相談として受け取れます")
-        state_suffix = "要素が強めに出ています" if emotion_intensity == "high" else "要素があります"
-        parts.append(f"{state_copy}を中心に、{state_suffix}")
+        # 利用者の状態を言い切らず、「相談の言葉から読み取ったこと」として伝える。
+        state_degree = "強く感じられます" if emotion_intensity == "high" else "感じられます"
+        parts.append(f"相談の言葉からは、{state_copy}が{state_degree}")
     else:
         primary_decision = _copy_for_key(
             DECISION_COPY,
@@ -406,6 +407,21 @@ def _build_used_interpretation(
     }
 
 
+USER_SELECTED_TAG_FALLBACK_LABEL_PREFIX = "goriyaku_tag:"
+
+
+def _user_selected_tag_note(authority: dict[str, Any]) -> str:
+    """Describe a user-selected condition without claiming a consultation match."""
+    primary_fact = _as_dict(authority.get("primary_reason_fact"))
+    label = _first_string(primary_fact.get("label"))
+    # タグ名が引けなかったときは "goriyaku_tag:<id>" が入るため、条件名なしの文にする。
+    if label and not label.startswith(USER_SELECTED_TAG_FALLBACK_LABEL_PREFIX):
+        condition = f"選んだ条件「{label}」"
+    else:
+        condition = "選んだ条件"
+    return f"{condition}にゆかりのある神社です。今の相談内容との結びつきは、詳細ページで確かめられます。"
+
+
 def _align_interpretation_with_authority(
     interpretation: dict[str, Any],
     authority_context: dict[str, Any] | None,
@@ -416,10 +432,9 @@ def _align_interpretation_with_authority(
     text = _first_string(interpretation.get("text")) or "相談内容から、今扱いたいテーマを読み取っています。"
 
     if primary_source == "user_selected_tag":
-        text = (
-            f"{text.rstrip('。')}。"
-            "指定された条件を満たす候補ですが、順位への意味的一致を示すものではありません。"
-        )
+        # 条件だけを根拠に「相談に最適」と読める言い方はしない
+        # (docs/product/recommendation-signal-authority.md)。
+        text = f"{text.rstrip('。')}。{_user_selected_tag_note(authority)}"
     elif primary_source in {"element", "visit_style", "fallback"}:
         text = (
             f"{text.rstrip('。')}。"

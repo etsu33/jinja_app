@@ -61,10 +61,10 @@ NEED_TAG_ALIASES: Dict[str, str] = {
 }
 # "relationship" (人間関係全般: 職場/家族/友人/対人) is a distinct,
 # first-class need tag in temples/domain/need_tags.py -- with its own
-# keyword list, its own NEED_TO_GORIYAKU_IDS mapping ({1},
-# temples/domain/need_to_goriyaku_tag_ids.py), and its own priority
+# keyword list, its own goriyaku concept mapping ({relationship_bonding},
+# temples/domain/need_to_goriyaku_concepts.py), and its own priority
 # slot -- deliberately separate from "love" (恋愛/出会い/良縁,
-# {1, 20}). It must NOT be aliased to "love" here: doing so collapsed
+# {love_fulfillment, relationship_bonding}). It must NOT be aliased to "love" here: doing so collapsed
 # workplace/family/friend relationship consultations into romantic-love
 # recommendation reasons (docs/audit/concierge-l1-freetext-readiness.md
 # Finding C, PR #2409). "romance" (a plain English synonym for "love"

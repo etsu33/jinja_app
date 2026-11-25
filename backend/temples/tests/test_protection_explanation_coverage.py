@@ -2,7 +2,7 @@
 # docs/audit/compass-protection-explanation-coverage.md: intent_map (both
 # the name-present and name-absent branches of _build_need_reason_text) and
 # _build_need_lead's goriyaku-empty fallback. Text Coverage
-# (NEED_TEXT_WEIGHTS) and Mapping (NEED_TO_GORIYAKU_IDS) are out of scope
+# (NEED_TEXT_WEIGHTS) and Mapping (NEED_TO_GORIYAKU_CONCEPTS) are out of scope
 # for this PR and asserted unchanged elsewhere -- this file only covers the
 # two Explanation-layer dicts.
 from temples.services.concierge_chat_ranking import (

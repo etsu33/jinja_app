@@ -24,6 +24,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import IntegrityError, transaction
 
+from temples.domain.removed_shrines import REMOVED_SHRINES
 from temples.management.commands.sync_visit_style_tags_from_seed import (
     MANAGED_COHORT_MIN_COUNT,
 )
@@ -516,10 +517,12 @@ def test_repair_only_visit_style_backfill_is_idempotent_against_canonical_seed()
     assert all(row["visit_style_tags"] for row in managed)
     seed_names = [row["name_jp"] for row in data]
     # 同名・別住所の行（例: 群馬県と新潟県の赤城神社）があるため exact (name_jp, address) で数える。
-    managed_identities = {(row["name_jp"], row["address"]) for row in managed}
+    # 本番から削除した神社（temples/domain/removed_shrines.py）は取り込みで作らないので数えない。
+    managed_identities = {(row["name_jp"], row["address"]) for row in managed} - REMOVED_SHRINES
+    removed_in_seed = sum(1 for row in data if (row["name_jp"], row["address"]) in REMOVED_SHRINES)
 
     first = _summary(_run("--source", str(SEED_PATH), "--skip-goriyaku-tags"))
-    assert first["created"] == len(data)
+    assert first["created"] == len(data) - removed_in_seed
 
     call_command("backfill_goriyaku_tags", "--with-visit-style", "--force", stdout=StringIO())
     tagged = Shrine.objects.exclude(visit_style_tags=[]).values_list("name_jp", "address")
@@ -695,15 +698,14 @@ def test_none_coordinate_to_numeric_is_updated(tmp_path):
     assert shrine.longitude == 139.5
 
 
-def test_numeric_coordinate_to_none_is_updated(tmp_path):
-    """numeric vs None も different（FC-05）。0.0 扱いに落とさない。
+def test_numeric_coordinate_with_seed_none_is_kept(tmp_path):
+    """シードの座標が None でも、本番の数値座標は上書きしない（2026-11-13 変更）。
 
-    ここで固定するのは「比較の判定」であり、書き込み後のDB値ではない。
-    pytest下では ``temples.signals.fill_latlng_if_missing`` が pre_save で
-    NULL座標をダミー値へ戻すため、``latitude is None`` という書き込み結果は
-    この環境では観測できない（Productionでは IS_PYTEST が false なので
-    NULL がそのまま書かれる）。signalを止めればShrineの保存契約自体を
-    テスト都合で変えることになるため、そこには踏み込まない。
+    以前は FC-05（numeric vs None は different）に従って UPDATE していた。
+    2026-11-12 の goriyaku 空上書き事故を受けて「シードが空なら本番の値を残す」
+    契約に変え、座標も対象に含めた（えつこさん決定：本番の緯度経度を残す）。
+    比較関数 ``_coordinate_values_equal`` の FC-05（None と数値は別）はそのまま。
+    「残す」判定は比較より前に行う（``_is_empty_value``）。
     """
     shrine = _make_shrine(
         latitude=35.0,
@@ -717,10 +719,15 @@ def test_numeric_coordinate_to_none_is_updated(tmp_path):
 
     output = _run("--source", str(source))
 
-    assert _summary(output)["updated"] == 1
-    reported = _reported_fields(output)
-    assert "latitude" in reported
-    assert "longitude" in reported
+    assert _summary(output)["updated"] == 0
+    assert "latitude" not in _reported_fields(output)
+    keep = [ln for ln in output.splitlines() if ln.startswith("KEEP ")]
+    assert len(keep) == 1
+    assert "'latitude'" in keep[0] and "'longitude'" in keep[0]
+
+    shrine.refresh_from_db()
+    assert shrine.latitude == 35.0
+    assert shrine.longitude == 139.0
 
     # comparator そのものの numeric vs None は unit level で固定する
     # （test_coordinate_comparator_is_defined_once_with_the_contracted_tolerance）。

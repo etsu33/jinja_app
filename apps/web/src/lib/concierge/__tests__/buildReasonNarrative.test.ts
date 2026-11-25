@@ -212,12 +212,12 @@ describe("query candidates - feature × tone", () => {
 describe("birthdate candidates", () => {
   it("element あり → element_match テキストが含まれる", () => {
     const r = buildReasonNarrative(params({
-      rec: { fallback_mode: "none", astro_elements: ["wood"], astro_priority: 2 },
+      rec: { fallback_mode: "none", astro_elements: ["木"], astro_priority: 2 },
       mode: "compat",
       birthdate: "1985-03-15",
       needTags: [],
     }));
-    expect(r.list.primaryPhrase).toContain("wood");
+    expect(r.list.primaryPhrase).toContain("木");
     expect(r.why.reasonKeys.primary).toBe("element_match");
   });
 

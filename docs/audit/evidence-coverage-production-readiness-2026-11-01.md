@@ -760,3 +760,618 @@ the explicit CA is still undefined**（§10.6 item 3）. G6-E3（the CA file has
 | §10.2 F-F CA propagation | **Audit command path implemented**; the §5.3 preflight connection method is still undefined |
 | G-6 / G-7 | **UNMET** |
 | Role creation / GRANT / REVOKE / Production execution | **NOT APPROVED / STOP** |
+
+## 12. G-7 Gate 1 offline identity parser（2026-11-02; code and offline tests only）
+
+> **Status: IMPLEMENTED（local tool）.** Mother Ship decision `G7_PARSER_POLICY = LOCAL_OFFLINE_REDACTED`. Nothing
+> was run against a real connection string. G-6 **UNMET**, G-7 **UNMET**, Production **STOP**. This resolves the
+> "no parser exists" part of §10.2 F-E only.
+
+**Tool:** `scripts/g7_gate1_identity_check.py`（standard library only）. **Tests:**
+`backend/tests/test_g7_gate1_identity_check.py`（synthetic values; socket creation and name resolution are made to
+fail in every test）.
+
+| Field | Compared with the owner-approved target | UNKNOWN when |
+| --- | --- | --- |
+| G7-A1 project | The user-name suffix of `<role>.<suffix>` equals `project_ref`. **The host name is never used** | No suffix, more than one `.`, or an invalid target value |
+| G7-A2 tenant | The host equals the approved `pooler_host`（exact, case-insensitive） | No host, or the target value is missing |
+| G7-A3 endpoint kind | Derived only for the approved pooler host, an explicit port（5432 → `SESSION_POOLER`, 6543 → `TRANSACTION_POOLER`）and a `<role>.<suffix>` user name; equals `endpoint_kind` | Any other host, a missing or unsupported port, or an ambiguous user name |
+| G7-A4 database name | The single path segment equals `dbname` | No path, or a nested path |
+| G7-A5 port | The explicit port equals `port` | No explicit port（the libpq default is not evidence） |
+| G7-A6 user-name format | The user name is exactly `<role>.<suffix>`; a user name without a suffix is FAIL | No user name, or an ambiguous one |
+
+- **Treated as UNKNOWN for every field:** a malformed URL, a non-PostgreSQL scheme, a fragment, multiple hosts,
+  IPv6 literals and an unencoded reserved character in the credentials. libpq query parameters that override
+  `host` / `hostaddr` / `port` / `user` / `dbname` / `service` make the affected fields UNKNOWN.
+- **Supported formats: the two pooler kinds only**（decision of 2026-11-02）. Direct connections are not supported,
+  so they are always UNKNOWN; no verified record of that format exists in this repository.
+- **Output:** `g7_<field>=PASS|FAIL|UNKNOWN`, `g7_gate1_overall`, `g7_b1_catalog=not_evaluated`,
+  `g7_b2_owner_confirmation=not_evaluated` and **`g7_satisfied=false` always**. Exit status 0 only when all six are
+  PASS. Input problems print a fixed `g7_gate1_input=<token>`. The tool never prints the URL, password, host,
+  user name, project reference, tenant identifier, file paths, argv or exception text.
+- **Inputs:** the URL comes only from an environment variable（default `DATABASE_URL`）. The target JSON must be a
+  regular file outside the repository that group and others cannot access.
+
+**Remaining limitations**
+
+- It checks the configuration string only. It does not prove which database a live session reaches. That needs
+  G7-B1（the catalog comparison）and G7-B2（the owner confirmation）, which are separate and not evaluated.
+- The target is only as independent as its source. The owner must take it from the provider dashboard, not copy it
+  from the connection string being checked.
+- The port-to-kind mapping（5432 / 6543）is the provider convention approved for this tool. It has not been
+  re-verified against the provider here.
+- The tool has not been run on the owner host. Running it is an operator step and needs no Production connection.
+
+## 13. Required database access inventory for the audit role（2026-11-02; repository evidence only）
+
+> **Status: AUDIT（documentation only）.** Baseline: `develop` @ `85b311cf`. No Production or remote database was
+> contacted. No role, GRANT / REVOKE or configuration change was made. **This section describes what the code
+> requires. It says nothing about what Production grants**; no Production privilege is inferred from code. G-6
+> **UNMET**, G-7 **UNMET**, Production **STOP**. The TEMP decision（§11.1）and the RLS fail-closed policy（§11.2）
+> are unchanged.
+>
+> **Method:**
+> 1. Static trace of `evidence_coverage_audit` and every helper it calls, plus model metadata and migrations.
+> 2. Corroboration on the local disposable test database: every statement issued by the full guarded command was
+>    captured and resolved with `EXPLAIN (VERBOSE)`, for the three Channel B registry states（mapped / unmapped-only
+>    / empty）. The capture harness was not committed; the committed equivalent is #3403
+>    `test_evidence_coverage_audit_sql_inventory.py`.
+
+### 13.1 Call graph（application-data reads）
+
+| Step | Source | Reads |
+| --- | --- | --- |
+| Default scope（QA-fixture exclusion） | `services/evidence_coverage_audit.py:629` → `services/knowledge_coverage_report.py:54` → `services/shrine_qa_fixture_exclusion.py:40-44` | `temples_shrine`（id, filtered by `name_jp`） |
+| `--scope-id` / `--scope-ids-file` | `commands/knowledge_coverage_report.py` `_parse_scope_ids_file` | Local file only, no DB |
+| Deities + all Sources | `services/evidence_coverage_audit.py:427, 431` | `temples_shrinedeity`, `temples_shrinedeity_sources`, `temples_shrineknowledgesource` |
+| Histories + all Sources | same `:448` | `temples_shrinehistory`, `temples_shrinehistory_sources`, `temples_shrineknowledgesource` |
+| Shared Eligibility（fact-ready） | same `:465-466` → `services/shrine_knowledge_selector.py:30, 49, 89` | the same deity / history / Source tables |
+| Channel B typed need match | same `:470` → `services/channel_b_typed_need_match.py:109, 115, 133` | `temples_shrinesourcefact`, `temples_shrinesourcefact_sources`, `temples_shrineknowledgesource`, `temples_goriyakutag`（only when a mapped Fact exists） |
+| Source-fact attribution | `services/evidence_coverage_audit.py:473` | `temples_shrinesourcefact`, `temples_shrinesourcefact_sources`, `temples_shrineknowledgesource` |
+| Shrines + legacy tags | same `:495` | `temples_shrine`, `temples_shrine_goriyaku_tags`, `temples_goriyakutag` |
+
+- The registry is built from repository data（`domain/source_fact_mapping_registry_v1.py:291`）.
+  `validate_registry_db_consistency()`（`:210`）is **not** called on the audit path.
+- `is_recommendation_eligible()`, `evidence_gate`, `NEED_TO_GORIYAKU_IDS` and `PREF_CHOICES` issue no query.
+- No `select_related`, raw SQL or `.raw()` touches application data. Foreign keys that are loaded but never followed
+  （`Shrine.place_ref`, `Shrine.owner`）cause no read of `place_ref` or the user table.
+- Physical names: none of the six models sets `db_table`; all three M2M through tables are auto-created
+  （`models.py:262, 511, 772, 921`）. No migration renames them（`AlterModelTable` / `db_table` appear only for
+  other tables）.
+
+### 13.2 Access matrix
+
+**Application tables（schema `public`）**
+
+| Object | Operation | Required privilege | Source | Confidence |
+| --- | --- | --- | --- | --- |
+| `temples_shrine` | SELECT | SELECT | `evidence_coverage_audit.py:495`; `knowledge_coverage_report.py:54` | CONFIRMED（static + local capture） |
+| `temples_shrine_goriyaku_tags` | SELECT（prefetch join） | SELECT | `evidence_coverage_audit.py:495` | CONFIRMED |
+| `temples_goriyakutag` | SELECT | SELECT | `evidence_coverage_audit.py:495`; `channel_b_typed_need_match.py:133` | CONFIRMED（read in every registry state through the tag prefetch） |
+| `temples_shrinedeity` | SELECT | SELECT | `evidence_coverage_audit.py:431`; `shrine_knowledge_selector.py:49` | CONFIRMED |
+| `temples_shrinedeity_sources` | SELECT | SELECT | prefetch at the same lines | CONFIRMED |
+| `temples_shrinehistory` | SELECT | SELECT | `evidence_coverage_audit.py:448`; `shrine_knowledge_selector.py:89` | CONFIRMED |
+| `temples_shrinehistory_sources` | SELECT | SELECT | prefetch at the same lines | CONFIRMED |
+| `temples_shrineknowledgesource` | SELECT | SELECT | `evidence_coverage_audit.py:427`; `shrine_knowledge_selector.py:30` | CONFIRMED |
+| `temples_shrinesourcefact` | SELECT | SELECT | `evidence_coverage_audit.py:473`; `channel_b_typed_need_match.py:115` | CONFIRMED |
+| `temples_shrinesourcefact_sources` | SELECT | SELECT | prefetch at the same lines | CONFIRMED |
+| `public` schema | name resolution | USAGE | all of the above | CONFIRMED（required for any unqualified table access） |
+| database | connect | CONNECT | connection | CONFIRMED（requirement; Production ACL UNKNOWN） |
+
+**Catalog, statistics and functions（visibility, not application SELECT）**
+
+| Object | Operation | Source | Path | Confidence |
+| --- | --- | --- | --- | --- |
+| `pg_roles`（view over `pg_authid`） | SELECT | `evidence_coverage_audit.py:127`; `audit_rls_visibility.py:34` | role check（production-readonly）; RLS bypass check（every guarded run） | CONFIRMED（local capture shows `pg_authid` through the view） |
+| `pg_class` + `to_regclass()` + `unnest()` | SELECT | `audit_rls_visibility.py:28` | RLS visibility（every guarded run） | CONFIRMED |
+| `has_table_privilege()` | function | `evidence_coverage_audit.py:136` | role check（production-readonly） | CONFIRMED |
+| `pg_stat_ssl`（view over a statistics function）+ `pg_backend_pid()` | SELECT | `audit_tls_evidence.py:44` | TLS evidence（every guarded run, in a savepoint） | CONFIRMED（a row is visible only for the login role itself; §9.8） |
+| `pg_type` | SELECT | Django `contrib/postgres/signals.py`（hstore / citext OIDs, on `connection_created`, cached per process）; Django PostGIS `register_geometry_adapters` when the GIS engine is used | connect time, outside the guarded transaction | CONFIRMED from Django 5.2 source; not seen in the local capture because of the per-process cache and the non-GIS test engine |
+| libpq conninfo / `ssl_in_use` | client-side only | `audit_tls_evidence.py:68, 137` | no SQL | CONFIRMED |
+
+**Session-level operations（no table privilege needed）**
+
+| Statement | Source | Scope |
+| --- | --- | --- |
+| `SET TRANSACTION READ ONLY` / `SHOW transaction_read_only` | `evidence_coverage_audit.py:112-113` | guarded transaction |
+| `SET LOCAL row_security = off` / `SHOW row_security` | `audit_rls_visibility.py:48-49` | guarded transaction only; **not an RLS bypass**（§11.2） |
+| `SAVEPOINT` / `RELEASE SAVEPOINT` | `audit_tls_evidence.py`（`pg_stat_ssl` read） | guarded transaction |
+| `SET TIME ZONE`（only if the server zone differs from `Asia/Tokyo`） | Django `postgresql/base.py` `_configure_timezone` | connect time |
+
+No INSERT, UPDATE, DELETE, TRUNCATE, DDL, `COPY`, `LOCK`, temporary object or sequence access appears on any path.
+
+### 13.3 `audited_tables()` coverage
+
+- `audited_tables()`（`evidence_coverage_audit.py:92`）yields exactly the 10 application tables in §13.2.
+- The local capture read exactly the same 10 tables in all three registry states: **no missing entry and no
+  unnecessary entry.**
+- `audited_tables()` enumerates forward M2M fields only. That is sufficient: the reverse relations from
+  `ShrineKnowledgeSource` use the same three through tables.
+- **Must not be granted:** the ORM-less legacy table `temples_shrine_deities`（the field was removed in migration
+  0072; migration 0100 refers to it as legacy）. No audit path reads it. Whether it still exists in Production is
+  **UNKNOWN**.
+- **Caveat:** `audited_tables()` is a code-level list. Any future model or helper change can widen the reads; #3403
+  guards this in CI.
+
+### 13.4 Minimum privilege proposal（proposal only — nothing is granted）
+
+**Granted today: nothing.** The role does not exist, and creation and grants are **NOT APPROVED**（§8）.
+
+| Proposed | Why |
+| --- | --- |
+| LOGIN; NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS, NOINHERIT; no memberships | G-3. The audit must use the login role itself, not `SET ROLE`（§9.8） |
+| CONNECT on the database | connection |
+| USAGE on schema `public` | name resolution |
+| SELECT on exactly the 10 tables of `audited_tables()` on the approved SHA | §13.2 |
+| Nothing else: no write-class privilege, no CREATE on the database or schema, no sequence privilege | §13.2 shows no other need |
+| TEMPORARY: only through the default PUBLIC grant | accepted with documented risk（§11.1）; never granted directly |
+| Catalog / statistics visibility and function EXECUTE through the **default** PUBLIC grants only | §13.2. No extra grant is proposed. If a provider default removes any of them, the command fails closed rather than needing a new grant |
+
+### 13.5 UNKNOWN（needs a later, authorized DB-side check）
+
+1. Whether Production keeps the default PUBLIC visibility of `pg_roles`, `pg_class`, `pg_type` and `pg_stat_ssl`,
+   and EXECUTE on `has_table_privilege`, `to_regclass`, `unnest` and `pg_backend_pid`.
+2. Whether `pg_stat_ssl` shows the audit role's own backend through the provider pooler（§10.5）.
+3. The RLS state of the 10 tables in Production（§11.2; the run stops if any has RLS）.
+4. The Production ACLs of the 10 tables, of schema `public` and of the database, including PUBLIC and
+   provider-default grants that would widen what the role can read（§5.3 breadth check）.
+5. Whether `temples_shrine_deities` or other legacy relations exist and are readable through PUBLIC.
+6. Whether the `postgis`, `hstore` or `citext` types exist（only the connect-time `pg_type` lookups depend on them;
+   absence is tolerated by the code）.
+
+### 13.6 Decisions and STOP conditions（unchanged unless stated）
+
+- **Decisions still open:**
+  - role creation and grants（§8 / P-2, P-3）;
+  - execution host, credential procedure and run window（P-1, P-6, P-7）;
+  - the §5.3 preflight connection method with an explicit CA（§11.3）;
+  - the audit endpoint kind（§10.6）.
+- **STOP（unchanged）:** every §6 and §9.5 condition. In particular, STOP if:
+  - any readable relation outside the 10 tables is unexplained;
+  - any of the 10 tables has RLS enabled;
+  - the role can bypass RLS;
+  - TLS or target identity is not established（G-6 / G-7 **UNMET**）.
+
+## 14. Production privilege preflight procedure（design only; 2026-11-02）
+
+> **Status: DESIGN ONLY.** Nothing in this section has been run against Production or any remote database. No role,
+> GRANT, REVOKE or database change was made. G-6 **UNMET**, G-7 **UNMET**, Production connection **STOP**. The TEMP
+> decision（§11.1）, the RLS fail-closed policy（§11.2）, the explicit CA policy（§11.3）and every §6 / §9.5 STOP
+> condition stay as they are. This section adds checks and relaxes none.
+
+### 14.1 Mother Ship decisions recorded（2026-11-02）
+
+| Decision | Value |
+| --- | --- |
+| `ROLE_CREATION_CONDITIONS` | `CONDITIONAL_APPROVAL` |
+| `PRODUCTION_PRIVILEGE_PREFLIGHT` | `DESIGN_ONLY` |
+| `ROLE_CREATION_EXECUTION` | `NOT_AUTHORIZED` |
+| `GRANT_EXECUTION` | `NOT_AUTHORIZED` |
+| `PRODUCTION_CONNECTION` | `STOP` |
+| G-6 / G-7 | `UNMET` / `UNMET` |
+
+**Final design decisions（2026-11-02, later the same day）:**
+
+| Decision | Value | Recorded in |
+| --- | --- | --- |
+| `ROLE_CREATION_CONDITIONS_DETAIL` | `ACCEPT_14_3_WITH_PROVIDER_VERIFICATION` | §14.3 |
+| `PREFLIGHT_CA_TRANSPORT` | `DEDICATED_RUNNER` | §14.4 OP-6, §14.5 |
+| `PF16_INDEPENDENT_INVENTORY` | `UNRESOLVED` | §14.6.1 |
+| `RUNNER_EXECUTION_CONTRACT` | `SEQUENTIAL_FAIL_CLOSED` | §14.6 |
+| `ROLE_CREATION_EXECUTION` / `GRANT_EXECUTION` | `NOT_AUTHORIZED` / `NOT_AUTHORIZED` | §14.2 |
+| `PRODUCTION_CONNECTION` | `STOP` | §14.2 |
+| G-6 / G-7 | `UNMET` / `UNMET` | — |
+
+These decisions settle the **design**. None of them authorizes `CREATE ROLE`, GRANT, REVOKE, a Production
+connection, the preflight or the audit run.
+
+### 14.2 Independent approval gates
+
+Each gate needs its own explicit approval. An approval of one gate never implies another. **AG-1 to AG-5 all remain
+separately gated, and none is authorized for Production execution.**
+
+| Gate | What it authorizes | Current state | Depends on |
+| --- | --- | --- | --- |
+| AG-1 Role creation | The owner runs `CREATE ROLE kamimusubi_audit_ro …` exactly as approved（§5.2, §14.3）. No grant | **NOT AUTHORIZED**（the §14.3 conditions are accepted as design requirements; provider verification pending） | — |
+| AG-2 Privilege grants | The owner runs the approved CONNECT / USAGE / SELECT grants for the 10 tables of the approved SHA | **NOT AUTHORIZED** | AG-1 executed |
+| AG-3 Connection approval | One audit-role login to the approved endpoint from the approved owner host, inside a named window | **STOP** | AG-1, AG-2; §14.4 prerequisites |
+| AG-4 Read-only preflight approval | Running the §14.6 catalog SQL（and the PF-16 aggregate counts）in that session, through the dedicated runner only | **DESIGN ONLY; NOT AUTHORIZED** | AG-3; OP-6 |
+| AG-5 Audit run approval | `evidence_coverage_audit --data-origin production-readonly` | **STOP**（§6, §9.5） | AG-4 all PASS; G-6 and G-7 evidence |
+
+Remediation of any finding（a REVOKE, a changed grant, a role attribute change）is **not** part of any gate above. It
+needs a new approval, and the preflight must then be repeated from the start.
+
+### 14.3 Role creation conditions（approved design requirements; provider verification required before execution）
+
+> **Mother Ship: `ROLE_CREATION_CONDITIONS_DETAIL = ACCEPT_14_3_WITH_PROVIDER_VERIFICATION`.** The five items below
+> are **approved design requirements** for the role. Before any execution, each must be verified against
+> provider-specific behaviour. The provider-dependent requirements still marked UNKNOWN in §14.10
+> are condition 1（`CONNECTION LIMIT 1`; §14.10 item 3）and condition 3（`ALTER ROLE … SET`; §14.10 item 4）.
+> Both require provider-specific verification before any execution approval.
+>
+> This approval of requirements does **not** authorize executing `CREATE ROLE`, GRANT or REVOKE. Execution still
+> needs AG-1 and AG-2 respectively（§14.2）, and both are NOT AUTHORIZED.
+
+1. Exactly the attributes in §5.2 / §13.4: LOGIN, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS,
+   NOINHERIT, `CONNECTION LIMIT 1`, a short `VALID UNTIL`, no memberships.
+2. The password is set interactively and never written to a file in the repository, shell history or any AI
+   session.
+3. Role-level defaults: `default_transaction_read_only = on` and a `statement_timeout`（defence in depth only;
+   §10.2 F-C）.
+4. Grants limited to CONNECT, USAGE on `public` and SELECT on the 10 tables regenerated from `audited_tables()` on
+   the approved SHA. No PUBLIC or default-privilege change（§5.2）. TEMPORARY only through the default PUBLIC grant
+   （§11.1）.
+5. After the run: NOLOGIN, or revoke the grants and drop the role.
+
+### 14.4 Operator prerequisites（before AG-3）
+
+| ID | Prerequisite | Evidence to keep（private unless stated） | Status |
+| --- | --- | --- | --- |
+| OP-1 | Owner host and a clean checkout of the approved `develop` SHA | SHA recorded in the shared document | Not approved（P-6） |
+| OP-2 | Credential file outside the repository, mode 600, loaded as environment variables only | `check_credential_presence.sh` booleans | Not adopted（P-7） |
+| OP-3 | G7-A1–A6 PASS with `scripts/g7_gate1_identity_check.py`（§12）against an owner-approved target taken from the provider dashboard | The tool's token output（shareable） | Not run |
+| OP-4 | CA file: SHA-256 equals §8.1.1（G6-E3） | match yes / no（shareable） | Owner check |
+| OP-5 | Connection string carries `sslmode=verify-full` and an explicit `sslrootcert` that is a file path, not `system`（§11.3） | yes / no（shareable） | Not run |
+| OP-6 | **The dedicated preflight runner**（§14.5）, enforcing the explicit CA and the sequential fail-closed contract（§14.6） | Review and test record（shareable） | **OFFLINE IMPLEMENTATION ONLY（§15）: STOP.** No Production connector exists; independent review is pending. Not usable for AG-3 / AG-4 |
+| OP-7 | An **independent** inventory for G7-B1（table set and per-table row counts）, retained before the run | Private | **UNRESOLVED**: source, capture time and verification method（§14.6.1）. Missing → PF-16 UNKNOWN, STOP |
+
+### 14.5 Explicit CA for the preflight connection（design decided: dedicated runner; unimplemented）
+
+- The audit command enforces the explicit CA itself（§11.3）. **The preflight SQL is not run by the audit command**, so
+  that enforcement does not cover it.
+- The existing credential bridge（`scripts/migration_safety/guard.py` `pg_env_exports()`, used by
+  `readonly_query.sh`）exports `PGSSLMODE` but **not** `PGSSLROOTCERT`. With `verify-full`, libpq would then use its
+  default root file instead of the approved CA, or fail. **It must not be used for this preflight as it is.**
+- **Decision（Mother Ship: `PREFLIGHT_CA_TRANSPORT = DEDICATED_RUNNER`）: the preflight uses a dedicated preflight
+  runner.** Changing the shared credential bridge was not chosen. The bridge stays as it is and must not be used for
+  this preflight.
+- **The runner must, at minimum:**
+  - apply the §11.3 rules before connecting: `sslmode=verify-full`, and an explicit `sslrootcert` that is a file path,
+    not `system`;
+  - confirm after connecting that the live conninfo `sslrootcert` equals the explicitly configured value;
+  - connect as the login role only;
+  - follow the `SEQUENTIAL_FAIL_CLOSED` contract（§14.6）;
+  - apply the redaction rules（§14.8）.
+- **The runner is not implemented in this PR.** OP-6 is **UNIMPLEMENTED**. AG-3 and AG-4 stay **STOP** until the
+  runner is implemented in a separate PR, independently reviewed and tested.
+- The preflight session must also be the login role itself. `SET ROLE` hides the session's own `pg_stat_ssl` row
+  （§9.8）and is not allowed.
+
+### 14.6 Preflight sequence
+
+**Execution contract（Mother Ship: `RUNNER_EXECUTION_CONTRACT = SEQUENTIAL_FAIL_CLOSED`）:**
+- The dedicated runner submits the PF checks **one at a time, in order**. It evaluates each result against its
+  expected value before submitting the next check.
+- **The SQL in §14.7 is never submitted as a single batch.** That includes `psql -f`, a multi-statement string and a
+  script that keeps going after an error.
+- On the first FAIL or UNKNOWN, the runner submits nothing further, issues `ROLLBACK`, disconnects and records only
+  the results so far.
+
+**Rules for every step:**
+- Run as `kamimusubi_audit_ro`（the login role）, inside `BEGIN READ ONLY` … `ROLLBACK`.
+- Allowed SQL categories: catalog / statistics `SELECT`, `SHOW` and privilege-inquiry functions.
+  - The only exception is PF-16: aggregate `count(*)` on the 10 audited tables, under `row_security = off`.
+- No DDL, DML, GRANT / REVOKE, `SET ROLE` or temporary objects.
+- **If any step from PF-0 to PF-17 is FAIL or UNKNOWN, STOP immediately: run no further SQL, end the session
+  （`ROLLBACK` and disconnect）and record only the result so far.** There are no retries, no fallback role and no
+  remediation in the same session. A new attempt needs fresh approval and starts again from PF-0.
+
+| Step | Gate | Check | Expected | PASS / FAIL / UNKNOWN | Shared output |
+| --- | --- | --- | --- | --- | --- |
+| PF-0 | G-7 | OP-3 offline identity（G7-A1–A6） | all PASS | the tool's overall result; anything else STOP | tokens |
+| PF-0b | G-6 | OP-4 / OP-5 offline CA checks | yes, yes | no or unknown → STOP | yes / no |
+| PF-1 | G-2 | session identity | `role_is_audit_role=t`, `login_role_is_session_role=t`, `txn_read_only=on` | any other value FAIL; no row UNKNOWN | booleans |
+| PF-2 | G-3 | role attributes | `rolsuper`, `rolcreatedb`, `rolcreaterole`, `rolreplication`, `rolbypassrls`, `rolinherit` all `f`; `rolcanlogin=t`; `connlimit_is_1=t`; `valid_until_future=t` | any mismatch FAIL | booleans |
+| PF-3 | G-3 | memberships | `member_of_count=0` | > 0 FAIL | count |
+| PF-4 | G-4 / §11.1 | database privileges | `db_connect=t`, `db_create=f`; `db_temp_effective` may be `t` **only** with `explicit_db_create_or_temp_for_role=0`（TEMP from PUBLIC only） | an explicit CREATE / TEMP grant to the role, or `db_create=t` → FAIL | booleans, count |
+| PF-5 | G-4 | schema privileges | `public_usage=t`, `public_create=f`, `schemas_with_create=0`; `other_schemas_with_usage` recorded | CREATE anywhere → FAIL; `other_schemas_with_usage > 0` → UNKNOWN（STOP until explained and approved） | booleans, counts |
+| PF-6 | G-4 / §13.3 | readable relations in every non-system schema, table- **or column-level** SELECT | `audited_readable=10`, `other_readable=0` | `audited_readable < 10` FAIL; `other_readable > 0` STOP until each one is explained and approved | counts（relation names go to the private record only） |
+| PF-7 | G-4 | write-class privileges, table or column level | `write_class_relations=0` | > 0 FAIL | count |
+| PF-8 | G-4 | sequences | `usable_sequences=0` | > 0 FAIL | count |
+| PF-9 | G-4 | ownership | relations, schemas and functions owned by the role are all 0 | > 0 FAIL（an owner bypasses RLS and grants） | counts |
+| PF-10 | G-4 | executable `SECURITY DEFINER` functions outside system schemas | 0, or each one explained and approved | > 0 UNKNOWN → STOP | count |
+| PF-11 | G-4 | default ACLs | `default_acl_to_role=0`; `default_acl_to_public` recorded | to the role > 0 FAIL; to PUBLIC > 0 → UNKNOWN until explained | counts |
+| PF-12 | §13.2 / §11.2 | the 10 audited tables | each `present=t`, `can_select=t`, `rls_enabled=f`, `rls_forced=f` | missing or no SELECT → FAIL; RLS enabled → **STOP**（§11.2）; NULL → UNKNOWN | per-table booleans（approved names only） |
+| PF-13 | §13.3 | legacy relation | `legacy_readable=f`（`legacy_present` recorded） | readable → FAIL | booleans |
+| PF-14 | §13.2 | catalog visibility and function EXECUTE used by the command; own `pg_stat_ssl` row | all `t`; `own_pg_stat_ssl_rows=1`, `own_ssl=t` | any `f` → FAIL（the command would fail closed）; 0 rows → UNKNOWN | booleans, count |
+| PF-15 | G-5 | session defaults | `default_transaction_read_only=on`, `statement_timeout_set=t` | mismatch FAIL（defence in depth; never a substitute for PF-2 to PF-13） | booleans |
+| PF-16 | G7-B1 | aggregate row counts of the 10 tables, compared privately with OP-7（`SET LOCAL row_security = off` first, so an RLS effect errors instead of returning fewer rows） | every count matches the owner-held inventory | any difference FAIL; an error, or no independent inventory（§14.6.1）→ UNKNOWN | match yes / no |
+| PF-17 | G7-B2 | owner confirmation that the matched target is the intended one | explicit, dated | absent → UNKNOWN | yes / no, date |
+
+- **PF-6 to PF-11 widen §5.3.** They cover every non-system schema rather than `public` only, add column-level
+  grants, sequences, ownership, `SECURITY DEFINER` functions and default ACLs, and make TEMP conditional on PUBLIC
+  only.
+- **Even if PF-0 to PF-17 all PASS, G-6 and G-7 are not met.** G-6 also needs the audit command's own TLS
+  evidence（§9.8, §11.3）and the CA / hostname evidence decision（§9.7 item 1）. G-7 needs PF-0 together with
+  PF-16 and PF-17, recorded as G7-A, G7-B1 and G7-B2.
+
+#### 14.6.1 Independent inventory for PF-16（UNRESOLVED）
+
+- **UNRESOLVED（Mother Ship: `PF16_INDEPENDENT_INVENTORY = UNRESOLVED`）:** the inventory's **source**, its
+  **capture time** relative to the run, and **how it can be verified**. An inventory taken from the same Production database through the same path would compare the target
+  with itself and prove nothing.
+- **Rule: if no independent inventory exists, PF-16 is UNKNOWN and G7-B1 is UNMET. That is a STOP**（§14.6）, and
+  no PF-16 count query is submitted.
+- Defining the inventory source is a separate decision. This document does not choose one.
+
+### 14.7 Preflight SQL（design; validated only offline and on a local disposable database）
+
+```sql
+BEGIN READ ONLY;
+-- PF-1 session identity
+SELECT current_user = 'kamimusubi_audit_ro' AS role_is_audit_role, current_user = session_user AS login_role_is_session_role, current_setting('transaction_read_only') AS txn_read_only;
+-- PF-2 role attributes
+SELECT rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls, rolinherit, rolcanlogin, rolconnlimit = 1 AS connlimit_is_1, (rolvaliduntil IS NOT NULL AND rolvaliduntil > now()) AS valid_until_future FROM pg_roles WHERE rolname = current_user;
+-- PF-3 memberships
+SELECT count(*) AS member_of_count FROM pg_auth_members WHERE member = (SELECT oid FROM pg_roles WHERE rolname = current_user);
+-- PF-4 database privileges
+SELECT has_database_privilege(current_database(), 'CONNECT') AS db_connect, has_database_privilege(current_database(), 'CREATE') AS db_create, has_database_privilege(current_database(), 'TEMP') AS db_temp_effective;
+SELECT count(*) AS explicit_db_create_or_temp_for_role FROM pg_database d, aclexplode(d.datacl) a WHERE d.datname = current_database() AND a.grantee = (SELECT oid FROM pg_roles WHERE rolname = current_user) AND a.privilege_type IN ('CREATE', 'TEMPORARY');
+-- PF-5 schema privileges
+SELECT has_schema_privilege('public', 'USAGE') AS public_usage, has_schema_privilege('public', 'CREATE') AS public_create;
+SELECT count(*) AS other_schemas_with_usage FROM pg_namespace n WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'public') AND n.nspname NOT LIKE 'pg\_toast%' AND n.nspname NOT LIKE 'pg\_temp\_%' AND has_schema_privilege(n.oid, 'USAGE');
+SELECT count(*) AS schemas_with_create FROM pg_namespace n WHERE n.nspname NOT LIKE 'pg\_temp\_%' AND n.nspname NOT LIKE 'pg\_toast\_temp\_%' AND has_schema_privilege(n.oid, 'CREATE');
+-- PF-6 relation breadth (table- or column-level SELECT), all non-system schemas
+SELECT count(*) FILTER (WHERE in_set) AS audited_readable, count(*) FILTER (WHERE NOT in_set) AS other_readable FROM (SELECT (n.nspname = 'public' AND c.relname = ANY (ARRAY['temples_goriyakutag', 'temples_shrine', 'temples_shrine_goriyaku_tags', 'temples_shrinedeity', 'temples_shrinedeity_sources', 'temples_shrinehistory', 'temples_shrinehistory_sources', 'temples_shrineknowledgesource', 'temples_shrinesourcefact', 'temples_shrinesourcefact_sources'])) AS in_set FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg\_toast%' AND c.relkind IN ('r', 'p', 'v', 'm', 'f') AND (has_table_privilege(c.oid, 'SELECT') OR has_any_column_privilege(c.oid, 'SELECT'))) s;
+-- PF-7 write-class privileges anywhere (table or column level)
+SELECT count(*) AS write_class_relations FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg\_toast%' AND c.relkind IN ('r', 'p', 'v', 'm', 'f') AND (has_table_privilege(c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') OR has_any_column_privilege(c.oid, 'INSERT,UPDATE,REFERENCES'));
+-- PF-8 sequences
+SELECT count(*) AS usable_sequences FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind = 'S' AND n.nspname NOT IN ('pg_catalog', 'information_schema') AND CASE WHEN c.relkind = 'S' THEN has_sequence_privilege(c.oid, 'USAGE,SELECT,UPDATE') ELSE false END;
+-- PF-9 ownership
+SELECT (SELECT count(*) FROM pg_class WHERE relowner = r.oid) AS owned_relations, (SELECT count(*) FROM pg_namespace WHERE nspowner = r.oid) AS owned_schemas, (SELECT count(*) FROM pg_proc WHERE proowner = r.oid) AS owned_functions FROM pg_roles r WHERE r.rolname = current_user;
+-- PF-10 executable SECURITY DEFINER functions outside system schemas
+SELECT count(*) AS executable_security_definer FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE p.prosecdef AND n.nspname NOT IN ('pg_catalog', 'information_schema') AND has_schema_privilege(n.oid, 'USAGE') AND has_function_privilege(p.oid, 'EXECUTE');
+-- PF-11 default ACLs
+SELECT count(*) FILTER (WHERE a.grantee = 0) AS default_acl_to_public, count(*) FILTER (WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = current_user)) AS default_acl_to_role FROM pg_default_acl d, aclexplode(d.defaclacl) a;
+-- PF-12 the audited tables
+SELECT t.name, c.oid IS NOT NULL AS present, coalesce(has_table_privilege(c.oid, 'SELECT'), false) AS can_select, c.relrowsecurity AS rls_enabled, c.relforcerowsecurity AS rls_forced FROM unnest(ARRAY['temples_goriyakutag', 'temples_shrine', 'temples_shrine_goriyaku_tags', 'temples_shrinedeity', 'temples_shrinedeity_sources', 'temples_shrinehistory', 'temples_shrinehistory_sources', 'temples_shrineknowledgesource', 'temples_shrinesourcefact', 'temples_shrinesourcefact_sources']::text[]) AS t(name) LEFT JOIN pg_class c ON c.oid = to_regclass('public.' || t.name) ORDER BY t.name;
+-- PF-13 legacy relation
+SELECT to_regclass('public.temples_shrine_deities') IS NOT NULL AS legacy_present, coalesce(has_table_privilege(to_regclass('public.temples_shrine_deities'), 'SELECT'), false) AS legacy_readable;
+-- PF-14 catalog visibility and function EXECUTE used by the command
+SELECT has_table_privilege('pg_catalog.pg_roles', 'SELECT') AS pg_roles, has_table_privilege('pg_catalog.pg_class', 'SELECT') AS pg_class, has_table_privilege('pg_catalog.pg_type', 'SELECT') AS pg_type, has_table_privilege('pg_catalog.pg_stat_ssl', 'SELECT') AS pg_stat_ssl, has_function_privilege('pg_catalog.has_table_privilege(name, text, text)', 'EXECUTE') AS fn_has_table_privilege, has_function_privilege('pg_catalog.to_regclass(text)', 'EXECUTE') AS fn_to_regclass, has_function_privilege('pg_catalog.unnest(anyarray)', 'EXECUTE') AS fn_unnest, has_function_privilege('pg_catalog.pg_backend_pid()', 'EXECUTE') AS fn_pg_backend_pid;
+SELECT count(*) AS own_pg_stat_ssl_rows, bool_and(ssl) AS own_ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid();
+-- PF-15 session defaults (defence in depth)
+SHOW default_transaction_read_only;
+SELECT current_setting('statement_timeout') <> '0' AS statement_timeout_set;
+-- PF-16 (separate approval; aggregate only):
+-- SET LOCAL row_security = off;
+-- SELECT '<table>' AS t, count(*) FROM public.<table>;   -- one per audited table; compare privately with OP-7
+ROLLBACK;
+```
+
+- **This block lists the checks in order. It is not a script to run.** The dedicated runner submits each statement
+  separately under `SEQUENTIAL_FAIL_CLOSED`（§14.6）. Never submit the block as a single batch.
+- The 10 table names are those of `audited_tables()` on the baseline. **Regenerate them on the approved SHA** before
+  use.
+- **Validation done（2026-11-02; no Production）:**
+  - `guard.is_readonly_sql()` returns `(True, 'ok')` for PF-1 to PF-15.
+  - The whole block ran without error inside `BEGIN READ ONLY` on a local disposable PostgreSQL 16 database, as the
+    local test superuser. That local run checked syntax and semantics only, and it ran the block as one batch.
+    **The values are meaningless for Production, and batch submission is not permitted there**（§14.6）.
+  - One defect was found and fixed: `has_sequence_privilege()` must be wrapped in `CASE WHEN relkind = 'S'`,
+    because the planner may evaluate it on non-sequence relations.
+
+### 14.8 Redaction and record
+
+- **May be shared:**
+  - the tokens, booleans and counts listed above;
+  - the 10 approved table names and the approved role name;
+  - the approved SHA and dates.
+- **Never record or share:**
+  - connection strings, passwords, hosts and project / tenant references;
+  - backend PIDs and `client_addr`;
+  - certificate paths;
+  - the names of relations, schemas or functions found by PF-5, PF-6, PF-10 or PF-11（they go to the owner's
+    private record only）;
+  - exception text.
+- Raw `psql` output stays outside the repository. The shared document receives only the summary（G-11）.
+
+### 14.9 STOP criteria（additions; every earlier STOP stands）
+
+STOP if any of the following holds:
+
+- Any of AG-1 to AG-4 is not explicitly approved.
+- OP-6 is unresolved, or the preflight session is not `verify-full` with the approved, explicit CA.
+- Any PF step is FAIL or UNKNOWN; no later SQL is submitted, and the session is rolled back and disconnected（§14.6）.
+- The SQL would be submitted as a single batch, or by any client other than the dedicated runner（§14.5, §14.6）.
+- No independent inventory exists for PF-16（PF-16 UNKNOWN, G7-B1 UNMET; §14.6.1）.
+- The dedicated runner（OP-6）is not implemented, independently reviewed and tested.
+- Any §14.3 condition has not been verified against provider-specific behaviour.
+- An unexplained readable relation, schema `USAGE`, `SECURITY DEFINER` function or PUBLIC default ACL is found.
+- The session is reached through `SET ROLE`, or uses any role other than `kamimusubi_audit_ro`.
+
+### 14.10 Remaining UNKNOWNs（provider behaviour, unverified）
+
+1. Provider-default PUBLIC grants and default ACLs in Production（PF-5, PF-6, PF-10, PF-11）.
+2. Whether `pg_stat_ssl` shows the role's own backend through the pooler（PF-14; §10.5）.
+3. Custom-role login through the pooler, including `CONNECTION LIMIT 1` behaviour with pooled server connections
+   （§10.5）.
+4. Whether `ALTER ROLE … SET` defaults apply on pooled connections（PF-15）.
+5. The RLS state and the existence of legacy relations in Production（PF-12, PF-13）.
+6. Whether a provider restricts the catalog views or functions in PF-14.
+7. Not a provider item, but still open: the PF-16 independent inventory（source, capture time, verification
+   method）is **UNRESOLVED**（§14.6.1）.
+
+## 15. Dedicated preflight runner — offline implementation（2026-11-03; code and offline tests only）
+
+> **Status: OFFLINE IMPLEMENTATION ONLY.** Baseline: `develop` @ `d95d911b`. No Production or remote database was
+> contacted. No role, GRANT / REVOKE or schema change was made, and no credential was used. **This implementation is
+> not AG-3 or AG-4 authorization**, and it does not resolve OP-6 for execution: independent review is pending, and
+> the runner has no Production connector. The TEMP decision（§11.1）, the RLS fail-closed policy（§11.2）, the explicit
+> CA policy（§11.3）, the migration-safety credential bridge（§14.5）and every §6 / §9.5 / §14.9 STOP condition are
+> unchanged.
+
+```text
+ROLE_CREATION_EXECUTION = NOT_AUTHORIZED
+GRANT_EXECUTION         = NOT_AUTHORIZED
+PRODUCTION_CONNECTION   = STOP
+G6 = UNMET
+G7 = UNMET
+```
+
+### 15.1 Files
+
+| File | Role |
+| --- | --- |
+| `scripts/g7_dedicated_preflight_runner.py` | The runner. Standard library only: no database driver, socket, Django or logging import |
+| `backend/tests/test_g7_dedicated_preflight_runner.py` | Deterministic unit tests with fake connections; sockets and name resolution fail in every test |
+| `backend/tests/test_g7_dedicated_preflight_runner_db.py` | Local disposable database checks（pytest-django test database on localhost only） |
+
+### 15.2 How the §14 requirements are implemented
+
+| Requirement（source） | Implementation |
+| --- | --- |
+| Explicit CA before connecting（§11.3, §14.4 OP-4 / OP-5, §14.5） | PF-0b `evaluate_pf0b()`: `sslmode=verify-full`; `sslrootcert` present, not `system`, an absolute path to a regular file outside the repository, with PEM certificate markers; SHA-256 equal to §8.1.1 by default. A missing `sslrootcert` with `PGSSLROOTCERT` set is `sslrootcert_implicit`; `PGSSLMODE` / `PGSSLROOTCERT` values that differ from the configured ones are `tls_environment_conflict`. The process environment is always checked; a caller-supplied `environ` can only add values to check（security review SR-7） |
+| G-7 offline identity first（§14.6 PF-0, §12） | PF-0 `evaluate_pf0()` takes the G7-A1..A6 result of `g7_gate1_identity_check.evaluate()`. The field list is loaded from that script. All six must be PASS |
+| Live conninfo `sslrootcert` equals the configured value; login role only（§14.5） | `evaluate_live_settings()`, after connecting and before any SQL: live `sslmode=verify-full`, live `sslrootcert` equal to the configured value（not `system`, not empty）, client `ssl_in_use=true`, live user `kamimusubi_audit_ro` or `kamimusubi_audit_ro.<suffix>`（the §12 A6 pooler format）. Values are compared, never returned |
+| `SEQUENTIAL_FAIL_CLOSED`（§14.6） | `BEGIN READ ONLY`, then each registry statement is submitted alone and evaluated before the next. Only PASS continues |
+| STOP on FAIL / UNKNOWN（§14.6, §14.9） | No later statement, `rollback()` whenever `BEGIN READ ONLY` was submitted, `close()` always, fixed tokens only. No retry, fallback role or remediation |
+| §14.7 is a reference list, not a script | The registry holds each §14.7 statement as a separate string. A test checks that the PF-1 to PF-15 strings equal the §14.7 lines verbatim, in order |
+| Allowed SQL only（§14.6 rules） | There is no API that takes SQL. `_GuardedSession.submit()` accepts registry objects only（identity, not text）, and `validate_statement()` also refuses `;`, comments, dollar / identifier quoting, anything but SELECT / SHOW or the three fixed control statements, `SET` / `RESET` / `ROLE` / `SESSION AUTHORIZATION`, DML, DDL, GRANT / REVOKE, `INTO`, row locks and side-effecting functions such as `set_config()` |
+| PF-16 needs independent evidence（§14.6.1） | The inventory gate runs before any PF-16 SQL. Missing → `independent_inventory_missing`; malformed → `independent_inventory_malformed`. The default policy `UnresolvedInventoryAcceptance` never accepts an inventory（`PF16_INDEPENDENT_INVENTORY = UNRESOLVED`）, so PF-16 is UNKNOWN, G7-B1 UNMET, and no count SQL is submitted. A policy that claims the test kind is consulted only if it is the checked-in test class, with no instance overrides; otherwise `independent_inventory_policy_not_trusted`（SR-2） |
+| Redaction（§14.8） | Shared output is fixed tokens, booleans, counts, the approved role name and the ten approved table names. Never connection strings, passwords, hosts, project references, certificate paths, live user names, exception text, names found by PF-5 / PF-6 / PF-10 / PF-11, or PF-16 row counts（match `true` / `false` only） |
+| No Production entry point（this PR） | `run_preflight()` without a connector stops with `production_connection_disabled`. Connector kind alone is insufficient: the runner checks concrete connector class and method provenance against the two checked-in test files, calls the class method（never an instance attribute）, and accepts only the connection class paired with that connector（`FakeConnection` / `LocalConnection`）with no instance method overrides. Any other returned object is never used, rolled back or closed: `connection_not_trusted`（SR-1）. Connection ownership follows §15.6. The local-disposable test adapter rejects non-loopback configuration and forces libpq `host` / `hostaddr` to `127.0.0.1`. The CLI remains STOP-only. These checks are defence in depth, not an OS-level sandbox: truly untrusted code running in the same process requires independent network isolation |
+
+The connector interface is the runner's own: `connect(ConnectParams)` receives only the validated `sslmode` and
+`sslrootcert`; the connection exposes `live_settings()`, `execute(sql) -> QueryResult`, `rollback()` and `close()`.
+
+### 15.3 Result contracts where §14.6 is silent or needs an approval the runner cannot hold
+
+Where §14.6 does not define a result, or says "STOP until explained and approved", the runner returns **UNKNOWN
+and stops**. It does not invent an approval.
+
+| Case | Result |
+| --- | --- |
+| A statement returns no row（PF-1 to PF-15） | UNKNOWN `no_row` |
+| A NULL where a boolean is expected | UNKNOWN `null_value` |
+| Wrong columns, row count, value types or unexpected text values; an evaluator error | UNKNOWN `malformed_result` / `evaluation_error` |
+| A driver exception | UNKNOWN `execution_error`（no exception text） |
+| ROLLBACK or connection close fails after otherwise PASS checks | `preflight_overall=STOP` and `session_cleanup_failed`（fixed redacted token） |
+| Ownership never transferred（connect raised, returned `None`, or returned an untrusted object） | The runner calls only `release_unadopted()` on the provenance-checked connector class（§15.6）. `preflight_connector_release=done` or `error`; either way the run stays STOP and `ALL_PASS_OFFLINE` is impossible |
+| An interrupt（`KeyboardInterrupt`, `SystemExit` or another `BaseException`）during a statement, ROLLBACK or close | ROLLBACK（if a transaction was opened）and close are still attempted, then the interrupt propagates as a new instance of the same type without arguments, traceback chain or context（`SystemExit` keeps an integer status only）（SR-9） |
+| PF-5 `other_schemas_with_usage > 0`, PF-6 `other_readable > 0`, PF-10 `> 0`, PF-11 `default_acl_to_public > 0` | UNKNOWN（the runner has no approval input） |
+| PF-6 `audited_readable > 10` | UNKNOWN `malformed_result`（impossible for the fixed set） |
+| PF-12 RLS enabled or forced | FAIL `rls_enabled_stop`（§11.2） |
+| PF-14 own `pg_stat_ssl` rows 0 / more than 1 | UNKNOWN |
+| PF-16 after `SET LOCAL row_security = off` | `SHOW row_security` must return `off`, as in `audit_rls_visibility.enforce_row_security_off()`. This adds a check and relaxes none |
+| PF-17 | An offline input: `confirmed=True` and a date not in the future, otherwise UNKNOWN |
+
+Steps with several §14.7 statements are split into sub-steps（PF-4a/b, PF-5a/b/c, PF-14a/b, PF-15a/b）. Each sub-step
+is evaluated before the next is submitted, and the first non-PASS stops the run.
+
+**An all-PASS report is not evidence.** Even when every step is PASS on a test double, the report prints
+`preflight_g7_b1=UNMET`, `preflight_g7_b2=UNMET`, `ag3_connection_approval=NOT_AUTHORIZED`,
+`ag4_preflight_approval=NOT_AUTHORIZED`, `production_connection=STOP`, `g6=UNMET` and `g7=UNMET`.
+
+### 15.4 Tests
+
+- Unit（fake connections）: PF order and PASS progression; STOP after the first FAIL or UNKNOWN with no later SQL and
+  no retry; rollback and disconnect on failure, also when rollback raises; `BEGIN` failure; malformed and unexpected
+  results; missing, `system`, relative, non-existent, non-PEM, in-repository, implicit and SHA-256-mismatched CA;
+  conflicting `PG*` TLS variables; live `sslmode`, `sslrootcert`, `ssl_in_use` and login-role mismatches; PF-16 STOP
+  before any count SQL for a missing, malformed or unaccepted inventory; count mismatch; PF-17; the statement guard;
+  connector-kind gating; the disabled CLI; redaction of synthetic secrets and driver text; the module imports no
+  driver, socket, Django or logging; the migration-safety bridge still exports no `PGSSLROOTCERT`.
+- Local disposable database（the local test superuser; values meaningless for Production）: every PF-1 to PF-15
+  statement and every PF-16 statement runs alone inside `BEGIN READ ONLY` and fits its result contract; the approved
+  table constant equals `audited_tables()`; a real libpq session without `verify-full` stops at the live check with no
+  SQL; with the live check stubbed, the real session stops at PF-1（`session_identity_mismatch`）after exactly two
+  statements and is rolled back and closed.
+
+### 15.5 Remaining UNKNOWNs and risks
+
+1. Every §14.10 item is unchanged（provider PUBLIC grants and default ACLs, `pg_stat_ssl` through the pooler, custom-role
+   login and `CONNECTION LIMIT 1` through the pooler, `ALTER ROLE … SET` on pooled connections, RLS and legacy
+   relations in Production, provider restrictions on PF-14 objects）.
+2. The PF-16 independent inventory（source, capture time, verification method and acceptance contract）is
+   **UNRESOLVED**. Until it is decided, PF-16 is always UNKNOWN in any non-test use.
+3. A Production connector does not exist. How it would read the live conninfo（for example libpq `PQconninfo`, as
+   `audit_tls_evidence` does）, and whether a pooler reports the login user with the `.<project_ref>` suffix, are
+   unverified. Adding one needs a separate PR, independent review and AG-3 / AG-4 approval.
+4. The runner does not verify the certificate chain or hostname itself; with `verify-full` that is libpq's documented
+   behaviour, and the hostname / project identity is PF-0（G7-A）. §8.1.2 evidence requirements 3 and 5 stay open.
+5. `expected_ca_sha256` defaults to the §8.1.1 digest but is a constructor argument so tests can use a synthetic CA. A
+   future Production path must pin it.
+6. The CA file's permission mode is not checked; OP-4 / OP-5 require the SHA-256 and the explicit path only.
+7. The statement guard is lexical defence in depth. The primary control is the fixed registry and object-identity check.
+8. `APPROVED_TABLES` is the `audited_tables()` set of this SHA. It must be regenerated on the approved SHA（§14.7）; the
+   database test fails if they diverge.
+9. After the SR-1 / SR-2 / SR-7 / SR-9 hardening（`docs/audit/g7-dedicated-preflight-runner-security-review-2026-11-03.md`
+   §8）, in-process code can still forge class provenance or mutate private state of a trusted test object（SR-3）.
+   SR-4, SR-5, SR-6, SR-8, SR-10 and SR-11 are not addressed. OP-6 stays **STOP**.
+
+### 15.6 Connection ownership boundary（PR #3425 follow-up; verified offline and on a local disposable database）
+
+**Contract**
+
+1. **Before transfer, the connector owns its resources.** Ownership has not transferred until the returned
+   connection passes `_trusted_offline_connection()` and is assigned to the runner.
+2. **If ownership is never transferred, the runner calls one method only:** `release_unadopted()`, through the
+   provenance-checked connector class. This happens when `connect()` raised（an `Exception` or a `BaseException`）,
+   returned `None`, or returned an untrusted object.
+   - `release_unadopted()` takes no argument. The runner never passes it the returned object and never calls a method
+     on that object.
+   - The connector releases only handles it allocated and recorded itself.
+   - `release_unadopted()` is a required connector method under the same provenance check as `connect()`. A connector
+     without it, or with an instance-level override, is `connector_not_authorized`.
+3. **After transfer, the runner owns the connection.** It rolls back when a transaction was opened and always attempts
+   close, including on a `BaseException`（§15.3）. The connector is not asked again.
+
+An untrusted connector gets neither `connect()` nor `release_unadopted()` called.
+
+**Reporting**
+
+- `preflight_connector_release` is `not_needed`（ownership transferred, or no connect was attempted）, `done` or
+  `error`. A release never changes a STOP, and `ALL_PASS_OFFLINE` requires `not_needed`.
+- An interrupt raised by the release propagates after cleanup, sanitized as in §15.3. If an interrupt was already in
+  flight, that earlier one propagates instead.
+
+**Test connectors**
+
+- `FakeConnector` records an optional connector-owned `FakeResource` before anything in `connect()` can fail. An
+  object injected through `FakeConnector(conn=...)` stays **caller-owned** and is never released by the runner or the
+  connector.
+- `LocalConnector` opens the loopback psycopg handle itself and records it before constructing `LocalConnection`.
+- `LocalConnection` now refuses anything that is not an open `psycopg.Connection` whose actual transport address
+  （`info.hostaddr`）is `127.0.0.1`.
+
+**Verified**
+
+- Unit tests:
+  - a rejected connection is released with zero SQL, and the returned object is never touched;
+  - a failure after allocation（`Exception`, `None`, `KeyboardInterrupt`）is released;
+  - a release failure is reported as a token and keeps the original STOP;
+  - a release interrupt propagates sanitized, and an earlier interrupt wins over it;
+  - after a successful transfer, the runner closes and the connector does not release;
+  - a rollback interrupt after transfer still closes;
+  - cleanup cannot turn a STOP into `ALL_PASS_OFFLINE`.
+- Local disposable database: the exact backend PIDs the connector opened are gone from `pg_stat_activity` in three
+  cases: a construction failure after allocation, a rejected returned connection, and a transferred session closed by
+  the runner.
+  - The check uses a separate autocommit observer session, because PostgreSQL caches the `pg_stat_activity` snapshot
+    for the rest of a transaction.
+  - A positive control shows the observer sees an open backend and its exit.
+  - Two leak mutants are each detected: the connector release closes nothing（2 failures）, and the runner never closes
+    after transfer（3 failures）.
+- Mutation（scratch copy）: six mutants of the contract are each detected:
+  - release never called;
+  - release also after transfer;
+  - transfer flagged before validation;
+  - `all_pass` ignoring the release;
+  - release interrupt dropped;
+  - release error recorded as done.
+
+**Residual risks**
+
+1. **Asynchronous-interrupt windows.**
+   - An interrupt delivered inside a connector between allocating a handle and recording it（one statement）leaks that
+     handle.
+   - An interrupt between `conn = returned` and the transfer flag makes both the connector release and the runner
+     close run on the same handle. That is safe for psycopg（close is idempotent）, but not guaranteed for every driver.
+2. **The guarantee holds only for connectors that implement `release_unadopted()` correctly.** It is verified only
+   for the two checked-in test connectors. A future connector needs its own review.
+3. **Caller-injected objects are never cleaned up by the runner.** That stays the caller's responsibility.
+4. **`release_unadopted()` has no timeout.** A hanging release blocks the run.
+5. **In-process forgery or private-state mutation（SR-3）still bypasses provenance**, and with it this contract.
+
+OP-6 stays **STOP**; G-6 / G-7 **UNMET**; AG-3 / AG-4 **NOT_AUTHORIZED**; `PRODUCTION_CONNECTION = STOP`.

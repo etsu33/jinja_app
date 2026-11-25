@@ -42,13 +42,14 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      # 速さ優先: webだけ入れる
-      - name: Install deps (web only)
-        run: pnpm --filter ./apps/web install --frozen-lockfile
+      # Concierge parity audit tests import actual Mobile helpers. Expo's tsconfig
+      # must resolve in Vite/esbuild; web-only install leaves it unavailable.
+      - name: Install deps (web and mobile for parity tests)
+        run: pnpm --filter ./apps/web --filter ./apps/mobile install --frozen-lockfile
 
       - name: Contract tests
         run: pnpm --filter ./apps/web test:contract
@@ -70,7 +71,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -109,7 +110,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 

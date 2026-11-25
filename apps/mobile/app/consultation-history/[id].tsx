@@ -26,10 +26,11 @@ import {
 import { StateCard } from "../../components/common/StateCard";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
 import Button from "../../components/ui/Button";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
+import { typography } from "../../design/typography";
 
 function RecommendationCard({
   rec,
@@ -172,9 +173,6 @@ export default function ConsultationHistoryDetailScreen() {
     <>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backText}>← 相談履歴へ戻る</Text>
-          </Pressable>
           <Text style={styles.title}>
             {state.kind === "ready" ? state.thread.title?.trim() || "相談タイトル未設定" : "相談履歴"}
           </Text>
@@ -284,24 +282,13 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.mdGap,
   },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: spacing.smGap,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
-  },
   title: {
-    color: theme.gold,
-    fontSize: 22,
-    fontWeight: "900",
+    ...typography.heading,
+    color: theme.accent,
   },
   subtitle: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "700",
   },
   errorBlock: {
     gap: spacing.smGap,
@@ -310,17 +297,15 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   sectionTitle: {
-    color: theme.goldSoft,
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 0.6,
+    ...typography.title,
+    color: theme.accentSoft,
   },
   list: {
     gap: spacing.mdGap,
   },
   recommendationCard: {
     backgroundColor: theme.surface,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: radius.lg,
     borderWidth: cardSizes.borderWidth,
     padding: cardSizes.cardPaddingLg,
@@ -333,42 +318,36 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   recommendationName: {
+    ...typography.title,
     flex: 1,
-    color: theme.gold,
-    fontSize: 16,
-    fontWeight: "900",
+    color: theme.accent,
   },
   actionBadge: {
     borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   actionBadgeText: {
-    color: theme.gold,
-    fontSize: 11,
-    fontWeight: "800",
+    ...typography.caption,
+    color: theme.accent,
   },
   recommendationAddress: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "600",
   },
   recommendationFact: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "600",
   },
   detailLink: {
     marginTop: spacing.tightGap,
     alignSelf: "flex-start",
   },
   detailLinkText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
+    ...typography.label,
+    color: theme.accent,
     textDecorationLine: "underline",
   },
   messageBubble: {
@@ -383,14 +362,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
   },
   messageText: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
   },
   messageDate: {
+    ...typography.caption,
     color: theme.muted,
-    fontSize: 11,
-    fontWeight: "600",
   },
 });

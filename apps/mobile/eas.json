@@ -12,8 +12,16 @@
       "distribution": "internal",
       "environment": "preview"
     },
+    "preview-simulator": {
+      "distribution": "internal",
+      "environment": "preview",
+      "ios": {
+        "simulator": true
+      }
+    },
     "production": {
-      "environment": "production"
+      "environment": "production",
+      "autoIncrement": true
     },
     "android-map-qa": {
       "distribution": "internal",

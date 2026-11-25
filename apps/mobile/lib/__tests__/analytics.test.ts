@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ConsoleAnalyticsProvider,
   getAnalyticsProvider,
+  resetAnalyticsIdentity,
   serializeAnalyticsPayload,
   setAnalyticsProvider,
   track,
@@ -136,5 +137,37 @@ describe("track / provider差し替え", () => {
     track("   ");
 
     expect(trackSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("resetAnalyticsIdentity", () => {
+  afterEach(() => {
+    setAnalyticsProvider(null);
+  });
+
+  it("resetIdentityを持たないprovider(既定のConsole)では何もせず解決する", async () => {
+    setAnalyticsProvider(null);
+
+    await expect(resetAnalyticsIdentity()).resolves.toBeUndefined();
+  });
+
+  it("providerのresetIdentityを呼ぶ", async () => {
+    const resetIdentity = vi.fn(async () => {});
+    setAnalyticsProvider({ track: vi.fn(), resetIdentity });
+
+    await resetAnalyticsIdentity();
+
+    expect(resetIdentity).toHaveBeenCalledTimes(1);
+  });
+
+  it("providerのresetIdentityが失敗しても呼び出し元に伝播しない", async () => {
+    setAnalyticsProvider({
+      track: vi.fn(),
+      resetIdentity: vi.fn(async () => {
+        throw new Error("boom");
+      }),
+    });
+
+    await expect(resetAnalyticsIdentity()).resolves.toBeUndefined();
   });
 });

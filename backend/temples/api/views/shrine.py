@@ -55,6 +55,7 @@ from temples.models import (
     ShrineDeity,
     ShrineHistory,
     ShrineKnowledgeSource,
+    ShrineHighlight,
 )
 from temples.services import evidence_gate
 from temples.queries import (
@@ -353,6 +354,17 @@ class ShrineViewSet(viewsets.ModelViewSet):
                         verification_status__in=evidence_gate.DETAIL_CANDIDATE_VERIFICATION_STATUSES
                     )
                     .prefetch_related(_fact_ready_sources_prefetch())
+                    .order_by("sort_order", "id"),
+                ),
+                # 見どころ（Highlights PR-4）。published かつ確認済みだけを候補として先読みし、
+                # 出典・翻訳を含む最終判定は highlight_publication（Serializer側）で行う。
+                Prefetch(
+                    "highlights",
+                    queryset=ShrineHighlight.objects.filter(
+                        publication_status=ShrineHighlight.PublicationStatus.PUBLISHED,
+                        verification_status__in=evidence_gate.FACT_READY_VERIFICATION_STATUSES,
+                    )
+                    .prefetch_related("translations", "source_links__source", "history_links")
                     .order_by("sort_order", "id"),
                 ),
             )

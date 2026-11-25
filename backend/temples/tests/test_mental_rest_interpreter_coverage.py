@@ -20,7 +20,7 @@ deliberately limited to the desiderative form so that:
   behavior for those is preserved.
 
 Scope: temples/domain/need_tags.py REGEX["mental"] only. ``rest``
-KEYWORDS/REGEX, NEED_PRIORITY, NEED_TO_GORIYAKU_IDS, consultation axis,
+KEYWORDS/REGEX, NEED_PRIORITY, NEED_TO_GORIYAKU_CONCEPTS, consultation axis,
 Reason copy, C1 scoring, Ranking and Lead are all unchanged.
 """
 

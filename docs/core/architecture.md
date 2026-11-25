@@ -281,6 +281,20 @@ Split Anchorの物理保存構造、未調査状態、Component / Evidence責務
 
 同文書の正本化だけではschema変更・backfill・runtime cutoverを行わない。
 
+### ShrineNearbySpot
+
+神社に関係する周辺の歴史スポット（旧邸・公園など）。境内の見どころ（ShrineHighlight）とは別のデータとして持つ（承認済み・実装未着手）。
+
+```text
+ShrineNearbySpot
+= 神社詳細の Public Layer に出す、境内の外の歴史スポット
+= 推薦・Compass・Ranking・課金では使わない
+= 公開判定は Publication Gate、地図導線は Position Gate（別判定）
+= 座標は Spot 自身のもの。Shrine.latitude / longitude で代わりに埋めない
+```
+
+モデル・公開判定・API / UI 契約は `docs/product/shrine-nearby-spot-spec.md` を正本とする。
+
 ### ShrineSubmission
 
 ユーザー投稿の受付・審査用データ。
@@ -376,6 +390,7 @@ request.user
 - Meaning Translation：`docs/product/meaning-translation-mapping.md`
 - Explore：`docs/product/explore-integration-design.md`
 - 神社詳細：`docs/product/shrine-detail-layer.md`
+- 神社周辺の歴史スポット：`docs/product/shrine-nearby-spot-spec.md`
 - Action：`docs/product/action_suggestion_v4.md`
 - Visit / Reflection：`docs/product/visit-reflection-flow.md`
 - Premium：`docs/product/premium-experience.md`

@@ -2,12 +2,13 @@
 import * as React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
 import { spacing } from "../../design/spacing";
 import Button from "../ui/Button";
 import type { ShrineMapPoint } from "../../lib/shrineMap";
+import { typography } from "../../design/typography";
 
 type Props = {
   shrine: ShrineMapPoint;
@@ -19,11 +20,7 @@ export function SelectedShrineMapCard({ shrine, onDetail }: Props) {
     <View style={styles.card} accessibilityLabel={`選択中の神社: ${shrine.name}`}>
       {shrine.imageUrl ? (
         <Image source={{ uri: shrine.imageUrl }} style={styles.image} />
-      ) : (
-        <View style={styles.imagePlaceholder}>
-          <Text style={styles.imagePlaceholderText}>⛩</Text>
-        </View>
-      )}
+      ) : null}
 
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>
@@ -55,7 +52,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: theme.surface,
     borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: radius.lg,
     padding: cardSizes.cardPaddingMd,
     gap: spacing.mdGap,
@@ -66,30 +63,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.xs,
     backgroundColor: theme.surfaceSoft,
   },
-  imagePlaceholder: {
-    width: cardSizes.imageSm,
-    height: cardSizes.imageSm,
-    borderRadius: radius.xs,
-    backgroundColor: theme.surfaceSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  imagePlaceholderText: {
-    fontSize: 26,
-  },
   body: {
     flex: 1,
     gap: spacing.tightGap,
   },
   name: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 15,
-    fontWeight: "900",
   },
   address: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "700",
   },
   detailWrap: {
     alignSelf: "flex-start",

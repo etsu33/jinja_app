@@ -15,7 +15,6 @@ from rest_framework_simplejwt.token_blacklist.models import (
     OutstandingToken,
 )
 from rest_framework_simplejwt.tokens import RefreshToken
-
 from temples.models import (
     ActionEvent,
     ConciergeMessage,
@@ -415,19 +414,23 @@ def test_stripe_failure_log_contains_no_ids_or_secrets(settings, caplog):
 # ------------------------------------------------------- partial failure
 
 
-def test_db_failure_after_stripe_cleanup_keeps_the_account_but_not_premium(settings):
+def test_db_failure_after_stripe_cleanup_keeps_the_account_but_not_premium(settings, monkeypatch):
     """外部APIとDBは同一transactionにできない。その partial failure の契約。"""
     settings.STRIPE_SECRET_KEY = "sk_test_dummy"
+    from temples.services.billing_state import is_premium_for_user
+    from users.services.premium_pass import get_pass_period_end, grant_premium_pass
+
+    monkeypatch.setenv("BILLING_PROVIDER", "stripe")
     user = _premium_user()
+    legacy_end = timezone.now() + timedelta(days=10)
+    UserProfile.objects.filter(user=user).update(legacy_premium_until=legacy_end)
+    grant = grant_premium_pass(user=user, days=7, source="stripe", external_id="cs_deletion")
+    assert is_premium_for_user(user)
     stripe = _stripe_mock()
 
-    with _patch_stripe(stripe):
-        with patch(
-            "users.services.account_deletion._delete_recommendation_logs",
-            side_effect=RuntimeError("db boom"),
-        ):
-            with pytest.raises(AccountDataDeletionFailed):
-                delete_user_account(user=user)
+    with _patch_stripe(stripe), patch.object(type(user), "delete", side_effect=RuntimeError("db boom")):
+        with pytest.raises(AccountDataDeletionFailed):
+            delete_user_account(user=user)
 
     # Stripe は停止済み。Account は残る。成功として返さない。
     assert type(user).objects.filter(pk=user.pk).exists()
@@ -438,6 +441,11 @@ def test_db_failure_after_stripe_cleanup_keeps_the_account_but_not_premium(setti
     assert profile.subscription_status == "canceled"
     assert profile.current_period_end is None
     assert profile.cancel_at_period_end is False
+    assert profile.account_entitlement_disabled
+    assert profile.legacy_premium_until == legacy_end
+    assert get_pass_period_end(user_id=user.pk) == grant.period_end
+    assert not is_premium_for_user(user)
+
 
 
 def test_db_failure_does_not_blacklist_or_delete_rows(settings):

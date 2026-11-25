@@ -142,13 +142,12 @@ def test_radius_is_never_passed_to_candidate_building_hard_filter_parity(client,
 
 
 @pytest.mark.django_db
-def test_profile_context_birthdate_takes_priority_over_canonical_birthdate_for_direction_calc(
+def test_profile_context_birthdate_is_not_used_for_direction_calc(
     client, monkeypatch
 ):
-    """Level 3-A: profile_context.user_profile.birthdate wins over the
-    canonical scoring birthdate ONLY for the direction-calc call site --
-    a documented, separate precedence chain (resolve_profile_context_birthdate
-    docstring)."""
+    """コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）。
+    profile_context.user_profile.birthdate も本文の birthdate も、方位の計算に渡さない
+    （以前は profile_context が本文より優先されていた）。"""
     _stub_recommendations(monkeypatch)
     monkeypatch.setattr("temples.api_views_concierge.build_chat_candidates", lambda **kwargs: [])
 
@@ -173,11 +172,11 @@ def test_profile_context_birthdate_takes_priority_over_canonical_birthdate_for_d
     r = client.post(URL, data=json.dumps(payload), content_type="application/json")
     assert r.status_code == 200
 
-    assert captured_direction_args["birthdate"] == "1985-06-15"
+    assert captured_direction_args["birthdate"] is None
 
 
 @pytest.mark.django_db
-def test_canonical_birthdate_used_for_direction_calc_when_profile_context_absent(client, monkeypatch):
+def test_canonical_birthdate_is_not_used_for_direction_calc(client, monkeypatch):
     _stub_recommendations(monkeypatch)
     monkeypatch.setattr("temples.api_views_concierge.build_chat_candidates", lambda **kwargs: [])
 
@@ -201,7 +200,8 @@ def test_canonical_birthdate_used_for_direction_calc_when_profile_context_absent
     r = client.post(URL, data=json.dumps(payload), content_type="application/json")
     assert r.status_code == 200
 
-    assert captured_direction_args["birthdate"] == "1990-01-01"
+    # コンシェルジュでは生年月日を使わない: 本文の birthdate も方位の計算に渡さない。
+    assert captured_direction_args["birthdate"] is None
 
 
 @pytest.mark.django_db

@@ -489,3 +489,7 @@ class ShrineAdmin(admin.ModelAdmin):
 _maybe_register("Deity", DeityAdmin)
 _maybe_register("GoriyakuTag", GoriyakuTagAdmin)
 _maybe_register("Shrine", ShrineAdmin)
+
+
+# Highlights have a separate admin module; existing registrations stay unchanged.
+from . import admin_highlights  # noqa: E402, F401, I001

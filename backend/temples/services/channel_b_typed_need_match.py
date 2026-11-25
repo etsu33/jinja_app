@@ -7,8 +7,8 @@ docs/audit/shrine-expansion-wave0-db04-f1-goriyaku-mapping-boundary.md
     ShrineSourceFact
     → verification gate（Fact と Source の verification_status。confidence / verified_at は gate にしない）
     → S3a registry（stable_key で lookup。mapping が無ければ NO_SIGNAL）
-    → canonical concept（GoriyakuTag.name の exact 一致。id は Need の意味の参照にだけ使う）
-    → 共有の Need の意味（NEED_TO_GORIYAKU_IDS を参照だけする）
+    → canonical concept（GoriyakuTag.name の exact 一致。札の番号は使わない）
+    → 共有の Need の意味（need_to_goriyaku_concepts を参照だけする。札の名前 → 概念 → Need）
     → TypedNeedMatch
 
 Channel A（goriyaku_tags / goriyaku_tag_ids / matched_by_* / matched_all）とは別の signal であり、
@@ -24,7 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Tuple
 
-from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
+from temples.domain.need_to_goriyaku_concepts import needs_for_tag_name
 from temples.domain.source_fact_mapping_registry_v1 import (
     SourceFactMappingRegistryError,
     get_registry,
@@ -89,12 +89,13 @@ def is_source_fact_recommendation_readable(fact: ShrineSourceFact, sources: Iter
     )
 
 
-def needs_for_concept_id(concept_id: int) -> Tuple[str, ...]:
-    """共有の Need の意味（NEED_TO_GORIYAKU_IDS）で、concept を含む Need key をすべて返す。
+def needs_for_concept_name(concept_name: str) -> Tuple[str, ...]:
+    """共有の Need の意味（need_to_goriyaku_concepts）で、concept（札の名前）が一致する Need key をすべて返す。
 
+    札の名前から概念を引き、その概念を含む Need を返す。未分類の名前は空。
     Need key はそのまま返す（alias 正規化をしない）。順序は決定的（key の昇順）。
     """
-    return tuple(sorted(need for need, ids in NEED_TO_GORIYAKU_IDS.items() if concept_id in ids))
+    return needs_for_tag_name(concept_name)
 
 
 def fetch_typed_need_matches(shrine_ids: Iterable[int]) -> Dict[int, Tuple[TypedNeedMatch, ...]]:
@@ -130,8 +131,9 @@ def fetch_typed_need_matches(shrine_ids: Iterable[int]) -> Dict[int, Tuple[Typed
         return {}
 
     names = sorted({record.canonical_concept_name for _, record in mapped})
-    concept_id_by_name = dict(GoriyakuTag.objects.filter(name__in=names).values_list("name", "id"))
-    missing = [name for name in names if name not in concept_id_by_name]
+    # concept が GoriyakuTag に実在するかだけを確かめる（fail-closed）。Need の意味は名前から引く。
+    existing_names = set(GoriyakuTag.objects.filter(name__in=names).values_list("name", flat=True))
+    missing = [name for name in names if name not in existing_names]
     if missing:
         raise SourceFactMappingRegistryError(
             [f"canonical_concept_name {name!r}: no GoriyakuTag by exact name" for name in missing]
@@ -139,7 +141,7 @@ def fetch_typed_need_matches(shrine_ids: Iterable[int]) -> Dict[int, Tuple[Typed
 
     out: Dict[int, List[TypedNeedMatch]] = {}
     for fact, record in mapped:
-        for need in needs_for_concept_id(concept_id_by_name[record.canonical_concept_name]):
+        for need in needs_for_concept_name(record.canonical_concept_name):
             out.setdefault(fact.shrine_id, []).append(
                 TypedNeedMatch(
                     need=need,
@@ -189,7 +191,7 @@ __all__ = [
     "CHANNEL_B_TYPED_NEED_MATCHES_KEY",
     "TypedNeedMatch",
     "is_source_fact_recommendation_readable",
-    "needs_for_concept_id",
+    "needs_for_concept_name",
     "fetch_typed_need_matches",
     "without_channel_b_carrier",
     "strip_channel_b_carrier",

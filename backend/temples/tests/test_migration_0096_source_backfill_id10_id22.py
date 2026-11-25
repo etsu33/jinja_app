@@ -220,16 +220,16 @@ def test_idempotent_no_duplicate_sources_or_relations(targets):
 # 9 / 10 — no GoriyakuTag master change, no Need mapping change
 @pytest.mark.django_db
 def test_no_taxonomy_or_mapping_change(targets):
-    from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
+    from temples.domain.need_to_goriyaku_concepts import NEED_TO_GORIYAKU_CONCEPTS
     from temples.models import GoriyakuTag
 
     before_tags = GoriyakuTag.objects.count()
-    before_map = {k: set(v) for k, v in NEED_TO_GORIYAKU_IDS.items()}
+    before_map = dict(NEED_TO_GORIYAKU_CONCEPTS)
 
     apply_backfill(APPS, None)
 
     assert GoriyakuTag.objects.count() == before_tags
-    assert {k: set(v) for k, v in NEED_TO_GORIYAKU_IDS.items()} == before_map
+    assert dict(NEED_TO_GORIYAKU_CONCEPTS) == before_map
     # goriyaku text / tags untouched on both shrines
     targets["s10"].refresh_from_db()
     targets["s22"].refresh_from_db()

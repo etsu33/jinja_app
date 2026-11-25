@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
-import type { GoriyakuTag, Element4 } from "@/features/concierge/sections/types";
+import type { GoriyakuTag } from "@/features/concierge/sections/types";
 import OriginSelector from "@/features/concierge/components/OriginSelector";
 import type { UserOrigin } from "../../../../../../packages/shared/userOrigin";
 
@@ -13,19 +14,7 @@ type Props = {
   onClose: () => void;
   onApply: () => void;
 
-  birthdate: string;
-  onBirthdateChange: (v: string) => void;
-
-  // 誕生日はログイン中のみ profile へ永続化される（useSharedBirthdayPersistence）。
-  // このパネルは useAuth() を直接呼ばず、認証状態は ConciergeSectionsRenderer から
-  // prop で受け取る（認証の入口を1箇所に保つため）。
-  // 既定は false。未指定の呼び出し元やGuestに対して「保存されます」と誤認させない。
-  isLoggedIn?: boolean;
-
-  element4: Element4 | null;
-
   goriyakuTags: readonly GoriyakuTag[];
-  suggestedTags: readonly GoriyakuTag[];
   selectedTagIds: readonly number[];
   onToggleTag: (tagId: number) => void;
 
@@ -137,12 +126,7 @@ export default function ConciergeFilterPanel({
   title = "希望を補足する",
   onClose,
   onApply,
-  birthdate,
-  onBirthdateChange,
-  isLoggedIn = false,
-  element4,
   goriyakuTags,
-  suggestedTags,
   selectedTagIds,
   onToggleTag,
   tagsLoading,
@@ -218,65 +202,21 @@ export default function ConciergeFilterPanel({
           ))}
         </section>
 
-        {/* Level 3-A Personal Profile */}
-        <section aria-label="誕生日（任意）" className="space-y-0.5">
-          <div className="text-[10px] font-semibold text-[var(--kt-color-text-muted)]">誕生日（任意）</div>
-          <div className="text-[10px] text-[var(--kt-color-text-muted)]">相性候補を見るための任意の補助情報です</div>
-          <input
-            type="date"
-            aria-label="誕生日"
-            value={birthdate}
-            onChange={(e) => onBirthdateChange(e.target.value)}
-            className="w-full rounded-xl border px-3 py-1.5 text-sm"
-          />
-          {/* ログイン中だけ profile へ保存されるため、その場合のみ説明を出す。
-              Guest には出さない（保存されると誤認させないため）。 */}
-          {isLoggedIn ? (
-            <p className="text-[10px] leading-4 text-[var(--kt-color-text-muted)]">
-              ログイン中は、生年月日を保存してコンシェルジュとコンパスで共通利用します。
-            </p>
-          ) : null}
+        {/* コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）。入力の代わりに案内を置く。 */}
+        <section aria-label="生年月日からの相性" className="space-y-1 pt-1">
+          <p className="text-[10px] leading-4 text-[var(--kt-color-text-muted)]">生年月日からの相性は、コンパスで見られます。</p>
+          <Link
+            href="/compass"
+            className="inline-flex rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-2.5 py-1 text-xs font-semibold text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-surface-elevated)]"
+          >
+            コンパスで相性を見る
+          </Link>
         </section>
-
-        {element4 ? (
-          <div className="text-[11px] text-[var(--kt-color-text-muted)]">
-            誕生日から見た補助傾向:{" "}
-            <span className="font-semibold text-[var(--kt-color-text-secondary)]">{element4}</span>
-          </div>
-        ) : null}
-
-        {element4 && suggestedTags.length > 0 ? (
-          <div className="space-y-0.5">
-            <div className="text-[10px] font-semibold text-[var(--kt-color-text-muted)]">相性から見た候補</div>
-            <p className="text-[10px] leading-4 text-[var(--kt-color-text-muted)]">
-              誕生日情報をもとにした補助候補です。相談テーマとの一致を優先します。
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {suggestedTags.map((t) => {
-                const on = selected.has(t.id);
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                      on
-                        ? "border-[var(--kt-color-action-primary)] bg-[var(--kt-color-background-subtle)] text-[var(--kt-color-action-primary)]"
-                        : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-secondary)]"
-                    }`}
-                    onClick={() => onToggleTag(t.id)}
-                  >
-                    {t.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
       </div>
 
       {/* Level 3-B Explicit Constraint -- a DB-level candidate hard filter,
           not a "おすすめテーマ"/Personal Profile. Kept distinct from L2
-          (参拝スタイル) and L3-A (誕生日) above (Task 7). */}
+          (参拝スタイル) above (Task 7). */}
       {tagsLoading || tagsError || visibleGoriyakuTags.length > 0 || hiddenGoriyakuCount > 0 ? (
         <section
           aria-label="ご利益を指定する"

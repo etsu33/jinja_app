@@ -24,6 +24,7 @@ from pathlib import Path
 import pytest
 from django.core.management import call_command
 
+from temples.domain.removed_shrines import is_removed_shrine
 from temples.models import Shrine, ShrineDeity, ShrineHistory
 from temples.services.knowledge_seed import resolve_shrine
 
@@ -198,7 +199,10 @@ def test_base_seed_has_no_duplicate_identity():
 def test_base_seed_import_materializes_targets_and_is_idempotent():
     rows = _rows()
     first = _import_base_seed()
-    assert f"created={len(rows)} updated=0 skipped=0 total_seed={len(rows)}" in first
+    # 本番から削除した神社（temples/domain/removed_shrines.py）は作らずに飛ばす
+    removed = sum(1 for row in rows if is_removed_shrine(row["name_jp"], row["address"]))
+    created = len(rows) - removed
+    assert f"created={created} updated=0 skipped={removed} total_seed={len(rows)}" in first
 
     for cid, shrine in _targets().items():
         _name, _address, lat, lng = TARGETS[cid]

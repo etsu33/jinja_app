@@ -10,7 +10,7 @@
 - Shared Recommendation Eligibility: `shrine_knowledge_selector.fetch_fact_ready_*`
   + `concierge_chat_candidates.is_recommendation_eligible`
 - Channel B（Source Fact → registry → Need）: `channel_b_typed_need_match.fetch_typed_need_matches`
-- Need → GoriyakuTag id: `need_to_goriyaku_tag_ids.NEED_TO_GORIYAKU_IDS`
+- Need → ご利益の概念: `need_to_goriyaku_concepts.NEED_TO_GORIYAKU_CONCEPTS`（札は名前から概念を引く）
 - QA fixture 除外 / 母集団選択: `knowledge_coverage_report` と同じ helper
 
 不変条件:
@@ -44,7 +44,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping, Sequence
 
 from django.db.models import Prefetch, QuerySet
-from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
+from temples.domain.need_to_goriyaku_concepts import NEED_TO_GORIYAKU_CONCEPTS
 from temples.forms import PREF_CHOICES
 from temples.models import (
     Shrine,
@@ -56,7 +56,7 @@ from temples.models import (
 from temples.services import evidence_gate
 from temples.services.channel_b_typed_need_match import (
     fetch_typed_need_matches,
-    needs_for_concept_id,
+    needs_for_concept_name,
 )
 from temples.services.concierge_chat_candidates import is_recommendation_eligible
 from temples.services.knowledge_coverage_report import _qa_filtered_shrine_ids, _resolve_scope
@@ -102,7 +102,7 @@ LEGACY_PROVENANCE_LABEL = "legacy_unattributed"
 PREFECTURES = tuple(value for value, _ in PREF_CHOICES if value)
 _GMAPS_PREFIX_RE = re.compile(r"^日本、\s*〒?[0-9\-－]*\s*")
 
-NEEDS = tuple(sorted(NEED_TO_GORIYAKU_IDS))
+NEEDS = tuple(sorted(NEED_TO_GORIYAKU_CONCEPTS))
 
 
 def prefecture_of(address: str | None) -> str | None:
@@ -114,11 +114,11 @@ def prefecture_of(address: str | None) -> str | None:
     return None
 
 
-def needs_for_goriyaku_ids(goriyaku_ids: Iterable[int]) -> list[str]:
-    """GoriyakuTag id 群 → Need（Channel B と同じ `needs_for_concept_id` を使い、写像を複製しない）。"""
+def needs_for_goriyaku_tag_names(tag_names: Iterable[str]) -> list[str]:
+    """札の名前の群 → Need（Channel B と同じ `needs_for_concept_name` を使い、写像を複製しない）。"""
     needs: set[str] = set()
-    for gid in goriyaku_ids:
-        needs.update(needs_for_concept_id(int(gid)))
+    for name in tag_names:
+        needs.update(needs_for_concept_name(name))
     return sorted(needs)
 
 
@@ -237,7 +237,7 @@ def classify_shrine(
         pillar_conflicts.append("H")
 
     c_needs = sorted({m.need for m in shrine.consultation_matches if m.attributable})
-    legacy_needs = needs_for_goriyaku_ids(gid for gid, _ in shrine.legacy_goriyaku_tags)
+    legacy_needs = needs_for_goriyaku_tag_names(name for _, name in shrine.legacy_goriyaku_tags)
     conflicts = sorted(set(conflicted_needs))
     verified_needs = sorted(set(c_needs) - set(conflicts)) if (d_pillar and h_pillar) else []
 
@@ -557,7 +557,7 @@ def parse_axis_conflicts(entries: Any) -> dict[str, dict[str, str]]:
             raise EvidenceCoverageInputError(
                 f"axis conflicts[{i}]: name_jp, need and basis are required"
             )
-        if need not in NEED_TO_GORIYAKU_IDS:
+        if need not in NEED_TO_GORIYAKU_CONCEPTS:
             raise EvidenceCoverageInputError(f"axis conflicts[{i}]: unknown need {need!r}")
         out.setdefault(f"{name}\t{address}", {})[need] = basis
     return out

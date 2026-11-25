@@ -6,9 +6,9 @@ from drf_spectacular.utils import extend_schema
 from rest_framework.routers import DefaultRouter
 
 from temples import api_views_concierge as concierge
+from temples.api.views.apple_billing import AppleNotificationView, ApplePurchaseView
 from temples.api.views.billing import (
     BillingCheckoutView,
-    BillingPortalView,
     BillingStatusLegacyView,
     BillingStatusView,
     BillingStripeWebhookView,
@@ -42,6 +42,7 @@ from temples.api.views.shrine import (
     ShrineViewSet,
 )
 from temples.api.views.tags import goriyaku_tags_list
+from temples.api.views.shrine_feature_words_en import ShrineFeatureWordsEnView
 from temples.api.views.shrine_meaning import ShrineMeaningView
 from temples.api.views.visit import VisitCreateView, UserVisitListView
 from temples.api.views.reflection import ShrineReflectionCreateView, ShrineReflectionListView
@@ -121,6 +122,7 @@ urlpatterns = [
     path("shrines/<int:pk>/", shrine_detail_view, name="shrine_detail"),
     path("shrines/<int:pk>/data/", shrine_detail_view, name="shrine_detail_data"),
     path("shrines/<int:pk>/meaning/", ShrineMeaningView.as_view(), name="shrine_meaning"),
+    path("shrines/<int:pk>/feature-words-en/", ShrineFeatureWordsEnView.as_view(), name="shrine_feature_words_en"),
     path("deep-dive/ask/", DeepDiveAskView.as_view(), name="deep-dive-ask"),
     path("shrines/nearby/", NearestShrinesAPIView.as_view(), name="nearby"),
     path("shrines/<int:id>/visit/", VisitCreateView.as_view(), name="shrine-visit"),
@@ -142,8 +144,9 @@ urlpatterns = [
     path("compass/weekly/", CompassWeeklyView.as_view(), name="compass-weekly"),
     path("billing/status/", BillingStatusLegacyView.as_view(), name="billing-status-legacy"),
     path("billings/checkout/", BillingCheckoutView.as_view(), name="billing-checkout"),
-    path("billings/portal/", BillingPortalView.as_view(), name="billing-portal"),
     path("billings/status/", BillingStatusView.as_view(), name="billing-status"),
+    path("billings/apple/transactions/", ApplePurchaseView.as_view(), name="billing-apple-purchase"),
+    path("webhooks/apple/app-store/", AppleNotificationView.as_view(), name="billing-apple-notification"),
     path("billings/webhook/", BillingStripeWebhookView.as_view(), name="billing-stripe-webhook"),
     path("profiles/<str:username>/", public_profile, name="public_profile"),
     path("goriyaku-tags/", goriyaku_tags_list, name="goriyaku-tags"),
