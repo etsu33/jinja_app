@@ -96,7 +96,7 @@ SQLiteはBackendテストでは使用しません。
 `backend/.env.test` にテスト用の `DATABASE_URL` を定義します。
 
 ```bash
-DATABASE_URL=postgis://admin:jdb50515@127.0.0.1:5432/jinja_db
+DATABASE_URL=postgis://admin:YOUR_LOCAL_DB_PASSWORD@127.0.0.1:5432/jinja_db
 USE_SQLITE=0
 ```
 
@@ -105,7 +105,7 @@ pytest実行時は `backend/.env.local` を読み込み、その後 `backend/.en
 pytest実行時に `USE_SQLITE=1` が指定された場合は、誤ってSQLiteへ切り替わらないよう起動時に明示的なエラーとします。
 
 ```bash
-DATABASE_URL=postgis://admin:jdb50515@127.0.0.1:5432/jinja_db USE_SQLITE=0 pytest temples/tests/api/test_shrine_reflection_api.py temples/tests/services/test_reflection_state_change.py
+DATABASE_URL=postgis://admin:YOUR_LOCAL_DB_PASSWORD@127.0.0.1:5432/jinja_db USE_SQLITE=0 pytest temples/tests/api/test_shrine_reflection_api.py temples/tests/services/test_reflection_state_change.py
 ```
 
 ---
