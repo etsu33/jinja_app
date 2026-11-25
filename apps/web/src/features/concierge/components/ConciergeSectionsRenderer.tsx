@@ -27,6 +27,7 @@ import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 import { getVisibilityForCard, type CardVisibilityState } from "@/lib/premium/cardVisibility";
 import ConciergeConsultationSummary from "@/features/concierge/components/ConciergeConsultationSummary";
 import DirectionReferenceCard from "@/features/concierge/components/DirectionReferenceCard";
+import { MonthDirectionMark, MonthDirectionSummary } from "@/features/concierge/components/MonthDirection";
 
 import { trackCardEvent, type CardAnalyticsPayload } from "@/lib/analytics/cardEvents";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
@@ -810,6 +811,9 @@ export default function ConciergeSectionsRenderer({
                   </div>
                 )}
 
+                {/* 今月の方角（生年月日を登録したログイン中の人だけ）。結果の上に1回だけ。並び順には使っていない。 */}
+                <MonthDirectionSummary monthDirection={payload?.meta?.monthDirection} />
+
                 {bannerText && (
                   <div
                     className={`mb-3 ${conciergeNoticeCardClass} text-sm leading-6 text-[var(--kt-color-notice-text)]`}
@@ -1044,6 +1048,7 @@ export default function ConciergeSectionsRenderer({
                                   });
                                 }}
                               />
+                              <MonthDirectionMark inMonthDirection={heroItem.inMonthDirection} />
                               <DirectionReferenceCard
                                 reference={reasonDisplay.directionReference}
                                 recommendationKey={heroItem.shrineId}
@@ -1310,6 +1315,7 @@ export default function ConciergeSectionsRenderer({
                                       });
                                     }}
                                   />
+                                  <MonthDirectionMark inMonthDirection={item.inMonthDirection} />
                                   <DirectionReferenceCard
                                     reference={compactReasonDisplay.directionReference}
                                     recommendationKey={item.shrineId}

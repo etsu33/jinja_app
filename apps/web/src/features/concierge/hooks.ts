@@ -1,4 +1,5 @@
 "use client";
+import { normalizeMonthDirection } from "../../../../../packages/shared/monthDirection";
 import { normalizeConciergeCandidates } from "../../../../../packages/shared/conciergeCandidates";
 
 import { useCallback, useEffect, useState } from "react";
@@ -219,6 +220,7 @@ export function normalizeConciergeResponse(raw: any, recs: ConciergeRecommendati
     limit,
     limitReached,
     thread,
+    month_direction: normalizeMonthDirection(raw?.month_direction),
     data: { ...rawData, recommendations: recs },
   };
 }

@@ -1,4 +1,5 @@
 import type { ConciergeThread, ConciergeRecommendation, ConciergeNeed } from "@/lib/api/concierge";
+import type { ConciergeMonthDirection } from "../../../../../../packages/shared/monthDirection";
 
 export type StopReason = "design" | "paywall" | null;
 
@@ -31,6 +32,9 @@ export type UnifiedConciergeResponse = {
   thread_id?: string | null;
 
   thread?: ConciergeThread | null;
+
+  /** 今月の方角（生年月日を登録したログイン中の人だけ。並び順には使わない）。packages/shared/monthDirection.ts */
+  month_direction?: ConciergeMonthDirection | null;
 
   data: {
     recommendations: ConciergeRecommendation[];

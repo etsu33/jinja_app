@@ -1,6 +1,7 @@
 import type { ConciergeBreakdown, ConciergeReasonFacts } from "@/lib/api/concierge";
 import type { ConciergeModeSignal } from "@/features/concierge/types/unified";
 import type { DirectionReference } from "../../../../../../packages/shared/directionReference";
+import type { ConciergeMonthDirection } from "../../../../../../packages/shared/monthDirection";
 import type { RecommendationAnalyticsProvenance } from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
 import type { UserOrigin } from "../../../../../../packages/shared/userOrigin";
 import type { ConciergeHighlightPick } from "@/features/concierge/highlightPick";
@@ -56,6 +57,8 @@ export type RegisteredShrineItem = {
     disclaimer?: string | null;
   } | null;
   directionReference?: DirectionReference | null;
+  /** 今月の方角にある神社だけ true（packages/shared/monthDirection.ts）。合わない神社は false で、何も表示しない。 */
+  inMonthDirection?: boolean;
   /** 見どころ単位の推薦 PR-3：相談に合う「ここで見る」見どころ（backend の highlight_pick）。推薦理由ではない。 */
   highlightPick?: ConciergeHighlightPick | null;
 };
@@ -78,6 +81,7 @@ export type PlaceShrineItem = {
   consultationAxis?: string | null;
   isDummy?: boolean;
   directionReference?: DirectionReference | null;
+  inMonthDirection?: boolean;
 };
 
 /* =========================
@@ -137,6 +141,8 @@ export type ConciergeSectionsPayload = {
     consultationAxis?: string | null;
     /** ユーザー相談由来の入力側need_tags。`breakdown.matched_need_tags`（一致結果）とは責務が異なる */
     needTags?: string[];
+    /** 今月の方角（生年月日を登録したログイン中の人だけ）。結果の上に1回だけ出す。 */
+    monthDirection?: ConciergeMonthDirection | null;
     resultState?: {
       matched_count?: number;
       fallback_mode?: "none" | "nearby_unfiltered" | string;

@@ -11,6 +11,7 @@ import type { ConciergeReasonFacts, RecommendationReasonV4Detail } from "@/lib/a
 import type { ActionSuggestionV4PreviewViewModel } from "@/viewmodels/conciergeResultItem";
 import { normalizeActionSuggestionV4Preview } from "@/viewmodels/actionSuggestionV4Preview";
 import { validDirectionReferenceOrNull, type DirectionReference } from "../../../../../packages/shared/directionReference";
+import { isInMonthDirection, normalizeMonthDirection } from "../../../../../packages/shared/monthDirection";
 import {
   normalizeRecommendationInstanceId,
   recommendationAnalyticsProvenance,
@@ -53,6 +54,8 @@ type NormalizedItemBase = {
   detailHref?: string;
   isDummy?: boolean;
   directionReference?: DirectionReference | null;
+  /** 今月の方角にある神社だけ true（packages/shared/monthDirection.ts）。 */
+  inMonthDirection?: boolean;
 };
 
 type NormalizedRegistered = NormalizedItemBase & {
@@ -173,6 +176,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
     r?.recommendation_instance_id ?? r?.recommendationInstanceId,
   );
   const directionReference = validDirectionReferenceOrNull(r?.direction_reference);
+  const inMonthDirection = isInMonthDirection(r);
 
   if (shrineId) {
     return {
@@ -197,6 +201,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       consultationAxis,
       actionSuggestions,
       directionReference,
+      inMonthDirection,
       detailHref,
       isDummy,
       goriyakuTags: [],
@@ -227,6 +232,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       consultationAxis,
       actionSuggestions,
       directionReference,
+      inMonthDirection,
       detailHref,
       isDummy,
       detailLabel: "神社の詳細を見る",
@@ -291,6 +297,7 @@ export function buildPayloadFromUnified(
   };
 
   const needTags = normalizeInputNeedTags((u as any)?.data?._need?.tags);
+  const monthDirection = normalizeMonthDirection((u as any)?.month_direction);
 
   const rsRaw = (u as any)?.data?._signals?.result_state ?? (u as any)?.data?._signals?.resultState ?? null;
 
@@ -326,7 +333,7 @@ export function buildPayloadFromUnified(
     return {
       version: 1,
       sections,
-      meta: { mode, reply, remaining, limitReached, tid, resultState, consultationAxis, needTags },
+      meta: { mode, reply, remaining, limitReached, tid, resultState, consultationAxis, needTags, monthDirection },
     };
   }
 
@@ -375,7 +382,7 @@ export function buildPayloadFromUnified(
   return {
     version: 1,
     sections,
-    meta: { mode, reply, remaining, limitReached, tid, resultState, consultationAxis, needTags },
+    meta: { mode, reply, remaining, limitReached, tid, resultState, consultationAxis, needTags, monthDirection },
   };
 }
 
