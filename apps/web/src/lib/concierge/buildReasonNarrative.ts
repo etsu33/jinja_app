@@ -27,6 +27,7 @@ import type { BuildParams, ReasonKey, Candidate } from "./buildRecommendationRea
 import { toNeedTagLabel } from "./needTagLabelMap";
 import { toDisplayLabel } from "./displayLabel";
 import { NAME_FREE_PRIMARY_FACT_TYPES } from "./adaptReasonFactsForViewModel";
+import { resolvePrimaryReasonMatchKind } from "./primaryReasonAuthority";
 
 export type ReasonNarrative = {
   hero: {
@@ -588,9 +589,23 @@ function buildSummary(
   return found ?? byType[inputType][0];
 }
 
-function buildTopReasonLabel(inputType: ReturnType<typeof resolveInputType>, primaryKey: ReasonKey, index: number) {
+function buildTopReasonLabel(
+  inputType: ReturnType<typeof resolveInputType>,
+  primaryKey: ReasonKey,
+  index: number,
+  primaryReasonSource: string | null | undefined,
+) {
   if (index !== 0) return undefined;
-  if (inputType === "query") return primaryKey === "need_match" ? "相談との一致が強い" : "内容との一致が強い";
+  if (inputType === "query") {
+    // バックエンドの主な根拠が渡されたときは、それだけで一致を言うかを決める。
+    // 「明確な意味的一致が確認できない」と本文に出る推薦に「相談との一致が強い」を付けない。
+    if (primaryReasonSource !== undefined) {
+      const matchKind = resolvePrimaryReasonMatchKind(primaryReasonSource);
+      if (matchKind === "selected_condition") return "選んだ条件に合う";
+      if (matchKind === "none") return undefined;
+    }
+    return primaryKey === "need_match" ? "相談との一致が強い" : "内容との一致が強い";
+  }
   if (inputType === "birthdate") return "相性との一致が強い";
   if (inputType === "fallback") {
     if (primaryKey === "distance") return "まず動きやすい";
@@ -734,7 +749,7 @@ export function buildReasonNarrative(params: BuildParams): ReasonNarrative {
 
   return {
     hero: {
-      topReasonLabel: buildTopReasonLabel(inputType, primary.key, params.index),
+      topReasonLabel: buildTopReasonLabel(inputType, primary.key, params.index, params.primaryReasonSource),
       catchCopy: buildHeroCatchCopy(params, primary),
     },
     list: {

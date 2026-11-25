@@ -22,6 +22,9 @@ type Props = {
   // / interpretationReason / legacy fallback). This component never re-decides which
   // line wins -- it only lays the given lines out in the given order.
   conclusionLines?: string[];
+  // 結論の枠の見出し。呼び出し側がバックエンドの主な根拠(primary_reason_source)から
+  // 決めて渡す(lib/concierge/primaryReasonAuthority.ts)。この部品は判断しない。
+  conclusionLabel?: string;
   // Explanation-only Knowledge fact (deity/shrine_history winning the Reason V4 fact
   // pick) -- docs/product/recommendation-signal-authority.md §8, docs/product/
   // recommendation-result-information-architecture.md §13/§15 PR5, Finding 9. Never
@@ -60,6 +63,7 @@ export default function ConciergeTopRecommendationHero({
   trustLabels = [],
   originSummary = null,
   conclusionLines = [],
+  conclusionLabel = "相談内容・ご利益との一致",
   explanationOnlyFactText = null,
   actionReason = null,
   actionSuggestionV4Preview = null,
@@ -167,7 +171,7 @@ export default function ConciergeTopRecommendationHero({
             data-testid="recommendation-conclusion"
           >
             <div className="space-y-1.5">
-              <p className="text-[11px] font-semibold tracking-[0.14em] text-emerald-700">相談内容・ご利益との一致</p>
+              <p className="text-[11px] font-semibold tracking-[0.14em] text-emerald-700">{conclusionLabel}</p>
               {conclusionLines.map((line, index) => (
                 <p key={index} className="text-sm font-semibold leading-6 text-[var(--kt-color-text-primary)]">
                   {line}

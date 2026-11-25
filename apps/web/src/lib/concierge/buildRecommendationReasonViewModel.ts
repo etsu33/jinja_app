@@ -97,6 +97,12 @@ export type BuildParams = {
    * Backend APIのフィールド名ではない。
    */
   needTags: string[];
+  /**
+   * バックエンドが決めた主な根拠(primary_reason_source)。渡されたときは、
+   * 「相談との一致が強い」などの一致を言う表示をこの値だけで決める
+   * (lib/concierge/primaryReasonAuthority.ts)。渡されないとき(undefined)は従来どおり。
+   */
+  primaryReasonSource?: string | null;
   birthdate?: string | null;
   shrineBenefitLabels?: string[];
   shrineFeatureLabels?: string[];

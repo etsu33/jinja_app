@@ -6,20 +6,30 @@ const apiMocks = vi.hoisted(() => ({
   fetchThreads: vi.fn(),
 }));
 
-vi.mock("@/lib/api/concierge", () => ({
-  fetchThreads: apiMocks.fetchThreads,
-}));
+vi.mock("@/lib/api/concierge", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/concierge")>();
+  return {
+    ConciergeThreadsResponseError: actual.ConciergeThreadsResponseError,
+    fetchThreadsStrict: apiMocks.fetchThreads,
+  };
+});
+
+import { ConciergeThreadsResponseError } from "@/lib/api/concierge";
 
 import { useConciergeThreadSave } from "../useConciergeThreadSave";
 
-function axios401() {
-  return new AxiosError("unauthorized", "ERR_BAD_REQUEST", undefined, undefined, {
-    status: 401,
-    statusText: "Unauthorized",
-    data: {},
-    headers: {},
+function axiosWithStatus(status: number, data: unknown = {}, contentType = "application/json") {
+  return new AxiosError(`status ${status}`, status >= 500 ? "ERR_BAD_RESPONSE" : "ERR_BAD_REQUEST", undefined, undefined, {
+    status,
+    statusText: String(status),
+    data,
+    headers: { "content-type": contentType },
     config: { headers: new AxiosHeaders() },
   });
+}
+
+function axios401() {
+  return axiosWithStatus(401);
 }
 
 function setup(props: { threadId: number | null; canSave: boolean }) {
@@ -80,6 +90,57 @@ describe("useConciergeThreadSave", () => {
     });
 
     expect(result.current.state).toEqual({ status: "error", error: "network", historyHref: null });
+  });
+
+  it("本番再現: upstream 502 (text/html) は server_unavailable として扱い、成功表示しない", async () => {
+    apiMocks.fetchThreads.mockRejectedValue(axiosWithStatus(502, "<!DOCTYPE html>...", "text/html; charset=utf-8"));
+    const { result } = setup({ threadId: 89, canSave: true });
+
+    await act(async () => {
+      await result.current.save();
+    });
+
+    expect(result.current.state).toEqual({ status: "error", error: "server_unavailable", historyHref: null });
+  });
+
+  it("server_unavailable の後は再クリックで再確認でき、成功すれば saved になる", async () => {
+    apiMocks.fetchThreads
+      .mockRejectedValueOnce(axiosWithStatus(502, "<html></html>", "text/html"))
+      .mockResolvedValueOnce([{ id: 89 }]);
+    const { result } = setup({ threadId: 89, canSave: true });
+
+    await act(async () => {
+      await result.current.save();
+    });
+    expect(result.current.state.error).toBe("server_unavailable");
+
+    await act(async () => {
+      await result.current.save();
+    });
+    expect(apiMocks.fetchThreads).toHaveBeenCalledTimes(2);
+    expect(result.current.state).toEqual({ status: "saved", error: null, historyHref: "/mypage/history/89" });
+  });
+
+  it("2xx だが一覧形式で読めない応答は not_owned ではなく invalid_response", async () => {
+    apiMocks.fetchThreads.mockRejectedValue(new ConciergeThreadsResponseError());
+    const { result } = setup({ threadId: 89, canSave: true });
+
+    await act(async () => {
+      await result.current.save();
+    });
+
+    expect(result.current.state.error).toBe("invalid_response");
+  });
+
+  it("応答の無い axios エラー(transport 失敗)は network", async () => {
+    apiMocks.fetchThreads.mockRejectedValue(new AxiosError("Network Error", "ERR_NETWORK"));
+    const { result } = setup({ threadId: 89, canSave: true });
+
+    await act(async () => {
+      await result.current.save();
+    });
+
+    expect(result.current.state.error).toBe("network");
   });
 
   it("確認 API の 401 はセッション切れ(unauthenticated)として扱う", async () => {

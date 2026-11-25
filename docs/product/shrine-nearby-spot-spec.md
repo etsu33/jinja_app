@@ -1,6 +1,8 @@
 > **Status: 正本（承認済み仕様）。実装は未着手。**
-> 母艦承認：2026-11-24（「KAMI MUSUBI｜ShrineNearbySpot 統合実装指示書 v1.0」）。
+> 母艦承認：2026-11-24（「KAMI MUSUBI｜ShrineNearbySpot 統合実装指示書 v1.0」、History関連付け条件 v1.0、DB登録候補判定ルール v1.3）。
+> 登録候補判定の上位ルール：Google Drive「KAMI MUSUBI｜DB登録候補判定ルール v1.3（正式）」第9章（2026-11-24承認）。
 > 承認範囲：設計方針・カテゴリー・座標・同一神社性・削除保護・Publication Gate・API / UI 契約。
+> 2026-11-25：カテゴリーを 3 種類から 5 種類に変更（えつこさん決定。Drive「KAMI MUSUBI 文章と見どころの選定・表現ルール v1.0（案）」7章。値の名前と日本語表示は同日確定。§2.1.1）。
 > 本書は PR-0（仕様・ドキュメント）で追加した。モデル・Migration・API・UI はまだ無い。
 > PR-1 以降は、それぞれ母艦の承認を得てから始める。
 
@@ -25,6 +27,8 @@
 - 3 件とも、歴史候補 H-4「赤坂の乃木邸と厩」と関係する。
 - H-4 が本番の `ShrineHistory` として登録・承認済みであるとは**仮定しない**。H-4 はシート上で保留中である。
 - 3 件の本番公開は、この仕様の範囲に含まない。
+- 3 件の「OK／直す／保留／入れない」はそれぞれ独立して判定し、登録候補・本番投入・公開の各承認を混同しない。H-4 はスプレッドシートの候補ラベルであり、`ShrineHistory.id` として扱わない。
+- 2026-11-25、No.15「乃木将軍と辻占売少年像」と No.17「水師営の会見のなつめの木」も、境内（神社が管理している敷地）の外にあるとして周辺スポットに区分した（えつこさん決定）。カテゴリーは §2.1.1 のとおり `monument` / `historic_tree`。この 2 件は上の初期対象 3 件の承認範囲には含めない。
 
 ## 2. データモデル
 
@@ -37,7 +41,7 @@
 | `id` | |
 | `shrine` | FK → `Shrine` |
 | `stable_key` | 一意。空白だけの値は禁止 |
-| `category` | `historical_building` / `historical_site` / `park` の 3 種類だけ |
+| `category` | `historical_building` / `historical_site` / `park` / `monument` / `historic_tree` の 5 種類だけ（§2.1.1） |
 | `sort_order` | 表示順。**参道順ではない** |
 | `verification_status` | 既存の `KNOWLEDGE_VERIFICATION_STATUS_CHOICES` |
 | `confidence` | 既存の `KNOWLEDGE_CONFIDENCE_CHOICES` |
@@ -52,13 +56,30 @@
 | `latitude` | `DecimalField(11, 8)`、NULL 可。WGS84 |
 | `longitude` | `DecimalField(12, 8)`、NULL 可。WGS84 |
 | `position_status` | `PASS` / `HOLD_POSITION_REVIEW` |
-| `position_source_type` | 座標の出典の種類 |
+| `position_source_type` | `official_map` / `map_provider_poi` / `public_geospatial_data` の3値。Knowledgeの `source_type` と独立 |
 | `position_source_url` | 座標の出典 URL |
 | `position_verified_at` | 座標を確かめた日時 |
 
-- 範囲、緯度・経度のペアの整合（片方だけは不可）、Position Gate は、Django の検証と DB の制約の両方で守る。
+- 座標の数値範囲・ペア整合（片方だけは不可）・形式上の必須項目は、Django の検証と DB 制約の両方で守る。出典が指す対象施設・地点用途の一致や出典競合の解消は人間が確認し、DB 制約だけで保証済みとは扱わない。
 - 初期実装では、Spot 用の GIS PointField を追加しない。
 - 神社本体の座標で代わりに埋めることは禁止する。
+
+### 2.1.1 カテゴリー（2026-11-25 変更）
+
+カテゴリーの使い道は、神社詳細のカードに出す日本語表示だけ（§6）。推薦・並び順には使わない。
+
+| 値 | 日本語表示 | 対象 | 例（乃木神社） |
+|---|---|---|---|
+| `historical_building` | 歴史的建造物 | 歴史的な建物 | No.14 旧乃木邸、No.16 厩 |
+| `historical_site` | 歴史の舞台 | 歴史的な出来事が起きた場所 | （なし） |
+| `park` | 公園 | 公園 | No.19 乃木公園 |
+| `monument` | 像・記念碑 | 像・碑など、人物や出来事を記念して置かれたもの | No.15 乃木将軍と辻占売少年像 |
+| `historic_tree` | 由緒のある木 | 歴史的な出来事・人物とつながる木 | No.17 水師営の会見のなつめの木 |
+
+- `monument` と `historic_tree` は 2026-11-25 に追加した（えつこさん決定）。
+- 値の名前と日本語表示は 2026-11-25 に確定した（えつこさん決定）。
+- `historical_site` の日本語表示に「史跡」を使わない。国・自治体の指定史跡と誤解されるため。
+- 「御神木」はカテゴリーにしない。神社が祀る木は境内のものであり、周辺スポットではないため。
 
 ### 2.2 ShrineNearbySpotTranslation
 
@@ -111,6 +132,7 @@ ORM の削除保護（状態に応じた保護）と、DB の参照整合性（P
 
 - 出典の扱いは見どころと同じにする。`user_observation` と `internal_research` だけでは公開できない。
 - 言語ごとに独立して判定する。英語の翻訳が未承認でも、日本語の判定には影響しない。
+- 既存 `backend/temples/services/highlight_publication.py` の値ベースの公開判定関数を再利用し、同じ5条件の関数を複製しない。公開済み History へのリンクは6番目の必須条件に追加しない。
 
 ### 4.2 Position Gate（Publication Gate とは別に判定する）
 
@@ -119,6 +141,38 @@ ORM の削除保護（状態に応じた保護）と、DB の参照整合性（P
 | PASS | PASS | カードと地図導線を出せる |
 | PASS | HOLD | カードだけ出せる（座標は出さない） |
 | FAIL | — | カードも地図導線も出さない |
+
+**Position Gate v1.0（2026-11-24 母艦承認）**
+
+`PASS` には以下をすべて必要とする。
+
+1. `latitude` と `longitude` が両方存在し、WGS84の有効範囲内にある。
+2. `position_source_type` が次の3値のいずれか：`official_map`（公式案内地図）、`map_provider_poi`（地図事業者の施設POI）、`public_geospatial_data`（公的地理空間資料）。
+3. 追跡可能な有効な `position_source_url` が存在する。
+4. `position_verified_at` に確認日時が記録されている。
+5. 出典が示す実世界の対象施設が該当Spotと一致している。
+6. 出典における位置の用途が建物・公園など当該Spotの案内目的と一致している。
+7. 採用座標に関する未解決の出典間競合がない。
+
+- 座標出典の種類だけでは自動的に `PASS` としない。検証不能または競合未解決の場合は `HOLD_POSITION_REVIEW`。
+- `HOLD_POSITION_REVIEW` の採用座標 `latitude` / `longitude` は両方 `NULL`。公開APIでも両方 `null` を返し、地図・経路案内には使用しない。親 `Shrine` の座標で代替しない。
+- `Publication Gate` と `Position Gate` は独立する。文章カードが公開可能で座標だけHOLDの場合、地図導線なしの文章カードを返す。
+- 人による施設同定・出典整合の確認とDB上の形式制約は別責務。新しい `position_source_type` は既存 `ShrineKnowledgeSource.source_type` を変更しない。
+
+### 4.3 historical_connection と History関連付け（2026-11-24 母艦承認）
+
+- `historical_connection` は、神社とSpotの歴史的なつながりについて、**文章中の個々の主張を出典から追跡・確認できる範囲のみ**記述する。事実・伝承・編集上の解釈を混同せず、未確認の主張や未解決の相違を確定事実として公開しない。
+- 下書きで未確認事項を管理することと、公開文章に含めることを分離する。
+- **公開済み `ShrineHistory` への関連付けは、Spotの公開必須条件にしない。** 既存のPublication Gate 5条件を維持する。各Spot独自の出典で確認済みの情報は、History未公開でも独立して公開審査を受けられる。
+- `linked_history_ids` は、同じ神社のHistoryで、かつ神社詳細APIの `histories` に実際に表示されるものに限る。該当がなければ `[]`。保留中のH-4を公開済みHistoryと推定してリンクを作らない。
+- `historical_connection` に個別主張の根拠がない場合、当該主張を公開文章に含めない。空欄の場合も既存5条件の `name` / `description` を満たすか別途判定する。
+
+### 4.4 DB登録候補と本番投入の境界（Drive正式ルール v1.3）
+
+- 適用対象は `ShrineNearbySpot`・`ShrineNearbySpotTranslation`・`ShrineNearbySpotSource`・`ShrineNearbySpotHistory` と、関連する既存のSource / History。
+- 人間の判断 `OK / 直す / 保留 / 入れない` と作業状態を分離する。**「直す」には既存ルール第3章の7条件、「OK」には第3A章の7条件**をそのまま適用し、保存後の再取得・維持項目・主張ごとの出典・事実と伝承の分離・関連整合・採用範囲を確認する。
+- 「登録候補」はDB書込み・`published` / `approved`・本番公開の許可ではない。本番投入には独立した検証工程と明示承認が必要。既存の神社・History・Highlightの確認状態をNearbySpotへ自動継承しない。
+- No.14 旧乃木邸、No.16 厩、No.19 乃木公園は個別審査が必要。第1〜8章に残る未整備の検証工程・内容審査が、この仕様同期によって実装済みになったとは扱わない。
 
 ## 5. API 契約
 
@@ -160,7 +214,7 @@ ORM の削除保護（状態に応じた保護）と、DB の参照整合性（P
   - 現地確認日（ある場合）
   - 地図導線（`map_available` が `true` の場合）
 - 既存の Design Token を使う。
-- **モバイル：** 現行の神社詳細画面の構造を確かめたうえで、同じ内容を出せる独立コンポーネントを足す。公開してよいかの判定は Web とモバイルで二重に実装せず、Backend の判定結果を正本にする。Web とモバイルは同じ PR でなくてよい。
+- **モバイル（母艦承認済みの限定例外）：** `ShrineNearbySpot` のみ新規開発保留の例外としてPR-5の対象とする。現行の神社詳細画面の構造を確認し、同じ情報を表示する独立コンポーネントを実装する。Publication / Position Gate・出典・翻訳・History表示判定はBackendのみを正本とし、Web・Mobileで判定を複製しない。Mobile全体の新規開発・ストア公開・Phase 8順序は依然保留。PR開始・マージ・配布はそれぞれ母艦の個別判断が必要（README / Roadmapへの限定例外はPR #3521で反映済み）。
 
 ## 7. MVP から外すもの
 
@@ -187,7 +241,7 @@ ORM の削除保護（状態に応じた保護）と、DB の参照整合性（P
 | PR-2 | 同一神社性、削除保護、Publication Gate、Position Gate とテスト | 母艦承認 |
 | PR-3 | 神社詳細 API（`nearby_spots`・出典・History リンク・座標の公開条件） | 母艦承認 |
 | PR-4 | Web UI（独立セクション・表示・リンク・地図導線） | 母艦承認 |
-| PR-5 | Mobile UI（Web と同等の表示） | 母艦承認 |
+| PR-5 | Mobile UI（Web と同等の表示）。NearbySpot限定のMobile保留例外 | 母艦の個別承認 |
 
 各 PR は、独立してレビュー・マージできる範囲に限り、テストとドキュメントの更新まで含める。
 
@@ -203,6 +257,10 @@ ORM の削除保護（状態に応じた保護）と、DB の参照整合性（P
 - 承認後に文章を変えると、承認が失効する。
 - 座標が未確認でも、公開条件を満たす説明カードは表示される。
 - 未公開の History へのリンクが出ない。
+- 公開可能なSpotでHistoryリンクが無くても公開でき、`linked_history_ids=[]` になる。
+- 未確認のH-4由来主張を `historical_connection` に公開しない。
+- Position Gate PASSに出典種別3値・URL・確認日時・施設同定・用途一致・競合解消が必要で、HOLD時は座標が両方NULLになる。
+- MobileはWebと同じBackendの公開判定を使用し、独自のGateを作らない。
 - 既存の見どころが従来どおり表示される。
 - 推薦・Compass・Ranking の挙動が変わらない。
 - API のクエリ数が件数に比例して増えない。
@@ -227,14 +285,22 @@ DB テストは隔離された PostgreSQL で行う。本番には接続しな�
 | 座標の型 | 神社本体は `Shrine.latitude` / `longitude` が `FloatField`、`location` が `PointField` | Spot は仕様どおり `DecimalField` で、神社本体とは型が違う（仕様の判断どおり） |
 | モバイル | `apps/mobile/app/shrines/[id].tsx` に神社詳細画面がある。見どころは未実装 | README の「現行開発スコープ」は Mobile の新規開発を保留している（§11） |
 
-## 11. 未決事項（母艦の判断が要るもの。本書では決めていない）
+## 11. 承認事項・残る実装判断（2026-11-24 同期）
 
-1. **Position Gate の PASS の条件。** PASS のとき必須にする項目（両方の座標・`position_source_type`・`position_source_url`・`position_verified_at` のどれまでか）が決まっていない。
-2. **`position_source_type` の値。** 既存の出典の種類（`ShrineKnowledgeSource.source_type`）を使うか、別の語彙を作るか。
-3. **historical_connection の書き方。** 見どころには「つながった由緒・歴史の言い換えだけを書く」という決まりがある（ドライブの目次「神社の見どころ」）。Spot にも当てはめるか。乃木神社の 3 件は H-4（保留中）の言い換えを含んでいる。そのため、当てはめる場合は H-4 が出るまで文章を出せない。
-4. **登録候補の判定ルールの対象。** 「DB登録候補判定ルール v1.2（正式）」の対象は ShrineHighlight・ShrineHistory・関連する ShrineKnowledgeSource で、ShrineNearbySpot は入っていない。
-5. **PR-5（モバイル）と開発スコープの関係。** README の「現行開発スコープ（2026-10-25）」は Mobile の新規開発を保留している。PR-5 はこの保留の例外として扱うか、保留が解けるまで待つか。
-6. **ドライブの目次への登録。** CLAUDE.md の決まりでは、新しいルールはドライブの目次に 1 行足す。本書を正本として目次に載せる時期（PR-0 のマージ後など）。
+次の6論点は母艦で判断・Drive文書に反映済みであり、旧「未決事項」ではない。
+
+1. Position Gate PASS必須条件：座標ペア、出典種別、出典URL、確認日時、対象施設同定、地点用途、競合解消。
+2. `position_source_type`：`official_map` / `map_provider_poi` / `public_geospatial_data` の3値。Knowledge Sourceの資料分類から独立。
+3. `historical_connection`：歴史的主張ごとに根拠確認。未確認・相違未解決の主張は公開しない。
+4. History関連付け：公開の必須条件ではない。画面に実際に表示される同じ神社のHistory IDのみ公開する。
+5. DB登録候補判定：Driveの「KAMI MUSUBI｜DB登録候補判定ルール v1.3（正式）」第9章を適用。登録候補・本番投入・公開の承認は別。
+6. Mobile：NearbySpotに限定した保留例外をPR #3521でREADME / Roadmapへ反映。Drive目次の該当ルールは「最新」。
+
+**追加（2026-11-25）：** カテゴリーを 5 種類にした（§2.1.1）。Drive「KAMI MUSUBI 文章と見どころの選定・表現ルール v1.0（案）」7章を先に更新し、本書へ同期した。値の名前と日本語表示は同日確定。
+
+**今後の実装判断：** PR-1〜PR-5は各PRの開始・マージを母艦が個別判断する。Migration番号は着手時の最新leafを再確認する。既存コード実装、乃木神社3件のDB投入・本番公開、Mobileの配布、未整備の内容審査は本同期PRの範囲外。
+
+**正式ルールの参照：** [KAMI MUSUBI｜DB登録候補判定ルール v1.3（正式）](https://docs.google.com/document/d/1i0YD1fI-_btMQHusmvFzQDnFT4_3PfkwwJnif53QHU4/edit)（2026-11-24 母艦承認）。Driveの「KAMI MUSUBI ルールの目次（神社の選定・推薦・データ）」に登録済み。
 
 ## 12. 関連文書
 
