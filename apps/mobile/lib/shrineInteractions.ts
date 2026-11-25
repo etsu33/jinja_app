@@ -1,6 +1,7 @@
 
 
 import { postAuth } from "./http";
+import { track } from "./analytics";
 
 export type ShrineInteractionActionType = "detail_view" | "route_open" | "shrine_card_click";
 
@@ -62,6 +63,12 @@ export async function trackShrineInteraction({
 }
 
 export async function trackShrineDetailView(params: Omit<TrackShrineInteractionParams, "actionType">) {
+  track("shrine_detail_view", {
+    source: params.source ?? "mobile_shrine_detail",
+    shrineId: params.shrineId,
+    platform: "mobile",
+    ...(params.metadata ?? {}),
+  });
   return trackShrineInteraction({
     ...params,
     actionType: "detail_view",

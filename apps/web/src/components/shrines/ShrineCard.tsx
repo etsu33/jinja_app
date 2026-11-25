@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+import type { SearchAnalyticsPayload } from "@/lib/analytics/searchEvents";
 
 function formatDistance(m?: number | null) {
   if (typeof m !== "number" || !Number.isFinite(m)) return null;
@@ -59,6 +60,8 @@ export type ShrineCardProps = {
   isFavorited?: boolean;
   onToggleFavorite?: () => void;
   isTopPick?: boolean;
+  /** DBへ最近追加された神社かどうか。判定は lib/shrine/isNewShrine.ts が行う。 */
+  isNew?: boolean;
 
   explanationSummary?: string | null;
   explanationReasons?: Array<{
@@ -67,6 +70,15 @@ export type ShrineCardProps = {
     text?: string | null;
     strength?: "low" | "mid" | "high" | null;
   }> | null;
+
+  /**
+   * shrine_card_click の `source`。既存 SearchAnalyticsPayload.source の値のみを
+   * 受け付ける（新しいsource taxonomyは作らない）。
+   *
+   * 既定は従来のハードコード値 "shrines" で、指定しない既存callerの挙動は変わらない。
+   * Weekly Compassからの呼び出しだけが "compass" を指定する。
+   */
+  analyticsSource?: NonNullable<SearchAnalyticsPayload["source"]>;
 };
 
 export function ShrineCard(props: ShrineCardProps) {
@@ -89,8 +101,10 @@ export function ShrineCard(props: ShrineCardProps) {
     isFavorited,
     onToggleFavorite,
     isTopPick = false,
+    isNew = false,
     explanationSummary,
     explanationReasons,
+    analyticsSource = "shrines",
   } = props;
 
   const distText = formatDistance(distanceM);
@@ -108,24 +122,24 @@ export function ShrineCard(props: ShrineCardProps) {
 
   const cardClass = [
     "rounded-2xl border p-4 shadow-sm transition-colors",
-    isTopPick ? "border-amber-300 bg-amber-50/40" : "border-slate-200 bg-white",
+    isTopPick ? "border-amber-300 bg-amber-50/40" : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)]",
   ].join(" ");
 
   const summaryClass = [
     "mt-2 line-clamp-1",
-    isTopPick ? "text-[12px] leading-5 text-slate-500" : "text-[12px] leading-5 text-slate-600",
+    isTopPick ? "text-[12px] leading-5 text-[var(--kt-color-text-muted)]" : "text-[12px] leading-5 text-[var(--kt-color-text-secondary)]",
   ].join(" ");
 
   const primaryClass = [
     "mt-1 line-clamp-2",
     isTopPick
-      ? "text-[14px] font-semibold leading-6 text-slate-900"
-      : "text-[13px] font-medium leading-6 text-slate-700",
+      ? "text-[14px] font-semibold leading-6 text-[var(--kt-color-text-primary)]"
+      : "text-[13px] font-medium leading-6 text-[var(--kt-color-text-secondary)]",
   ].join(" ");
 
   const MainContent = (
     <div className="flex gap-4">
-      <div className="h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+      <div className="h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-[var(--kt-color-surface-elevated)]">
         {imageUrl ? (
           <Image src={imageUrl} alt={name} width={112} height={80} className="h-full w-full object-cover" />
         ) : null}
@@ -134,7 +148,7 @@ export function ShrineCard(props: ShrineCardProps) {
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            {isTopPick || topReasonLabel ? (
+            {isTopPick || topReasonLabel || isNew ? (
               <div className="mb-2 flex flex-wrap gap-2">
                 {isTopPick ? (
                   <div className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
@@ -143,15 +157,22 @@ export function ShrineCard(props: ShrineCardProps) {
                 ) : null}
 
                 {topReasonLabel ? (
-                  <div className="inline-flex rounded-full border border-amber-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                  <div className="inline-flex rounded-full border border-amber-200 bg-[var(--kt-color-surface-default)] px-2 py-0.5 text-[11px] font-semibold text-amber-700">
                     {topReasonLabel}
+                  </div>
+                ) : null}
+
+                {/* 情報補助のため「いちばんおすすめ」より弱い視覚階層に留める（中立色・非semibold）。 */}
+                {isNew ? (
+                  <div className="inline-flex rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--kt-color-text-secondary)]">
+                    新着
                   </div>
                 ) : null}
               </div>
             ) : null}
 
             <div
-              className={["truncate font-semibold text-slate-900", isTopPick ? "text-[16px]" : "text-[15px]"].join(" ")}
+              className={["truncate font-semibold text-[var(--kt-color-text-primary)]", isTopPick ? "text-[16px]" : "text-[15px]"].join(" ")}
             >
               {name}
             </div>
@@ -166,7 +187,7 @@ export function ShrineCard(props: ShrineCardProps) {
             ) : null}
 
             {distText || typeof rating === "number" ? (
-              <div className="mt-2 flex gap-3 text-sm text-slate-600">
+              <div className="mt-2 flex gap-3 text-sm text-[var(--kt-color-text-secondary)]">
                 {distText ? <span>{distText}</span> : null}
                 {typeof rating === "number" ? (
                   <span>
@@ -177,7 +198,7 @@ export function ShrineCard(props: ShrineCardProps) {
               </div>
             ) : null}
 
-            {address ? <div className="mt-1 truncate text-xs text-slate-500">{address}</div> : null}
+            {address ? <div className="mt-1 truncate text-xs text-[var(--kt-color-text-muted)]">{address}</div> : null}
           </div>
 
           {typeof isFavorited === "boolean" && onToggleFavorite ? (
@@ -199,7 +220,7 @@ export function ShrineCard(props: ShrineCardProps) {
         {tags.length ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {tags.slice(0, 3).map((t) => (
-              <span key={t} className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-500">
+              <span key={t} className="rounded-full bg-[var(--kt-color-surface-elevated)] px-2 py-1 text-[11px] text-[var(--kt-color-text-muted)]">
                 {t}
               </span>
             ))}
@@ -217,7 +238,7 @@ export function ShrineCard(props: ShrineCardProps) {
           className="block"
           onClick={() => {
             trackSearchEvent("shrine_card_click", {
-              source: "shrines",
+              source: analyticsSource,
               shrineId,
             });
           }}

@@ -27,7 +27,7 @@ export default async function PublicProfilePage({ params }: Props) {
     return (
       <main className="mx-auto max-w-xl p-6">
         <h1 className="text-xl font-bold">@{username}</h1>
-        <p className="mt-3 text-sm text-gray-600">このプロフィールは非公開です。</p>
+        <p className="mt-3 text-sm text-[var(--kt-color-text-secondary)]">このプロフィールは非公開です。</p>
       </main>
     );
   }
@@ -42,22 +42,6 @@ export default async function PublicProfilePage({ params }: Props) {
 
   const hasWebsite = typeof website === "string" && website.trim().length > 0 && /^https?:\/\//i.test(website.trim());
 
-  const birthday: string | null = profile.birthday ?? null;
-  const birthdayText: string | null = (() => {
-    if (!birthday) return null;
-    const d = new Date(birthday);
-    if (Number.isNaN(d.getTime())) {
-      return birthday;
-    }
-    const today = new Date();
-    let age = today.getFullYear() - d.getFullYear();
-    const m = today.getMonth() - d.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) {
-      age--;
-    }
-    return `${birthday}（${age}歳）`;
-  })();
-
   return (
     <main className="mx-auto max-w-xl px-4 py-6 sm:px-6 sm:py-8">
       {/* ヘッダー：アイコン＋名前＋@username ＋ 公開バッジ */}
@@ -71,7 +55,7 @@ export default async function PublicProfilePage({ params }: Props) {
             className="size-16 rounded-full border object-cover"
           />
         ) : (
-          <div className="size-16 rounded-full bg-gray-200" />
+          <div className="size-16 rounded-full bg-[var(--kt-color-surface-emphasis)]" />
         )}
 
         <div className="min-w-0 flex-1">
@@ -81,19 +65,19 @@ export default async function PublicProfilePage({ params }: Props) {
               公開プロフィール
             </span>
           </div>
-          <p className="mt-1 text-sm text-gray-500">@{profile.username}</p>
+          <p className="mt-1 text-sm text-[var(--kt-color-text-muted)]">@{profile.username}</p>
         </div>
       </header>
 
       {/* 詳細情報 */}
-      <section className="space-y-4 text-sm text-gray-700">
+      <section className="space-y-4 text-sm text-[var(--kt-color-text-secondary)]">
         <div className="grid grid-cols-[100px,1fr] gap-y-2 gap-x-4">
-          <div className="text-xs text-gray-400">地域</div>
+          <div className="text-xs text-[var(--kt-color-text-muted)]">地域</div>
           <div>{rawLocation || "-"}</div>
 
           {hasWebsite && (
             <>
-              <div className="text-xs text-gray-400">Webサイト</div>
+              <div className="text-xs text-[var(--kt-color-text-muted)]">Webサイト</div>
               <div>
                 <a
                   href={website!}
@@ -106,14 +90,11 @@ export default async function PublicProfilePage({ params }: Props) {
               </div>
             </>
           )}
-
-          <div className="text-xs text-gray-400">生年月日</div>
-          <div>{birthdayText ?? "-"}</div>
         </div>
 
         <div>
-          <div className="text-xs text-gray-400">自己紹介</div>
-          <p className="mt-1 whitespace-pre-line text-sm text-gray-700">{bio}</p>
+          <div className="text-xs text-[var(--kt-color-text-muted)]">自己紹介</div>
+          <p className="mt-1 whitespace-pre-line text-sm text-[var(--kt-color-text-secondary)]">{bio}</p>
         </div>
       </section>
     </main>

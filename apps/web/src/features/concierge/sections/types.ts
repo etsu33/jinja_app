@@ -1,23 +1,28 @@
 import type { ConciergeBreakdown, ConciergeReasonFacts } from "@/lib/api/concierge";
 import type { ConciergeModeSignal } from "@/features/concierge/types/unified";
 import type { DirectionReference } from "../../../../../../packages/shared/directionReference";
+import type { RecommendationAnalyticsProvenance } from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
+import type { UserOrigin } from "../../../../../../packages/shared/userOrigin";
+import type { ConciergeHighlightPick } from "@/features/concierge/highlightPick";
 
 /* =========================
  * filter state
  * ========================= */
-export type Element4 = "火" | "地" | "風" | "水";
 export type GoriyakuTag = { id: number; name: string };
 
 export type ConciergeFilterState = {
   isOpen: boolean;
-  birthdate: string; // YYYY-MM-DD（空文字OK）
-  element4: Element4 | null;
   goriyakuTags: readonly GoriyakuTag[];
-  suggestedTags: readonly GoriyakuTag[];
   selectedTagIds: readonly number[];
   tagsLoading: boolean;
   tagsError: string | null;
-  extraCondition: string;
+  extraCondition: string; // Level 2 Visit Preference (Legacy/Transitional, free-text)
+  visitPreferences: readonly string[]; // Level 2 Visit Preference (Structured, canonical tags)
+  // Level 3-C Recommendation Context. These remain optional during the staged
+  // PR3 wiring so the branch stays type-safe until ConciergeClientFull starts
+  // projecting the existing source-of-truth state into this FilterState.
+  plannedVisitDate: string;
+  userOrigin: UserOrigin | null;
 };
 
 /* =========================
@@ -34,6 +39,9 @@ export type RegisteredShrineItem = {
   breakdown?: ConciergeBreakdown | null;
   breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
+  analyticsProvenance?: RecommendationAnalyticsProvenance;
+  /** Backend rid, reused as-is (docs/audit/recommendation-instance-identity-propagation.md). Never generated on Frontend. */
+  recommendationInstanceId?: string | null;
   consultationAxis?: string | null;
   explanation?: {
     version?: number | null;
@@ -48,6 +56,8 @@ export type RegisteredShrineItem = {
     disclaimer?: string | null;
   } | null;
   directionReference?: DirectionReference | null;
+  /** 見どころ単位の推薦 PR-3：相談に合う「ここで見る」見どころ（backend の highlight_pick）。推薦理由ではない。 */
+  highlightPick?: ConciergeHighlightPick | null;
 };
 
 export type PlaceShrineItem = {
@@ -62,6 +72,9 @@ export type PlaceShrineItem = {
   breakdown?: ConciergeBreakdown | null;
   breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
+  analyticsProvenance?: RecommendationAnalyticsProvenance;
+  /** Backend rid, reused as-is (docs/audit/recommendation-instance-identity-propagation.md). Never generated on Frontend. */
+  recommendationInstanceId?: string | null;
   consultationAxis?: string | null;
   isDummy?: boolean;
   directionReference?: DirectionReference | null;
@@ -143,8 +156,11 @@ export type RendererAction =
   | { type: "add_condition" }
   | { type: "filter_close" }
   | { type: "filter_apply" }
-  | { type: "filter_set_birthdate"; birthdate: string }
   | { type: "filter_toggle_tag"; tagId: number }
   | { type: "filter_set_extra"; extraCondition: string }
+  | { type: "filter_set_visit_preferences"; visitPreferences: string[] }
+  | { type: "filter_set_visit_date"; plannedVisitDate: string }
+  | { type: "filter_set_origin"; userOrigin: UserOrigin | null }
+  | { type: "filter_use_current_location" }
   | { type: "filter_clear" }
   | { type: "save_concierge_thread" };

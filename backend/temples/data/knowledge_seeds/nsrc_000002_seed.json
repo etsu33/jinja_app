@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "ITOIGAWA_AOSAWA_SPRING_FESTIVAL",
+      "source_type": "government",
+      "title": "4月の地域の祭り | 新潟県糸魚川市 - 地域のまつり紹介サイト",
+      "publisher": "糸魚川市 / 糸魚川ジオパーク協議会",
+      "url": "https://matsuri.geo-itoigawa.com/calendar/m04/",
+      "language": "ja",
+      "accessed_at": "2026-10-10",
+      "verified_at": "2026-10-10T18:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "青澤神社",
+        "address": "新潟県糸魚川市大字青海2696番地"
+      },
+      "deities": [],
+      "histories": [
+        {
+          "history_type": "regional_context",
+          "title": "青沢神社の春季祭礼",
+          "content": "青沢神社では毎年4月第3日曜日に春季祭礼が行われ、前日の宵宮には神楽が奉納される。祭礼当日は神輿・子供みこしの地区巡回、神楽奉納、手踊りが行われる。",
+          "period_text": "毎年4月第3日曜日",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-10T18:00:00+09:00",
+          "source_keys": [
+            "ITOIGAWA_AOSAWA_SPRING_FESTIVAL"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Dict, Optional, Set
+from typing import Dict, Iterable, Optional, Set
 
 from temples.domain.extra_condition_tags import extract_extra_tags, split_tags_by_kind
+from temples.domain.visit_preference import VISIT_PREFERENCE_TAGS
 
 
 def resolve_extra_condition_tags(
@@ -38,6 +39,33 @@ def resolve_extra_condition_tags(
     }
 
 
+def resolve_visit_preference_tags(
+    *,
+    structured: Optional[Iterable[str]],
+    legacy_visit_style_tags: Set[str],
+) -> Set[str]:
+    """Level 2 Visit Preference Compatibility Layer (Structured + Legacy).
+
+    Merges a Structured `visit_preferences` selection (validated, canonical
+    tags -- see temples/domain/visit_preference.py) with the Legacy
+    extra_condition-derived `visit_style_tags` (free-text keyword parsing,
+    resolve_extra_condition_tags() above).
+
+    Both sides resolve into the *same* canonical tag vocabulary, so a plain
+    set union is enough to dedupe: `score_visit_style` (concierge_chat_ranking
+    ._attach_breakdown) counts distinct matched tag names, not occurrences,
+    so a tag present in both Structured and Legacy still contributes once
+    -- no double-counting regardless of which side(s) produced it.
+    """
+    structured_tags = {
+        str(tag).strip()
+        for tag in (structured or [])
+        if str(tag).strip() in VISIT_PREFERENCE_TAGS
+    }
+    return structured_tags | (legacy_visit_style_tags or set())
+
+
 __all__ = [
     "resolve_extra_condition_tags",
+    "resolve_visit_preference_tags",
 ]

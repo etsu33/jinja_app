@@ -39,6 +39,8 @@ export function pickAllowedShrineDetailQuery(
 export type ShrineHrefOpts = {
   ctx?: "concierge" | string;
   tid?: number | string | null;
+  recommendationInstanceId?: string | null;
+  recommendationRank?: number | null;
 
   /** 追加クエリ（place_id / toast のみ許可） */
   query?: Record<string, string | number | boolean | null | undefined>;
@@ -61,6 +63,12 @@ export function buildShrineHref(shrineId: number | string, opts: ShrineHrefOpts 
   if (ctx) params.set("ctx", String(ctx));
   if (tid !== null && tid !== undefined && String(tid).trim() !== "") {
     params.set("tid", String(tid));
+  }
+  if (opts.recommendationInstanceId?.trim()) {
+    params.set("recommendation_instance_id", opts.recommendationInstanceId.trim());
+  }
+  if (typeof opts.recommendationRank === "number" && Number.isInteger(opts.recommendationRank) && opts.recommendationRank > 0) {
+    params.set("recommendation_rank", String(opts.recommendationRank));
   }
 
   const allowedQuery = pickAllowedShrineDetailQuery(opts.query, SHRINE_HREF_ALLOWED_QUERY_KEYS);

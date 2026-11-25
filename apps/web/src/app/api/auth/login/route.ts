@@ -1,20 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { serverLog, getRequestId } from "@/lib/server/logging";
 import { djFetch } from "@/lib/server/backend";
+import { isSecureRequest, setAccessTokenCookie, setRefreshTokenCookie } from "@/lib/server/authCookies";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-
-
-function isSecureCookie(req: NextRequest) {
-  if (process.env.NODE_ENV !== "production") return false;
-
-  const xfProto = req.headers.get("x-forwarded-proto");
-  const proto = (xfProto ? xfProto.split(",")[0].trim() : req.nextUrl.protocol.replace(":", "")).toLowerCase();
-
-  return proto === "https";
-}
 
 type Creds = { usernameRaw: string; passwordRaw: string };
 
@@ -67,6 +57,7 @@ export async function POST(req: NextRequest) {
     const r = await djFetch(upstreamPath, {
       method: "POST",
       cache: "no-store",
+      clientIdentityFrom: req,
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -82,6 +73,14 @@ export async function POST(req: NextRequest) {
       status: r.status,
       contentType,
     });
+
+    if (r.status === 429) {
+      const retryAfter = r.headers.get("retry-after");
+      return NextResponse.json(
+        { detail: "ログイン試行回数が多すぎます。しばらく待ってから再試行してください。" },
+        { status: 429, headers: retryAfter ? { "Retry-After": retryAfter } : {} },
+      );
+    }
 
     if (!r.ok) {
       serverLog("warn", "AUTH_LOGIN_UPSTREAM_NOT_OK", {
@@ -112,23 +111,11 @@ export async function POST(req: NextRequest) {
     }
 
     const { access, refresh } = data;
-    const secure = isSecureCookie(req);
+    const secure = isSecureRequest(req);
 
     const res = NextResponse.json({ ok: true }, { status: 200 });
-    res.cookies.set("access_token", access, {
-      httpOnly: true,
-      secure,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60,
-    });
-    res.cookies.set("refresh_token", refresh, {
-      httpOnly: true,
-      secure,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
+    setAccessTokenCookie(res, access, { secure });
+    setRefreshTokenCookie(res, refresh, { secure });
     return res;
   } catch (e) {
     serverLog("error", "AUTH_LOGIN_ROUTE_FAILED", {

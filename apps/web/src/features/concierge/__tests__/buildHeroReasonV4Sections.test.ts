@@ -36,6 +36,7 @@ describe("buildHeroReasonV4Sections", () => {
 
     expect(result.hasStructured).toBe(true);
     expect(result.factText).toBe("縁結び・厄除け");
+    expect(result.explanationOnlyFactText).toBeNull();
     expect(result.interpretationText).toBe("相談内容から、今扱いたいテーマを読み取っています。");
     expect(result.actionText).toBe("参拝前に、問いを一つに絞ることを決めておきます。");
     expect(result.fallbackText).toBeNull();
@@ -50,10 +51,13 @@ describe("buildHeroReasonV4Sections", () => {
       reason: null,
     });
 
-    expect(result.factText).toBe("武神");
+    // deityが最優先で採用される(採用順位そのものはPR5でも変更しない)が、
+    // deityはExplanation-onlyのためfactTextではなくexplanationOnlyFactTextへ入る(Finding 9)。
+    expect(result.explanationOnlyFactText).toBe("武神");
+    expect(result.factText).toBeNull();
   });
 
-  it("deityが選ばれるケース", () => {
+  it("deityが選ばれるケース(Explanation-only、factTextには入らない)", () => {
     const result = buildHeroReasonV4Sections({
       detail: makeDetail({
         fact: { deity: "武神", shrine_history: null, place_context: null, goriyaku: null, history_theme: null, label: "武神" },
@@ -62,10 +66,11 @@ describe("buildHeroReasonV4Sections", () => {
       reason: null,
     });
 
-    expect(result.factText).toBe("武神");
+    expect(result.explanationOnlyFactText).toBe("武神");
+    expect(result.factText).toBeNull();
   });
 
-  it("shrine_historyが選ばれるケース(deityが無い場合)", () => {
+  it("shrine_historyが選ばれるケース(deityが無い場合、Explanation-only)", () => {
     const result = buildHeroReasonV4Sections({
       detail: makeDetail({
         fact: { deity: null, shrine_history: "由緒あり", place_context: null, goriyaku: null, history_theme: null, label: "由緒あり" },
@@ -74,10 +79,11 @@ describe("buildHeroReasonV4Sections", () => {
       reason: null,
     });
 
-    expect(result.factText).toBe("由緒あり");
+    expect(result.explanationOnlyFactText).toBe("由緒あり");
+    expect(result.factText).toBeNull();
   });
 
-  it("goriyakuが選ばれるケース(deity/shrine_historyが無い場合)", () => {
+  it("goriyakuが選ばれるケース(deity/shrine_historyが無い場合、Ranking-related)", () => {
     const result = buildHeroReasonV4Sections({
       detail: makeDetail({
         fact: { deity: null, shrine_history: null, place_context: "住所情報", goriyaku: "縁結び", history_theme: "再出発", label: "住所情報" },
@@ -88,9 +94,10 @@ describe("buildHeroReasonV4Sections", () => {
 
     expect(result.factText).toBe("縁結び");
     expect(result.factText).not.toBe("住所情報");
+    expect(result.explanationOnlyFactText).toBeNull();
   });
 
-  it("history_themeが選ばれるケース(deity/shrine_history/goriyakuが無い場合)", () => {
+  it("history_themeが選ばれるケース(deity/shrine_history/goriyakuが無い場合、Ranking-related)", () => {
     const result = buildHeroReasonV4Sections({
       detail: makeDetail({
         fact: { deity: null, shrine_history: null, place_context: "住所情報", goriyaku: null, history_theme: "再出発", label: "住所情報" },
@@ -100,6 +107,7 @@ describe("buildHeroReasonV4Sections", () => {
     });
 
     expect(result.factText).toBe("再出発");
+    expect(result.explanationOnlyFactText).toBeNull();
   });
 
   it("place_contextだけではFactを生成しない(住所を神社の特徴として表示しない)", () => {
@@ -144,7 +152,7 @@ describe("buildHeroReasonV4Sections", () => {
     expect(result.factText).toBeNull();
   });
 
-  it("BackendのFact本文(deity)が独自fallbackより優先される", () => {
+  it("BackendのFact本文(deity)が独自fallbackより優先される(interpretationがhasStructuredを成立させる)", () => {
     const result = buildHeroReasonV4Sections({
       detail: makeDetail({
         fact: { deity: "武神", shrine_history: null, place_context: "住所情報", goriyaku: null, history_theme: null, label: "住所情報" },
@@ -154,8 +162,30 @@ describe("buildHeroReasonV4Sections", () => {
     });
 
     expect(result.hasStructured).toBe(true);
-    expect(result.factText).toBe("武神");
+    expect(result.explanationOnlyFactText).toBe("武神");
+    expect(result.factText).toBeNull();
     expect(result.fallbackText).toBeNull();
+  });
+
+  it("deityのみが構造化要素で、interpretation/actionも空の場合はhasStructured=falseとなりlegacy fallbackへ切り替わる(Fallback Contract、Finding 9)", () => {
+    const result = buildHeroReasonV4Sections({
+      detail: makeDetail({
+        fact: { deity: "武神", shrine_history: null, place_context: null, goriyaku: null, history_theme: null, label: "武神" },
+        interpretation: { text: "" },
+        action: { text: "" },
+        reason_text: "reason_textのfallback文言",
+      }),
+      recommendationReasonV4: "recommendation_reason_v4の内容",
+      reason: "旧型の理由文",
+    });
+
+    // deity単独では「構造化されたRecommendation理由」として扱わない
+    // (=「この神様だから推薦した」という意味一致をConclusionに持たせない)。
+    expect(result.hasStructured).toBe(false);
+    expect(result.factText).toBeNull();
+    expect(result.fallbackText).toBe("reason_textのfallback文言");
+    // deity自体は「参考情報」として引き続き利用可能(hasStructuredの有無に関わらず提供される)。
+    expect(result.explanationOnlyFactText).toBe("武神");
   });
 
   it("detailがまったく無い場合はrecommendation_reason_v4へfallbackする", () => {

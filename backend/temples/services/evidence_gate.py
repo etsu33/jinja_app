@@ -104,6 +104,51 @@ DETAIL_CANDIDATE_VERIFICATION_STATUSES = FACT_READY_VERIFICATION_STATUSES + (
 )
 
 
+DEEP_DIVE_FULL = "full"
+DEEP_DIVE_LIMITED = "limited"
+DEEP_DIVE_NOT_READY = "not_ready"
+
+
+def decide_deep_dive_readiness(
+    *,
+    deity_decisions: Iterable[EvidenceDecision],
+    history_decisions: Iterable[EvidenceDecision],
+) -> str:
+    """Deep Dive Readiness判定（"full" | "limited" | "not_ready"）。
+
+    docs/audit/deep-dive-readiness-content-sufficiency.md §3.4の機械的判定式、
+    docs/product/deep-dive-answer-generation-contract.md §2の実装。
+
+    deity_decisions/history_decisionsには、対象Shrineの各ShrineDeity/
+    ShrineHistoryについて既にdecide_fact_usability()を適用した結果を渡す。
+    本関数自身はDBへ一切アクセスしない（判定ロジックのみに責務を絞る、
+    temples.services.deep_dive_retrievalがDB取得とEvidence Gate適用を担う）。
+
+    - "full": deity/history双方にusable=Trueなfactが1件以上存在し
+      （structural readiness）、かついずれかの軸でconfidence="high"の
+      usable factが1件以上存在する。
+    - "limited": structural readinessは満たすが、どちらの軸でも
+      confidence="high"に到達しない（"medium"止まり）。
+    - "not_ready": deity/historyいずれかでusable factが0件。
+
+    confidenceによる閾値判定はここで新設せず、EvidenceDecision.confidence
+    （Fact自身のverification_status/Source判定を経て既に確定済みの値）を
+    そのまま参照するのみ。usable判定自体の基準（FACT_READY_VERIFICATION_STATUSES）
+    も再定義しない。
+    """
+    deity_usable = [d for d in deity_decisions if d.usable]
+    history_usable = [h for h in history_decisions if h.usable]
+
+    structural_ready = bool(deity_usable) and bool(history_usable)
+    if not structural_ready:
+        return DEEP_DIVE_NOT_READY
+
+    has_high_confidence = any(d.confidence == "high" for d in deity_usable) or any(
+        h.confidence == "high" for h in history_usable
+    )
+    return DEEP_DIVE_FULL if has_high_confidence else DEEP_DIVE_LIMITED
+
+
 def decide_detail_display_state(
     *,
     verification_status: str,
@@ -149,7 +194,11 @@ __all__ = [
     "FACT_READY_VERIFICATION_STATUSES",
     "DETAIL_DISPUTED_VERIFICATION_STATUS",
     "DETAIL_CANDIDATE_VERIFICATION_STATUSES",
+    "DEEP_DIVE_FULL",
+    "DEEP_DIVE_LIMITED",
+    "DEEP_DIVE_NOT_READY",
     "EvidenceDecision",
     "decide_fact_usability",
     "decide_detail_display_state",
+    "decide_deep_dive_readiness",
 ]

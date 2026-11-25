@@ -42,4 +42,23 @@ describe("ShrineActionSection", () => {
       expect(item?.className).toContain("shadow-[var(--kt-shadow-medium)]");
     });
   });
+
+  describe("variant=plain (PR-G3 editorial flow)", () => {
+    it("borderless: 外枠section・itemにborder/surface/shadow/amberを持たず、title/bodyは維持する", () => {
+      const { container } = render(<ShrineActionSection section={section} variant="plain" />);
+
+      const outer = container.querySelector("section")!;
+      expect(outer.className).not.toMatch(/\bborder\b/);
+      expect(outer.className).not.toContain("bg-[var(--kt-color-surface-default)]");
+
+      const item = screen.getByText("向き合い方").closest("div")!;
+      expect(item.className).not.toMatch(/amber-\d/);
+      expect(item.className).not.toContain("bg-[var(--kt-color-premium-surface)]");
+      expect(item.className).not.toMatch(/shadow-\[/);
+
+      expect(screen.getByText("参拝するときの視点").tagName).toBe("H2");
+      expect(screen.getByText("向き合い方")).toBeInTheDocument();
+      expect(screen.getByText("本文")).toBeInTheDocument();
+    });
+  });
 });

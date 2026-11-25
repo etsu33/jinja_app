@@ -68,9 +68,12 @@ export default function ChatInput({ disabled, onSend, error = null, embedMode = 
     void submit();
   };
 
-  const placeholder = embedMode
-    ? "条件を追加（例：静か／縁結び／駅近／ひとりで行きたい など）"
-    : "条件を追加（例：静か／人混み少なめ／階段少なめ／縁結び など）";
+  // 例示はCanonical Visit Preference（quiet / nature / nearby / less_crowded）に
+  // 対応する語だけを出す。Presetから外した「ひとり」「階段少なめ」は
+  // Shrine側にcapabilityが無くcanonical tagを持たないため例示にも出さない
+  // （自由入力としては引き続き受け付ける。free-text互換処理は不変更）。
+  // embedMode / 通常で例示を分けていたが、揃えた結果同一になったため一本化する。
+  const placeholder = "条件を追加（例：静か／自然／駅近／人混み少なめ など）";
 
   const buttonLabel = embedMode ? "更新" : "追加";
 
@@ -93,7 +96,7 @@ export default function ChatInput({ disabled, onSend, error = null, embedMode = 
         rows={2}
         disabled={disabled}
         className={[
-          "flex-1 resize-none border-0 bg-transparent text-sm leading-relaxed outline-none placeholder:text-gray-400 pt-3",
+          "flex-1 resize-none border-0 bg-transparent text-sm leading-relaxed outline-none placeholder:text-[var(--kt-color-text-muted)] pt-3",
           flash ? "ring-2 ring-rose-400/70 rounded-md" : "",
         ].join(" ")}
       />

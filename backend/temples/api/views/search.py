@@ -2,21 +2,18 @@
 
 import os
 import logging
-import time
 import math
 
 
-from django.conf import settings
-from django.core.cache import cache
 from django.http import HttpResponse
 from django.views.decorators.cache import cache_page
 from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema
 
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.views import APIView
 
 
 from temples import services  # services.google_places を各所で利用
@@ -44,60 +41,26 @@ def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> int:
     return int(R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)))
 
 
-def _nearby_ident(request) -> str:
+def _nearby_upstream_error_response():
+    return Response(
+        {"detail": "places.nearby_search は内部エラーのため失敗しました"},
+        status=status.HTTP_502_BAD_GATEWAY,
+    )
+
+
+def _places_disabled_response():
     """
-    Nearby 用の識別子：
-    - 認証済みユーザー: user:<pk>
-    - 匿名ユーザー: REMOTE_ADDR（無ければ 'anon'）
+    kill switch OFF 時の controlled response。
+    results キーを必ず含めるため、直接叩く consumer も壊れない。
     """
-    if getattr(request, "user", None) and getattr(request.user, "is_authenticated", False):
-        return f"user:{request.user.pk}"
-    return request.META.get("REMOTE_ADDR") or "anon"
-
-
-def _apply_places_nearby_throttle(request):
-    """
-    /api/places/nearby_search/ 用の手動スロットル。
-
-    settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["places-nearby"]
-    から「N/min」の N を読み取り、1分あたり N 回まで許可する。
-    """
-    rates = getattr(settings, "REST_FRAMEWORK", {}).get("DEFAULT_THROTTLE_RATES", {})
-    rate = rates.get("places-nearby")
-    if not rate:
-        # レート設定が無い場合はスロットル無し
-        return None
-
-    try:
-        num_str, per = rate.split("/", 1)
-        limit = int(num_str)
-    except Exception:
-        # パースに失敗したら安全側にそこそこ小さい数にしておく
-        limit = 30
-        per = "min"
-
-    # 単位は /min 前提で 60 秒窓を使う（/day などは現状想定しない）
-    window = 60 if "min" in per else 60
-
-    ident = _nearby_ident(request)
-    cache_key = f"throttle:places-nearby:{ident}"
-    now = time.time()
-
-    history = cache.get(cache_key, [])
-    # 窓外の古いリクエストを捨てる
-    history = [ts for ts in history if ts > now - window]
-
-    if len(history) >= limit:
-        # DRF のメッセージに寄せた文言
-        return Response(
-            {"detail": "Request was throttled. Expected available in one minute."},
-            status=status.HTTP_429_TOO_MANY_REQUESTS,
-        )
-
-    # 現在のリクエストを追加して保存
-    history.append(now)
-    cache.set(cache_key, history, window)
-    return None
+    return Response(
+        {
+            "detail": "places upstream is disabled",
+            "status": "PLACES_DISABLED",
+            "results": [],
+        },
+        status=status.HTTP_503_SERVICE_UNAVAILABLE,
+    )
 
 
 # --- /api/places/search/ ---
@@ -217,28 +180,76 @@ def text_search_legacy(request):
     return _text_search_response(request)
 
 
-# --- /api/places/nearby_search/ ---
-@extend_schema(
-    operation_id="api_places_nearby_retrieve",
-    summary="Places: nearby search",
-    parameters=[
-        OpenApiParameter("lat", OpenApiTypes.FLOAT, OpenApiParameter.QUERY, required=True),
-        OpenApiParameter("lng", OpenApiTypes.FLOAT, OpenApiParameter.QUERY, required=True),
-        OpenApiParameter("radius", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
-        OpenApiParameter("keyword", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
-        OpenApiParameter("type", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
-        OpenApiParameter("limit", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
-    ],
-    responses={200: NearbySearchResponse},
-    tags=["places"],
-)
-@api_view(["GET"])
-@permission_classes([AllowAny])
-@throttle_classes([ScopedRateThrottle])
-def nearby_search(request):
-    throttled = _apply_places_nearby_throttle(request)
-    if throttled is not None:
-        return throttled
+def _try_nearby_search_new(*, lat, lng, radius, limit, keyword):
+    """
+    Places API (New) を 1 回だけ試す。
+
+    戻り値 (data, error_response):
+      - (dict, None)  : New API 成功
+      - (None, None)  : 一時障害なので legacy fallback してよい
+      - (None, Response): fallback せずにこの response を返す
+    """
+    try:
+        data = GP.nearby_search_new(
+            lat=lat, lng=lng, radius=radius, limit=limit, keyword=keyword
+        )
+        return data, None
+
+    except GP.GooglePlacesDisabled:
+        return None, _places_disabled_response()
+
+    except GP.GooglePlacesError as e:
+        status_code = getattr(e, "status_code", None)
+        if getattr(e, "transient", False):
+            # 429 / 5xx / timeout / connection error のみ legacy へ落とす
+            GP.log_places_upstream(
+                api="new",
+                operation="searchText",
+                attempt=1,
+                status_code=status_code,
+                fallback_reason="transient_upstream_error",
+                outcome="fallback_to_legacy",
+            )
+            return None, None
+
+        # 400 / 401 / 403 / API key 未設定 / 設定不備 / 決定的な validation error。
+        # legacy へ流しても同じ理由で失敗し課金だけ増えるため fallback しない。
+        GP.log_places_upstream(
+            api="new",
+            operation="searchText",
+            attempt=1,
+            status_code=status_code,
+            fallback_reason="non_transient_no_fallback",
+            outcome="failed",
+        )
+        return None, _nearby_upstream_error_response()
+
+    except Exception as e:
+        # 分類できない失敗は fail-closed（課金を増やさない）。
+        # requests系例外はURL全体（API key含む）をメッセージへ埋め込みうるため
+        # str(e)/repr(e) はログへ含めない。
+        GP.log_places_upstream(
+            api="new",
+            operation="searchText",
+            attempt=1,
+            fallback_reason="unclassified_error_no_fallback",
+            outcome="failed",
+        )
+        logger.warning(
+            "nearby_search_new unclassified failure: error_type=%s", type(e).__name__
+        )
+        return None, _nearby_upstream_error_response()
+
+
+# --- /api/places/nearby/ （+ legacy aliases /api/places/nearby_search/, /api/places/nearby-search/）---
+#: Nearby 3 URL 共通の DRF throttle scope（rate は settings の DEFAULT_THROTTLE_RATES["places-nearby"]）。
+PLACES_NEARBY_THROTTLE_SCOPE = "places-nearby"
+
+
+def _nearby_search_response(request):
+    # server-side kill switch: Google へは HTTP request を一切出さない
+    if not GP.places_upstream_enabled():
+        return _places_disabled_response()
 
     try:
         lat = float(request.query_params.get("lat"))
@@ -248,117 +259,62 @@ def nearby_search(request):
         return Response({"detail": "lat,lng は float、radius は int で指定してください"}, status=400)
 
     limit = int(request.query_params.get("limit", 10))
-    keyword = request.query_params.get("keyword")
-    place_type = request.query_params.get("type")
+    keyword = (request.query_params.get("keyword") or "").strip() or None
+    place_type = (request.query_params.get("type") or "").strip() or None
 
-    if not keyword and not place_type:
+    # keyword も type も無い場合だけデフォルトで「神社」を補う。
+    # type だけ指定された場合は shrine_mode にせず、type もそのまま保持する。
+    if keyword is None and place_type is None:
         keyword = "神社"
 
-    shrine_mode = keyword in (None, "神社")
-    if shrine_mode:
-        place_type = None
+    shrine_mode = keyword == "神社"
 
     use_new = (os.getenv("PLACES_API_NEW") == "1") and shrine_mode
     data = None
 
-    # ① NEW を試す（失敗してもOK）
+    # ① NEW を試す（一時障害のときだけ legacy へ fallback する）
     if use_new:
-        try:
-            data = GP.nearby_search_new(lat=lat, lng=lng, radius=radius, limit=limit, keyword=keyword)
-        except Exception as e:
-            logger.warning(
-                "nearby_search_new failed; fallback to legacy attempts: error_type=%s",
-                type(e).__name__,
-            )
-            data = None
+        data, error_response = _try_nearby_search_new(
+            lat=lat, lng=lng, radius=radius, limit=limit, keyword=keyword
+        )
+        if error_response is not None:
+            return error_response
 
-    # ② data が無ければ legacy attempts
+    # ② data が無ければ legacy を canonical params で 1 回だけ呼ぶ
     if data is None:
-        def opt_args():
-            d = {}
-            if keyword:
-                d["keyword"] = keyword
-            if place_type:
-                d["type"] = place_type
-            return d
+        call_kwargs = {"location": f"{lat},{lng}", "radius": radius}
+        if keyword:
+            call_kwargs["keyword"] = keyword
+        if place_type:
+            call_kwargs["type_"] = place_type
 
-        attempts = [
-            dict(location=(lat, lng), radius=radius, **opt_args()),
-            dict(location=f"{lat},{lng}", radius=radius, **opt_args()),
-            dict(location=(lat, lng), radius=radius),
-            dict(location=f"{lat},{lng}", radius=radius),
-            dict(lat=lat, lng=lng, radius=radius, **opt_args()),
-            dict(lat=lat, lng=lng, radius=radius),
-        ]
-
-        first_err = None
-
-        for kwargs in attempts:
-            try:
-                data = GP.nearby_search(**kwargs)
-                break
-
-            except TypeError as e:
-                first_err = first_err or e
-                logger.info(
-                    "places.nearby_search TypeError (attempt skipped): error_type=%s kwarg_keys=%s",
-                    type(e).__name__,
-                    sorted(kwargs.keys()),
-                )
-                continue
-
-            except RuntimeError as e:
-                # msgはGoogle Places APIのstatus/error_messageに由来し、
-                # lat/lng/keyword等のrequest paramsを含まないことを確認済み。
-                msg = str(e)
-                logger.exception(
-                    "places.nearby_search RuntimeError: msg=%s kwarg_keys=%s",
-                    msg,
-                    sorted(kwargs.keys()),
-                )
-
-                if "INVALID_REQUEST" in msg:
-                    first_err = first_err or e
-                    continue
-
-                first_err = first_err or e
-                return Response(
-                    {"detail": "places.nearby_search は内部エラーのため失敗しました"},
-                    status=status.HTTP_502_BAD_GATEWAY,
-                )
-
-            except Exception as e:
-                # requestsの接続/タイムアウト系例外はURL全体（API key含む）を
-                # メッセージへ埋め込むため、repr(e)/str(e)はログへ含めない（実測確認済み）。
-                first_err = first_err or e
-                logger.warning(
-                    "places.nearby_search Exception (attempt continue): error_type=%s kwarg_keys=%s",
-                    type(e).__name__,
-                    sorted(kwargs.keys()),
-                )
-                continue
+        try:
+            data = GP.nearby_search(**call_kwargs)
+        except GP.GooglePlacesDisabled:
+            return _places_disabled_response()
+        except Exception as e:
+            # msg/URLには lat/lng/keyword や API key が入りうるため、
+            # 例外の型名と渡した kwarg のキーのみをログする。
+            logger.warning(
+                "places.nearby_search failed: error_type=%s kwarg_keys=%s",
+                type(e).__name__,
+                sorted(call_kwargs.keys()),
+            )
+            return _nearby_upstream_error_response()
 
         if data is None:
-            logger.exception(
-                "places.nearby_search のフォールバックを全て失敗しました: first_err_type=%s",
-                type(first_err).__name__ if first_err else None,
-            )
-            return Response(
-                {"detail": "places.nearby_search は内部エラーのため失敗しました"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+            logger.warning("places.nearby_search returned no data")
+            return _nearby_upstream_error_response()
 
     # ③ サーバ側フィルタ
     results = data.get("results", [])
 
-    if keyword in (None, "神社"):
+    if shrine_mode:
         results = [r for r in results if is_shrine_like(r)]
         prefer = [r for r in results if prefer_explicit_jinja(r)]
         results = prefer or results
-    else:
-        place_type_req = request.query_params.get("type")
-        if place_type_req:
-            results = [r for r in results if place_type_req in (r.get("types") or [])]
+    elif place_type:
+        results = [r for r in results if place_type in (r.get("types") or [])]
 
     # ④ distance_m 付与
     out = []
@@ -376,29 +332,44 @@ def nearby_search(request):
     data["results"] = out
     return Response(data)
 
-# レガシー入口（/api/places/nearby_search/）
-nearby_search.throttle_scope = "places-nearby"
+
+class PlacesNearbySearchView(APIView):
+    """Nearby 検索（canonical `/api/places/nearby/` と legacy 2 alias の共通 view）。
+
+    WS-13: throttle は DRF の既定 throttle classes（WS-04 の ScopedRateThrottle / AnonRateThrottle /
+    UserRateThrottle）をそのまま使う。`throttle_scope` を view class に置くので scope が実際に効き、
+    3 URL は同じ `places-nearby` bucket を共有する。1 リクエストは 1 回だけ dispatch される（view から
+    view を呼ばない）ので、scope slot の消費は 1 リクエスト 1 回。throttle は handler より前に判定される
+    ため、429 は Google 呼び出しを一切行わない。
+    """
+
+    permission_classes = [AllowAny]
+    throttle_scope = PLACES_NEARBY_THROTTLE_SCOPE
+
+    @extend_schema(
+        operation_id="api_places_nearby_retrieve",
+        summary="Places: nearby search",
+        parameters=[
+            OpenApiParameter("lat", OpenApiTypes.FLOAT, OpenApiParameter.QUERY, required=True),
+            OpenApiParameter("lng", OpenApiTypes.FLOAT, OpenApiParameter.QUERY, required=True),
+            OpenApiParameter("radius", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter("keyword", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter("type", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter("limit", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+        ],
+        responses={200: NearbySearchResponse},
+        tags=["places"],
+    )
+    def get(self, request, *args, **kwargs):
+        return _nearby_search_response(request)
 
 
 @extend_schema(exclude=True)
-@api_view(["GET"])
-@permission_classes([AllowAny])
-@throttle_classes([ScopedRateThrottle])
-def nearby_search_legacy(request, *args, **kwargs):
-    """/api/places/nearby_search/ のレガシー入口（DRF Request→Django HttpRequest）"""
-    try:
-        from rest_framework.request import Request as DRFRequest
-    except Exception:
-        DRFRequest = None
-    dj_req = (
-        getattr(request, "_request", None)
-        if (DRFRequest and isinstance(request, DRFRequest))
-        else request
-    )
-    return nearby_search(dj_req, *args, **kwargs)
+class PlacesNearbySearchLegacyView(PlacesNearbySearchView):
+    """legacy alias（`/api/places/nearby_search/`, `/api/places/nearby-search/`）。
 
-
-nearby_search_legacy.throttle_scope = "places-nearby"
+    同じ view class の挙動・throttle scope をそのまま継承し、OpenAPI からだけ除外する。
+    """
 
 
 # --- /api/places/photo/ ---

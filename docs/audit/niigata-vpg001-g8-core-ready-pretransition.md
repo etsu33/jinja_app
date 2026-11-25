@@ -1,0 +1,802 @@
+# NIIGATA-001-VPG001 G8 CORE READY PRE_TRANSITION / Transition / Closure
+
+## Final classification（G8 CLOSED / PASS）
+
+- Cohort: `nsrc-000021` / `nsrc-000022` / `nsrc-000024` / `nsrc-000025`
+- Excluded: `nsrc-000023`（unchanged, DISCOVERED）
+- Closure recorded at: `2026-10-21`
+- PRE_TRANSITION record: `MERGED`（PR #3285 / PR #3286）
+- Mother Ship decision: `APPROVED_TO_TRANSITION_TARGET_ONLY`
+- CORE_READY transition: `APPLIED`（PR #3287, merge commit `develop@b25ea0682265e81b59b10ec6387236a88f79bc6c`）
+- Merged-state POST_TRANSITION verification: `PASS`（§11）
+- Production write during G8 transition / closure: `0`
+
+```text
+COMPLETION_CONTRACT_PRE_TRANSITION         = 12/12 SATISFIED
+G8_CONDITION_08                            = PASS_WITH_LIMITATION
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TO_TRANSITION_TARGET_ONLY
+CORE_READY_TRANSITION                      = APPLIED
+G8_CONDITION_12_POST_TRANSITION            = PASS
+G8_BLOCKERS_REMAINING                      = NONE
+G8_RESULT                                  = PASS
+FORMAL_G8                                  = PASS
+G8_STATUS                                  = CLOSED
+```
+
+The Status and §1–§9 below are the PRE_TRANSITION record（PR #3285 / PR #3286）and are kept as written, including
+`MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = NOT_RECORDED` / `CORE_READY_TRANSITION = NOT_EXECUTED` / `G8_STATUS = OPEN`
+at that time. §10 is the transition record（PR #3287）, also kept as written. The merged-state POST_TRANSITION
+verification and Formal Closure are recorded in §11.
+
+---
+
+## Status（PRE_TRANSITION; historical record）
+
+- Cohort: `nsrc-000021` / `nsrc-000022` / `nsrc-000024` / `nsrc-000025`
+- Excluded: `nsrc-000023` 熱串彦神社（G4以降 NOT_AUTHORIZED、本書のscope外）
+- Recorded at: `2026-10-20`
+- Gate: `G8 CORE READY`（PRE_TRANSITION record only）
+- Audit base: `develop@c32a61799c6eb6b1db5c76522e262f9c357c4708`（PR #3283 merge）
+- Condition #8 completion update: `develop@6ea4a4d5d31b046d9adaa4d1a0a91fae655f158a`（PR #3285 merge）基点
+- G7 Production Import: `CLOSED / PASS`（PR #3282, `docs/audit/niigata-vpg001-g7-production-closure.md`）
+- Candidate Master G7 sync: `MERGED`（PR #3283）
+- Production write in this G8 audit: `0`
+- Production query: Condition #8 だけ。Mother Ship が `readonly_query.sh` で read-only 実行した（Production write = 0）。
+  本書の作成・更新側からの Production 接続は `0`。
+
+```text
+G8_CONDITIONS_01_TO_07                     = PASS
+G8_CONDITION_08                            = PASS_WITH_LIMITATION
+                                             (measured 39 / 1 / 39 / 39)
+G8_CONDITIONS_09_TO_11                     = PASS
+G8_CONDITION_12_PRE_TRANSITION             = PASS
+G8_CONDITION_12_POST_TRANSITION            = NOT_EXECUTED
+
+COMPLETION_CONTRACT_PRE_TRANSITION         = 12/12 SATISFIED
+G8_BLOCKER                                 = NONE
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = NOT_RECORDED
+CORE_READY_TRANSITION                      = NOT_EXECUTED
+G8_STATUS                                  = OPEN
+```
+
+本書はG8 Completion Contract #1〜#12 のPRE_TRANSITION evidenceだけを記録する。
+CORE_READY transitionは実行しない。Mother Ship判断は未記録であり、Candidate Master / Production DB /
+Seed / lifecycle data / GoriyakuTagを変更しない。
+Condition #8 は Mother Ship が供給した fresh Production read-only 実測（39 / 1 / 39 / 39）により
+`PASS_WITH_LIMITATION` と分類された（§5 #8）。これにより `COMPLETION_CONTRACT_PRE_TRANSITION = 12/12 SATISFIED`。
+CORE_READY transition decision は未記録のままであり、G8 は OPEN である。
+
+---
+
+## 1. Authority
+
+- `docs/knowledge/shrine-expansion-gate-contract.md` §11
+- `docs/audit/shrine-expansion-wave0-data-build-plan.md` CORE READY Completion Contract
+- `docs/knowledge/shrine-expansion-candidate-master-contract.md` schema 1.4 Nationwide Source Track Boundary
+  （Nationwide Source Track build_batch rule, PR #3284）
+- `docs/audit/niigata-vpg001-g7-production-closure.md`
+- `backend/temples/data/shrine_expansion_candidate_master.json`
+- Precedent: `docs/audit/niigata-h001-g8-core-ready-pretransition.md`（nsrc-000004）、
+  `docs/audit/niigata-h002-nsrc-000009-g8-core-ready-pretransition.md`
+
+```text
+IMPORTED   != CORE_READY
+FACT_READY != CORE_READY
+```
+
+---
+
+## 2. Scope
+
+| candidate_id | name_jp | address |
+| --- | --- | --- |
+| nsrc-000021 | 荒川神社 | 新潟県胎内市桃崎浜187番地 |
+| nsrc-000022 | 五十嵐神社 | 新潟県三条市大字飯田2283番地 |
+| nsrc-000024 | 秋葉神社 | 新潟県新潟市秋葉区秋葉3丁目8番19号 |
+| nsrc-000025 | 天津神社 | 新潟県糸魚川市一の宮1丁目3番34号 |
+
+`nsrc-000023` 熱串彦神社 は同じ VPG001 member だが、G4以降 NOT_AUTHORIZED のため本書の対象外であり、
+連動遷移しない。cohortであることを理由に4件を一括でCORE_READYとみなさず、各Conditionは候補ごとに判定する。
+
+---
+
+## 3. Upstream Gate lineage
+
+| Gate | 000021 | 000022 | 000024 | 000025 |
+| --- | --- | --- | --- | --- |
+| G1 Identity / Duplicate | PASS / SAME_NAME_DIFFERENT_SHRINE | PASS / NEW | PASS / SAME_NAME_DIFFERENT_SHRINE | PASS / SAME_NAME_DIFFERENT_SHRINE |
+| G2 Position | CLOSED / PASS | CLOSED / PASS | CLOSED / PASS | CLOSED / PASS |
+| G3 Model Fit | NORMAL_MODEL_FIT | NORMAL_MODEL_FIT | NORMAL_MODEL_FIT | CURATION_RELEASE_CANDIDATE |
+| G4 Knowledge Fact + Evidence | CLOSED / PASS | CLOSED / PASS | CLOSED / PASS | CLOSED / PASS |
+| G5 Shared Recommendation Eligibility | PASS / ELIGIBLE | PASS / ELIGIBLE | PASS / ELIGIBLE | PASS / ELIGIBLE |
+| G6 Runtime QA | CLOSED / PASS | CLOSED / PASS | CLOSED / PASS | CLOSED / PASS |
+| G7 Production Import | CLOSED / PASS | CLOSED / PASS | CLOSED / PASS | CLOSED / PASS |
+
+G3 の Product Surface は4件とも `RECOMMENDATION`
+（`docs/audit/niigata-vpg001-g3-source-knowledge-fit.md`）。
+
+Evidence files:
+
+- G1: `docs/audit/niigata-vpg001-g1-identity-duplicate.md`
+- G2: `docs/audit/shrine-position/niigata-vpg001-nsrc-0000XX-position-review.md`
+- G3: `docs/audit/niigata-vpg001-g3-source-knowledge-fit.md`
+- G4: `docs/audit/niigata-vpg001-nsrc-0000XX-g4-formal-pass.md`
+- G5: `docs/audit/niigata-vpg001-nsrc-0000XX-g5-recommendation-eligibility.md`
+- G6: `docs/audit/niigata-vpg001-nsrc-0000XX-g6-runtime-qa.md`
+- G7: `docs/audit/niigata-vpg001-g7-production-closure.md`
+
+G7 の procedure deviation（`NSRC_000022_PRE_WRITE_VALIDATE_ONLY_NOT_OBSERVED_IN_SUPPLIED_LOG`）は
+G7 closure で non-blocking と分類済みであり、本書でも履歴として保持する（書き換えない）。
+
+---
+
+## 4. Evidence source boundary
+
+| 区分 | 内容 |
+| --- | --- |
+| G7 Production実測 | P1〜P5 cohort guard（5 statement 全 PASS）/ Base・Knowledge idempotency / Production Runtime QA（READ ONLY） |
+| G8 fresh Production read-only | Condition #8 GoriyakuTag master current-state（Mother Ship、`readonly_query.sh`、readonly guard `SAFE: ok`、Production write 0） |
+| repository current state | PR #3283 merge後の Candidate Master |
+| G2 / G4 / G5 / G6 | 各 current audit record |
+
+本書の作成・更新側からは Production query を実行していない。Condition #8 の値は Mother Ship の実行結果である。
+
+---
+
+## 5. Completion Contract #1〜#12
+
+### #1 Production Shrine canonical identity
+
+G7 P5 guard（Production, 全 statement = 1）は各 target について exact `(name_jp, address)` の row が
+1件、同一住所の row が1件、同名別住所 row が frozen 値（0）であることを確認した。
+
+| candidate_id | target exact | same address | same name other address |
+| --- | ---: | ---: | ---: |
+| nsrc-000021 | 1 | 1 | 0 |
+| nsrc-000022 | 1 | 1 | 0 |
+| nsrc-000024 | 1 | 1 | 0 |
+| nsrc-000025 | 1 | 1 | 0 |
+
+G7 Production Runtime QA: `TARGET_IDENTITY=PASS`（4件）。
+000025 は同一住所の別 owner `奴奈川神社` row が存在しないこと（same address = 1）も P5 で確認済み。
+G7 で観測した Shrine id 135〜138 は point-in-time provenance であり、canonical identity ではない。
+
+```text
+G8_CONDITION_01_CANONICAL_IDENTITY = PASS（000021 / 000022 / 000024 / 000025）
+```
+
+### #2 Adopted coordinate
+
+G2 adopted coordinate。G7 P1〜P5 guard が各 target について 1e-8 以内で一致を確認し、
+Production Runtime QA も同座標で PASS。
+
+| candidate_id | latitude | longitude |
+| --- | --- | --- |
+| nsrc-000021 | 38.1409456 | 139.4073314 |
+| nsrc-000022 | 37.573979 | 139.048758 |
+| nsrc-000024 | 37.7863255 | 139.1351949 |
+| nsrc-000025 | 37.0397729 | 137.8644153 |
+
+```text
+G8_CONDITION_02_ADOPTED_COORDINATE = PASS（4件）
+```
+
+### #3 Source-backed ShrineKnowledgeSource
+
+4件とも G7 で Source を1件ずつ新規作成した（`source_CREATE = 1`、accepted_source_count = 0）。
+P5 guard は各 Source について importer semantic identity（source_type + normalized URL）= 1、
+metadata compatible = 1、lookalike = 1、importer-unparseable URL = 0、他 Shrine からの relation = 0 を確認した。
+
+| candidate_id | source_type | publisher | title | url |
+| --- | --- | --- | --- | --- |
+| nsrc-000021 | government | 新潟県 | 北前船の魅力を訪ねて | `https://www.pref.niigata.lg.jp/site/shibata/kitamaebune02.html` |
+| nsrc-000022 | government | 三条市 | 五十嵐神社 | `https://www.city.sanjo.niigata.jp/sanjonavi/see_do/history_culture/jinja_jisha_joshi/2289.html` |
+| nsrc-000024 | government | 新潟市 | 文化資源ガイド（秋葉区） | `https://www.city.niigata.lg.jp/kanko/bunka/shinko/bunkashigen/bunkaisannintei2.files/akihaku.pdf` |
+| nsrc-000025 | shrine_official | 天津神社・奴奈川神社 | 御由緒・御祭神 | `https://amatsujinja.com/story/`（normalized `https://amatsujinja.com/story`） |
+
+bibliography は4件とも空。G7 で観測した Source id 147〜150 は canonical identity として扱わない。
+
+```text
+G8_CONDITION_03_SOURCE_BACKED_KNOWLEDGE_SOURCE = PASS（4件）
+```
+
+### #4 Fact-ready Deity / History
+
+P5 guard は各 target の Deity / History が frozen Fact に全 field 一致で各1回だけ存在し
+（verification_status = source_confirmed、confidence = high、verified_at = 2026-10-19T14:35:38+09:00）、
+想定外の Fact が0件であることを確認した。
+
+| candidate_id | Deity | History |
+| --- | --- | --- |
+| nsrc-000021 | 天鈿女命 | regional_context / 船主による船絵馬の奉納 |
+| nsrc-000022 | 五十日帯日子命 | （0件） |
+| nsrc-000024 | 大己貴神 / 大物主命 / 菅原道真公 | historical_event / 桂家の守り神から秋葉町内への移譲（昭和39年（1964））; historical_event / 創建250年（平成25年（2013）） |
+| nsrc-000025 | 天津彦々火瓊々杵尊 / 天児屋根命 / 天太玉命 | tradition / 景行天皇御代の創設（公式由緒）; tradition / 孝徳天皇の勅願所（公式由緒）; historical_event / 本殿の建立（寛政9年（1797））; historical_event / 拝殿の改築（寛文2年（1662））; historical_event / 幣殿の増築（天明2年（1782）） |
+
+除外 Fact が存在しないことも P5 で確認済み: 000022 `五十日帯彦命`、000025 `奴奈川媛命` / `八千矛命`。
+000022 は Deity-only Knowledge（History 0）であり、G5 contract（usable Deity ≥ 1 OR usable History ≥ 1）上許容される。
+
+```text
+G8_CONDITION_04_FACT_READY_KNOWLEDGE = PASS（4件）
+```
+
+### #5 Fact-ready Source relation / Evidence Gate
+
+P5 guard: 各 Fact が自候補の metadata-compatible Source へちょうど1件の relation を持ち、
+他 Source への relation = 0、source-less Fact = 0、target citation = 0、target SourceFact = 0、
+target Collective = 0。Production Runtime QA: `SOURCE_RELATION_INTEGRITY=PASS` / `FACT_OWNERSHIP_ISOLATION=PASS`。
+
+| candidate_id | Fact-Source relations | G5 usable Deity | G5 usable History | G5 usable total |
+| --- | ---: | ---: | ---: | ---: |
+| nsrc-000021 | 2 | 1 | 1 | 2 |
+| nsrc-000022 | 1 | 1 | 0 | 1 |
+| nsrc-000024 | 5 | 3 | 2 | 5 |
+| nsrc-000025 | 8 | 3 | 5 | 8 |
+
+```text
+G8_CONDITION_05_FACT_SOURCE_RELATION = PASS（4件）
+G8_CONDITION_05_EVIDENCE_USABLE      = PASS（4件）
+```
+
+### #6 Shrine.goriyaku approved-only
+
+P1〜P5 guard: 各 target の `Shrine.goriyaku = ''`。Production Runtime QA: `GORIYAKU_ISOLATION=PASS`。
+Source / Fact から未承認のご利益意味を生成していない。
+
+```text
+G8_CONDITION_06_GORIYAKU_APPROVED_ONLY = PASS（4件）
+```
+
+### #7 goriyaku_tags canonical safe subset
+
+P1〜P5 guard: 各 target の goriyaku tag link = 0、ShrineGoriyakuAssignment = 0。
+Base import は `--skip-goriyaku-tags`（`goriyaku_tags rows=0 updated=0 added_links=0 removed_links=0`）。
+
+```text
+[] subset_of canonical 39（4件とも approved set は空集合）
+G8_CONDITION_07_GORIYAKU_TAG_SAFE_SUBSET = PASS（4件）
+```
+
+### #8 No automatic GoriyakuTag creation
+
+Fresh Production read-only（Mother Ship）:
+
+Query: `scripts/migration_safety/sql/niigata_vpg001_g8_goriyaku_tag_master.sql`（PR #3285、SELECT-only）
+Execution: `scripts/migration_safety/readonly_query.sh`
+Readonly guard: `SAFE: ok`
+
+```text
+goriyaku_tag_total        = 39
+goriyaku_tag_min_id       = 1
+goriyaku_tag_max_id       = 39
+goriyaku_tag_distinct_ids = 39
+```
+
+expected canonical state `39 / 1 / 39 / 39` と完全一致。Production write = 0。
+
+補強 evidence（G7）:
+
+- G7 closure は goriyaku 系 delta 0 を記録している。
+- Knowledge importer は GoriyakuTag / ShrineGoriyakuAssignment を作成対象に持たず、Base import は
+  `--skip-goriyaku-tags` で実行された（`goriyaku_tags rows=0 updated=0 added_links=0 removed_links=0`）。
+- P1〜P5 guard で各 target の goriyaku tag link / assignment = 0。
+
+Limitation:
+G7 P0〜P5 cohort guard は GoriyakuTag master count を G7 write の直前・直後に独立計測していない。
+したがって現在の canonical state 39 / 1 / 39 / 39 は証明されるが、G7 実行中の一時的な CREATE / DELETE が
+無かったことを時系列実測だけで否定することはできない。
+このlimitationは既存 G8 precedent（nsrc-000006 / nsrc-000007 / nsrc-000009）と同様に保持する。
+
+Mother Ship classification:
+
+```text
+G8_CONDITION_08_NO_NEW_GORIYAKU_TAG = PASS_WITH_LIMITATION（000021 / 000022 / 000024 / 000025）
+```
+
+### #9 Concierge shared eligibility / candidate path
+
+G7 Production Runtime QA（4件とも、READ ONLY transaction）:
+
+```text
+SHARED_ELIGIBILITY=PASS
+CONCIERGE_CANDIDATE_PATH=PASS
+RECOMMENDATION_REASON=PASS
+G7_PRODUCTION_RUNTIME_QA=PASS
+TRANSACTION_MODE=READ_ONLY
+```
+
+shared runtime trace（各候補）: `count=115 eligible=115 ineligible=18 with_place_id=2 miss_latlng=0 dist_none=0`。
+Top1 は Acceptance Criteria ではない。
+
+```text
+G8_CONDITION_09_CONCIERGE_SHARED_ELIGIBILITY = PASS（4件）
+G8_CONDITION_09_CANDIDATE_PATH               = PASS（4件）
+```
+
+### #10 Compass distance / direction
+
+G7 Production Runtime QA（4件とも）: `COMPASS_DISTANCE=PASS` / `COMPASS_DIRECTION=PASS`。G2 adopted coordinate を使用。
+
+```text
+G8_CONDITION_10_COMPASS_DISTANCE  = PASS（4件）
+G8_CONDITION_10_COMPASS_DIRECTION = PASS（4件）
+```
+
+### #11 Re-import idempotency
+
+Base second dry-run（4-row target-only subset）:
+
+```text
+done created=0 updated=0 skipped=4 total_seed=4
+```
+
+Knowledge second dry-run（G7 §8）:
+
+| candidate_id | plan | CREATE |
+| --- | --- | ---: |
+| nsrc-000021 | source_REUSE_EXISTING 1 / deity_SKIP_EXISTS 1 / history_SKIP_EXISTS 1 | 0 |
+| nsrc-000022 | source_REUSE_EXISTING 1 / deity_SKIP_EXISTS 1 | 0 |
+| nsrc-000024 | source_REUSE_EXISTING 1 / deity_SKIP_EXISTS 3 / history_SKIP_EXISTS 2 | 0 |
+| nsrc-000025 | source_REUSE_EXISTING 1 / deity_SKIP_EXISTS 3 / history_SKIP_EXISTS 5 | 0 |
+
+idempotency 後に P5 guard を再実行し、5 statement すべて PASS（`P5_FINAL_RECHECK = PASS`）。
+
+```text
+G8_CONDITION_11_REIMPORT_IDEMPOTENCY = PASS（4件）
+```
+
+### #12 Candidate Master / Production PRE_TRANSITION alignment
+
+PR #3283 で G7 Production state へ同期済み。current Candidate Master（`develop@c32a617`）:
+
+| field | nsrc-000021 | nsrc-000022 | nsrc-000024 | nsrc-000025 |
+| --- | --- | --- | --- | --- |
+| candidate_status | IMPORTED | IMPORTED | IMPORTED | IMPORTED |
+| status_reason_code | PRODUCTION_IMPORT_COMPLETE | PRODUCTION_IMPORT_COMPLETE | PRODUCTION_IMPORT_COMPLETE | PRODUCTION_IMPORT_COMPLETE |
+| official_source_status | CONFIRMED | CONFIRMED | CONFIRMED | CONFIRMED |
+| knowledge_status | FACT_READY | FACT_READY | FACT_READY | FACT_READY |
+| identity_status | CONFIRMED | CONFIRMED | CONFIRMED | CONFIRMED |
+| duplicate_status | SAME_NAME_DIFFERENT_SHRINE | NEW | SAME_NAME_DIFFERENT_SHRINE | SAME_NAME_DIFFERENT_SHRINE |
+| build_batch | null | null | null | null |
+| wave_id | null | null | null | null |
+| candidate_reason | official_source_full_enumeration_candidate | 同左 | 同左 | 同左 |
+
+immutable admission provenance（4件共通部分）:
+
+```text
+track                  = nationwide_source_candidate
+prefecture             = 新潟県
+source_batch_id        = NIIGATA-001
+source_snapshot_sha256 = f54022303700821672ee4ee65e9967a7e8f343715a66ad987cc0b43530850380
+source_url             = https://niigata-jinjacho.jp/shrine_niigata/search.php
+source_verified_at     = 2026-10-08
+captured_at            = 2026-10-08T14:27:00+09:00
+```
+
+| candidate_id | handoff_id | source_position |
+| --- | --- | --- |
+| nsrc-000021 | NIIGATA-001-H015 | page008-row003 |
+| nsrc-000022 | NIIGATA-001-H019 | page010-row004 |
+| nsrc-000024 | NIIGATA-001-H006 | page003-row007 |
+| nsrc-000025 | NIIGATA-001-H014 | page007-row006 |
+
+Production は G7 CLOSED / PASS、Candidate Master は `IMPORTED / CONFIRMED / FACT_READY`。
+Source batch / handoff / VPG id を `build_batch` へ推論せず null を維持する
+（Nationwide Source Track build_batch rule）。
+
+Excluded `nsrc-000023`（unchanged）:
+
+```text
+candidate_status       = DISCOVERED
+status_reason_code     = REGISTRY_ADMISSION_COMPLETE
+official_source_status = AVAILABLE
+knowledge_status       = UNREVIEWED
+identity_status        = CONFIRMED
+duplicate_status       = NEW
+build_batch            = null
+wave_id                = null
+```
+
+```text
+G8_CONDITION_12_PRE_TRANSITION_ALIGNMENT  = PASS（4件）
+G8_CONDITION_12_POST_TRANSITION_ALIGNMENT = NOT_EXECUTED
+```
+
+---
+
+## 6. Completion Contract summary
+
+| # | Condition | 000021 | 000022 | 000024 | 000025 |
+| ---: | --- | --- | --- | --- | --- |
+| 1 | Production canonical identity | PASS | PASS | PASS | PASS |
+| 2 | adopted latitude / longitude | PASS | PASS | PASS | PASS |
+| 3 | Source-backed ShrineKnowledgeSource | PASS | PASS | PASS | PASS |
+| 4 | Fact-ready Deity / History | PASS（D1 / H1） | PASS（D1 / H0） | PASS（D3 / H2） | PASS（D3 / H5） |
+| 5 | Fact-ready Source relation / Evidence Gate | PASS | PASS | PASS | PASS |
+| 6 | Shrine.goriyaku approved-only | PASS | PASS | PASS | PASS |
+| 7 | goriyaku_tags canonical safe subset | PASS | PASS | PASS | PASS |
+| 8 | no automatic GoriyakuTag creation | PASS_WITH_LIMITATION | PASS_WITH_LIMITATION | PASS_WITH_LIMITATION | PASS_WITH_LIMITATION |
+| 9 | Concierge shared eligibility / candidate path | PASS | PASS | PASS | PASS |
+| 10 | Compass distance / direction | PASS | PASS | PASS | PASS |
+| 11 | re-import idempotency | PASS | PASS | PASS | PASS |
+| 12 | Candidate Master / Production alignment | PRE PASS / POST NOT_EXECUTED | 同左 | 同左 | 同左 |
+
+```text
+G8_CONDITION_08_MEASURED           = 39 / 1 / 39 / 39（total / min_id / max_id / distinct_ids）
+COMPLETION_CONTRACT_PRE_TRANSITION = 12/12 SATISFIED
+G8_BLOCKER                         = NONE
+G8_CONDITION_12_POST_TRANSITION    = NOT_EXECUTED
+```
+
+---
+
+## 7. Mother Ship Decision Gate（decision not recorded）
+
+```text
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = NOT_RECORDED
+```
+
+本書は transition を承認しない。Completion Contract PRE_TRANSITION は 12/12 SATISFIED（#8 は
+PASS_WITH_LIMITATION）となったが、CORE_READY transition decision は Mother Ship がまだ記録していない。
+
+将来検討され得る delta は各 target の次の2 field だけ（本書では適用しない）。
+
+```text
+candidate_status:
+IMPORTED -> CORE_READY
+
+status_reason_code:
+PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS
+```
+
+不変であるべき field（各 target）:
+
+```text
+official_source_status = CONFIRMED
+knowledge_status       = FACT_READY
+identity_status        = CONFIRMED
+duplicate_status       = 候補ごとの現在値（000022 = NEW、他3件 = SAME_NAME_DIFFERENT_SHRINE）
+build_batch            = null
+wave_id                = null
+candidate_reason       = official_source_full_enumeration_candidate
+admission_provenance   = unchanged
+```
+
+いかなる場合も禁止:
+
+- Production DB write
+- Base Seed / Knowledge Seed 変更
+- G1〜G7 audit rewrite
+- Ranking / Score / Recommendation / Concierge / Compass / Position 変更
+- GoriyakuTag 変更
+- nsrc-000023 の lifecycle 変更
+- Historical Wave0 変更
+- build_batch 捏造
+- transition 前に G8 CLOSED を宣言
+
+---
+
+## 8. Next steps
+
+1. 完了: Mother Ship が `niigata_vpg001_g8_goriyaku_tag_master.sql` を `readonly_query.sh` で read-only 実行し、
+   39 / 1 / 39 / 39 を供給した。
+2. 完了: Condition #8 = PASS_WITH_LIMITATION（§5 #8）。Completion Contract PRE_TRANSITION = 12/12 SATISFIED。
+3. 次: Mother Ship が CORE_READY transition decision を行う（未記録）。
+
+transition PR が merge された後にだけ、次の POST_TRANSITION verification を行う。
+
+1. 各 target の `candidate_status == CORE_READY`
+2. 各 target の `status_reason_code == CORE_READY_CONTRACT_PASS`
+3. `knowledge_status == FACT_READY` / `official_source_status == CONFIRMED` 不変
+4. `build_batch == null` / `wave_id == null`
+5. admission provenance 完全一致
+6. identity / duplicate evidence 完全一致
+7. nsrc-000023 に差分なし
+8. 既存 CORE_READY Candidate に差分なし
+9. Historical Wave0 accounting 不変
+10. Candidate Master tests / relevant consumers PASS
+11. Completion Contract #1〜#11 evidence に後退なし
+
+---
+
+## 9. Final PRE_TRANSITION classification
+
+```text
+G1                                    = PASS（000022 NEW / 他3件 SAME_NAME_DIFFERENT_SHRINE）
+G2                                    = CLOSED / PASS
+G3                                    = NORMAL_MODEL_FIT（000021 / 000022 / 000024）
+                                        CURATION_RELEASE_CANDIDATE（000025）
+G4                                    = CLOSED / PASS
+G5                                    = PASS / ELIGIBLE
+G6                                    = CLOSED / PASS
+G7                                    = CLOSED / PASS
+
+G8_CONDITIONS_01_TO_07                = PASS
+G8_CONDITION_08                       = PASS_WITH_LIMITATION
+G8_CONDITION_08_MEASURED              = 39 / 1 / 39 / 39
+G8_CONDITIONS_09_TO_11                = PASS
+G8_CONDITION_12_PRE_TRANSITION        = PASS
+G8_CONDITION_12_POST_TRANSITION       = NOT_EXECUTED
+
+COMPLETION_CONTRACT_PRE_TRANSITION    = 12/12 SATISFIED
+G8_BLOCKER                            = NONE
+
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = NOT_RECORDED
+CORE_READY_TRANSITION                      = NOT_EXECUTED
+G8_STATUS                                  = OPEN
+```
+
+```text
+IMPORTED   != CORE_READY
+FACT_READY != CORE_READY
+```
+
+---
+
+## 10. CORE_READY transition / POST_TRANSITION verification
+
+### 10.1 Mother Ship Decision Record
+
+```text
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TO_TRANSITION_TARGET_ONLY
+TARGET                                     = nsrc-000021 / nsrc-000022 / nsrc-000024 / nsrc-000025
+EXCLUDED                                   = nsrc-000023
+```
+
+Mother Ship は Completion Contract PRE_TRANSITION 12/12 SATISFIED（§9、#8 = PASS_WITH_LIMITATION）を前提に、
+上記4件だけの CORE_READY transition を承認した。許可された delta は §7 の2 field だけ。
+
+```text
+candidate_status:
+IMPORTED -> CORE_READY
+
+status_reason_code:
+PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS
+```
+
+### 10.2 Transition（applied in this PR）
+
+Candidate Master の変更は transition PR に含まれる（Production write = 0）。
+
+| candidate_id | candidate_status | status_reason_code | duplicate_status（不変） |
+| --- | --- | --- | --- |
+| nsrc-000021 | IMPORTED -> CORE_READY | PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS | SAME_NAME_DIFFERENT_SHRINE |
+| nsrc-000022 | IMPORTED -> CORE_READY | PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS | NEW |
+| nsrc-000024 | IMPORTED -> CORE_READY | PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS | SAME_NAME_DIFFERENT_SHRINE |
+| nsrc-000025 | IMPORTED -> CORE_READY | PRODUCTION_IMPORT_COMPLETE -> CORE_READY_CONTRACT_PASS | SAME_NAME_DIFFERENT_SHRINE |
+
+4件とも不変:
+
+```text
+official_source_status = CONFIRMED
+knowledge_status       = FACT_READY
+identity_status        = CONFIRMED
+build_batch            = null
+wave_id                = null
+candidate_reason       = official_source_full_enumeration_candidate
+admission_provenance   = byte-for-byte unchanged（§5 #12 の handoff_id / source_position を含む）
+```
+
+Transition PR が変更するファイル:
+
+- `backend/temples/data/shrine_expansion_candidate_master.json`（4行 × 2 field）
+- `backend/temples/tests/fixtures/shrine_expansion_value_selected_groups.json`（test-only、VPG001 member lifecycle の同じ 4 × 2 field）
+- `backend/temples/tests/test_shrine_expansion_candidate_master.py`（CORE_READY expectation / regression）
+- 本書
+
+Production DB / Base Seed / Knowledge Seed / Ranking / Recommendation / Concierge / Compass / GoriyakuTag /
+Position への変更はない。
+
+### 10.3 POST_TRANSITION verification（repository state）
+
+`develop@c59fe9d` の Candidate Master と transition PR の Candidate Master を repository 上で比較した
+（Production query なし）。
+
+| # | Verification | Result | Evidence |
+| ---: | --- | --- | --- |
+| 1 | 4件の `candidate_status == CORE_READY` | PASS | transition PR の Candidate Master |
+| 2 | 4件の `status_reason_code == CORE_READY_CONTRACT_PASS` | PASS | 同上 |
+| 3 | `knowledge_status == FACT_READY` / `official_source_status == CONFIRMED` 不変 | PASS | diff = 0 |
+| 4 | `build_batch == null` / `wave_id == null` | PASS | Nationwide Source Track build_batch rule どおり |
+| 5 | admission provenance 完全一致 | PASS | 4件とも before == after |
+| 6 | identity / duplicate evidence 完全一致 | PASS | identity CONFIRMED、duplicate は候補ごとの値を保持 |
+| 7 | nsrc-000023 に差分なし | PASS | row before == after（DISCOVERED / REGISTRY_ADMISSION_COMPLETE / AVAILABLE / UNREVIEWED） |
+| 8 | 既存 CORE_READY Candidate に差分なし | PASS | nsrc-000002 / 000004 / 000006 / 000007 / 000009 diff = 0 |
+| 9 | Historical Wave0 accounting 不変 | PASS | 44 -> 44、changed IDs = 0、status counts 不変 |
+| 10 | Candidate Master tests / relevant consumers PASS | PASS | §10.5 |
+| 11 | Completion Contract #1〜#11 evidence に後退なし | PASS | transition PR は lifecycle 2 field + test fixture / test + 本書だけ。Production / Runtime / Knowledge evidence 変更なし |
+
+Minimal diff:
+
+```text
+changed Candidate IDs = [nsrc-000021, nsrc-000022, nsrc-000024, nsrc-000025]
+changed fields per ID = candidate_status, status_reason_code
+other fields changed  = none
+top-level metadata    = unchanged
+Candidate Master rows = 69 -> 69
+
+Historical Wave0 count       = 44 -> 44
+Historical Wave0 changed IDs = []
+Historical Wave0 status:
+  CORE_READY  12
+  HOLD         9
+  IMPORTED     5
+  REVIEW       1
+  BUILD_READY 17
+
+Nationwide CORE_READY = nsrc-000002 / 000004 / 000006 / 000007 / 000009
+                        + nsrc-000021 / 000022 / 000024 / 000025
+Nationwide status     = DISCOVERED 12 / CORE_READY 9 / IMPORTED 4
+```
+
+非対象 Nationwide 21行・Historical Wave0 44行・top-level の canonical sha256 は、PR #3283 で固定した
+literal と一致する（`test_vpg001_g8_cohort_is_core_ready_with_unchanged_evidence`）。
+
+```text
+G8_CONDITION_12_POST_TRANSITION_ALIGNMENT = PASS（repository state of the transition PR）
+```
+
+### 10.4 Completion Contract #1〜#11 non-regression
+
+#1〜#11 の evidence（G7 Production 実測 / Runtime QA / Condition #8 Production read-only）は transition で
+変更されていない。transition は Candidate Master の lifecycle 2 field だけであり、Production data・Seed・
+runtime code に触れない。判定は §6 / §9 のまま。
+
+```text
+G8_CONDITIONS_01_TO_07 = PASS
+G8_CONDITION_08        = PASS_WITH_LIMITATION
+G8_CONDITIONS_09_TO_11 = PASS
+```
+
+Condition #8 の limitation（G7 write の直前・直後に GoriyakuTag master count を独立計測していない）は恒久的に保持する。
+
+### 10.5 Transition PR validation（local disposable DB; Python 3.11）
+
+```text
+test_shrine_expansion_candidate_master.py                 663 passed
+VPG001 G5 ×4 / G6 ×4 / G7 source identity ×4 / G7 cohort guard /
+  G6 nationwide handoff identity                          673 passed
+backend full suite（-n 4）                                 6961 passed, 8 skipped, 0 failed
+makemigrations --check --dry-run                          No changes detected
+ruff check（changed test file）                             All checks passed
+git diff --check                                          clean
+```
+
+### 10.6 Classification at transition PR time（historical record, PR #3287）
+
+```text
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TO_TRANSITION_TARGET_ONLY
+CORE_READY_TRANSITION                      = APPLIED
+G8_CONDITION_12_POST_TRANSITION            = PASS（repository state of the transition PR）
+G8_STATUS                                  = OPEN
+FORMAL_G8                                  = NOT_CLOSED
+```
+
+Precedent（nsrc-000009: transition PR #3243 → closure PR #3244）に従い、Formal G8 Closure は transition PR の merge 後、
+merge commit と CI 結果で POST_TRANSITION を再確認する別 PR で行う。本書の §Status〜§9 の PRE_TRANSITION 記録
+（NOT_RECORDED / NOT_EXECUTED）は遡及的に書き換えない。
+
+---
+
+## 11. Merged-state POST_TRANSITION verification / Formal G8 Closure
+
+### 11.1 Transition merge
+
+```text
+PR                     = #3287
+merge_commit           = b25ea0682265e81b59b10ec6387236a88f79bc6c
+merge parent           = c59fe9dcef43dd73e3843d3a711a045bbc2a39c2（PR #3286 merge）
+PR head                = 853c600a341380f4475180071c8cd9f87ff6c8d4
+merged tree vs PR head = identical（git diff 853c600 b25ea06 = empty）
+files changed by #3287 = shrine_expansion_candidate_master.json / shrine_expansion_value_selected_groups.json（test-only）/
+                         test_shrine_expansion_candidate_master.py / 本書
+```
+
+PR #3287 CI（head `853c600`; backend-pr は `refs/pull/3287/merge` で実行）:
+
+| workflow | run | result |
+| --- | --- | --- |
+| backend-pr（`call / unit`、`call / recommendation-quality-audit`、`call / setup-db-credentials`） | 39387757017 | SUCCESS（`call / integration` は skipped） |
+| dependency-review（`review`） | 39387757180 | SUCCESS |
+| codeql（`analyze (python)` / `analyze (javascript)` / `CodeQL`） | 39387756989 | SUCCESS |
+
+### 11.2 Merged-state verification（`develop@b25ea06` vs pre-transition `develop@c59fe9d`; Production query なし）
+
+| # | Verification | Result |
+| ---: | --- | --- |
+| 1 | 4件の `candidate_status == CORE_READY` | PASS |
+| 2 | 4件の `status_reason_code == CORE_READY_CONTRACT_PASS` | PASS |
+| 3 | `official_source_status == CONFIRMED` 不変 | PASS |
+| 4 | `knowledge_status == FACT_READY` 不変 | PASS |
+| 5 | `identity_status == CONFIRMED` 不変 | PASS |
+| 6 | duplicate_status 不変（000021 / 000024 / 000025 = SAME_NAME_DIFFERENT_SHRINE、000022 = NEW） | PASS |
+| 7 | `build_batch == null` | PASS |
+| 8 | `wave_id == null` | PASS |
+| 9 | `candidate_reason` 不変（official_source_full_enumeration_candidate） | PASS |
+| 10 | `admission_provenance` 完全一致 | PASS |
+| 11 | nsrc-000023 row 完全一致（DISCOVERED / REGISTRY_ADMISSION_COMPLETE / AVAILABLE / UNREVIEWED） | PASS |
+| 12 | 既存 Nationwide CORE_READY（nsrc-000002 / 000004 / 000006 / 000007 / 000009）row 完全一致 | PASS |
+| 13 | Historical Wave0 44行 完全一致（CORE_READY 12 / HOLD 9 / IMPORTED 5 / REVIEW 1 / BUILD_READY 17） | PASS |
+| 14 | Completion Contract #1〜#11 evidence 非後退（#3287 は上記4ファイルだけ。Production / Runtime / Knowledge / Seed / code 変更なし） | PASS |
+| 15 | Condition #8 = PASS_WITH_LIMITATION（limitation 保持） | PASS |
+| 16 | PR #3287 CI（backend-pr / dependency-review / codeql）SUCCESS | PASS |
+
+Minimal diff（merged）:
+
+```text
+changed Candidate IDs = [nsrc-000021, nsrc-000022, nsrc-000024, nsrc-000025]
+changed fields per ID = candidate_status, status_reason_code
+top-level metadata    = unchanged
+Candidate Master rows = 69 -> 69
+non-target Nationwide 21 rows sha256 = a7f1531e6c24580b9f622238c4ebf45451eba18f49cb5e9bc20b200a90a5477b（#3283 literal と一致）
+Historical Wave0 44 rows sha256      = f7c2c1e3bccbcc6ccfe32575343561a3e71e784d8b78460c6137d4a0d668e506（同上）
+Nationwide status = DISCOVERED 12 / CORE_READY 9 / IMPORTED 4
+```
+
+```text
+NSRC_000021_POST_TRANSITION_ALIGNMENT = PASS
+NSRC_000022_POST_TRANSITION_ALIGNMENT = PASS
+NSRC_000024_POST_TRANSITION_ALIGNMENT = PASS
+NSRC_000025_POST_TRANSITION_ALIGNMENT = PASS
+G8_CONDITION_12_POST_TRANSITION       = PASS（merged develop）
+```
+
+### 11.3 Validation on merged develop（`b25ea06`; local disposable DB; Python 3.11）
+
+```text
+test_shrine_expansion_candidate_master.py                    663 passed
+VPG001 G5 ×4 / G6 ×4 / G7 source identity ×4 / G7 cohort
+  guard / G6 nationwide handoff identity                     673 passed
+backend full suite（-n 4）                                    6961 passed, 8 skipped, 0 failed
+makemigrations --check --dry-run                             No changes detected
+```
+
+8 skipped は既存の環境 skip（GDAL / PostGIS / concierge ambiguous axis）。
+
+### 11.4 Final G8 classification
+
+Completion Contract #1〜#11 は PRE_TRANSITION evidence から判定変更なし。#12 は merged develop で
+POST_TRANSITION PASS。
+
+```text
+G1                                    = PASS（000022 NEW / 他3件 SAME_NAME_DIFFERENT_SHRINE）
+G2                                    = CLOSED / PASS
+G3                                    = NORMAL_MODEL_FIT（000021 / 000022 / 000024）
+                                        CURATION_RELEASE_CANDIDATE（000025）
+G4                                    = CLOSED / PASS
+G5                                    = PASS / ELIGIBLE
+G6                                    = CLOSED / PASS
+G7                                    = CLOSED / PASS
+
+G8_CONDITIONS_01_TO_07                = PASS
+G8_CONDITION_08                       = PASS_WITH_LIMITATION
+G8_CONDITIONS_09_TO_11                = PASS
+G8_CONDITION_12_PRE_TRANSITION        = PASS
+G8_CONDITION_12_POST_TRANSITION       = PASS
+
+COMPLETION_CONTRACT_PRE_TRANSITION    = 12/12 SATISFIED
+
+MOTHER_SHIP_CORE_READY_TRANSITION_DECISION = APPROVED_TO_TRANSITION_TARGET_ONLY
+CORE_READY_TRANSITION                      = APPLIED
+
+G8_BLOCKERS_REMAINING = NONE
+G8_RESULT             = PASS
+FORMAL_G8             = PASS
+G8_STATUS             = CLOSED
+```
+
+Condition #8 の limitation（G7 write の直前・直後に GoriyakuTag master count を独立計測していない）は Closure 後も
+恒久的に保持する。G8 Closure は G1〜G7 の historical evidence、本書 §Status〜§9 の PRE_TRANSITION 記録、
+§10 の transition 記録を遡及的に書き換えない。
+
+### 11.5 Closure
+
+```text
+NIIGATA_001_VPG001_G8_CLOSURE = PASS（nsrc-000021 / nsrc-000022 / nsrc-000024 / nsrc-000025）
+NSRC_000023                   = EXCLUDED / UNCHANGED（DISCOVERED）
+FURTHER_G8_TRANSITION_WRITE   = NOT_AUTHORIZED
+NEXT_GATE                     = NONE
+STOP                          = TRUE
+```
+
+Closure 後、4件に対する追加の G8 transition write（Candidate Master / fixture / Production）は承認されていない。

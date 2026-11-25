@@ -48,15 +48,15 @@ export default function NewShrinePage() {
   }, [isLoggedIn, loading, returnTo, router]);
 
   if (loading || returnTo === null || !isLoggedIn) {
-    return <div className="mx-auto max-w-2xl px-4 py-10 text-sm text-slate-500">認証状態を確認しています...</div>;
+    return <div className="mx-auto max-w-2xl px-4 py-10 text-sm text-[var(--kt-color-text-muted)]">認証状態を確認しています...</div>;
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-6 shadow-sm">
         <p className="text-xs text-emerald-700">Shrine Submission</p>
-        <h1 className="mt-2 text-base font-semibold text-slate-900">神社を追加する</h1>
-        <p className="mt-3 text-sm leading-7 text-slate-700">
+        <h1 className="mt-2 text-base font-semibold text-[var(--kt-color-text-primary)]">神社を追加する</h1>
+        <p className="mt-3 text-sm leading-7 text-[var(--kt-color-text-secondary)]">
           投稿内容は確認後、公開検索や神社データに反映されます。住所・ご利益タグ・補足文があると、他の人にも見つけてもらいやすくなります。
         </p>
       </div>

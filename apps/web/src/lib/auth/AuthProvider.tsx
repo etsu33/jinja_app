@@ -1,8 +1,11 @@
 "use client";
 // apps/web/src/lib/auth/AuthProvider.tsx
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { AuthState, AuthUser } from "@/lib/auth/types";
+import { identifyAnalyticsUser, resetAnalyticsIdentity } from "@/lib/analytics/identity";
+import { markLoggedIn, markLoggedOut, maybeLoggedIn } from "@/lib/auth/loggedInMarker";
+import { clearConciergeAnonymousSnapshot, clearConciergeThreadCache } from "@/lib/concierge/conciergeLocalState";
 
 type AuthCtx = {
   user: AuthUser | null;
@@ -21,57 +24,88 @@ export const useAuth = () => {
   return ctx;
 };
 
-const LS_AUTH = "auth:logged_in";
+/**
+ * `/api/users/me/` の結果分類。
+ *
+ * 「認証されていないことが確定した」と「確認できなかった」を必ず区別する。
+ * これを一緒くたに null へ潰すと、一過性の失敗で logged-in マーカーが消え、
+ * `shouldAutoFetchMe()` の除外 route（`/`・`/shrines/*`・`/concierge*`）では
+ * 二度と `/me` を叩かないため、認証済みユーザーが Guest に固着する
+ * （docs/audit/beta-core-flow-e2e-audit.md E2E-004）。
+ */
+type MeResult =
+  | { kind: "authenticated"; user: AuthUser }
+  | { kind: "unauthenticated" }
+  | { kind: "indeterminate" };
 
-function markLoggedIn() {
-  try {
-    localStorage.setItem(LS_AUTH, "1");
-  } catch {
-    // ignore
-  }
-}
+/**
+ * `/api/users/me/` を1回だけ問い合わせ、結果を分類する。
+ *
+ * 401 のみを「session 無効の確定シグナル」として扱う。Backend の
+ * `MeView` は `JWTAuthentication` + `IsAuthenticated` で、
+ * `JWTAuthentication.authenticate_header()` が非空を返すため DRF の
+ * 401→403 coercion が起きない。つまりこの endpoint が認証理由で 403 を
+ * 返す経路は存在せず、401 以外の失敗はすべて「確認できなかった」である。
+ *
+ * この関数はマーカーを書き換えない。状態遷移は applyMeResult() に一本化する。
+ */
+async function fetchMe(): Promise<MeResult> {
+  let res: Response;
 
-function markLoggedOut() {
   try {
-    localStorage.removeItem(LS_AUTH);
-  } catch {
-    // ignore
-  }
-}
-
-function maybeLoggedIn(): boolean {
-  try {
-    return localStorage.getItem(LS_AUTH) === "1";
-  } catch {
-    return false;
-  }
-}
-
-async function fetchMe(): Promise<AuthUser | null> {
-  
-  try {
-    const res = await fetch("/api/users/me/", {
+    res = await fetch("/api/users/me/", {
       method: "GET",
       credentials: "same-origin",
       cache: "no-store",
     });
+  } catch {
+    // transport failure（offline / DNS / abort / timeout）。session の有効性は不明。
+    return { kind: "indeterminate" };
+  }
 
-    if (res.status === 401) {
-      markLoggedOut();
-      return null;
-    }
+  if (res.status === 401) {
+    return { kind: "unauthenticated" };
+  }
 
-    if (!res.ok) {
-      throw new Error(`fetchMe failed: ${res.status}`);
-    }
+  // 5xx / 502 / 504 / その他の非 2xx。Backend や BFF が落ちているだけで、
+  // session が無効になったことの証拠にはならない。
+  if (!res.ok) {
+    return { kind: "indeterminate" };
+  }
 
+  try {
     const json = await res.json();
     const data = (json as any)?.user ?? json;
-    return data as AuthUser;
+    if (!data) return { kind: "indeterminate" };
+    return { kind: "authenticated", user: data as AuthUser };
   } catch {
-    markLoggedOut();
-    return null;
+    // 200 だが JSON として読めない（proxy の差し込み等）。判定不能。
+    return { kind: "indeterminate" };
   }
+}
+
+/**
+ * MeResult を AuthState とマーカーへ反映する唯一の場所。
+ *
+ * - authenticated : マーカーを貼り直す。除外 route で marker だけが失われた
+ *                   ケース（storage の eviction 等）から自己回復させるため。
+ *                   Backend の 200 が根拠なので認証を捏造することはない。
+ * - unauthenticated: マーカーを消し、stale な identity を残さず Guest へ。
+ * - indeterminate  : マーカーを触らない。= 次のマウント / refreshMe() で
+ *                    再試行できる。認証済みとしては描画しない（fail-closed）。
+ */
+function applyMeResult(result: MeResult): AuthState {
+  if (result.kind === "authenticated") {
+    markLoggedIn();
+    return { status: "authenticated", user: result.user, isHydrating: false };
+  }
+
+  if (result.kind === "unauthenticated") {
+    markLoggedOut();
+    return { status: "guest", user: null, isHydrating: false };
+  }
+
+  return { status: "unknown", user: null, isHydrating: false };
 }
 
 function shouldAutoFetchMe(pathname: string | null): boolean {
@@ -106,17 +140,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isHydrating: true,
   });
 
+  // 直近に identify した内部ユーザーID。同じ ID で何度も identify しないため、
+  // また Guest に戻ったときに reset が必要かを判断するために持つ。
+  const identifiedUserIdRef = useRef<string | null>(null);
 
+  const resetIdentity = useCallback(() => {
+    resetAnalyticsIdentity();
+    identifiedUserIdRef.current = null;
+  }, []);
+
+  /**
+   * 401（未認証が確定）で Guest に戻るときは、前のユーザーの識別を残さない。
+   * ただし最初から匿名の Guest で毎回 reset すると、匿名 ID が読み込みのたびに
+   * 作り直されてしまうため、識別済み、または直近ログインしていた（marker あり）
+   * 場合に限る。marker は applyMeResult() で消えるので、その前に判定する。
+   */
+  const resolveMeResult = useCallback(
+    (result: MeResult): AuthState => {
+      if (result.kind === "unauthenticated" && (identifiedUserIdRef.current !== null || maybeLoggedIn())) {
+        resetIdentity();
+      }
+      return applyMeResult(result);
+    },
+    [resetIdentity],
+  );
 
   const refreshMe = async () => {
-    const me = await fetchMe();
-
-    setAuthState({
-      status: me ? "authenticated" : "guest",
-      user: me,
-      isHydrating: false,
-    });
+    setAuthState(resolveMeResult(await fetchMe()));
   };
+
+  // 認証済みになったら、内部ユーザーIDだけで identify する。
+  // マウント時・login() 後・refreshMe() 後のどの経路でも、この effect が受け持つ。
+  const authenticatedUserId =
+    authState.status === "authenticated" && authState.user?.id != null ? String(authState.user.id) : null;
+
+  useEffect(() => {
+    if (authenticatedUserId === null) return;
+    if (identifiedUserIdRef.current === authenticatedUserId) return;
+
+    // ログアウトを経ずに別のユーザーへ切り替わった場合も、前の識別を引き継がない。
+    if (identifiedUserIdRef.current !== null) {
+      resetAnalyticsIdentity();
+    }
+
+    identifyAnalyticsUser(authenticatedUserId);
+    identifiedUserIdRef.current = authenticatedUserId;
+  }, [authenticatedUserId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,21 +207,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const me = await fetchMe();
+      const result = await fetchMe();
 
       if (!cancelled) {
-        setAuthState({
-          status: me ? "authenticated" : "guest",
-          user: me,
-          isHydrating: false,
-        });
+        setAuthState(resolveMeResult(result));
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [resolveMeResult]);
 
   const login = async (username: string, password: string) => {
     const r = await fetch("/api/auth/login", {
@@ -164,6 +229,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!r.ok) throw new Error("login failed");
 
+    // 前の identity が残した相談 state の local cache を新しい identity に引き継がない。
+    // 匿名相談 snapshot（sessionStorage, 同じタブの匿名相談）はログイン後も残す。
+    clearConciergeThreadCache();
     markLoggedIn();
     await refreshMe();
   };
@@ -175,6 +243,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     markLoggedOut();
+    // ログアウト後の Guest（同じブラウザの別の人を含む）に、相談 state の local cache を残さない。
+    clearConciergeThreadCache();
+    clearConciergeAnonymousSnapshot();
+    // ログアウト後のイベントを前のユーザーに紐づけない。
+    resetIdentity();
 
     setAuthState({
       status: "guest",

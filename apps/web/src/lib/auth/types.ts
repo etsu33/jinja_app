@@ -1,18 +1,20 @@
 export type AuthStatus = "unknown" | "authenticated" | "guest";
 
+// Mirrors the live `GET /api/users/me/` response
+// (backend/users/api/serializers.py::UserMeSerializer). Nickname and the
+// birth profile fields live under `profile` only -- the serializer has no
+// top-level `nickname` / `birthday`, and neither the BFF route
+// (app/api/users/me/route.ts) nor AuthProvider.fetchMe() flattens them.
 export type AuthUser = {
   id: number;
   email?: string | null;
   username?: string | null;
-  nickname?: string | null;
-  birthday?: string | null;
   profile?: {
     nickname?: string | null;
     is_public?: boolean | null;
     birthday?: string | null;
     birth_time?: string | null;
     birth_place?: string | null;
-    worship_style?: string | null;
   } | null;
 };
 
@@ -21,15 +23,3 @@ export type AuthState = {
   user: AuthUser | null;
   isHydrating: boolean;
 };
-
-export type ProfileState = {
-  nickname: string | null;
-  birthday: string | null;
-};
-
-export function toProfileState(user: AuthUser | null): ProfileState {
-  return {
-    nickname: user?.nickname?.trim() || null,
-    birthday: user?.birthday?.trim() || null,
-  };
-}

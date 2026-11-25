@@ -14,7 +14,7 @@ const VIEW_MODE_OPTIONS: readonly { value: ExploreViewMode; label: string }[] = 
 
 export function ViewModeTabs({ value, onChange }: ViewModeTabsProps) {
   return (
-    <div className="inline-flex rounded-full border border-stone-200/40 bg-white/65 p-1">
+    <div className="inline-flex rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] p-1">
       {VIEW_MODE_OPTIONS.map((option) => {
         const isActive = option.value === value;
 
@@ -26,7 +26,13 @@ export function ViewModeTabs({ value, onChange }: ViewModeTabsProps) {
             onClick={() => onChange(option.value)}
             className={[
               "rounded-full px-4 py-1.5 text-xs font-medium transition",
-              isActive ? "bg-emerald-50 text-emerald-700" : "text-stone-500 hover:bg-stone-50",
+              // Segmented control: the selected chip sits one step lighter than the
+              // track (--kt-color-background-subtle) so selection reads from the
+              // surface step, not from a colour fill. Avoids introducing another
+              // instance of the action-primary/white pairing on a 12px label.
+              isActive
+                ? "bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-primary)]"
+                : "text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-surface-default)]",
             ].join(" ")}
           >
             {option.label}

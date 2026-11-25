@@ -29,8 +29,8 @@ export default function PublicGoshuinHeader({ username, count, limit, offset }: 
   return (
     <header className="flex items-start justify-between gap-3">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">@{username} の御朱印帳</h1>
-        <p className="mt-1 text-xs text-slate-500">
+        <h1 className="text-xl font-bold text-[var(--kt-color-text-primary)]">@{username} の御朱印帳</h1>
+        <p className="mt-1 text-xs text-[var(--kt-color-text-muted)]">
           公開されている御朱印のみ表示します（{from}〜{to}/{count}）
         </p>
       </div>
@@ -38,7 +38,7 @@ export default function PublicGoshuinHeader({ username, count, limit, offset }: 
       <button
         type="button"
         onClick={onCopy}
-        className="rounded-md bg-slate-100 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-200"
+        className="rounded-md bg-[var(--kt-color-surface-elevated)] px-3 py-2 text-xs font-medium text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-surface-emphasis-hover)]"
       >
         URLをコピー
       </button>

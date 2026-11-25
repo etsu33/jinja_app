@@ -2,6 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowUp } from "lucide-react";
+
+import HomeOriginRow from "@/features/home/components/HomeOriginRow";
+import { saveHomeOriginHandoff } from "@/lib/concierge/homeOriginHandoff";
+import type { UserOrigin } from "../../../../../../packages/shared/userOrigin";
 
 function buildConciergeHref(theme: string, options?: { openFilter?: boolean }): string {
   const params = new URLSearchParams();
@@ -44,33 +49,95 @@ const CONSULTATION_THEME_CHIPS = [
 export function HomeHeroConsultationInput() {
   const router = useRouter();
   const [theme, setTheme] = useState("");
-  const [isConditionHintOpen, setIsConditionHintOpen] = useState(false);
+  // 出発地（任意）。/concierge には URL ではなく sessionStorage で1回だけ渡す。
+  const [origin, setOrigin] = useState<UserOrigin | null>(null);
 
   const canSubmit = useMemo(() => theme.trim().length > 0, [theme]);
 
+  const goToConcierge = (value: string, options?: { openFilter?: boolean }) => {
+    saveHomeOriginHandoff(origin);
+    router.push(buildConciergeHref(value, options));
+  };
+
   const submitTheme = (value: string) => {
-    const href = buildConciergeHref(value, { openFilter: isConditionHintOpen });
-    router.push(href);
+    goToConcierge(value);
   };
 
   return (
-    <div className="w-full max-w-2xl rounded-[2rem] border border-white/70 bg-white/70 p-4 text-left shadow-sm shadow-stone-900/5 sm:p-5">
-      <label htmlFor="home-hero-consultation" className="block text-[11px] font-medium text-stone-500">
-        今の気持ちを少しだけ書く
-      </label>
+    // Home構成の主コンテンツ。入力カード → chips → 条件リンクの順で縦に積み、
+    // 「相談カードが主、それ以外は補助」という階層を並び順そのもので表す。
+    <div className="w-full space-y-6 text-left">
+      {/*
+        相談入力カード: この画面唯一の焦点。
+        面はマットのまま (Glassmorphismにしない = 背景の波線を透かさない)。
+        「光が当たる部分だけ」を上辺のhairline highlightと、下へ落ちる
+        極薄のwarm glowで表す。どちらもbrass Tokenのcolor-mixで、
+        新しい色は作らない。これで入力エリアが、周囲のマットな補助カード
+        (HomeActionCard) より一段手前にある主アクション面として読める。
+      */}
+      <div
+        className="rounded-[1.75rem] border border-[var(--home-border)] bg-[var(--home-surface)] p-4"
+        style={{
+          boxShadow: [
+            "inset 0 1px 0 color-mix(in oklab, var(--home-path, var(--kt-color-action-primary)) 20%, transparent)",
+            "0 20px 44px -30px color-mix(in oklab, var(--home-path, var(--kt-color-action-primary)) 34%, transparent)",
+          ].join(", "),
+        }}
+      >
+        <label
+          htmlFor="home-hero-consultation"
+          className="block text-[11px] font-medium text-[var(--home-text-muted)]"
+        >
+          今の気持ちを少しだけ書く
+        </label>
 
-      <textarea
-        id="home-hero-consultation"
-        value={theme}
-        onChange={(event) => setTheme(event.target.value)}
-        placeholder="例: 気持ちを切り替えたい、これからのことを考えたい"
-        rows={3}
-        className="mt-2 w-full resize-none rounded-3xl border border-stone-200/50 bg-stone-50/70 px-4 py-3 text-sm leading-7 text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-emerald-200 focus:ring-1 focus:ring-emerald-100"
-      />
+        <textarea
+          id="home-hero-consultation"
+          value={theme}
+          onChange={(event) => setTheme(event.target.value)}
+          placeholder="例: 気持ちを切り替えたい、これからのことを考えたい"
+          rows={2}
+          className="mt-2 w-full resize-none border-0 bg-transparent px-0 py-1 text-[15px] leading-7 text-[var(--home-text-primary)] outline-none placeholder:text-[var(--home-text-secondary)]"
+        />
 
-      <div className="mt-3">
-        <p className="text-[11px] font-medium text-stone-500">相談のきっかけ</p>
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-2 flex items-end justify-between gap-4">
+          <p className="text-[11px] leading-5 text-[var(--home-text-secondary)]">
+            あなたの言葉から、ご縁のある神社へ
+          </p>
+
+          {/* 主CTA。円形の金は画面内で一箇所のみに置き、
+              有効時だけ微光(--kt-shadow-brand)を纏わせる。 */}
+          <button
+            type="button"
+            aria-label="この相談ではじめる"
+            title="この相談ではじめる"
+            className={[
+              "inline-flex size-12 shrink-0 items-center justify-center rounded-full transition",
+              canSubmit
+                ? "bg-[var(--kt-color-action-primary)] text-[var(--kt-color-action-primary-text)] shadow-[var(--kt-shadow-brand)] hover:bg-[var(--kt-color-action-primary-hover)] active:scale-[0.97]"
+                : // 無効時も金を保つ。中立色にすると焦点そのものが消えるため、減光で表す。
+                  "cursor-not-allowed border border-[var(--kt-color-action-primary)] bg-transparent text-[var(--kt-color-action-primary)] opacity-40",
+            ].join(" ")}
+            disabled={!canSubmit}
+            onClick={() => submitTheme(theme)}
+          >
+            <ArrowUp className="size-5" aria-hidden />
+          </button>
+        </div>
+      </div>
+
+      {/* 出発地（任意）: 相談の欄のすぐ下に1行だけ置き、押すと下から選択肢を出す。
+          1回目の相談から位置付きで送るため（2026-11-23）。 */}
+      <div className="-mt-3">
+        <HomeOriginRow origin={origin} onChange={setOrigin} />
+      </div>
+
+      {/* 候補チップ: 入力カードの外に出し、補助であることを位置で示す。 */}
+      <div>
+        <p className="px-1 text-[11px] font-medium text-[var(--home-text-muted)]">
+          ことばが浮かばないときは、ここから
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
           {CONSULTATION_THEME_CHIPS.map((chip) => {
             const isSelected = theme.trim() === chip.text;
             return (
@@ -80,8 +147,8 @@ export function HomeHeroConsultationInput() {
                 className={[
                   "rounded-full border px-3 py-1.5 text-xs font-medium transition active:scale-[0.98]",
                   isSelected
-                    ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-800 shadow-sm shadow-emerald-900/5"
-                    : "border-stone-200/60 bg-white/55 text-stone-600 hover:bg-stone-50",
+                    ? "border-[var(--kt-color-action-primary)] bg-[var(--home-surface-elevated)] text-[var(--kt-color-action-primary)]"
+                    : "border-[var(--home-border)] bg-[var(--home-surface)] text-[var(--home-text-secondary)] hover:border-[var(--home-border-strong)]",
                 ].join(" ")}
                 onClick={() => setTheme(chip.text)}
                 aria-pressed={isSelected}
@@ -94,30 +161,13 @@ export function HomeHeroConsultationInput() {
         </div>
       </div>
 
-      <div className="mt-3 border-t border-stone-200/50 pt-3">
+      <div className="px-1">
         <button
           type="button"
-          className="inline-flex items-center rounded-full px-1 text-xs font-medium text-stone-600 transition hover:text-emerald-800"
-          onClick={() => setIsConditionHintOpen((current) => !current)}
-          aria-expanded={isConditionHintOpen}
+          className="inline-flex items-center text-xs font-medium text-[var(--home-text-secondary)] transition hover:text-[var(--kt-color-action-primary)]"
+          onClick={() => goToConcierge(theme, { openFilter: true })}
         >
           ＋ 条件を追加する
-        </button>
-        {isConditionHintOpen ? (
-          <p className="mt-2 rounded-2xl border border-stone-200/55 bg-stone-50/70 px-3 py-2 text-xs leading-6 text-stone-500">
-            誕生日やご利益、参拝スタイルなどの条件は次のステップで追加できます。
-          </p>
-        ) : null}
-      </div>
-
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <button
-          type="button"
-          className="inline-flex min-h-[40px] w-full items-center justify-center rounded-full border border-emerald-200/70 bg-emerald-50/90 px-5 py-2 text-sm font-medium text-emerald-900 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-45"
-          disabled={!canSubmit}
-          onClick={() => submitTheme(theme)}
-        >
-          この相談ではじめる
         </button>
       </div>
     </div>

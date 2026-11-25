@@ -1,0 +1,28 @@
+-- KAMI MUSUBI / SPH-21 permission snapshot runner (psql) for query set v1.1
+-- DESIGN ONLY. DO NOT EXECUTE against production without Mother Ship approval.
+--
+-- Runs S0-S9 inside ONE REPEATABLE READ READ ONLY transaction and writes one CSV stream.
+-- Every result row starts with snapshot_query (S0..S9); each query also emits its own header row.
+-- The output file holds production ACLs and role inventories: keep it private, never commit it.
+--
+-- Usage (operator-approved session only; connection settings come from the operator's environment):
+--   psql -X -v ON_ERROR_STOP=1 -v out=<private-path>/sph21_snapshot.csv \
+--        -f docs/audit/sql/sph21_permission_snapshot_run.psql
+-- The script never connects by itself and contains no connection settings.
+
+\set ON_ERROR_STOP on
+\set QUIET on
+\pset format csv
+\pset tuples_only off
+
+BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
+SET LOCAL statement_timeout = '60s';
+SET LOCAL lock_timeout = '5s';
+SET LOCAL idle_in_transaction_session_timeout = '300s';
+
+\o :out
+\ir sph21_permission_snapshot.sql
+\o
+
+-- Nothing was written; end the transaction without COMMIT side effects.
+ROLLBACK;

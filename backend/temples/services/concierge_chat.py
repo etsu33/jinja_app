@@ -5,9 +5,15 @@ from typing import Any, Dict, List, Optional
 
 from django.conf import settings as dj_settings
 from temples.domain.consultation_axis import resolve_consultation_axis
+from temples.domain.shrine_identity import resolve_shrine_id, resolve_shrine_identity
 from temples.models import GoriyakuTag
 
 from temples.services.concierge_candidate_utils import _normalize_candidate_fields
+from temples.services.concierge_adaptive_radius import apply_adaptive_radius
+from temples.services.highlight_pick import attach_highlight_picks
+from temples.services.travel_ranking import rerank_for_travel
+from temples.services.concierge_history import load_shrine_history_facts
+from temples.services.channel_b_typed_need_match import strip_channel_b_carrier
 from temples.services.consultation_interpreter import interpret_consultation
 from temples.services.recommendation_algorithm_v3 import (
     run_recommendation_algorithm_v3_shadow,
@@ -24,7 +30,9 @@ from temples.services.score_v3_observer import (
 )
 from temples.services.concierge_chat_extra_condition import (
     resolve_extra_condition_tags,
+    resolve_visit_preference_tags,
 )
+from temples.domain.visit_preference import implied_visit_style_tags_for_needs
 from temples.services.concierge_chat_llm_route import (
     resolve_llm_route,
 )
@@ -45,9 +53,12 @@ from temples.services.concierge_chat_presentation import (
 from temples.services.concierge_chat_ranking import (
     _attach_breakdown,
     _attach_rank_comparison,
+    _channel_b_request_need_keys,
     _diversify_by_need,
     _resolve_mode_weights,
     build_recommendation_reason,
+    _normalize_need_tags,
+    has_primary_tier_reason,
     resolve_score_sort_key,
     resolve_score_v3_mode,
     resolve_score_v3_mode_detail,
@@ -185,11 +196,27 @@ def _attach_chat_rec_enrichment(
     visit_style_tags: set[str],
     goriyaku_tag_ids: Optional[List[int]],
     goriyaku_tag_label_by_id: Dict[int, str],
+    implied_visit_style_tags: Optional[set[str]] = None,
     user_origin: Optional[Dict[str, Any]] = None,
     user=None,
     profile_context: Optional[Dict[str, Any]] = None,
     consultation_axis: Optional[str] = None,
+    batch_history: bool = True,
 ) -> Dict[str, Any]:
+    # B-1: 認証済み user の履歴を候補ぶんまとめて読む（table ごとに 1 クエリ、候補数に依存しない）。
+    # anonymous / batch_history=False（同値性テスト用）では None になり、従来の per-shrine 経路を使う。
+    history_facts = (
+        load_shrine_history_facts(
+            user=user,
+            shrine_ids=[
+                resolve_shrine_id(rec, policy="live_candidate")
+                for rec in (recs.get("recommendations") or [])
+                if isinstance(rec, dict)
+            ],
+        )
+        if batch_history
+        else None
+    )
     for rec in recs.get("recommendations") or []:
         if not isinstance(rec, dict):
             continue
@@ -201,12 +228,14 @@ def _attach_chat_rec_enrichment(
             weights=weights,
             astro_bonus_enabled=astro_bonus_enabled,
             visit_style_tags=visit_style_tags,
+            implied_visit_style_tags=implied_visit_style_tags,
             requested_goriyaku_tag_ids=goriyaku_tag_ids,
             goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
             user_origin=user_origin,
             user=user,
             profile_context=profile_context,
             consultation_axis=consultation_axis,
+            history_facts=history_facts,
         )
         _apply_soft_signal_highlights(
             rec,
@@ -231,15 +260,42 @@ def _sort_chat_recommendations(
     *,
     sort_tags: set[str],
     score_v3_mode: str = "shadow",
+    need_tags: list[str] | None = None,
 ) -> Dict[str, Any]:
     recommendations = [r for r in (recs.get("recommendations") or []) if isinstance(r, dict)]
 
     distance_mode = "sort_distance" in sort_tags
 
     if distance_mode:
+        # Context (distance) may re-rank within Recommendation Meaning, but
+        # must not decide Recommendation Meaning itself (docs/product/
+        # recommendation-signal-authority.md §5/§7/§9 Semantic Fit vs
+        # Distance). A candidate with a Primary-tier reason (need_tags /
+        # consultation_axis / goriyaku / history_theme match) is tiered
+        # ahead of one without, and only sorted by distance within each
+        # tier -- distance still fully controls order when no candidate
+        # has established Recommendation Meaning at all.
+        #
+        # Pre-G6 U2 (Mother Ship OPTION_T): a verified, mapped Channel B
+        # TypedNeedMatch whose Need exactly matches a resolved request Need
+        # also establishes Recommendation Meaning for this tier. It is
+        # evaluated only here, via the PR-F projection, and is never written
+        # into _reason_facts / reason / matched_* / scores (reason semantics
+        # and claim strength are unchanged, so such a candidate may still be
+        # explained as fallback).
+        need_tags_clean = _normalize_need_tags(need_tags or [], max_tags=10)
+
+        def _has_recommendation_meaning(r: Dict[str, Any]) -> bool:
+            if has_primary_tier_reason(r.get("_reason_facts")):
+                return True
+            return bool(
+                need_tags_clean and _channel_b_request_need_keys(r, need_tags_clean)
+            )
+
         recommendations = sorted(
             recommendations,
             key=lambda r: (
+                0 if _has_recommendation_meaning(r) else 1,
                 float(r.get("distance_m") or 1e12),
                 -resolve_score_sort_key(r, score_v3_mode=score_v3_mode),
                 str(r.get("name") or ""),
@@ -257,6 +313,7 @@ def _sort_chat_recommendations(
         recommendations = _diversify_by_need(
             recommendations,
             limit=3,
+            need_tags=need_tags,
         )
 
     recs["recommendations"] = recommendations
@@ -375,6 +432,48 @@ def _pick_primary_knowledge_history_confidence(knowledge_histories: Any) -> str 
     return str(item.get("confidence") or "").strip() or None
 
 
+def _pick_primary_knowledge_history_type(knowledge_histories: Any) -> str | None:
+    """`_pick_primary_knowledge_history_content()`が採用するのと同じHistory 1件の
+    history_typeを返す。別Historyのhistory_typeを混ぜない（PR-B契約と同じ選定基準）。
+
+    history_typeはconfidenceとは別軸の情報（Source信頼度ではなく、その記述が
+    伝承かどうかという記述種別）であり、TRADITION_ALWAYS_HEDGED契約
+    （docs/core/recommendation-reason-contract.md）でRecommendation Reason V4側の
+    表現強度判定に使われる。ここでは値の受け渡しのみを行い、判定はしない。
+    """
+    item = _pick_primary_knowledge_history_item(knowledge_histories)
+    if item is None:
+        return None
+    return str(item.get("history_type") or "").strip() or None
+
+
+def _score_v3_profile_shrine_id(rec: dict[str, Any], source: dict[str, Any]) -> int | None:
+    """score v3 profile 用の Shrine identity（F-5B #8）。
+
+    `meaning_payload.source.shrineId` は **live_candidate policy の許可 alias
+    ではない**。global policy へ足すと、あらゆる live candidate が
+    `shrineId` を identity として読むようになってしまう。ここでは rec 自身の
+    解決が `absent` のときに限り、互換 source として明示的に参照する。
+
+        resolved           -> その Shrine id
+        invalid / conflict -> None（source.shrineId へ **fallback しない**）
+        absent             -> source.shrineId の互換参照を許可
+
+    source.shrineId の正規化も共有 resolver に通す（canonical field へ
+    読み替えるだけで、別の int parser は実装しない）。
+    """
+    resolution = resolve_shrine_identity(rec, policy="live_candidate")
+
+    if resolution.status == "resolved":
+        return resolution.shrine_id
+
+    # identity が主張されているのに使えない場合は fail closed。
+    if resolution.status != "absent":
+        return None
+
+    return resolve_shrine_id({"shrine_id": source.get("shrineId")}, policy="live_candidate")
+
+
 def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
     meaning_payload = rec.get("meaning_payload") if isinstance(rec.get("meaning_payload"), dict) else {}
     source = meaning_payload.get("source") if isinstance(meaning_payload.get("source"), dict) else {}
@@ -399,13 +498,23 @@ def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
         if knowledge_history_content is not None
         else None
     )
+    # TRADITION_ALWAYS_HEDGED契約: history_typeはconfidenceと同じ選定基準（同一History）
+    # から取る。Legacy fallback時はKnowledge history_type概念が存在しないためNone
+    # （confidence同様、PR-B契約に合わせる）。
+    shrine_history_type = (
+        _pick_primary_knowledge_history_type(rec.get("knowledge_histories"))
+        if knowledge_history_content is not None
+        else None
+    )
 
     return {
-        "shrine_id": rec.get("shrine_id") or rec.get("id") or source.get("shrineId"),
+        "shrine_id": _score_v3_profile_shrine_id(rec, source),
         "name": rec.get("name") or source.get("nameJp"),
         "history_theme": rec.get("history_theme") or source.get("historyTheme"),
         "goriyaku": rec.get("goriyaku") or source.get("goriyaku"),
-        "goriyaku_tags": rec.get("goriyaku_tags") or source.get("goriyakuTags") or breakdown.get("matched_need_tags") or [],
+        # Consultation-side matched_need_tags are ranking evidence, not raw
+        # shrine facts.  Do not re-label them as the shrine's goriyaku here.
+        "goriyaku_tags": rec.get("goriyaku_tags") or source.get("goriyakuTags") or [],
         "visit_style_tags": rec.get("visit_style_tags") or features.get("visit_style") or [],
         # Fact-ready ShrineDeity/ShrineHistory（新Knowledge）をfield単位で優先し、
         # 存在しない場合のみLegacy（sajin/description）へfallbackする。
@@ -416,6 +525,7 @@ def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
         "deity_confidence": deity_confidence,
         "shrine_history": knowledge_history_content if knowledge_history_content is not None else (rec.get("description") or source.get("description")),
         "shrine_history_confidence": shrine_history_confidence,
+        "shrine_history_type": shrine_history_type,
         "place_context": rec.get("address") or source.get("address"),
         "place_id": rec.get("place_id"),
         "behavior_signals": rec.get("behavior_signals") if isinstance(rec.get("behavior_signals"), dict) else {},
@@ -473,15 +583,37 @@ def _build_reason_v4_preview_payload(
         )
         preview = build_recommendation_reason_v4(
             recommendation_input_profile=recommendation_input_profile,
+            authority_context=_build_reason_v4_authority_context(rec),
         )
 
         previews.append({
             "rank": index + 1,
-            "shrine_id": rec.get("shrine_id") or rec.get("id"),
+            # F-5B #9: 共有 live_candidate resolver。generic `id` は
+            # COMPATIBILITY_ALIAS として引き続き読むが、独自解析は持たない。
+            "shrine_id": resolve_shrine_id(rec, policy="live_candidate"),
             "name": rec.get("name"),
             "preview": preview,
         })
     return previews
+
+
+def _build_reason_v4_authority_context(rec: dict[str, Any]) -> dict[str, Any]:
+    """Pass through the already-resolved Primary Reason; never resolve it again."""
+    reason_facts = rec.get("_reason_facts") if isinstance(rec.get("_reason_facts"), list) else []
+    primary_fact = next(
+        (
+            fact
+            for fact in reason_facts
+            if isinstance(fact, dict) and fact.get("is_primary") is True
+        ),
+        {},
+    )
+    primary_source = str(rec.get("_primary_reason_source") or "fallback").strip() or "fallback"
+    return {
+        "primary_reason_source": primary_source,
+        "primary_reason_fact": primary_fact,
+        "is_fallback": primary_source == "fallback",
+    }
 
 
 def _attach_recommendation_reason_quality(
@@ -494,7 +626,19 @@ def _attach_recommendation_reason_quality(
     This keeps the lightweight quality payload and the display-only
     recommendation_reason_v4_detail on normal recommendations so API response and
     thread storage do not depend on debug preview visibility.
+
+    PR2382/PR2383契約: quality dictへKnowledge由来分類（knowledge_backing_class/
+    deity_knowledge_used/history_knowledge_used）をoptional propertyとして追加する。
+    分類ロジック自体はrecommendation_quality_measurement.build_shrine_reason_provenance()
+    （既存、PR2382）をそのまま再利用し、ここでは重複実装しない。
+    temples.services.recommendation_quality_measurementはこのモジュールの
+    _build_score_v3_candidate_profileをimportするため、モジュールトップレベルで
+    importすると循環importになる。関数内importで遅延解決する。
     """
+    from temples.services.recommendation_quality_measurement import (
+        build_shrine_reason_provenance,
+    )
+
     quality_by_key: dict[Any, dict[str, Any]] = {}
     detail_by_key: dict[Any, dict[str, Any]] = {}
 
@@ -510,9 +654,14 @@ def _attach_recommendation_reason_quality(
         )
         preview = build_recommendation_reason_v4(
             recommendation_input_profile=recommendation_input_profile,
+            authority_context=_build_reason_v4_authority_context(rec),
         )
         rec["recommendation_reason_v4"] = str(preview.get("reason_text") or "")
-        quality = preview.get("quality") or {}
+        quality = dict(preview.get("quality") or {})
+        provenance = build_shrine_reason_provenance(rec)
+        quality["knowledge_backing_class"] = provenance.classification
+        quality["deity_knowledge_used"] = provenance.deity_status == "KNOWLEDGE_USED"
+        quality["history_knowledge_used"] = provenance.history_status == "KNOWLEDGE_USED"
         rec["recommendation_reason_quality"] = quality
 
         # Display-only subset of the same preview: reason_text/fact/interpretation/action.
@@ -568,6 +717,7 @@ def build_chat_recommendations(
     birthdate=None,
     goriyaku_tag_ids=None,
     extra_condition=None,
+    visit_preferences: list[str] | None = None,
     public_mode="need",
     flow="A",
     need_tags: list[str] | None = None,
@@ -576,6 +726,7 @@ def build_chat_recommendations(
     user=None,
     profile_context: Optional[Dict[str, Any]] = None,
     interpretation_profile: dict[str, Any] | None = None,
+    travel_request_feature_ids: list[str] | None = None,
 ) -> Dict[str, Any]:
     """
     候補リストからおすすめ神社を選んで返す関数。
@@ -586,12 +737,23 @@ def build_chat_recommendations(
     Responsibility:
       - need_tags は相談テーマ由来の主推薦軸として扱う。
       - goriyaku_tag_ids はユーザー追加の補助条件として扱う。
-      - extra_condition は参拝スタイルなどの補助条件として扱う。
+      - extra_condition は参拝スタイルなどの補助条件として扱う（Legacy free-text）。
+      - visit_preferences は参拝スタイルの Structured 版として扱う
+        （Level 2 Visit Preference Signal Redesign。canonical tag のみ、
+        parser を経由しない）。extra_condition 由来の visit_style tag と
+        Compatibility Layer（resolve_visit_preference_tags）で合流し、
+        同一 tag の二重加点は発生しない。
       - birthdate / astro / direction は主軸を上書きしない補助シグナルとして扱う。
     """
     valid_candidates = [
         _normalize_candidate_fields(c) for c in (candidates or []) if isinstance(c, dict)
     ]
+    # 場所ごとの物差しで候補の範囲を決める（2026-11-23。英語の相談には当てない）。
+    # 決まり：docs/product/recommendation-signal-authority.md §9「Semantic Fit vs Distance」
+    if travel_request_feature_ids is None:
+        valid_candidates, adaptive_radius_info = apply_adaptive_radius(valid_candidates)
+    else:
+        adaptive_radius_info = {"applied": False, "reason": "travel_mode"}
 
     need_payload = resolve_need_payload(
         query=query or "",
@@ -634,15 +796,24 @@ def build_chat_recommendations(
     sort_tags = extra_tags["sort_tags"]
     hard_filter_tags = extra_tags["hard_filter_tags"]
     soft_signal_tags = extra_tags["soft_signal_tags"]
-    visit_style_tags = extra_tags["visit_style_tags"]
+    visit_style_tags = resolve_visit_preference_tags(
+        structured=visit_preferences,
+        legacy_visit_style_tags=extra_tags["visit_style_tags"],
+    )
+    # 休息・不安の相談では、参拝の好み（静か・自然・人が少なめ）を自動で足す。点数にだけ使い、
+    # 主な根拠・説明の文には使わないため、visit_style_tags とは別に渡す。
+    implied_visit_style_tags = set(
+        implied_visit_style_tags_for_needs(need_tags, explicit_tags=visit_style_tags)
+    )
 
     log.info(
-        "[dbg] extra_tags resolved sort=%r soft=%r visit_style=%r has_query=%s has_extra=%s",
+        "[dbg] extra_tags resolved sort=%r soft=%r visit_style=%r has_query=%s has_extra=%s has_visit_preferences=%s",
         sorted(sort_tags),
         sorted(soft_signal_tags),
         sorted(visit_style_tags),
         bool(query),
         bool(str(extra_condition or "").strip()),
+        bool(visit_preferences),
     )
 
     observe_candidate_pool(
@@ -665,6 +836,7 @@ def build_chat_recommendations(
             "sort_tags": sorted(sort_tags),
             "hard_filter_tags": sorted(hard_filter_tags),
             "visit_style_tags": sorted(visit_style_tags),
+            "implied_visit_style_tags": sorted(implied_visit_style_tags),
         },
     )
 
@@ -675,7 +847,11 @@ def build_chat_recommendations(
     )
 
     astro_bonus_enabled = public_mode == "compat"
-    llm_enabled = bool(getattr(dj_settings, "CONCIERGE_USE_LLM", False))
+
+    if llm_enabled is None:
+        llm_enabled = bool(getattr(dj_settings, "CONCIERGE_USE_LLM", False))
+    else:
+        llm_enabled = bool(llm_enabled)
 
     route = resolve_llm_route(
         query=query or "",
@@ -722,6 +898,9 @@ def build_chat_recommendations(
 
     goriyaku_tag_label_by_id = _build_goriyaku_tag_label_by_id(goriyaku_tag_ids)
 
+    # Lead Purpose Alignment: 一致した札の名前は、各候補の goriyaku_tag_names から
+    # need_to_goriyaku_concepts で引く（札の番号は使わない。データベースへの問い合わせも無い）。
+
     recs = _attach_chat_rec_enrichment(
         recs,
         public_mode=public_mode,
@@ -734,6 +913,7 @@ def build_chat_recommendations(
         visit_style_tags=visit_style_tags,
         goriyaku_tag_ids=goriyaku_tag_ids,
         goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
+        implied_visit_style_tags=implied_visit_style_tags,
         user_origin=bias,
         user=user,
         profile_context=profile_context,
@@ -773,9 +953,19 @@ def build_chat_recommendations(
         recs,
         sort_tags=sort_tags,
         score_v3_mode=score_v3_mode,
+        need_tags=need_tags,
     )
     recs.setdefault("_debug", {})["score_v3_mode"] = score_v3_mode
     recs.setdefault("_debug", {})["score_v3_mode_source"] = score_v3_mode_detail["source"]
+    # travel モード（英語の相談）：need で並んだ候補を、特徴語の重なりと場所の価値で並べ替える。
+    # None のとき（travel でない・英語でない）は何もしない（temples/services/travel_ranking.py）。
+    if travel_request_feature_ids is not None:
+        reordered, travel_observation = rerank_for_travel(
+            recs.get("recommendations") or [],
+            travel_request_feature_ids,
+        )
+        recs["recommendations"] = reordered
+        recs["_travel_ranking"] = travel_observation
     recs["recommendations"] = _attach_rank_comparison(recs.get("recommendations") or [])
     recs.setdefault("_debug", {})["user_state_profile"] = _build_user_state_profile(
         query=query or "",
@@ -829,6 +1019,16 @@ def build_chat_recommendations(
         language=language,
     )
     _trim_to_top3_and_fill_message(recs)
+
+    # 見どころ単位の推薦 段階A：残った推薦の各神社に「ここで見る」見どころを1つ付ける。
+    # 順位・推薦理由は変えない（temples/services/highlight_pick.py）。
+    # travel モード（英語の相談）は英語のアンサーだけを使う。
+    recs.setdefault("_debug", {})["adaptive_radius"] = adaptive_radius_info
+    recs.setdefault("_debug", {})["highlight_pick"] = attach_highlight_picks(
+        recs.get("recommendations") or [],
+        need_tags,
+        language_code="en" if travel_request_feature_ids is not None else "ja",
+    )
 
     trim_after = observe_trim_after(recs)
     recs.setdefault("_debug", {})["trim_observation"] = build_trim_observation(
@@ -934,5 +1134,9 @@ def build_chat_recommendations(
     )
 
     recs = attach_action_suggestion_v4_preview(recs)
+
+    # Channel B の内部 carrier は、ここ（推薦の内部処理の出口）で取り除く。
+    # 以降の公開 response・thread 保存・recommendation log・Compass の投影へ出さない。
+    recs = strip_channel_b_carrier(recs)
 
     return recs

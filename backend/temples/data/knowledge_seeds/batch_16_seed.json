@@ -1,0 +1,476 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "batch16-hachiman-official",
+      "source_type": "shrine_official",
+      "title": "ご由緒・概要",
+      "publisher": "平塚八幡宮",
+      "url": "http://www.hachiman.org/yurai.php",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T07:00:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "御祭神は応神天皇・神功皇后・武内宿禰の三柱を直接確認。境内絵図に「弁財天社」（七福神の一・仏教/ヒンドゥー由来の弁財天を祀る社）・「末社三社」が別途記載されており、本社Factに含めていない。当サイトはHTTPSではなくHTTPで運用されており、証明書はホスト名と一致しないため、Browser paneで直接コンテンツを確認した（HTTP接続自体は到達可能）。"
+    },
+    {
+      "key": "batch16-sakuragi-official",
+      "source_type": "shrine_official",
+      "title": "櫻木神社について",
+      "publisher": "櫻木神社",
+      "url": "https://sakuragi.info/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T07:05:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "御祭神は伊弉諾尊・伊弉冉尊・倉稲魂命・武甕槌命の四柱を、各柱の個別説明とともに直接確認。仁寿元年(851)の創建伝承、永祚元年(989)の宮所建立、正暦3年(992)以降の髙梨氏による祭祀継承を直接確認。"
+    },
+    {
+      "key": "batch16-sengenjinja-official",
+      "source_type": "shrine_official",
+      "title": "多摩川浅間神社のご案内（由緒、御祭神、歴史）",
+      "publisher": "多摩川浅間神社",
+      "url": "https://sengenjinja.info/about/index.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T07:10:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "現在の御祭神は木花咲耶姫命の一柱のみと直接確認。創祀伝承（文治年間/1185-90年、北条政子が観世音像を建立し村人が「富士浅間大菩薩」と称したという故事）自体は仏教的要素を含む伝承として記載されているが、現在の御祭神ページには木花咲耶姫命のみが記載されており、当該伝承を史実として断定せず、また観世音像それ自体をDeity Factとして登録していない。明治40年(1907)の合祀政令により旧赤城神社・熊野神社（下沼部村の他2社）を統合したことも直接確認したが、両社の祭神は現在の御祭神一覧に含まれていないためFact化していない。"
+    },
+    {
+      "key": "batch16-futaarayama-official",
+      "source_type": "shrine_official",
+      "title": "由緒・歴史",
+      "publisher": "二荒山神社（宇都宮）",
+      "url": "http://futaarayamajinja.jp/yuisyo/",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T07:15:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "当社は栃木県宇都宮市に鎮座する「宇都宮二荒山神社」（下野国一之宮）であり、栃木県日光市の「日光二荒山神社」とは別法人・別神社である。Production側のshrine_ref（name_jp=宇都宮二荒山神社、address=栃木県宇都宮市馬場通り1-1-1）と公式サイト記載の所在地が一致することを確認済み。御祭神は豊城入彦命（御祭神）・大物主命・事代主命（相殿）の三柱を直接確認。境内に十二の末社があることも明記されており、本社Factには含めていない。"
+    },
+    {
+      "key": "batch16-hakusan-10jinja",
+      "source_type": "shrine_official",
+      "title": "白山神社",
+      "publisher": "東京十社会",
+      "url": "http://10jinja.tokyo/hakusanjinja.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T07:20:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "白山神社（文京区）自体の独立公式ドメインは本セッションでは確認できなかったため、東京十社（当社を含む参加10社が共同運営する公式団体、©東京十社会）の公式サイトを直接確認した。所在地（東京都文京区白山5-31-26）がProduction側のshrine_refと一致することを確認済み。御祭神は菊理姫命・伊弉諾命・伊弉冊命の三柱を直接確認。白山信仰一般の解説文はなく、当社固有の由緒（天暦二年勧請、建武四年足利尊氏祈願所、元和二年以降の遷座歴）のみが記載されている。境内社の記載はこのページにはない。"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "平塚八幡宮",
+        "address": "神奈川県平塚市浅間町1-6"
+      },
+      "deities": [
+        {
+          "display_name": "応神天皇",
+          "canonical_name": "応神天皇",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:00:00+00:00",
+          "note": "公式サイトは応神天皇・神功皇后・武内宿禰を序列を示さず列挙している。",
+          "source_keys": ["batch16-hachiman-official"]
+        },
+        {
+          "display_name": "神功皇后",
+          "canonical_name": "神功皇后",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:00:00+00:00",
+          "note": "公式サイトは応神天皇・神功皇后・武内宿禰を序列を示さず列挙している。",
+          "source_keys": ["batch16-hachiman-official"]
+        },
+        {
+          "display_name": "武内宿禰",
+          "canonical_name": "武内宿禰",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:00:00+00:00",
+          "note": "公式サイトは応神天皇・神功皇后・武内宿禰を序列を示さず列挙している。",
+          "source_keys": ["batch16-hachiman-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "仁徳天皇御代68年(380)の創祀伝承",
+          "content": "平塚八幡宮は、仁徳天皇の御代68年（380年）にこの地で大きな地震があり、人々の苦しむ様を見かねた仁徳天皇が社を建てられたことが創祀とされていると公式サイトは記している。",
+          "period_text": "仁徳天皇御代68年（380年、伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:00:00+00:00",
+          "note": "公式サイト自身が「創祀とされています」と記述。史実として断定していない。",
+          "source_keys": ["batch16-hachiman-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "戦国期の兵火と徳川家康公による復興",
+          "content": "歴代の天皇や源頼朝公をはじめとする武士から崇敬を集めたが、戦国時代になると兵火に遭い、御社殿や社宝、社伝記のことごとくを焼失した。その後、江戸に入府した徳川家康公が荒廃していた御社殿を復興させたと公式サイトは記している。",
+          "period_text": "戦国時代〜江戸時代初期",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:00:00+00:00",
+          "note": "",
+          "source_keys": ["batch16-hachiman-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "関東大震災による倒壊と現社殿の竣工",
+          "content": "大正12年（1923年）の関東大震災により社殿が倒壊し、現在の社殿は昭和3年（1928年）に竣工したと公式サイトは記している。",
+          "period_text": "大正12年（1923）〜昭和3年（1928）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:00:00+00:00",
+          "note": "",
+          "source_keys": ["batch16-hachiman-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "櫻木神社",
+        "address": "千葉県野田市桜台210"
+      },
+      "deities": [
+        {
+          "display_name": "伊弉諾尊",
+          "canonical_name": "伊弉諾尊",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:05:00+00:00",
+          "note": "公式サイトは四柱を序列を示さず個別説明とともに列挙している。",
+          "source_keys": ["batch16-sakuragi-official"]
+        },
+        {
+          "display_name": "伊弉冉尊",
+          "canonical_name": "伊弉冉尊",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:05:00+00:00",
+          "note": "公式サイトは四柱を序列を示さず個別説明とともに列挙している。",
+          "source_keys": ["batch16-sakuragi-official"]
+        },
+        {
+          "display_name": "倉稲魂命",
+          "canonical_name": "倉稲魂命",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:05:00+00:00",
+          "note": "由緒によれば創建の由来で最初に祀られた神。公式サイトは四柱を序列を示さず個別説明とともに列挙している。",
+          "source_keys": ["batch16-sakuragi-official"]
+        },
+        {
+          "display_name": "武甕槌命",
+          "canonical_name": "武甕槌命",
+          "role": "unknown",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:05:00+00:00",
+          "note": "由緒によれば倉稲魂命の後に祀られた神。公式サイトは四柱を序列を示さず個別説明とともに列挙している。",
+          "source_keys": ["batch16-sakuragi-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "仁寿元年(851)の創建伝承",
+          "content": "社記によれば、平安朝の仁寿元年（851年）、藤原鎌足公五代の後胤である冬嗣公三男の嗣良公がこの地に居を移した際、桜の美しい大木の下に倉稲魂命を祀り、その後武甕槌命を祀ったのが始まりであると伝えられている。",
+          "period_text": "仁寿元年（851、伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:05:00+00:00",
+          "note": "公式サイト自身が「伝えています」「諸説あり」と記述。史実として断定していない。",
+          "source_keys": ["batch16-sakuragi-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "永祚元年(989)の宮所建立",
+          "content": "社家文書によれば、永祚元年（989年）12月の初午の日に、桜の木の元へ宮所が建立され、この時に「桜台」と号したと記されている。",
+          "period_text": "永祚元年（989）12月",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:05:00+00:00",
+          "note": "",
+          "source_keys": ["batch16-sakuragi-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "正暦3年(992)以降の髙梨氏による祭祀継承",
+          "content": "正暦3年（992年）の宮司家文書によれば、その後、冬嗣公の子孫にあたる藤原朝臣髙梨則忠氏が祭祀を継承したと伝えられる。現在の社家はその継承から28代目、初代から31代目にあたると公式サイトは記している。",
+          "period_text": "正暦3年（992）以降",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:05:00+00:00",
+          "note": "",
+          "source_keys": ["batch16-sakuragi-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "多摩川浅間神社",
+        "address": "東京都大田区田園調布1-55-12"
+      },
+      "deities": [
+        {
+          "display_name": "木花咲耶姫命",
+          "canonical_name": "木花咲耶姫命",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:10:00+00:00",
+          "note": "公式サイトが「ご祭神」として明記する唯一の祭神。明治40年(1907)の合祀政令により統合された旧赤城神社・熊野神社の祭神は現在の御祭神一覧に含まれておらずFact化していない。",
+          "source_keys": ["batch16-sengenjinja-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "文治年間(1185-90)の創祀伝承",
+          "content": "鎌倉時代の文治年間（1185〜90年）、源頼朝の妻北条政子が、夫の武運長久を祈って亀甲山に「正観世音像」を建てたのが起こりと伝えられ、村人たちはこの像を「富士浅間大菩薩」と呼び尊崇したと公式サイトは記している。",
+          "period_text": "文治年間（1185〜90、伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:10:00+00:00",
+          "note": "公式サイト自身が「創建と伝えられます」と記述する創祀伝承であり、史実として断定していない。当該伝承に登場する観世音像自体をDeity Factとして登録していない。",
+          "source_keys": ["batch16-sengenjinja-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "承応元年(1652)の観世音立像発掘と祭礼",
+          "content": "承応元年（1652年）5月、表坂の土留め工事の際に唐銅製の正観世音の立像が発掘され、以後6月1日に神事を行うようになり、現在もご祭礼は6月に行われていると公式サイトは記している。",
+          "period_text": "承応元年（1652）5月",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:10:00+00:00",
+          "note": "",
+          "source_keys": ["batch16-sengenjinja-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "明治40年(1907)の合祀政令による現在の形の成立",
+          "content": "かつて下沼部村には浅間・赤城・熊野の三つの神社があったが、明治40年（1907年）の「一村一社」の合祀政令を受けた村人たちの話し合いにより、浅間神社が新しい村の鎮守となったと公式サイトは記している。",
+          "period_text": "明治40年（1907）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:10:00+00:00",
+          "note": "",
+          "source_keys": ["batch16-sengenjinja-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "宇都宮二荒山神社",
+        "address": "栃木県宇都宮市馬場通り1-1-1"
+      },
+      "deities": [
+        {
+          "display_name": "豊城入彦命",
+          "canonical_name": "豊城入彦命",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:15:00+00:00",
+          "note": "公式サイトが「御祭神」として明記。毛野国を開拓し宇都宮の始祖として崇敬されている。",
+          "source_keys": ["batch16-futaarayama-official"]
+        },
+        {
+          "display_name": "大物主命",
+          "canonical_name": "大物主命",
+          "role": "secondary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:15:00+00:00",
+          "note": "公式サイトが「相殿」として明記。",
+          "source_keys": ["batch16-futaarayama-official"]
+        },
+        {
+          "display_name": "事代主命",
+          "canonical_name": "事代主命",
+          "role": "secondary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:15:00+00:00",
+          "note": "公式サイトが「相殿」として明記。",
+          "source_keys": ["batch16-futaarayama-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "崇神天皇御代の起源伝承と荒尾崎への奉斎",
+          "content": "二荒山神社は第十代崇神天皇の御代に遡るとされる。第16代仁徳天皇の御代に毛野国が上下二国に分けられた際、豊城入彦命の四世孫奈良別王が下毛野国の国造に任ぜられ、祖神である豊城入彦命を荒尾崎（下之宮）に祀ったのが始まりと伝えられている。",
+          "period_text": "崇神天皇御代〜仁徳天皇御代（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:15:00+00:00",
+          "note": "公式サイト自身が「伝えられています」と記述。史実として断定していない。",
+          "source_keys": ["batch16-futaarayama-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "承和5年(838)の臼ケ峰遷座",
+          "content": "承和5年（838年）、現在の地である臼ケ峰に遷座されたと公式サイトは記している。",
+          "period_text": "承和5年（838）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:15:00+00:00",
+          "note": "",
+          "source_keys": ["batch16-futaarayama-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "延喜式神名帳への記載と下野国一之宮",
+          "content": "延長5年（927年）に完成した延喜式・神名帳には「下野國河内郡一座大 二荒山神社 名神大」と記載があり、栃木県内唯一の名神大社として、また下野国一之宮として広く崇められてきたと公式サイトは記している。",
+          "period_text": "延長5年（927）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:15:00+00:00",
+          "note": "",
+          "source_keys": ["batch16-futaarayama-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "白山神社",
+        "address": "東京都文京区白山5-31-26"
+      },
+      "deities": [
+        {
+          "display_name": "菊理姫命",
+          "canonical_name": "菊理姫命",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:20:00+00:00",
+          "note": "公式サイトは三柱を序列を示さず列挙している。",
+          "source_keys": ["batch16-hakusan-10jinja"]
+        },
+        {
+          "display_name": "伊弉諾命",
+          "canonical_name": "伊弉諾命",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:20:00+00:00",
+          "note": "公式サイトは三柱を序列を示さず列挙している。",
+          "source_keys": ["batch16-hakusan-10jinja"]
+        },
+        {
+          "display_name": "伊弉冊命",
+          "canonical_name": "伊弉冊命",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:20:00+00:00",
+          "note": "公式サイトは三柱を序列を示さず列挙している。",
+          "source_keys": ["batch16-hakusan-10jinja"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "天暦2年(948)の加賀白山神社勧請",
+          "content": "天暦二年（948年）、加賀一宮白山神社を現在の本郷元町の地に奉勧請したのが始まりと公式サイトは記している。",
+          "period_text": "天暦2年（948）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:20:00+00:00",
+          "note": "",
+          "source_keys": ["batch16-hakusan-10jinja"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "建武4年(1337)の国家平安祈願所",
+          "content": "建武四年（1337年）、足利尊氏公により国家平安御祈願所に命ぜられたと公式サイトは記している。",
+          "period_text": "建武4年（1337）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:20:00+00:00",
+          "note": "",
+          "source_keys": ["batch16-hakusan-10jinja"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "江戸期の遷座と現社地への移転",
+          "content": "元和二年（1616年）、徳川秀忠公の命により巣鴨原へ遷座、慶安四年（1651年）に徳川家綱公の用地となったことから、明暦元年（1655年）に現社地へ移った。後に五代将軍徳川綱吉公とその生母桂昌院の信仰を受け、小石川の鎮守となったと公式サイトは記している。",
+          "period_text": "元和2年（1616）〜明暦元年（1655）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T07:20:00+00:00",
+          "note": "",
+          "source_keys": ["batch16-hakusan-10jinja"]
+        }
+      ]
+    }
+  ]
+}

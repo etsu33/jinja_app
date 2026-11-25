@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.3",
+  "sources": [
+    {
+      "key": "TOKAMACHI_REKIBUN_SHIRYOU",
+      "source_type": "government",
+      "title": "歴史文化基本構想 資料集",
+      "publisher": "十日町市",
+      "url": "https://www.city.tokamachi.lg.jp/material/files/group/31/rekibun_shiryou.pdf",
+      "bibliography": "中魚沼郡誌上 p.398",
+      "language": "ja",
+      "accessed_at": "2026-10-13",
+      "verified_at": "2026-10-13T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "赤城社",
+        "address": "新潟県十日町市伊達乙48番地"
+      },
+      "deities": [],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "天明3年8月の創立記録",
+          "content": "赤城社は天明3年8月に創立されたと記録されている。",
+          "period_text": "天明3年8月",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-16T00:00:00+09:00",
+          "source_keys": [
+            "TOKAMACHI_REKIBUN_SHIRYOU"
+          ],
+          "citations": [
+            {
+              "source_key": "TOKAMACHI_REKIBUN_SHIRYOU",
+              "locator_text": "中魚沼郡誌上 p.445"
+            }
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "大正2年の改築記録",
+          "content": "赤城社は大正2年に改築されたと記録されている。",
+          "period_text": "大正2年",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-16T00:00:00+09:00",
+          "source_keys": [
+            "TOKAMACHI_REKIBUN_SHIRYOU"
+          ],
+          "citations": [
+            {
+              "source_key": "TOKAMACHI_REKIBUN_SHIRYOU",
+              "locator_text": "中魚沼郡誌上 p.445"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

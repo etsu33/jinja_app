@@ -1,0 +1,124 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "AMATSU_JINJA_OFFICIAL_STORY",
+      "source_type": "shrine_official",
+      "title": "御由緒・御祭神",
+      "publisher": "天津神社・奴奈川神社",
+      "url": "https://amatsujinja.com/story/",
+      "language": "ja",
+      "accessed_at": "2026-10-19",
+      "verified_at": "2026-10-19T14:35:38+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "天津神社",
+        "address": "新潟県糸魚川市一の宮1丁目3番34号"
+      },
+      "deities": [
+        {
+          "display_name": "天津彦々火瓊々杵尊",
+          "role": "unknown",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "AMATSU_JINJA_OFFICIAL_STORY"
+          ]
+        },
+        {
+          "display_name": "天児屋根命",
+          "role": "unknown",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "AMATSU_JINJA_OFFICIAL_STORY"
+          ]
+        },
+        {
+          "display_name": "天太玉命",
+          "role": "unknown",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "AMATSU_JINJA_OFFICIAL_STORY"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "景行天皇御代の創設（公式由緒）",
+          "content": "天津神社の公式由緒では、第12代景行天皇の御代に創設されたと伝えられている。",
+          "period_text": "第12代景行天皇の御代",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "AMATSU_JINJA_OFFICIAL_STORY"
+          ]
+        },
+        {
+          "history_type": "tradition",
+          "title": "孝徳天皇の勅願所（公式由緒）",
+          "content": "天津神社の公式由緒では、第36代孝徳天皇の勅願所であったとされている。",
+          "period_text": "第36代孝徳天皇",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "AMATSU_JINJA_OFFICIAL_STORY"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "本殿の建立",
+          "content": "天津神社の本殿は寛政9年（1797）に建立された。",
+          "period_text": "寛政9年（1797）",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "AMATSU_JINJA_OFFICIAL_STORY"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "拝殿の改築",
+          "content": "天津神社の拝殿は寛文2年（1662）に改築された。",
+          "period_text": "寛文2年（1662）",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "AMATSU_JINJA_OFFICIAL_STORY"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "幣殿の増築",
+          "content": "天津神社の幣殿は天明2年（1782）に増築された。",
+          "period_text": "天明2年（1782）",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "AMATSU_JINJA_OFFICIAL_STORY"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -189,6 +189,49 @@ describe("ShrineFactSection integration (API response相当 -> ViewModel -> UI)"
     expect(screen.queryByText(/有力/)).not.toBeInTheDocument();
   });
 
+  // 実データ(backend/temples/data/knowledge_seeds/batch_10_seed.json、大國魂神社)で確認された
+  // 重複パターン: 異なるhistory_typeを持つ2つのShrineHistoryが、同一ShrineKnowledgeSource行を
+  // M2Mで共有している。PR: 神社詳細の出典表示と経路CTAをDark UI向けに整理。
+  it("Phase6: 同一Sourceを共有する複数Factは、出典欄で1回だけ表示される（実データの重複パターン再現）", () => {
+    const sharedOfficialSource = makeApiSource({
+      id: 500,
+      title: "大國魂神社 公式サイト",
+      url: "https://www.ookunitamajinja.jp/",
+    });
+    const fixture = {
+      deities: [],
+      histories: [
+        makeApiHistory({
+          id: 30,
+          history_type: "tradition",
+          title: "創建の伝承",
+          content: "伝承内容",
+          sort_order: 0,
+          sources: [sharedOfficialSource],
+        }),
+        makeApiHistory({
+          id: 31,
+          history_type: "historical_event",
+          title: "歴史的出来事",
+          content: "歴史内容",
+          sort_order: 1,
+          // Backend側でも同一のShrineKnowledgeSource行を指す(id/url完全一致)
+          sources: [sharedOfficialSource],
+        }),
+      ],
+    };
+
+    const section = buildShrineFactSection(fixture);
+    render(<ShrineFactSection section={section!} />);
+
+    // 両Factの本文はそれぞれ表示される(集約はSource表示のみ、Fact自体は失われない)
+    expect(screen.getByText("創建の伝承")).toBeInTheDocument();
+    expect(screen.getByText("歴史的出来事")).toBeInTheDocument();
+
+    // 同一Sourceは出典欄で1回だけ
+    expect(screen.getAllByRole("link", { name: "大國魂神社 公式サイト" })).toHaveLength(1);
+  });
+
   it("Phase5: Knowledge未登録（deities/historiesとも空）のAPIレスポンス相当fixtureはセクション自体を生成しない", () => {
     const section = buildShrineFactSection({ deities: [], histories: [] });
     expect(section).toBeNull();

@@ -7,8 +7,10 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from django.utils import timezone as dj_timezone
-
+from users.models import UserProfile
 from users.services.billing import is_subscription_active
+from users.services.premium_pass import get_pass_period_end
+from users.services.premium_subscription import get_subscription_entitlement
 
 PROVIDER_CHOICES = ("stub", "stripe", "revenuecat", "unknown")
 
@@ -35,51 +37,65 @@ def _billing_stub_env() -> tuple[str, str]:
 
 
 def get_billing_status(*, user=None, now: Optional[datetime] = None) -> BillingStatus:
-    """
-    課金状態判定の単一窓口。
+    """Return the public billing status from the account's entitlement sources."""
+    return _resolve_billing_status(user, now or dj_timezone.now())
 
-    責務:
-    - user の premium / free 判定を返す
-    - provider ごとの差異（stub / stripe / revenuecat）を吸収する
-    - chat 側の残回数表示・利用制限判定で使う前提の状態を返す
 
-    方針:
-    - stub 運用では env を正とする
-    - stripe / revenuecat 運用では認証済み user の profile を正とする
-    - UI 用の文言や paywall 文面はここで持たない
-    """
-    now_ = now or dj_timezone.now()
+def _resolve_billing_status(user, now: datetime, *, staff_access: bool = False) -> BillingStatus:
     prov = provider()
+    authenticated = getattr(user, "is_authenticated", False)
+    user_id = getattr(user, "pk", None) if authenticated else None
+    profile = UserProfile.objects.filter(user_id=user_id).first() if user_id is not None else None
 
-    # ✅ stub運用なら、認証済みでも env を正とする（テスト/未導入の世界線）
-    if prov == "stub":
-        return _status_from_stub_env(now_=now_, prov=prov)
+    if profile and profile.account_entitlement_disabled:
+        return BillingStatus("free", False, prov, None, None, False)
+    if staff_access and authenticated and getattr(user, "is_staff", False):
+        return BillingStatus("premium", True, prov, None, None, False)
+    if prov == "stub" or not authenticated:
+        return _status_from_stub_env(now_=now, prov=prov)
 
-    # ---- stripe/revenuecat運用: 認証済みは DB(profile) を見る ----
-    if user is not None and getattr(user, "is_authenticated", False):
-        try:
-            from users.models import UserProfile
-
-            prof = UserProfile.objects.filter(user=user).first()
-        except Exception:
-            prof = getattr(user, "profile", None)
-        status = getattr(prof, "subscription_status", None) if prof else None
-        cpe = getattr(prof, "current_period_end", None) if prof else None
-
-        active = is_subscription_active(status=status, current_period_end=cpe, now=now_)
-        plan = "premium" if active else "free"
-
-        return BillingStatus(
-            plan=plan,
-            is_active=active,
-            provider=prov,
-            current_period_end=(cpe if active else None),
-            trial_ends_at=None,
-            cancel_at_period_end=False,
+    has_subscription_rows, subscription_end = (
+        get_subscription_entitlement(user_id=user_id, now=now)
+        if user_id is not None
+        else (False, None)
+    )
+    subscription_active = subscription_end is not None
+    if not has_subscription_rows and profile:
+        subscription_end = profile.current_period_end
+        subscription_active = is_subscription_active(
+            status=profile.subscription_status,
+            current_period_end=subscription_end,
+            now=now,
         )
 
-    # ---- anonymous: stub env (stripe運用でも未認証はstubで良いならここ。嫌ならfree固定でもOK) ----
-    return _status_from_stub_env(now_=now_, prov=prov)
+    pass_end = get_pass_period_end(user_id=user_id) if user_id is not None else None
+    pass_active = pass_end is not None and pass_end > now
+    legacy_end = profile.legacy_premium_until if profile else None
+    legacy_active = legacy_end is not None and legacy_end > now
+
+    active = subscription_active or pass_active or legacy_active
+    active_ends = (
+        end
+        for enabled, end in (
+            (subscription_active, subscription_end),
+            (pass_active, pass_end),
+            (legacy_active, legacy_end),
+        )
+        if enabled and end is not None
+    )
+    effective_end = max(active_ends, default=None)
+    # Preserve the response for an undated legacy subscription during the fallback.
+    if subscription_active and subscription_end is None:
+        effective_end = None
+    return BillingStatus(
+        plan="premium" if active else "free",
+        is_active=active,
+        provider=prov,
+        current_period_end=effective_end,
+        trial_ends_at=None,
+        cancel_at_period_end=bool(profile and profile.cancel_at_period_end),
+    )
+
 
 def _status_from_stub_env(*, now_: datetime, prov: str) -> BillingStatus:
     """
@@ -133,14 +149,7 @@ def is_premium_for_user(user) -> bool:
     chat API の無料回数分岐はこの関数を正本として判定する。
     """
 
-    if (
-        user is not None
-        and getattr(user, "is_authenticated", False)
-        and getattr(user, "is_staff", False)
-    ):
-        return True
-
-    st = get_billing_status(user=user)
+    st = _resolve_billing_status(user, dj_timezone.now(), staff_access=True)
     return st.plan == "premium" and st.is_active
 
 

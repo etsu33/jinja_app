@@ -48,6 +48,8 @@ import ShrineProposalSection from "@/components/shrine/detail/ShrineProposalSect
 import ShrineReasonSection from "@/components/shrine/detail/ShrineReasonSection";
 import ShrineSupplementSection from "@/components/shrine/detail/ShrineSupplementSection";
 import ShrineFactSection from "@/components/shrine/detail/ShrineFactSection";
+import ShrineHighlightSection from "@/components/shrine/detail/ShrineHighlightSection";
+import { RecommendationMetaSection } from "@/components/shrine/detail/RecommendationMetaSection";
 import ShrineDetailHeroCard from "@/components/shrine/detail/ShrineDetailHeroCard";
 import DetailDisclosureBlock from "@/components/shrine/DetailDisclosureBlock";
 import { FAVORITE_LABELS } from "@/lib/ui/labels";
@@ -57,10 +59,14 @@ import { buildLoginHref } from "@/lib/nav/login";
 
 import type { ShrineTag } from "@/lib/shrine/tags/types";
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
-import type { DetailFactSection, ShrineDetailSectionModel } from "@/components/shrine/detail/types";
+import type {
+  DetailFactSection,
+  DetailHighlightSection,
+  ShrineDetailSectionModel,
+} from "@/components/shrine/detail/types";
 
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
-import { getVisibilityForCard, type CardVisibilityState } from "@/lib/premium/cardVisibility";
+import { getVisibilityForCard, type CardId, type CardVisibilityState } from "@/lib/premium/cardVisibility";
 import { trackCardEvent } from "@/lib/analytics/cardEvents";
 import type { StateDelta } from "@/lib/concierge/stateComparison";
 import { toNeedTagLabels } from "@/lib/concierge/needTagLabelMap";
@@ -69,25 +75,35 @@ import { addVisit, getVisits, type Visit } from "@/lib/api/visits";
 
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { ShrineReflectionPrompt } from "@/components/shrine/detail/ShrineReflectionPrompt";
+import { ShrineDeepDivePrompt } from "@/components/shrine/detail/ShrineDeepDivePrompt";
+import {
+  recommendationAnalyticsProperties,
+  type RecommendationAnalyticsProvenance,
+} from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 
 function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel[] }) {
+  // PR-G3 (docs/design/premium-meaning-ui-direction.md §6, Direction C): the
+  // interpretation layer reads as one editorial narrative -- borderless
+  // sections separated by whitespace, not a stack of repeated cards. Shrine
+  // facts (ShrineFactSection) keep their card so the fact / interpretation
+  // boundary stays visible. No content / analytics / Premium change.
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {sections.map((section, index) => {
         const key = `${section.kind}:${index}`;
 
         switch (section.kind) {
           case "reason":
-            return <ShrineReasonSection key={key} section={section} />;
+            return <ShrineReasonSection key={key} section={section} variant="plain" />;
           case "proposal":
-            return <ShrineProposalSection key={key} section={section} />;
+            return <ShrineProposalSection key={key} section={section} variant="plain" />;
           case "meaning":
-            return <ShrineJudgeSection key={key} section={section} />;
+            return <ShrineJudgeSection key={key} section={section} variant="plain" />;
           case "action":
-            return <ShrineActionSection key={key} section={section} />;
+            return <ShrineActionSection key={key} section={section} variant="plain" />;
           case "supplement":
-            return <ShrineSupplementSection key={key} section={section} />;
+            return <ShrineSupplementSection key={key} section={section} variant="plain" />;
           default:
             return null;
         }
@@ -122,18 +138,70 @@ type ShrineDetailTrackedCardId =
   | "shrine_meaning"
   | "action_meaning";
 
+type ShrineDetailCardViewEvent = "card_view" | "card_partial_view";
+
+function shrineDetailCardViewEvent(visibility: CardVisibilityState): ShrineDetailCardViewEvent {
+  return visibility === "partial" || visibility === "teaser" ? "card_partial_view" : "card_view";
+}
+
+/**
+ * Firing-layer dedupe key for a Shrine Detail `card_view` / `card_partial_view`.
+ *
+ * One impression per (event x cardId x visibility x accessLevel) within a single
+ * Shrine Detail page view + result context (shrineId + recommendationInstanceId).
+ * The `Set` that stores these keys lives on a ref for the lifetime of the
+ * component instance, so a spurious re-render, a React Strict Mode double-invoke,
+ * or an async state settle does NOT re-emit; a genuine navigation remounts the
+ * component and starts a fresh set.
+ */
+function shrineDetailCardViewKey(input: {
+  event: ShrineDetailCardViewEvent;
+  cardId: CardId;
+  visibility: CardVisibilityState;
+  accessLevel: "anonymous" | "free" | "premium";
+  shrineId?: number | string;
+  recommendationInstanceId?: string | null;
+}): string {
+  return [
+    input.event,
+    input.cardId,
+    input.visibility,
+    input.accessLevel,
+    input.shrineId ?? "",
+    input.recommendationInstanceId ?? "",
+  ].join("::");
+}
+
 function trackShrineDetailCardView(args: {
-  cardId: ShrineDetailTrackedCardId;
+  cardId: CardId;
   accessLevel: "anonymous" | "free" | "premium";
   visibility: CardVisibilityState;
   payloadSource?: "v2" | "fallback";
   shrineId?: number | string;
   historyTheme?: string | null;
+  // Result <-> Detail duplicate-exposure join key (with shrineId) -- see
+  // docs/audit/recommendation-result-detail-instrumentation-contract.md §7.
+  recommendationInstanceId?: string | null;
+  // Firing-layer dedupe: the caller's per-page-view key set. A repeat impression
+  // for the same key is a no-op (schema / payload / event name unchanged).
+  seen: Set<string>;
 }) {
   if (args.visibility === "hidden") return;
 
+  const event = shrineDetailCardViewEvent(args.visibility);
+  const key = shrineDetailCardViewKey({
+    event,
+    cardId: args.cardId,
+    visibility: args.visibility,
+    accessLevel: args.accessLevel,
+    shrineId: args.shrineId,
+    recommendationInstanceId: args.recommendationInstanceId ?? null,
+  });
+  if (args.seen.has(key)) return;
+  args.seen.add(key);
+
   trackCardEvent({
-    event: args.visibility === "partial" || args.visibility === "teaser" ? "card_partial_view" : "card_view",
+    event,
     cardId: args.cardId,
     source: "shrine_detail",
     accessLevel: args.accessLevel,
@@ -141,6 +209,7 @@ function trackShrineDetailCardView(args: {
     shrineId: args.shrineId,
     historyTheme: args.historyTheme,
     payloadSource: args.payloadSource,
+    recommendationInstanceId: args.recommendationInstanceId ?? null,
   });
 }
 
@@ -165,29 +234,81 @@ function PremiumUpgradePrompt({
   ctx,
   tid,
   historyTheme,
+  gatedSemanticCardIds = [],
+  guestMode,
 }: {
   shrineId?: number | string | null;
   ctx?: string | null;
   tid?: string | number | null;
   historyTheme?: string | null;
+  // Which semantic Meaning CardIds are gated for this Guest/Free render (i.e.
+  // fire a `card_partial_view` from the Shrine Detail analytics effect). Each
+  // gets a visible teaser line so the semantic exposure event corresponds to
+  // something the user can actually read (PR-N3, Mother Ship Policy B). The
+  // `personal_meaning` umbrella event corresponds to this whole surface.
+  gatedSemanticCardIds?: ShrineDetailTrackedCardId[];
+  // SSR-resolved auth context for this request (from getShrineFavoriteInitialState:
+  // true = no auth context / 401). Authoritative on /shrines/[id], where
+  // AuthProvider intentionally does NOT auto-fetch /api/users/me
+  // (AuthProvider.shouldAutoFetchMe) -- so the client `useAuth()` heuristic can
+  // read an authenticated Free user as a guest and route them through /auth/login.
+  // Prefer this when provided; fall back to the client heuristic only when absent.
+  guestMode?: boolean;
 }) {
   const { isLoggedIn, loading: authLoading } = useAuth();
-  const isGuestUser = !authLoading && !isLoggedIn;
+  const isGuestUser = typeof guestMode === "boolean" ? guestMode : !authLoading && !isLoggedIn;
+  // CTA-A responsibility = Meaning Depth: the deep recommendation reason,
+  // personal meaning and action meaning for this shrine. Continuity ("前回との
+  // 違い") is CTA-B and lives on the state-delta card.
+  // - anonymous          : login copy, login flow (returnTo=/billing/upgrade kept)
+  // - authenticated Free  : upgrade copy, direct /billing/upgrade (no login hop)
   const href = isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
   const ctaLabel = isGuestUser ? "ログインして意味を深掘りする" : "この神社を選ぶ意味を深掘りする";
 
+  const gated = new Set(gatedSemanticCardIds);
+
   return (
-    <section className="rounded-[var(--kt-radius-card)] border border-amber-100 bg-amber-50/70 p-4">
+    // One restrained Premium seam (Direction C): soft premium-surface tint, no
+    // border / shadow / badge / lock icon; CTA is a text link, not a filled
+    // button. Mirrors the Concierge PremiumSeam (PR-G2). Tokens only (dark-safe).
+    <section
+      data-testid="shrine-detail-premium-teaser"
+      className="rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-premium-surface)] px-4 py-4"
+    >
       <div className="space-y-2">
-        <p className="text-sm font-semibold leading-6 text-amber-950">
-          {isGuestUser
-            ? "今の状態整理と、この神社を選ぶ意味を深められます。"
-            : "今の状態整理と、この神社を選ぶ意味をPremiumで深掘りできます。"}
+        <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--kt-color-premium-accent)]">
+          ここから、より深い意味へ
         </p>
-        <p className="text-xs leading-6 text-slate-600">相談内容に基づく状態整理、相性、行動の意味づけを表示します。</p>
+
+        {/* Umbrella (personal_meaning) — this surface as a whole. */}
+        <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+          {isGuestUser
+            ? "この神社が選ばれた深い理由と、あなたにとっての意味を深められます。"
+            : "この神社が選ばれた深い理由と、あなたにとっての意味を、Premiumで深掘りできます。"}
+        </p>
+
+        {/* Per-semantic teasers — one line per gated semantic CardId that fires
+            a card_partial_view for this render. Approved copy reused from the
+            Concierge PremiumSeam where it exists. */}
+        {gated.has("shrine_meaning") ? (
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+            この神社が選ばれた深い理由は、Premiumで読めます。
+          </p>
+        ) : null}
+        {gated.has("action_meaning") ? (
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+            参拝で意識することの意味づけは、Premiumで読めます。
+          </p>
+        ) : null}
+        {gated.has("consultation_summary") ? (
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+            相談内容とのつながりの整理は、Premiumで読めます。
+          </p>
+        ) : null}
+
         <Link
           href={href}
-          className="inline-flex items-center rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-premium-accent)] px-3 py-2 text-xs font-semibold text-[var(--kt-color-text-inverse)] hover:bg-amber-800"
+          className="inline-flex items-center text-sm font-semibold text-[var(--kt-color-premium-accent)] underline underline-offset-2 hover:opacity-80"
           onClick={() =>
             trackCardEvent({
               event: "premium_preview_click",
@@ -220,9 +341,9 @@ function ShrineDetailHeroHeader(props: { title: string; heroMeaningCopy?: string
 
         <p className="text-[11px] font-semibold tracking-[0.08em] text-[var(--kt-color-text-muted)]">この神社の意味</p>
 
-        <p className="text-[15px] leading-7 text-slate-800">{resolvedHeroMeaningCopy}</p>
+        <p className="text-[15px] leading-7 text-[var(--kt-color-text-primary)]">{resolvedHeroMeaningCopy}</p>
 
-        {props.address ? <p className="text-[11px] leading-5 text-slate-400">{props.address}</p> : null}
+        {props.address ? <p className="text-[11px] leading-5 text-[var(--kt-color-text-muted)]">{props.address}</p> : null}
       </div>
     </section>
   );
@@ -294,7 +415,7 @@ function ShrineDetailStateDeltaSection({
         <div className="space-y-2">
           <p className="text-xs font-semibold tracking-[0.08em] text-[var(--kt-color-premium-accent)]">前回との違い</p>
           <p className="text-sm font-semibold leading-6 text-amber-950">Premiumでは、前回からの変化をこの神社選びとあわせて確認できます。</p>
-          <p className="text-xs leading-6 text-slate-600">今回強く出たテーマや、変わらず残っているテーマを見返せます。</p>
+          <p className="text-xs leading-6 text-[var(--kt-color-text-secondary)]">今回強く出たテーマや、変わらず残っているテーマを見返せます。</p>
           <Link href="/billing/upgrade?source=shrine_detail_state_delta&funnelStep=comparison_preview" className="inline-flex rounded-[var(--kt-radius-card)] bg-[var(--kt-color-premium-accent)] px-4 py-2 text-sm font-semibold text-[var(--kt-color-text-inverse)] hover:bg-amber-800">
             前回との違いを見る
           </Link>
@@ -307,7 +428,7 @@ function ShrineDetailStateDeltaSection({
     <section className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4 shadow-[var(--kt-shadow-medium)]">
       <div className="space-y-4">
         <div>
-          <p className="text-xs font-semibold tracking-[0.08em] text-slate-400">前回との違い</p>
+          <p className="text-xs font-semibold tracking-[0.08em] text-[var(--kt-color-text-muted)]">前回との違い</p>
           <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">
             {stateDelta.summary ??
               "今回の相談内容から、前回との違いを整理しています。相談を重ねるほど、変化の見え方が安定します。"}
@@ -317,7 +438,7 @@ function ShrineDetailStateDeltaSection({
         {stateDelta.transitionNarrative?.summary ? (
           <div className="rounded-[var(--kt-radius-card)] bg-emerald-50/60 p-3">
             <p className="text-xs font-semibold text-emerald-700">前回から変わったこと</p>
-            <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">
+            <p className="mt-1 text-sm font-semibold leading-6 text-[var(--kt-color-text-primary)]">
               {stateDelta.transitionNarrative.title}
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{stateDelta.transitionNarrative.summary}</p>
@@ -327,7 +448,7 @@ function ShrineDetailStateDeltaSection({
         {stateDelta.actionReflection ? (
           <div className="rounded-[var(--kt-radius-card)] bg-amber-50/70 p-3">
             <p className="text-xs font-semibold text-[var(--kt-color-premium-accent)]">前回の行動</p>
-            <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">{stateDelta.actionReflection.title}</p>
+            <p className="mt-1 text-sm font-semibold leading-6 text-[var(--kt-color-text-primary)]">{stateDelta.actionReflection.title}</p>
             <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{stateDelta.actionReflection.summary}</p>
             <p className="mt-2 text-xs font-semibold text-[var(--kt-color-premium-accent)]">{stateDelta.actionReflection.nextActionLabel}</p>
           </div>
@@ -386,11 +507,15 @@ export default function ShrineDetailArticle({
   ctx = null,
   tid = null,
   historyTheme = null,
+  analyticsProvenance,
+  recommendationInstanceId = null,
   meaningPayloadSource = "fallback",
   saveActionNode,
   actionState,
   directionSupportCopy = null,
   factSection = null,
+  highlightSection = null,
+  guestMode,
 }: {
   cardProps: ShrineCardAdapterProps;
   heroImageUrl?: string | null;
@@ -417,11 +542,17 @@ export default function ShrineDetailArticle({
   ctx?: string | null;
   tid?: string | number | null;
   historyTheme?: string | null;
+  analyticsProvenance?: RecommendationAnalyticsProvenance;
+  recommendationInstanceId?: string | null;
   meaningPayloadSource?: "v2" | "fallback";
   saveActionNode?: React.ReactNode;
   actionState?: "none" | "detail_viewed" | "saved" | "route_opened" | "visited" | "reflected" | null;
   directionSupportCopy?: string | null;
   factSection?: DetailFactSection | null;
+  highlightSection?: DetailHighlightSection | null;
+  // SSR-resolved auth context (true = anonymous / no valid session). Passed to
+  // the Premium CTA so an authenticated Free user is not shown the login CTA.
+  guestMode?: boolean;
 }) {
 
   const hasLayeredSections = freeDisplaySections.length > 0 || premiumDisplaySections.length > 0;
@@ -476,6 +607,10 @@ export default function ShrineDetailArticle({
   const [visitSubmitting, setVisitSubmitting] = useState(false);
   const [visitError, setVisitError] = useState(false);
   const visitSubmittingRef = React.useRef(false);
+  // Firing-layer dedupe for card_view / card_partial_view. Lives for this
+  // component instance (this Shrine Detail page view); a genuine navigation
+  // remounts and resets it. See trackShrineDetailCardView / shrineDetailCardViewKey.
+  const firedCardViewKeysRef = React.useRef<Set<string>>(new Set());
   const [visitSummary, setVisitSummary] = useState<VisitSummary>({ visitCount: 0, latestVisitedAt: null });
   const hasVisitHistory = visitSummary.visitCount > 0;
 
@@ -518,6 +653,8 @@ export default function ShrineDetailArticle({
         shrineId: cardProps.shrineId,
         historyTheme,
         payloadSource: meaningPayloadSource,
+        recommendationInstanceId,
+        seen: firedCardViewKeysRef.current,
       });
     }
 
@@ -529,6 +666,8 @@ export default function ShrineDetailArticle({
         shrineId: cardProps.shrineId,
         historyTheme,
         payloadSource: meaningPayloadSource,
+        recommendationInstanceId,
+        seen: firedCardViewKeysRef.current,
       });
     });
 
@@ -540,6 +679,8 @@ export default function ShrineDetailArticle({
         shrineId: cardProps.shrineId,
         historyTheme,
         payloadSource: meaningPayloadSource,
+        recommendationInstanceId,
+        seen: firedCardViewKeysRef.current,
       });
     }
 
@@ -551,6 +692,8 @@ export default function ShrineDetailArticle({
         shrineId: cardProps.shrineId,
         historyTheme,
         payloadSource: meaningPayloadSource,
+        recommendationInstanceId,
+        seen: firedCardViewKeysRef.current,
       });
     });
 
@@ -562,39 +705,63 @@ export default function ShrineDetailArticle({
         shrineId: cardProps.shrineId,
         historyTheme,
         payloadSource: meaningPayloadSource,
+        recommendationInstanceId,
+        seen: firedCardViewKeysRef.current,
       });
     }
 
     if (recommendationMeta?.rankTitle && recommendationMeta?.rankBody) {
-      trackCardEvent({
-        event:
-          recommendationMetaVisibility === "partial" || recommendationMetaVisibility === "teaser"
-            ? "card_partial_view"
-            : "card_view",
+      const recommendationMetaEvent = shrineDetailCardViewEvent(recommendationMetaVisibility);
+      const recommendationMetaKey = shrineDetailCardViewKey({
+        event: recommendationMetaEvent,
         cardId: "recommendation_meta",
-        source: "shrine_detail",
-        accessLevel,
         visibility: recommendationMetaVisibility,
+        accessLevel,
         shrineId: cardProps.shrineId,
-        historyTheme,
-        payloadSource: meaningPayloadSource,
       });
+      if (!firedCardViewKeysRef.current.has(recommendationMetaKey)) {
+        firedCardViewKeysRef.current.add(recommendationMetaKey);
+        trackCardEvent({
+          event:
+            recommendationMetaVisibility === "partial" || recommendationMetaVisibility === "teaser"
+              ? "card_partial_view"
+              : "card_view",
+          cardId: "recommendation_meta",
+          source: "shrine_detail",
+          accessLevel,
+          visibility: recommendationMetaVisibility,
+          shrineId: cardProps.shrineId,
+          historyTheme,
+          payloadSource: meaningPayloadSource,
+        });
+      }
     }
 
     if (stateDelta && previousComparisonVisibility !== "hidden") {
-      trackCardEvent({
-        event:
-          previousComparisonVisibility === "partial" || previousComparisonVisibility === "teaser"
-            ? "card_partial_view"
-            : "card_view",
+      const previousComparisonEvent = shrineDetailCardViewEvent(previousComparisonVisibility);
+      const previousComparisonKey = shrineDetailCardViewKey({
+        event: previousComparisonEvent,
         cardId: "previous_comparison",
-        source: "shrine_detail",
-        accessLevel,
         visibility: previousComparisonVisibility,
+        accessLevel,
         shrineId: cardProps.shrineId,
-        historyTheme,
-        payloadSource: meaningPayloadSource,
       });
+      if (!firedCardViewKeysRef.current.has(previousComparisonKey)) {
+        firedCardViewKeysRef.current.add(previousComparisonKey);
+        trackCardEvent({
+          event:
+            previousComparisonVisibility === "partial" || previousComparisonVisibility === "teaser"
+              ? "card_partial_view"
+              : "card_view",
+          cardId: "previous_comparison",
+          source: "shrine_detail",
+          accessLevel,
+          visibility: previousComparisonVisibility,
+          shrineId: cardProps.shrineId,
+          historyTheme,
+          payloadSource: meaningPayloadSource,
+        });
+      }
     }
   }, [
     accessLevel,
@@ -609,6 +776,7 @@ export default function ShrineDetailArticle({
     premiumMeaningBlockCardIdKey,
     premiumMeaningBlockCardIds,
     previousComparisonVisibility,
+    recommendationInstanceId,
     recommendationMeta?.rankBody,
     recommendationMeta?.rankTitle,
     recommendationMetaVisibility,
@@ -617,6 +785,9 @@ export default function ShrineDetailArticle({
     stateDelta,
     historyTheme,
   ]);
+
+  // 見どころのリンク・表示の計測に使う神社id（Highlights PR-5）
+  const highlightShrineId = typeof cardProps.shrineId === "number" ? cardProps.shrineId : null;
 
   // Determine if after-visit copy should be shown
   const showAfterVisitCopy =
@@ -646,12 +817,23 @@ export default function ShrineDetailArticle({
         {showAfterVisitCopy ? (
           <div className="rounded-[var(--kt-radius-card)] border border-emerald-200 bg-[var(--kt-color-surface-default)] p-3 mt-2">
             <p className="text-sm font-semibold text-emerald-700">参拝お疲れさまでした</p>
-            <p className="mt-1 text-xs text-slate-600">
+            <p className="mt-1 text-xs text-[var(--kt-color-text-secondary)]">
               あなたの参拝が記録されました。次回の相談で前回の行動として振り返ることができます。
             </p>
           </div>
         ) : null}
       </section>
+
+      {/* 神社Fact（祭神・由緒・歴史）。PR-G3: Fact -> Interpretation の順で読ませるため
+          Hero直後・解釈レイヤーの前に置く。Interpretation/Recommendation/Actionとは
+          独立した表示責務で、Fact は spine としてカード表示を維持する（Fact/Meaning境界）。
+          Premium gatingの対象にせず、Knowledge未登録（deities/historiesとも空）ならnullで非表示。 */}
+      {factSection ? <ShrineFactSection section={factSection} shrineId={highlightShrineId} /> : null}
+
+      {/* 見どころ（Highlights PR-5）。Fact（由緒・歴史）のすぐ下・解釈レイヤーの前に置き、
+          読んだ話を境内のどこで確かめられるかを示す。Fact と同じく Premium で隠さない。
+          由緒・歴史が無い神社でも、見どころがあれば単独で表示する。 */}
+      {highlightSection ? <ShrineHighlightSection section={highlightSection} shrineId={highlightShrineId} /> : null}
 
       {hasContextReasonSections ? <ShrineDetailSections sections={contextReasonSections} /> : null}
 
@@ -660,21 +842,38 @@ export default function ShrineDetailArticle({
       ) : null}
 
       {personalMeaningVisibility === "teaser" && hasPremiumSections ? (
-        <PremiumUpgradePrompt shrineId={cardProps.shrineId} ctx={ctx} tid={tid} historyTheme={historyTheme} />
+        <PremiumUpgradePrompt
+          shrineId={cardProps.shrineId}
+          ctx={ctx}
+          tid={tid}
+          historyTheme={historyTheme}
+          gatedSemanticCardIds={premiumMeaningBlockCardIds}
+          guestMode={guestMode}
+        />
       ) : null}
 
-      {/* Premium比較カードは後続PRで再設計する。 */}
+      {/* recommendation_meta（PR-N3b）: なぜこの順位/推薦位置なのかの補足。
+          Meaning のあと・Evidence / supporting-detail 領域に、弱い階層で表示する
+          （Meaning body でも Fact でも Premium seam でもない）。描画条件は既存の
+          recommendation_meta analytics event と同じ（rankTitle && rankBody）にして、
+          計測される exposure が常に visible DOM と一致するようにする。event/CardId/
+          payload は不変。 */}
+      {recommendationMeta?.rankTitle && recommendationMeta?.rankBody ? (
+        <RecommendationMetaSection recommendationMeta={recommendationMeta} />
+      ) : null}
 
-      {/* 神社Fact（祭神・由緒・歴史）。Interpretation/Recommendation/Actionとは独立した表示責務。
-          Premium gatingの対象にせず、Knowledge未登録（deities/historiesとも空）ならnullで非表示。 */}
-      {factSection ? <ShrineFactSection section={factSection} /> : null}
+      {/* Deep Dive Q&A。readiness/Fact選択/Source選択はすべてBackend Authority
+          (POST /api/deep-dive/ask/)。Frontend側でreadinessを先読みして表示可否を
+          判断しない(質問してみるまでnot_readyかどうかは分からない扱いにする)ため、
+          factSectionの有無に関わらず常に表示する。 */}
+      <ShrineDeepDivePrompt shrineId={cardProps.shrineId} />
 
       {resolvedSaveActionNode ? (
         <section className="pt-4">
           <div className="overflow-hidden rounded-[var(--kt-radius-card)] border border-emerald-200 bg-[var(--kt-color-surface-default)]">
             <div className="space-y-2 p-4">
               {resolvedSaveActionNode}
-              <p className="text-xs leading-5 text-slate-600">あとで記録から見返せます</p>
+              <p className="text-xs leading-5 text-[var(--kt-color-text-secondary)]">あとで記録から見返せます</p>
               <Link
                 href="/favorites"
                 className="inline-flex items-center text-sm font-semibold text-emerald-700 hover:underline"
@@ -683,11 +882,11 @@ export default function ShrineDetailArticle({
               </Link>
 
               {favoriteNoticeState === "saved" ? (
-                <p className="text-xs font-semibold text-emerald-700">{FAVORITE_LABELS.saved}</p>
+                <p className="text-xs font-semibold text-[var(--kt-color-saved-text)]">{FAVORITE_LABELS.saved}</p>
               ) : null}
 
               {favoriteNoticeState === "removed" ? (
-                <p className="text-xs font-semibold text-slate-600">{FAVORITE_LABELS.removed}</p>
+                <p className="text-xs font-semibold text-[var(--kt-color-text-secondary)]">{FAVORITE_LABELS.removed}</p>
               ) : null}
             </div>
 
@@ -696,7 +895,7 @@ export default function ShrineDetailArticle({
                 {hasVisitHistory ? (
                   <div className="rounded-[var(--kt-radius-panel)] border border-emerald-200 bg-emerald-50/70 p-3">
                     <p className="text-sm font-semibold text-emerald-700">参拝を記録しました</p>
-                    <p className="mt-1 text-xs text-slate-600">次回の相談で、前回の行動として振り返れます。</p>
+                    <p className="mt-1 text-xs text-[var(--kt-color-text-secondary)]">次回の相談で、前回の行動として振り返れます。</p>
                   </div>
                 ) : (
                   <p className="text-xs leading-5 text-[var(--kt-color-text-muted)]">参拝後に記録できます</p>
@@ -709,6 +908,8 @@ export default function ShrineDetailArticle({
                     threadId={tid != null ? String(tid) : null}
                     ctx={ctx}
                     accessLevel={accessLevel}
+                    analyticsProvenance={analyticsProvenance}
+                    recommendationInstanceId={recommendationInstanceId}
                   />
                 ) : null}
 
@@ -729,13 +930,18 @@ export default function ShrineDetailArticle({
                       setVisitError(false);
                       try {
                         await addVisit(cardProps.shrineId, tid);
+                        // PR-C (docs/analytics/compass-analytics-contract.md):
+                        // only "compass" is distinguished; concierge/map/direct
+                        // keep the existing "shrine_detail" value unchanged.
                         trackSearchEvent("visit_done", {
-                          source: "shrine_detail",
+                          source: ctx === "compass" ? "compass" : "shrine_detail",
                           shrineId: cardProps.shrineId,
                           threadId: tid != null ? String(tid) : undefined,
                           historyTheme: historyTheme ?? undefined,
                           accessLevel,
                           mode: ctx === "concierge" ? "need" : undefined,
+                          recommendationInstanceId,
+                          ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
                         });
                         const now = new Date().toISOString();
                         setVisitSummary((current) => ({
@@ -799,7 +1005,7 @@ export default function ShrineDetailArticle({
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-slate-400">ご利益情報は準備中です。</p>
+              <p className="text-xs text-[var(--kt-color-text-muted)]">ご利益情報は準備中です。</p>
             )}
           </DetailDisclosureBlock>
         </div>
