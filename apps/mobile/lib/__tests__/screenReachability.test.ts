@@ -36,6 +36,7 @@ const ROUTES_NEEDING_ENTRY = [
   "/signup",
   "/visit-history",
   "/consultation-history",
+  "/compass",
 ];
 
 describe("画面の到達性", () => {

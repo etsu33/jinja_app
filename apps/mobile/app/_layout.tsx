@@ -33,6 +33,8 @@ const SCREEN_TITLES: Record<string, string> = {
   "consultation-history/index": "相談履歴",
   "consultation-history/[id]": "相談の詳細",
   "recently-viewed/index": "最近見た神社",
+  // 画面内に「今月の参拝コンパス」の見出しを持つため、ヘッダーは短く「コンパス」にする。
+  "compass/index": "コンパス",
   // ログイン・新規登録は画面内に見出しを持つ(中央寄せカード)。
   // ヘッダーは戻るシェブロンだけにして、同じ語の二重表示を避ける。
   login: "",
