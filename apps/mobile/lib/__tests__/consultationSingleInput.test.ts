@@ -25,7 +25,8 @@ const concierge = withoutComments(read("app/(tabs)/concierge/index.tsx"));
 const consultation = withoutComments(read("app/consultation/index.tsx"));
 
 // 相談画面から Concierge へ渡すクエリのキー。payload の契約そのものなので増減させない。
-const CONDITION_KEYS = ["birthdate", "plannedVisitDate", "visitStyle", "goriyaku", "support"];
+// 生年月日は条件に含めない（コンシェルジュでは生年月日を使わない。ドライブ「KAMI MUSUBI コンシェルジュとコンパスの役割の線引き」）。
+const CONDITION_KEYS = ["plannedVisitDate", "visitStyle", "goriyaku", "support"];
 
 describe("条件入力の置き場所(08節)", () => {
   it("ConditionFieldsCard を使う画面は相談画面だけ", () => {
@@ -61,7 +62,8 @@ describe("条件の往復", () => {
   });
 
   it("相談画面は受け取った条件を初期値に入れる", () => {
-    expect(consultation).toContain("params.birthdate ?? \"\"");
+    expect(consultation).not.toContain("birthdate");
+    expect(concierge).not.toContain("birthdate");
     expect(consultation).toContain("params.plannedVisitDate ?? \"\"");
     expect(consultation).toContain("params.support ?? \"\"");
     expect(consultation).toContain("params.visitStyle || undefined");

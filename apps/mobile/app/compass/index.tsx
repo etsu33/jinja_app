@@ -44,6 +44,7 @@ import {
 } from "../../lib/compass";
 import { trackCompassEntry, trackCompassResult } from "../../lib/compassAnalytics";
 import { useProfileStore } from "../../store/profileStore";
+import { pushBirthdayToServer } from "../../lib/birthdaySync";
 import type { UserOrigin } from "../../../../packages/shared/userOrigin";
 
 // 最初に見せる目的の数。Web と同じく、残りは「ほかの目的」で開く。
@@ -247,7 +248,11 @@ export default function CompassScreen() {
     setUiState("result");
 
     // 方位の計算に使えた生年月日は、プロフィールに保存して次回から入れておく。
-    if (body.state !== "invalid_purpose") setBirthday(submittedBirthdate);
+    if (body.state !== "invalid_purpose") {
+      setBirthday(submittedBirthdate);
+      // マイページと同じく、ログイン中ならサーバーにも保存する（lib/birthdaySync.ts）。
+      void pushBirthdayToServer(submittedBirthdate);
+    }
 
     trackCompassResult({
       resultState: body.state,

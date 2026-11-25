@@ -87,9 +87,11 @@ describe("相談フロー (ios-ui-spec-v2.md 08節)", () => {
     expect(source).toContain("const TOTAL = STEPS.length;");
   });
 
-  it("入力項目を1つも減らしていない", () => {
+  it("入力項目を1つも減らしていない（生年月日は除く）", () => {
     // Concierge へ渡す値は旧ホームの openConcierge と同じ契約を保つ。
-    for (const key of ["q", "theme", "birthdate", "plannedVisitDate", "visitStyle", "goriyaku", "support"]) {
+    // 生年月日だけは外した（コンシェルジュでは生年月日を使わない。ドライブ「KAMI MUSUBI コンシェルジュとコンパスの役割の線引き」）。
+    expect(source).not.toContain('query.set("birthdate"');
+    for (const key of ["q", "theme", "plannedVisitDate", "visitStyle", "goriyaku", "support"]) {
       expect(source).toContain(`query.set("${key}"`);
     }
     expect(source).toContain("setOriginSession(origin)");

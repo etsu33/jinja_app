@@ -9,7 +9,7 @@ describe("Conciergeの結果通知", () => {
   it("推薦APIの成功時だけ、0件を含む結果件数を通知する", () => {
     expect(concierge).toMatch(/import \{[^}]*\bAccessibilityInfo\b[^}]*\} from "react-native";/);
     expect(concierge).toMatch(
-      /const recommendations = await fetchConciergeRecommendations\([\s\S]*?\);\s*setResults\(recommendations\);\s*AccessibilityInfo\.announceForAccessibility\(\s*`神社の提案結果を更新しました。\$\{recommendations\.length\}件です。`,?\s*\);\s*\} catch/,
+      /const \{ cards: recommendations, monthDirection: nextMonthDirection \} = await fetchConciergeRecommendations\([\s\S]*?\);\s*setResults\(recommendations\);\s*setMonthDirection\(nextMonthDirection\);\s*AccessibilityInfo\.announceForAccessibility\(\s*`神社の提案結果を更新しました。\$\{recommendations\.length\}件です。`,?\s*\);\s*\} catch/,
     );
     expect(concierge.match(/AccessibilityInfo\.announceForAccessibility\(/g)).toHaveLength(1);
   });

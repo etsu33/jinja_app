@@ -94,7 +94,6 @@ export default function ConsultationScreen() {
   const params = useLocalSearchParams<{
     q?: string;
     theme?: string;
-    birthdate?: string;
     plannedVisitDate?: string;
     visitStyle?: string;
     goriyaku?: string;
@@ -115,7 +114,6 @@ export default function ConsultationScreen() {
   const [selectedTheme, setSelectedTheme] = React.useState<string | null>(params.theme || null);
   const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>(params.visitStyle || undefined);
   const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>(params.goriyaku || undefined);
-  const [birthdate, setBirthdate] = React.useState(params.birthdate ?? "");
   const [plannedVisitDate, setPlannedVisitDate] = React.useState(params.plannedVisitDate ?? "");
   const [supportText, setSupportText] = React.useState(params.support ?? "");
   const [origin, setOrigin] = React.useState<UserOrigin | null>(restoredOrigin);
@@ -152,7 +150,6 @@ export default function ConsultationScreen() {
     const query = new URLSearchParams();
     if (consultation.trim()) query.set("q", consultation.trim());
     if (selectedTheme) query.set("theme", selectedTheme);
-    if (birthdate.trim()) query.set("birthdate", birthdate.trim());
     if (plannedVisitDate.trim()) query.set("plannedVisitDate", plannedVisitDate.trim());
     setOriginSession(origin);
     if (selectedVisitStyle) query.set("visitStyle", selectedVisitStyle);
@@ -291,8 +288,6 @@ export default function ConsultationScreen() {
           <View style={styles.group}>
             {/* 参拝スタイルとご利益は STEP 2 / 3 が持つ。ここでは残りの条件だけを出す。 */}
             <ConditionFieldsCard
-              birthdate={birthdate}
-              onChangeBirthdate={setBirthdate}
               plannedVisitDate={plannedVisitDate}
               onChangePlannedVisitDate={setPlannedVisitDate}
               locationStatus={locationStatus}

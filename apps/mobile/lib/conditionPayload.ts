@@ -1,6 +1,4 @@
-import { buildDerivedProfile } from "./profile";
 import { get } from "./http";
-import type { UserProfile } from "../types/profile";
 
 // 条件レイヤーUI（Home / Concierge結果画面で共通）の選択肢
 export const VISIT_STYLE_OPTIONS = [
@@ -55,7 +53,6 @@ export async function resolveGoriyakuTagIds(label: string | undefined): Promise<
 }
 
 export type ConditionState = {
-  birthdate?: string;
   plannedVisitDate?: string;
   visitStyleLabel?: string;
   goriyakuLabel?: string;
@@ -64,26 +61,18 @@ export type ConditionState = {
 };
 
 export type ConditionFilters = {
-  birthdate?: string;
   goriyaku_tag_ids?: number[];
   visit_style_tags?: string[];
   extra_condition?: string;
 };
 
+// コンシェルジュでは生年月日を使わない（ドライブ「KAMI MUSUBI コンシェルジュとコンパスの役割の線引き」、
+// backend は PR #3464 で生年月日・出生時刻・出生地と、そこから計算した九星・五行・ライフパスを入口で外す）。
+// 使われない個人情報を送らないよう、profile_context には条件だけを載せる。
 export type ProfileContextPayload = {
   user_profile: {
-    birthday?: string;
-    birthdate?: string;
-    birthTime?: string;
-    birthPlace?: string;
     goriyaku_tag_ids?: number[];
     visit_style_tags?: string[];
-  };
-  derived_profile: {
-    kyusei?: string;
-    gogyo?: string;
-    lifePath?: string;
-    raw_extra?: string;
   };
 };
 
@@ -95,14 +84,12 @@ export function resolveVisitStyleTags(visitStyleLabel?: string): string[] | unde
 
 export function buildExtraConditionText({
   visitStyleLabel,
-  birthdate,
   plannedVisitDate,
   goriyakuLabel,
   supportText,
 }: ConditionState): string {
   return [
     visitStyleLabel ? `参拝スタイル: ${visitStyleLabel}` : undefined,
-    birthdate ? `誕生日: ${birthdate}` : undefined,
     plannedVisitDate ? `参拝予定日: ${plannedVisitDate}` : undefined,
     goriyakuLabel ? `ご利益: ${goriyakuLabel}` : undefined,
     supportText?.trim() ? `補助条件: ${supportText.trim()}` : undefined,
@@ -112,48 +99,20 @@ export function buildExtraConditionText({
 }
 
 export function buildConditionFilters(condition: ConditionState): ConditionFilters {
-  const normalizedBirthdate = condition.birthdate?.trim() || undefined;
   const extraCondition = buildExtraConditionText(condition) || undefined;
 
   return {
-    birthdate: normalizedBirthdate,
     goriyaku_tag_ids: condition.goriyakuTagIds,
     visit_style_tags: resolveVisitStyleTags(condition.visitStyleLabel),
     extra_condition: extraCondition,
   };
 }
 
-// Concierge画面で入力した条件を優先し、未入力の個人情報だけ app全体のプロフィールで補う
-export function buildConditionProfileContext({
-  condition,
-  globalUserProfile,
-}: {
-  condition: ConditionState;
-  globalUserProfile: UserProfile;
-}): ProfileContextPayload {
-  const effectiveUserProfile: UserProfile = {
-    birthday: condition.birthdate?.trim() || globalUserProfile.birthday,
-    birthTime: globalUserProfile.birthTime,
-    birthPlace: globalUserProfile.birthPlace,
-  };
-
-  const derived = buildDerivedProfile(effectiveUserProfile);
-  const extraConditionText = buildExtraConditionText(condition) || undefined;
-
+export function buildConditionProfileContext({ condition }: { condition: ConditionState }): ProfileContextPayload {
   return {
     user_profile: {
-      birthday: effectiveUserProfile.birthday,
-      birthdate: effectiveUserProfile.birthday,
-      birthTime: effectiveUserProfile.birthTime,
-      birthPlace: effectiveUserProfile.birthPlace,
       goriyaku_tag_ids: condition.goriyakuTagIds,
       visit_style_tags: resolveVisitStyleTags(condition.visitStyleLabel),
-    },
-    derived_profile: {
-      kyusei: derived.kyusei,
-      gogyo: derived.gogyo,
-      lifePath: derived.lifePath,
-      raw_extra: extraConditionText,
     },
   };
 }

@@ -1,40 +1,27 @@
 import { describe, expect, it } from "vitest";
-import type { UserProfile } from "../../types/profile";
 import { buildConditionFilters, buildConditionProfileContext } from "../conditionPayload";
 
 describe("conditionPayload visit style authority", () => {
   it("keeps the current visit preference as structured visit_style_tags", () => {
     const condition = {
-      birthdate: "1984-05-15",
       visitStyleLabel: "静かに整えたい",
     };
 
     expect(buildConditionFilters(condition).visit_style_tags).toEqual(["quiet"]);
 
-    const context = buildConditionProfileContext({ condition, globalUserProfile: {} });
+    const context = buildConditionProfileContext({ condition });
     expect(context.user_profile.visit_style_tags).toEqual(["quiet"]);
     expect(context.user_profile).not.toHaveProperty("worshipStyle");
   });
 
-  it("ignores a legacy persisted worshipStyle instead of falling back to it", () => {
-    const legacyProfile = {
-      birthday: "1984-05-15",
-      birthTime: "05:25",
-      birthPlace: "東京都",
-      worshipStyle: "朝参り",
-    } as UserProfile & { worshipStyle: string };
+  it("コンシェルジュへ生年月日・出生時刻・出生地と、そこから計算した値を送らない", () => {
+    // ドライブ「KAMI MUSUBI コンシェルジュとコンパスの役割の線引き」。backend も PR #3464 で入口で外す。
+    const context = buildConditionProfileContext({ condition: { supportText: "静かに" } });
+    expect(context).toEqual({ user_profile: { goriyaku_tag_ids: undefined, visit_style_tags: undefined } });
+    expect(context).not.toHaveProperty("derived_profile");
 
-    const context = buildConditionProfileContext({
-      condition: {},
-      globalUserProfile: legacyProfile,
-    });
-
-    expect(context.user_profile).toMatchObject({
-      birthday: "1984-05-15",
-      birthTime: "05:25",
-      birthPlace: "東京都",
-    });
-    expect(context.user_profile.visit_style_tags).toBeUndefined();
-    expect(context.user_profile).not.toHaveProperty("worshipStyle");
+    const filters = buildConditionFilters({ plannedVisitDate: "2026-12-01", supportText: "静かに" });
+    expect(filters).not.toHaveProperty("birthdate");
+    expect(filters.extra_condition).not.toContain("誕生日");
   });
 });

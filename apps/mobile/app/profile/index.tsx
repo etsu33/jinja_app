@@ -6,6 +6,7 @@ import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
 import { useProfileStore } from "../../store/profileStore";
 import { normalizeBirthday } from "../../lib/profile";
+import { pushBirthdayToServer, syncBirthdayWithServer } from "../../lib/birthdaySync";
 import { ProfilePickerModal } from "../../components/profile/ProfilePickerModal";
 import { typography } from "../../design/typography";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -43,6 +44,20 @@ export default function ProfileScreen() {
     return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
   });
 
+  // ログイン中は、マイページを開いたときにサーバーの生年月日と揃える（lib/birthdaySync.ts）。
+  const birthdaySynced = React.useRef(false);
+  React.useEffect(() => {
+    if (birthdaySynced.current) return;
+    birthdaySynced.current = true;
+    void syncBirthdayWithServer({ localBirthday: userProfile.birthday, setLocalBirthday: setBirthday });
+  }, [userProfile.birthday, setBirthday]);
+
+  const saveBirthday = (value: string) => {
+    setBirthday(value);
+    // ログイン中ならサーバーにも保存する。ログインしていなければ端末にだけ保存する。
+    void pushBirthdayToServer(value);
+  };
+
   const fmtDerived = (v?: string) => v ?? "未計算";
   const openBirthdayPicker = () => {
     setDraftYear(birthdayParts[0] ?? "1990");
@@ -54,11 +69,11 @@ export default function ProfileScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <Text style={styles.subtitle}>
-          あなたの基本情報を入力すると、神社提案に活用されます。
+          生年月日は、コンパスで今月の方角を出すときに使います。ログイン中は、コンシェルジュの結果にも「今月の方角」を添えます。
         </Text>
         <View style={styles.saveNotice}>
           <Ionicons name="checkmark-circle-outline" size={SAVE_ICON_SIZE} color={theme.cedar} />
-          <Text style={styles.saveNoticeText}>入力内容はこの端末に自動保存されます</Text>
+          <Text style={styles.saveNoticeText}>入力内容はこの端末に自動保存されます。ログイン中は、生年月日をアカウントにも保存します</Text>
         </View>
       </View>
 
@@ -133,7 +148,7 @@ export default function ProfileScreen() {
 
       <ProfilePickerModal visible={picker === "year"} title="生まれた年" options={years.map((value) => ({ value, label: `${value}年` }))} selectedValue={draftYear} onClose={() => setPicker(null)} onSelect={(value) => { setDraftYear(value); if (Number(value) === today.getFullYear() && Number(draftMonth) > today.getMonth() + 1) setDraftMonth(String(today.getMonth() + 1).padStart(2, "0")); setPicker("month"); }} />
       <ProfilePickerModal visible={picker === "month"} title="生まれた月" options={months.map((value) => ({ value, label: `${Number(value)}月` }))} selectedValue={draftMonth} onClose={() => setPicker(null)} onSelect={(value) => { setDraftMonth(value); setPicker("day"); }} />
-      <ProfilePickerModal visible={picker === "day"} title="生まれた日" options={days.map((value) => ({ value, label: `${Number(value)}日` }))} selectedValue={birthdayParts[2]} onClose={() => setPicker(null)} onSelect={(value) => setBirthday(`${draftYear}-${draftMonth}-${value}`)} />
+      <ProfilePickerModal visible={picker === "day"} title="生まれた日" options={days.map((value) => ({ value, label: `${Number(value)}日` }))} selectedValue={birthdayParts[2]} onClose={() => setPicker(null)} onSelect={(value) => saveBirthday(`${draftYear}-${draftMonth}-${value}`)} />
       <ProfilePickerModal visible={picker === "time"} title="出生時間（5分単位）" options={[{ value: "", label: "不明・未設定" }, ...times.map((value) => ({ value, label: value }))]} selectedValue={userProfile.birthTime ?? ""} onClose={() => setPicker(null)} onSelect={setBirthTime} />
       <ProfilePickerModal visible={picker === "place"} title="出生地" options={[{ value: "", label: "不明・未設定" }, ...PREFECTURES.map((value) => ({ value, label: value }))]} selectedValue={userProfile.birthPlace ?? ""} onClose={() => setPicker(null)} onSelect={setBirthPlace} />
     </ScrollView>
