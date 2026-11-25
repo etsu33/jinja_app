@@ -47,7 +47,11 @@ export default function GoshuinLimitBadge({ className }: Props) {
 
   return (
     <div
-      className={className ?? "" + " rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"}
+      className={
+        className ??
+        "" +
+          " rounded-xl border border-[var(--kt-color-notice-border)] bg-[var(--kt-color-notice-bg)] px-3 py-2 text-xs text-[var(--kt-color-notice-text)]"
+      }
     >
       {label}：上限に達しています。{" "}
       <Link href="/billing/upgrade" className="underline font-semibold">

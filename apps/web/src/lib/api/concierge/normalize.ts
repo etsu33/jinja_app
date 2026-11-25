@@ -1,5 +1,5 @@
 // apps/web/src/lib/api/concierge/normalize.ts
-import type { ConciergeRecommendation } from "./types";
+import type { ConciergeReasonFact, ConciergeRecommendation } from "./types";
 
 function toTrimmedString(v: unknown): string | null {
   if (v == null) return null;
@@ -22,6 +22,21 @@ function pickReason(r: Record<string, any>): string | null {
   );
 }
 
+export function normalizeReasonFacts(input: unknown): ConciergeReasonFact[] {
+  if (!Array.isArray(input)) return [];
+
+  return input.filter((fact): fact is ConciergeReasonFact => {
+    if (fact == null || typeof fact !== "object" || Array.isArray(fact)) return false;
+    const candidate = fact as Record<string, unknown>;
+    if (typeof candidate.type !== "string" || candidate.type.trim().length === 0) return false;
+    if (typeof candidate.label !== "string" || candidate.label.trim().length === 0) return false;
+    if (!Array.isArray(candidate.evidence) || !candidate.evidence.every((item) => typeof item === "string")) return false;
+    if (typeof candidate.score !== "number" || !Number.isFinite(candidate.score)) return false;
+    if (candidate.is_primary !== undefined && typeof candidate.is_primary !== "boolean") return false;
+    return true;
+  });
+}
+
 export function normalizeRecommendations(input: unknown): ConciergeRecommendation[] {
   if (!Array.isArray(input)) return [];
 
@@ -42,6 +57,7 @@ export function normalizeRecommendations(input: unknown): ConciergeRecommendatio
         display_name: (r.display_name ?? "").toString().trim() || name,
         display_address,
         reason,
+        reason_facts: normalizeReasonFacts(r.reason_facts),
         is_dummy: r.is_dummy === true || r.__dummy === true,
         __dummy: r.__dummy === true,
       } as ConciergeRecommendation;

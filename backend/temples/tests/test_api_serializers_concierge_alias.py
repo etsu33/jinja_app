@@ -8,7 +8,6 @@ def test_concierge_alias_exports_and_identities():
         "PlaceLiteSerializer",
         "ConciergePlanRequestSerializer",
         "ConciergePlanResponseSerializer",
-        "ConciergeHistorySerializer",
         "ConciergeRecommendationsQuery",
         "ConciergeRecommendationsResponse",
         "ShrineNearbySerializer",

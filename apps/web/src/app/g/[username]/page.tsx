@@ -41,8 +41,8 @@ async function fetchPublicGoshuins(username: string, limit: number, offset: numb
 
 function Card({ g }: { g: Goshuin }) {
   return (
-    <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-      <div className="aspect-[4/5] bg-slate-100">
+    <div className="overflow-hidden rounded-2xl border bg-[var(--kt-color-surface-default)] shadow-sm">
+      <div className="aspect-[4/5] bg-[var(--kt-color-surface-elevated)]">
         {g.image_url ? (
           <Image
             src={g.image_url}
@@ -52,12 +52,12 @@ function Card({ g }: { g: Goshuin }) {
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-xs text-slate-500">画像なし</div>
+          <div className="flex h-full items-center justify-center text-xs text-[var(--kt-color-text-muted)]">画像なし</div>
         )}
       </div>
       <div className="p-3">
-        <div className="truncate text-sm font-medium text-slate-800">{g.title || "（無題）"}</div>
-        <div className="truncate text-[11px] text-slate-500">{g.shrine_name || ""}</div>
+        <div className="truncate text-sm font-medium text-[var(--kt-color-text-primary)]">{g.title || "（無題）"}</div>
+        <div className="truncate text-[11px] text-[var(--kt-color-text-muted)]">{g.shrine_name || ""}</div>
       </div>
     </div>
   );
@@ -117,7 +117,7 @@ export default async function PublicGoshuinPage({ params, searchParams }: Props)
       <PublicGoshuinHeader username={username} count={data.count} limit={limit} offset={offset} />
 
       {items.length === 0 ? (
-        <div className="rounded-2xl border bg-white p-6 text-sm text-slate-600">公開されている御朱印がありません。</div>
+        <div className="rounded-2xl border bg-[var(--kt-color-surface-default)] p-6 text-sm text-[var(--kt-color-text-secondary)]">公開されている御朱印がありません。</div>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

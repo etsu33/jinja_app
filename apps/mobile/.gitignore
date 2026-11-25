@@ -10,6 +10,13 @@ web-build/
 expo-env.d.ts
 
 # Native
+# ios / android は app.config.ts から毎回生成する (CNG)。手で編集せず、
+# コミットもしない。Expo の標準テンプレートにある記述だが、本リポジトリでは
+# 抜けていた。無いと EAS Build が「gitignore されていない未追跡ファイル」として
+# ローカルの生成物をアップロードし、app.config.ts の icon / splash / plugins が
+# 無視されて古いネイティブプロジェクトでビルドされる。
+/ios
+/android
 *.orig.*
 *.jks
 *.p8

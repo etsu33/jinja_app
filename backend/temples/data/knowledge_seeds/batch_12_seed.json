@@ -1,0 +1,499 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "batch12-futarasan-official",
+      "source_type": "shrine_official",
+      "title": "日光二荒山神社 ご由緒",
+      "publisher": "日光二荒山神社",
+      "url": "http://www.futarasan.jp/",
+      "bibliography": "",
+      "accessed_at": "2026-08-11",
+      "verified_at": "2026-08-11T02:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "御祭神は「二荒山大神」と総称され、大己貴命(父)・田心姫命(母)・味耜高彦根命(子)の親子3神から成ると公式サイトが明記。序列（主祭神/配祀等）の記載はなく、家族関係のみが示されているため、3柱すべてrole=unknownとしてFact化した（二荒山大神という総称自体は別Fact化していない）。霊峰二荒山（男体山、標高2,486m）を神体山と仰ぐ山岳信仰を直接確認。"
+    },
+    {
+      "key": "batch12-sumiyoshi-hakata-official",
+      "source_type": "shrine_official",
+      "title": "住吉神社について | 【公式】福岡 (博多) の筑前國一之宮 住吉神社",
+      "publisher": "住吉神社",
+      "url": "https://www.nihondaiichisumiyoshigu.jp/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-11",
+      "verified_at": "2026-08-11T02:31:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "住吉三神（底筒男神・中筒男神・表筒男神）が祭神、相殿に天照皇大神・神功皇后を配祀し、合わせて「住吉五所大神」と総称されると公式サイトが明記。住吉五所大神という総称自体は別Fact化せず、5柱それぞれを個別Fact化した。約1800年以上前の創建伝承、日本三大住吉の一つであることを直接確認。"
+    },
+    {
+      "key": "batch12-hiraoka-official",
+      "source_type": "shrine_official",
+      "title": "御由緒｜枚岡神社（河内国一之宮 太古の聖域）",
+      "publisher": "枚岡神社",
+      "url": "http://www.hiraoka-jinja.org/history/",
+      "bibliography": "",
+      "accessed_at": "2026-08-11",
+      "verified_at": "2026-08-11T02:32:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "第1殿〜第4殿に4柱（天児屋根命・比売御神・武甕槌命・経津主命）が祀られると公式サイトが明記。天児屋根命のみ「主祭神として祀られている」と明言され、比売御神は「その后神」、武甕槌命・経津主命は宝亀9年(778)に春日神社より「迎え配祀」と明記されているため、天児屋根命のみrole=primary、他3柱はrole=secondaryとした。「元春日」（春日大社の元宮）はHistory側の由緒情報でありDeity Factには含めていない。"
+    },
+    {
+      "key": "batch12-awa-official",
+      "source_type": "shrine_official",
+      "title": "【安房神社】ご祭神・ご由緒の案内",
+      "publisher": "安房神社",
+      "url": "http://awajinjya.org/gosaijin.htm",
+      "bibliography": "",
+      "accessed_at": "2026-08-11",
+      "verified_at": "2026-08-11T02:33:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "上の宮（本宮）の主祭神は天太玉命、相殿神は天比理刀咩命および「忌部五部神」（櫛明玉命・天日鷲命・彦狭知命・手置帆負命・天目一箇命の5柱の総称）と公式サイトが明記。忌部五部神という総称自体は別Fact化せず、5柱それぞれを個別Fact化した。下の宮（摂社）・厳島社/琴平社（末社）の祭神（天富命・天忍日命・市杵島姫命・大物主神）は、本宮とは別の摂社・末社の祭神であるためFact化対象外とした。神代創祀伝承（皇紀元年）・養老元年(717)の遷座を直接確認。"
+    },
+    {
+      "key": "batch12-takase-official",
+      "source_type": "shrine_official",
+      "title": "高瀬神社のご案内 | 高瀬神社",
+      "publisher": "高瀬神社",
+      "url": "https://www.takase.or.jp/guide.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-11",
+      "verified_at": "2026-08-11T02:34:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "主神は大国主大神、配祀は天活玉命・五十猛命と公式サイトが明記。末社（神明宮・風宮・稲荷社・天満宮）および功霊殿（戦没者・地方開拓功労者を祀る）の祭神は、本殿の主神・配祀とは別区分のためFact化対象外とした。景行天皇11年の御代とも伝わる創祀伝承、大正12年(1923)の国幣小社昇格を直接確認。"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "二荒山神社",
+        "address": "栃木県日光市山内2307"
+      },
+      "deities": [
+        {
+          "display_name": "大己貴命",
+          "canonical_name": "大己貴命",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:30:00+00:00",
+          "note": "二荒山大神と総称される親子3神の父。公式サイトに序列の記載はなく、家族関係のみが示されているためrole=unknownとした。",
+          "source_keys": ["batch12-futarasan-official"]
+        },
+        {
+          "display_name": "田心姫命",
+          "canonical_name": "田心姫命",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:30:00+00:00",
+          "note": "二荒山大神と総称される親子3神の母。序列記載なし。",
+          "source_keys": ["batch12-futarasan-official"]
+        },
+        {
+          "display_name": "味耜高彦根命",
+          "canonical_name": "味耜高彦根命",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:30:00+00:00",
+          "note": "二荒山大神と総称される親子3神の子。序列記載なし。",
+          "source_keys": ["batch12-futarasan-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "霊峰二荒山（男体山）を神体山とする山岳信仰",
+          "content": "日光二荒山神社は、古くより霊峰二荒山（ふたらさん・男体山、標高2,486メートル）を神の鎮まり給う御山として尊崇したことから、御山を御神体山と仰ぐ神社であり、日光の氏神様でもあると伝えられている。境内は日光国立公園の中枢をなす日光連山を含む3,400ヘクタールに及ぶ広大な神域で、男体山山頂の奥宮・中禅寺湖畔の中宮祠・山内（市内）の御本社の3社から成る。",
+          "period_text": "創建年代は公式サイトに記載なし（山岳信仰に基づく伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:30:00+00:00",
+          "note": "公式サイトに具体的な創建年の記載はなく、山岳信仰に基づく由緒のみが示されている。",
+          "source_keys": ["batch12-futarasan-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "住吉神社（博多）",
+        "address": "福岡県福岡市博多区住吉3-1-51"
+      },
+      "deities": [
+        {
+          "display_name": "底筒男神",
+          "canonical_name": "底筒男神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:31:00+00:00",
+          "note": "住吉三神の一柱。相殿2柱と合わせ「住吉五所大神」と総称される（総称自体は別Fact化していない）。",
+          "source_keys": ["batch12-sumiyoshi-hakata-official"]
+        },
+        {
+          "display_name": "中筒男神",
+          "canonical_name": "中筒男神",
+          "role": "primary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:31:00+00:00",
+          "note": "住吉三神の一柱。",
+          "source_keys": ["batch12-sumiyoshi-hakata-official"]
+        },
+        {
+          "display_name": "表筒男神",
+          "canonical_name": "表筒男神",
+          "role": "primary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:31:00+00:00",
+          "note": "住吉三神の一柱。",
+          "source_keys": ["batch12-sumiyoshi-hakata-official"]
+        },
+        {
+          "display_name": "天照皇大神",
+          "canonical_name": "天照皇大神",
+          "role": "secondary",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:31:00+00:00",
+          "note": "相殿に配祀。住吉三神と合わせ「住吉五所大神」と総称される。",
+          "source_keys": ["batch12-sumiyoshi-hakata-official"]
+        },
+        {
+          "display_name": "神功皇后",
+          "canonical_name": "神功皇后",
+          "role": "secondary",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:31:00+00:00",
+          "note": "相殿に配祀。",
+          "source_keys": ["batch12-sumiyoshi-hakata-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "約1,800年以上前の創建伝承",
+          "content": "住吉神社の歴史はおよそ1,800年以上前に遡ると伝えられている。全国に2,129社ある住吉神社の中でも最初の神社と云われ、古書には「住吉本社」「日本第一住吉宮」などと記されている。住吉大神を祀る神社の多くは海側にあり、特に大阪の住吉大社・下関の住吉神社と当社が「日本三大住吉」と云われている。",
+          "period_text": "約1,800年以上前（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:31:00+00:00",
+          "note": "公式サイト自身が伝承として記述しており、確定した史実としては扱っていない。",
+          "source_keys": ["batch12-sumiyoshi-hakata-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "「住吉造」社殿と25年毎の御遷宮",
+          "content": "当社の社殿は「住吉造」と呼ばれ、神社建築史上最古の特殊な様式をとる。柱・垂木・破風板は丹塗り、羽目板壁は白胡粉塗り、屋根は切妻の直線形、出入り口が直線型妻入式という特徴を持ち、国の重要文化財に指定されている。社殿を改築・修理する御遷宮が25年ごとに行われている。",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:31:00+00:00",
+          "note": "国指定重要文化財であることを公式サイトで直接確認。",
+          "source_keys": ["batch12-sumiyoshi-hakata-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "枚岡神社",
+        "address": "大阪府東大阪市出雲井町7-16"
+      },
+      "deities": [
+        {
+          "display_name": "天児屋根命",
+          "canonical_name": "天児屋根命",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:32:00+00:00",
+          "note": "公式サイトが「主祭神として祀られている」と明言する第1殿の祭神。中臣氏の祖神。",
+          "source_keys": ["batch12-hiraoka-official"]
+        },
+        {
+          "display_name": "比売御神",
+          "canonical_name": "比売御神",
+          "role": "secondary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:32:00+00:00",
+          "note": "第2殿の祭神。天児屋根命の后神と公式サイトが明記。",
+          "source_keys": ["batch12-hiraoka-official"]
+        },
+        {
+          "display_name": "武甕槌命",
+          "canonical_name": "武甕槌命",
+          "role": "secondary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:32:00+00:00",
+          "note": "第3殿の祭神。宝亀9年(778)に春日神社より迎え配祀されたと公式サイトが明記（鹿島神宮の祭神）。",
+          "source_keys": ["batch12-hiraoka-official"]
+        },
+        {
+          "display_name": "経津主命",
+          "canonical_name": "経津主命",
+          "role": "secondary",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:32:00+00:00",
+          "note": "第4殿の祭神。宝亀9年(778)に春日神社より迎え配祀されたと公式サイトが明記（香取神宮の祭神）。",
+          "source_keys": ["batch12-hiraoka-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "神武東征以前の創祀伝承",
+          "content": "枚岡神社の創祀は皇紀前、初代天皇の神武天皇が大和の地で即位される3年前と伝えられている。神武東征の際、神武天皇の勅命を奉じた天種子命が国土平定を祈願するため、天児屋根命・比売御神の二神を霊地神津嶽に一大磐境を設けて祀ったのが創祀とされる。",
+          "period_text": "皇紀前（神武天皇即位3年前と伝わる）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:32:00+00:00",
+          "note": "公式サイト自身が伝承として記述。史実として断定していない。",
+          "source_keys": ["batch12-hiraoka-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "白雉元年(650)の山麓への奉遷",
+          "content": "枚岡神社は長く神津嶽に祀られていたが、孝徳天皇の白雉元年(650)9月16日、平岡連らにより山麓の現在地へ奉遷されたと伝えられている。",
+          "period_text": "白雉元年（650）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:32:00+00:00",
+          "note": "",
+          "source_keys": ["batch12-hiraoka-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "「元春日」——春日大社の元宮",
+          "content": "神護景雲2年(768)、天児屋根命・比売御神の二神が春日山本宮の峰に影向し、春日神社（現在の春日大社）に祀られた。このことから枚岡神社は「元春日」と呼ばれている。その後、宝亀9年(778)には春日神社より武甕槌命・経津主命の二神を迎え配祀し四殿となった。",
+          "period_text": "神護景雲2年（768）・宝亀9年（778）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:32:00+00:00",
+          "note": "「元春日」はHistory Factとしてのみ扱い、Deity Factには含めていない。",
+          "source_keys": ["batch12-hiraoka-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "安房神社",
+        "address": "千葉県館山市大神宮589"
+      },
+      "deities": [
+        {
+          "display_name": "天太玉命",
+          "canonical_name": "天太玉命",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:33:00+00:00",
+          "note": "上の宮（本宮）の主祭神。忌部氏の祖神と公式サイトが明記。",
+          "source_keys": ["batch12-awa-official"]
+        },
+        {
+          "display_name": "天比理刀咩命",
+          "canonical_name": "天比理刀咩命",
+          "role": "secondary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:33:00+00:00",
+          "note": "上の宮の相殿神。天太玉命の妃神と公式サイトが明記。",
+          "source_keys": ["batch12-awa-official"]
+        },
+        {
+          "display_name": "櫛明玉命",
+          "canonical_name": "櫛明玉命",
+          "role": "secondary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:33:00+00:00",
+          "note": "上の宮の相殿神。「忌部五部神」と総称される5柱の一柱（出雲忌部の祖、装飾・美術の神）。総称自体は別Fact化していない。",
+          "source_keys": ["batch12-awa-official"]
+        },
+        {
+          "display_name": "天日鷲命",
+          "canonical_name": "天日鷲命",
+          "role": "secondary",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:33:00+00:00",
+          "note": "忌部五部神の一柱（阿波忌部の祖、紡績業・製紙業の神）。",
+          "source_keys": ["batch12-awa-official"]
+        },
+        {
+          "display_name": "彦狭知命",
+          "canonical_name": "彦狭知命",
+          "role": "secondary",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:33:00+00:00",
+          "note": "忌部五部神の一柱（紀伊忌部の祖、林業・建築業・武器製造業の神）。",
+          "source_keys": ["batch12-awa-official"]
+        },
+        {
+          "display_name": "手置帆負命",
+          "canonical_name": "手置帆負命",
+          "role": "secondary",
+          "sort_order": 5,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:33:00+00:00",
+          "note": "忌部五部神の一柱（讃岐忌部の祖、林業・建築業・武器製造業の神）。",
+          "source_keys": ["batch12-awa-official"]
+        },
+        {
+          "display_name": "天目一箇命",
+          "canonical_name": "天目一箇命",
+          "role": "secondary",
+          "sort_order": 6,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:33:00+00:00",
+          "note": "忌部五部神の一柱（筑紫・伊勢忌部の祖、金属鉱業の神）。",
+          "source_keys": ["batch12-awa-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "神武天皇御代の創始伝承",
+          "content": "安房神社の創始は、神武天皇が初代の天皇として御即位になられた皇紀元年（伝承上、西暦紀元前660年）と伝えられている。神武天皇の勅命を受けた天富命が阿波国に上陸して開拓を進め、さらに肥沃な土地を求めて房総半島南端の布良浜へ上陸し、天太玉命・天比理刀咩命を男神山・女神山に祀ったのが起源とされる。",
+          "period_text": "皇紀元年（伝承、西暦紀元前660年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:33:00+00:00",
+          "note": "公式サイト自身が伝承として記述。史実として断定していない。",
+          "source_keys": ["batch12-awa-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "養老元年(717)の遷座",
+          "content": "養老元年(717)、吾谷山の麓である現在の場所に安房神社が遷座され、天富命・天忍日命を祀る「下の宮」の社殿も併せて造営された。平安時代には延喜式神名帳に記載された式内社・名神大社として、安房国一之宮として崇敬を集めた。",
+          "period_text": "養老元年（717）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:33:00+00:00",
+          "note": "",
+          "source_keys": ["batch12-awa-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "越中一宮 高瀬神社",
+        "address": "富山県南砺市高瀬291"
+      },
+      "deities": [
+        {
+          "display_name": "大国主大神",
+          "canonical_name": "大国主大神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:34:00+00:00",
+          "note": "公式サイトが「主神」と明記。福の神・縁結びの神。",
+          "source_keys": ["batch12-takase-official"]
+        },
+        {
+          "display_name": "天活玉命",
+          "canonical_name": "天活玉命",
+          "role": "secondary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:34:00+00:00",
+          "note": "公式サイトが「配祀」と明記。",
+          "source_keys": ["batch12-takase-official"]
+        },
+        {
+          "display_name": "五十猛命",
+          "canonical_name": "五十猛命",
+          "role": "secondary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:34:00+00:00",
+          "note": "公式サイトが「配祀」と明記。",
+          "source_keys": ["batch12-takase-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "景行天皇御代の創祀伝承",
+          "content": "高瀬神社の御鎮座は遠く神代の昔、また景行天皇11年の御代とも伝えられている。社伝によれば、御祭神が北国御開拓の折にこの地へ守り神を祀り、国造りを終えた後に自らの御魂をも鎮め祀り、出雲へ帰られたとも伝えられ、後に延喜式内社・越中一宮として崇められてきた。",
+          "period_text": "神代の昔、または景行天皇11年（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:34:00+00:00",
+          "note": "公式サイト自身が伝承として記述。史実として断定していない。",
+          "source_keys": ["batch12-takase-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "大正12年(1923)の国幣小社昇格",
+          "content": "高瀬神社は明治6年(1873)に県社に列せられ、大正12年(1923)に国幣小社に昇格した。大正13年には摂政の宮の御使が参向し、大正14年には皇后陛下より「神ながらの道」が奉献されるなど、朝廷からの崇敬を受けてきたと公式サイトは記している。",
+          "period_text": "明治6年（1873）〜大正14年（1925）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T02:34:00+00:00",
+          "note": "公式サイトに記載された社格変遷の範囲に限定し、それ以上の朝廷記録の詳細（歴代神階等）は本Factには含めていない。",
+          "source_keys": ["batch12-takase-official"]
+        }
+      ]
+    }
+  ]
+}

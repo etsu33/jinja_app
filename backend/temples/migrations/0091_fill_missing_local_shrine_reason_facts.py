@@ -1,4 +1,35 @@
 from django.db import migrations
+from django.db.models import F
+
+# Only the columns this migration actually reads/writes. In particular this
+# excludes `location`: on production the column is a legacy `text` field
+# (pre-PostGIS import path), while the historical model state for this
+# migration declares it as a PostGIS `PointField`. Selecting it triggers the
+# GeometryField converter on every row fetch and raises GEOSException before
+# any row is ever touched, even though this migration never reads or writes
+# location. `.only()` keeps it out of the generated SELECT entirely.
+SHRINE_LOOKUP_FIELDS = ("id", "name_jp", "history_theme", "goriyaku", "place_ref_id", "updated_at")
+
+
+def _resolve_target_shrine(Shrine, name):
+    """Find the single canonical shrine row for `name`.
+
+    A few shrine names (including both names this migration targets) have
+    accidental duplicate rows: the original catalog row (no `place_ref_id`)
+    plus a later row created by the map "resolve"/Google Places flow (always
+    has a `place_ref_id`). `Shrine.Meta.ordering` is `-updated_at`, so a bare
+    `.first()` deterministically but silently picks the *duplicate* (more
+    recently touched) row instead of the catalog row this migration is meant
+    to enrich. Ordering explicitly by `place_ref_id IS NULL` first, then `id`,
+    selects the original catalog row when a duplicate exists, and is a no-op
+    when it doesn't (single match either way).
+    """
+    return (
+        Shrine.objects.filter(name_jp=name)
+        .only(*SHRINE_LOOKUP_FIELDS)
+        .order_by(F("place_ref_id").asc(nulls_first=True), "id")
+        .first()
+    )
 
 
 def fill_missing_local_shrine_reason_facts(apps, schema_editor):
@@ -21,7 +52,7 @@ def fill_missing_local_shrine_reason_facts(apps, schema_editor):
     ]
 
     for item in updates:
-        shrine = Shrine.objects.filter(name_jp=item["name"]).first()
+        shrine = _resolve_target_shrine(Shrine, item["name"])
         if shrine is None:
             continue
 
@@ -43,7 +74,11 @@ def reverse_fill_missing_local_shrine_reason_facts(apps, schema_editor):
 
     tags = list(GoriyakuTag.objects.filter(name__in=tag_names))
 
-    for shrine in Shrine.objects.filter(name_jp__in=names):
+    for name in names:
+        shrine = _resolve_target_shrine(Shrine, name)
+        if shrine is None:
+            continue
+
         shrine.history_theme = ""
         shrine.goriyaku = ""
         shrine.save(update_fields=["history_theme", "goriyaku", "updated_at"])
@@ -53,7 +88,6 @@ def reverse_fill_missing_local_shrine_reason_facts(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("temples", "0090_add_rest_healing_tag_to_silent_shrines"),
     ]

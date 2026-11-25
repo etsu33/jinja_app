@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from temples.services.recommendation_reason_v4 import (
     build_recommendation_reason_quality_audit,
     build_recommendation_reason_v4,
@@ -240,7 +242,7 @@ def test_build_recommendation_reason_v4_builds_interpretation_layer_from_profile
 
     assert result["interpretation"] == {
         "theme": "再出発",
-        "text": "仕事や進路の流れを見直したい。判断に迷う様子を中心に、要素があります。",
+        "text": "仕事や進路の流れを見直したい。相談の言葉からは、判断に迷う様子が感じられます。",
     }
     assert result["source"]["interpretation"] == "interpretation_profile|meaning_translation"
     assert result["used_interpretation"] == {
@@ -340,7 +342,9 @@ def test_build_recommendation_reason_v4_uses_recommendation_input_profile_when_d
         }
     )
 
-    assert result["fact"]["label"] == "縁"
+    # translation_result.history_theme is Derived Meaning, not a raw Shrine Fact.
+    assert result["fact"]["label"] == "縁結び"
+    assert result["fact"]["history_theme"] is None
     assert result["interpretation"]["theme"] == "縁"
     assert result["action"]["text"] == "参拝前に、気持ちを落ち着け、今の状態を静かに見直すことを一つだけ決めておくと、行動につなげやすくなります。"
 
@@ -427,7 +431,7 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
     result = build_recommendation_reason_v4()
 
     assert result == {
-        "reason_text": "神社固有情報が十分でないため、相談条件との一致を中心に整理しています。相談内容から、今扱いたいテーマを読み取っています。参拝前に、次に確認したいことを一つだけ決めておきます。",
+        "reason_text": "神社固有情報が十分でないため、確認できる情報をもとに候補として整理しています。相談内容から、今扱いたいテーマを読み取っています。参拝前に、次に確認したいことを一つだけ決めておきます。",
         "fact": {
             "label": "候補神社",
             "name": None,
@@ -565,7 +569,7 @@ def test_build_recommendation_reason_v4_uses_state_direction_and_emotion_profile
 
     assert result["interpretation"] == {
         "theme": "守り",
-        "text": "気持ちを落ち着け、今の状態を整理したい相談として受け取れます。不安や心配を中心に、要素が強めに出ています。",
+        "text": "気持ちを落ち着け、今の状態を整理したい相談として受け取れます。相談の言葉からは、不安や心配が強く感じられます。",
     }
     assert "あなたは" not in result["reason_text"]
 
@@ -584,7 +588,7 @@ def test_build_recommendation_reason_v4_place_context_only_does_not_state_addres
     assert "東京都渋谷区代々木神園町1-1" not in result["reason_text"]
     assert "の特徴があります" not in result["reason_text"]
     assert (
-        "神社固有情報が十分でないため、相談条件との一致を中心に整理しています。"
+        "神社固有情報が十分でないため、確認できる情報をもとに候補として整理しています。"
         in result["reason_text"]
     )
 
@@ -860,7 +864,7 @@ def test_build_recommendation_reason_v4_no_facts_falls_back_without_fabricating_
     )
 
     assert (
-        "神社固有情報が十分でないため、相談条件との一致を中心に整理しています。"
+        "神社固有情報が十分でないため、確認できる情報をもとに候補として整理しています。"
         in result["reason_text"]
     )
     assert result["quality"]["fallback_source"] == "fallback"
@@ -991,3 +995,38 @@ def test_quality_does_not_miscount_invalid_or_empty_fact_values():
     assert quality["shrine_data_rate"] == 0.0
     assert quality["evidence_rate"] == 0.0
     assert quality["is_ai_inference_only"] is True
+
+
+# --- 相談の読み取りの文: 利用者の状態を言い切らず「相談の言葉から読み取ったこと」として伝える ---
+
+
+@pytest.mark.parametrize(
+    "primary_state,state_copy",
+    [
+        ("uncertain", "判断に迷う様子"),
+        ("tired", "無理なく休みたい様子"),
+        ("anxious", "不安や心配"),
+        ("stuck", "停滞を見直したい様子"),
+        ("ready_to_change", "流れを切り替えたい様子"),
+    ],
+)
+@pytest.mark.parametrize(
+    "intensity,expected_tail",
+    [
+        (None, "が感じられます。"),
+        ("high", "が強く感じられます。"),
+    ],
+)
+def test_interpretation_state_sentence_reads_from_consultation_words(primary_state, state_copy, intensity, expected_tail):
+    interpretation_profile = {"state_profile": {"primary_state": primary_state}}
+    if intensity:
+        interpretation_profile["emotion_profile"] = {"intensity": intensity}
+
+    result = build_recommendation_reason_v4(interpretation_profile=interpretation_profile)
+    text = result["interpretation"]["text"]
+
+    assert text == f"相談の言葉からは、{state_copy}{expected_tail}"
+    for old in ("要素があります", "要素が強めに出ています", "を中心に、"):
+        assert old not in text
+    for assertive in ("最適", "合っている"):
+        assert assertive not in text

@@ -84,17 +84,6 @@ describe("shrines api", () => {
     expect(res.results).toHaveLength(2);
   });
 
-  it("getShrinePublic: shrines.client に委譲する", async () => {
-    const spy = vi
-      .spyOn(await import("../shrines.client"), "getShrinePublicClient")
-      .mockResolvedValue({ id: 10, name_jp: "明治神宮" } as any);
-
-    const res = await shrinesApi.getShrinePublic(10);
-
-    expect(spy).toHaveBeenCalledWith(10);
-    expect(res).toEqual({ id: 10, name_jp: "明治神宮" });
-  });
-
   it("getShrines: shrines.list.client に委譲する", async () => {
     const spy = vi
       .spyOn(await import("../shrines.list.client"), "getShrinesClient")

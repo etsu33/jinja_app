@@ -22,15 +22,29 @@ class BootstrapStep:
 
 BOOTSTRAP_STEPS: tuple[BootstrapStep, ...] = (
     BootstrapStep(
-        step="import_shrines_seed",
-        version="2026-05-10-v1",
+        step="import_shrines_seed_base",
+        version="2026-09-10-base-v1",
         command="import_shrines_seed",
+        args=("--skip-goriyaku-tags",),
     ),
     BootstrapStep(
         step="backfill_goriyaku_tags",
+        # Historical Production marker. Keep this version stable so existing SUCCESS rows remain SKIP.
+        # visit_style_tags is canonical in Base Seed; --with-visit-style is repair-only.
         version="2026-05-10-with-visit-style-force-v1",
         command="backfill_goriyaku_tags",
-        args=("--with-visit-style", "--force"),
+        args=("--force",),
+    ),
+    BootstrapStep(
+        step="sync_explicit_goriyaku_tags",
+        version="2026-09-10-explicit-goriyaku-tags-v1",
+        command="import_shrines_seed",
+    ),
+    # 英語の特徴語（travel モードの検証用）。シードJSONを直したら version を上げて取り込み直す。
+    BootstrapStep(
+        step="import_feature_words_en",
+        version="2026-11-13-v2",
+        command="import_feature_words_en",
     ),
 )
 
@@ -185,6 +199,10 @@ class Command(BaseCommand):
         self.stdout.write(
             f"[bootstrap_production_data] Shrine with goriyaku_tags: {shrine_with_goriyaku_tags}"
         )
-        self.stdout.write(f"[bootstrap_production_data] PlaceCache total: {self._safe_count(PlaceCache)}")
-        self.stdout.write(f"[bootstrap_production_data] PlacesSeed total: {self._safe_count(PlacesSeed)}")
+        self.stdout.write(
+            f"[bootstrap_production_data] PlaceCache total: {self._safe_count(PlaceCache)}"
+        )
+        self.stdout.write(
+            f"[bootstrap_production_data] PlacesSeed total: {self._safe_count(PlacesSeed)}"
+        )
         self.stdout.write("[bootstrap_production_data] concierge_candidate_counts done")

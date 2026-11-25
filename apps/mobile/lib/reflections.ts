@@ -1,4 +1,4 @@
-import { getAuth, isUnauthenticatedError, postAuth } from "./http";
+import { isUnauthenticatedError, postAuth } from "./http";
 
 export type ShrineReflectionResponse = {
   id: number;
@@ -60,23 +60,5 @@ export async function createShrineReflection({
       console.warn("[createShrineReflection] failed", error);
     }
     return null;
-  }
-}
-
-type PaginatedResponse<T> = {
-  results: T[];
-};
-
-export async function listShrineReflections(): Promise<ShrineReflectionResponse[]> {
-  try {
-    const data = await getAuth<ShrineReflectionResponse[] | PaginatedResponse<ShrineReflectionResponse>>(
-      "/reflections/",
-    );
-    return Array.isArray(data) ? data : (data.results ?? []);
-  } catch (error) {
-    if (__DEV__) {
-      console.warn("[listShrineReflections] failed", error);
-    }
-    return [];
   }
 }

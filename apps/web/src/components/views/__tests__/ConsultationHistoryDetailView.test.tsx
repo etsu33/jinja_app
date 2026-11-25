@@ -111,7 +111,7 @@ describe("ConsultationHistoryDetailView", () => {
     expect(trackDetailViewedMock).not.toHaveBeenCalled();
   });
 
-  it("正常系: 会話履歴と推薦神社カード、Fact要約、action_stateバッジを表示し、detail_viewedを送る", () => {
+  it("正常系: 会話履歴と推薦神社カード、Explanation-only Fact、action_stateバッジを表示し、detail_viewedを送る", () => {
     useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
     render(<ConsultationHistoryDetailView tid="42" thread={THREAD} fetchFailed={false} />);
 
@@ -121,8 +121,12 @@ describe("ConsultationHistoryDetailView", () => {
 
     expect(screen.getByText("根津神社")).toBeInTheDocument();
     expect(screen.getByText("気になる登録済み")).toBeInTheDocument();
-    // Fact優先順位: deityが最優先。place_context(住所)はFact本文として使われない。
-    expect(screen.getByText("須佐之男命")).toBeInTheDocument();
+    // App-wide Evidence & Dark UI Regression Audit Bug-2: fixtureのfactはdeity(須佐之男命)が
+    // 勝ちfact -- Explanation-only Knowledge Fact(Rank/Eligibilityに一切寄与しない)であり、
+    // Ranking reasonの本文枠(通常のfactText、data-testidなし)には出さず、「参考情報」枠へ分離する。
+    expect(screen.queryByTestId("consultation-history-explanation-only-fact")).toHaveTextContent(
+      "参考情報: 須佐之男命",
+    );
 
     expect(trackDetailViewedMock).toHaveBeenCalledWith({
       threadId: 42,
@@ -130,6 +134,60 @@ describe("ConsultationHistoryDetailView", () => {
       messageCount: 2,
     });
     expect(trackDetailViewedMock).toHaveBeenCalledTimes(1);
+  });
+
+  // Case 2 (Shrine Detail Ranking Evidence相当): 通常のRanking Evidence(goriyaku)は
+  // 引き続きRecommendation reasonとして表示される(Explanation-only枠へは分離されない)。
+  it("Bug-2: Ranking Evidence(goriyaku)が勝ちfactの場合は通常のFact枠に残り、参考情報枠は生成されない", () => {
+    useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
+    const threadWithGoriyaku: ConciergeThreadDetail = {
+      ...THREAD,
+      recommendations_v2: [
+        {
+          ...THREAD.recommendations_v2![0],
+          recommendation_reason_v4_detail: {
+            ...THREAD.recommendations_v2![0].recommendation_reason_v4_detail!,
+            fact: {
+              ...THREAD.recommendations_v2![0].recommendation_reason_v4_detail!.fact,
+              deity: null,
+              goriyaku: "縁結び",
+            },
+          },
+        },
+      ],
+    };
+    render(<ConsultationHistoryDetailView tid="42" thread={threadWithGoriyaku} fetchFailed={false} />);
+
+    expect(screen.getByText("縁結び")).toBeInTheDocument();
+    expect(screen.queryByTestId("consultation-history-explanation-only-fact")).not.toBeInTheDocument();
+  });
+
+  // Case 4 (Mixed Evidence相当): Ranking Evidence(goriyaku)とExplanation-only Fact(deity)が
+  // 両方存在しても、優先順位(deity > shrine_history > goriyaku > history_theme)により
+  // deityが勝ちfactとなる。この場合も両者が混ざらず、通常のFact枠には出ないことを確認する。
+  it("Bug-2: deityが勝ちfactの場合、goriyakuが存在しても通常のFact枠には混入しない", () => {
+    useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
+    const threadWithBoth: ConciergeThreadDetail = {
+      ...THREAD,
+      recommendations_v2: [
+        {
+          ...THREAD.recommendations_v2![0],
+          recommendation_reason_v4_detail: {
+            ...THREAD.recommendations_v2![0].recommendation_reason_v4_detail!,
+            fact: {
+              ...THREAD.recommendations_v2![0].recommendation_reason_v4_detail!.fact,
+              goriyaku: "縁結び",
+            },
+          },
+        },
+      ],
+    };
+    render(<ConsultationHistoryDetailView tid="42" thread={threadWithBoth} fetchFailed={false} />);
+
+    expect(screen.queryByTestId("consultation-history-explanation-only-fact")).toHaveTextContent(
+      "参考情報: 須佐之男命",
+    );
+    expect(screen.queryByText("縁結び")).not.toBeInTheDocument();
   });
 
   it("同一tidの再レンダーではdetail_viewedが重複発火しない", () => {
@@ -152,6 +210,36 @@ describe("ConsultationHistoryDetailView", () => {
       "href",
       "/shrines/5?ctx=concierge&tid=42",
     );
+  });
+
+  // NF-1 (Production Smoke Re-check) 回帰ガード。
+  // Dark UIは`<html class="dark">`固定で、Light値のハードコードclassが残ると
+  // title / CTA / 本文が実質判読不能になる(CTA 1.08:1 / title 1.33:1が実測されたP1)。
+  // 特定のtoken名や色をliteralで固定するのではなく、「Light専用の残渣classが
+  // 描画結果に現れないこと」だけを契約として固定する。
+  const LIGHT_RESIDUE = /\b(?:text|bg|border|placeholder|hover:bg|hover:text)-(?:stone|slate|rose|zinc|neutral)-\d{2,3}\b|\bbg-white\b|\btext-white\b/;
+
+  it.each([
+    ["loading", { loading: true, isLoggedIn: false }, null, false] as const,
+    ["unauthenticated", { loading: false, isLoggedIn: false }, null, false] as const,
+    ["fetchFailed", { loading: false, isLoggedIn: true }, null, true] as const,
+    ["not_found", { loading: false, isLoggedIn: true }, null, false] as const,
+  ])("NF-1: %s状態にLight専用のハードコードclassが残らない", (_name, auth, thread, fetchFailed) => {
+    useAuthMock.mockReturnValue(auth);
+    const { container } = render(
+      <ConsultationHistoryDetailView tid="42" thread={thread} fetchFailed={fetchFailed} />,
+    );
+
+    expect(container.innerHTML).not.toMatch(LIGHT_RESIDUE);
+  });
+
+  it("NF-1: 正常系(タイトル・推薦カード・会話履歴)にLight専用のハードコードclassが残らない", () => {
+    useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
+    const { container } = render(
+      <ConsultationHistoryDetailView tid="42" thread={THREAD} fetchFailed={false} />,
+    );
+
+    expect(container.innerHTML).not.toMatch(LIGHT_RESIDUE);
   });
 
   it("神社詳細操作時にshrine_openedをthreadId・shrineId・recommendationRank(1始まり)で送る", () => {

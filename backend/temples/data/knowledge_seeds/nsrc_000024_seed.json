@@ -1,0 +1,85 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "NIIGATA_CITY_AKIHA_BUNKASHIGEN",
+      "source_type": "government",
+      "title": "文化資源ガイド（秋葉区）",
+      "publisher": "新潟市",
+      "url": "https://www.city.niigata.lg.jp/kanko/bunka/shinko/bunkashigen/bunkaisannintei2.files/akihaku.pdf",
+      "language": "ja",
+      "accessed_at": "2026-10-19",
+      "verified_at": "2026-10-19T14:35:38+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "秋葉神社",
+        "address": "新潟県新潟市秋葉区秋葉3丁目8番19号"
+      },
+      "deities": [
+        {
+          "display_name": "大己貴神",
+          "role": "unknown",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "NIIGATA_CITY_AKIHA_BUNKASHIGEN"
+          ]
+        },
+        {
+          "display_name": "大物主命",
+          "role": "unknown",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "NIIGATA_CITY_AKIHA_BUNKASHIGEN"
+          ]
+        },
+        {
+          "display_name": "菅原道真公",
+          "role": "unknown",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "NIIGATA_CITY_AKIHA_BUNKASHIGEN"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "桂家の守り神から秋葉町内への移譲",
+          "content": "秋葉神社は桂家の守り神であり、昭和39年（1964）に秋葉町内に移譲された。",
+          "period_text": "昭和39年（1964）",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "NIIGATA_CITY_AKIHA_BUNKASHIGEN"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "創建250年",
+          "content": "秋葉神社は平成25年（2013）に創建250年を迎えた。",
+          "period_text": "平成25年（2013）",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "NIIGATA_CITY_AKIHA_BUNKASHIGEN"
+          ]
+        }
+      ]
+    }
+  ]
+}

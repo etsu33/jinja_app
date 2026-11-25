@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "TOKAMACHI_REKIBUN_SHIRYOU",
+      "source_type": "government",
+      "title": "歴史文化基本構想 資料集",
+      "publisher": "十日町市",
+      "url": "https://www.city.tokamachi.lg.jp/material/files/group/31/rekibun_shiryou.pdf",
+      "bibliography": "中魚沼郡誌上 p.398",
+      "language": "ja",
+      "accessed_at": "2026-10-13",
+      "verified_at": "2026-10-13T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    },
+    {
+      "key": "TOKAMACHI_MUSEUM_ECHIGO_CHIJIMI_BAN",
+      "source_type": "museum_or_archive",
+      "title": "越後縮幡",
+      "publisher": "十日町市博物館",
+      "url": "https://www.tokamachi-museum.jp/archives/bunka023/",
+      "language": "ja",
+      "accessed_at": "2026-10-13",
+      "verified_at": "2026-10-13T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "赤城社",
+        "address": "新潟県十日町市四日町2534番地"
+      },
+      "deities": [],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "安政7年正月の再建",
+          "content": "赤城社は安政7年正月に再建された。",
+          "period_text": "安政7年正月",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-13T00:00:00+09:00",
+          "source_keys": [
+            "TOKAMACHI_REKIBUN_SHIRYOU"
+          ]
+        },
+        {
+          "history_type": "regional_context",
+          "title": "赤城社に伝わった越後縮幡",
+          "content": "越後縮幡のうち20旒が赤城社（四日町）に奉納されていた。",
+          "period_text": "",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-13T00:00:00+09:00",
+          "source_keys": [
+            "TOKAMACHI_MUSEUM_ECHIGO_CHIJIMI_BAN"
+          ]
+        }
+      ]
+    }
+  ]
+}

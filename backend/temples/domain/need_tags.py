@@ -46,10 +46,28 @@ NEED_PRIORITY: List[NeedTag] = [
 ]
 
 KEYWORDS: Dict[NeedTag, List[str]] = {
-    "marriage": ["縁結び", "良縁", "結婚", "婚活", "結縁", "ご縁", "夫婦円満"],
+    # "夫婦関係"/"夫婦仲" added for existing-marriage coverage (docs/audit/
+    # marriage-consultation-interpreter-coverage.md Section 13, both from
+    # the existing 夫婦-root family already present via 夫婦円満 -- no
+    # broader vocabulary invented). NEED_PRIORITY already ranks "marriage"
+    # above "mental"/"rest", so "夫婦関係を整えたい" (which also still hits
+    # mental/rest's own "整えたい") correctly resolves to
+    # tags=["marriage","mental","rest"] under the existing, unmodified
+    # priority contract -- marriage is not lost, and mental/rest are not
+    # suppressed. See docs/audit/marriage-interpreter-coverage-
+    # implementation.md.
+    "marriage": ["縁結び", "良縁", "結婚", "婚活", "結縁", "ご縁", "夫婦円満", "夫婦関係", "夫婦仲"],
     "love": ["恋愛", "恋", "復縁", "片思い", "両思い", "出会い", "告白"],
     "relationship": ["人間関係", "職場", "上司", "同僚", "家族", "親子", "友達", "対人"],
-    "communication": ["会話", "発信", "伝える", "話す", "営業", "交渉", "プレゼン", "面接"],
+    # "コミュニケーション"（Need自身の名称そのもの）と、既存語根"話す"/"伝える"の
+    # 未収録な活用・否定形（話せる/話せない/伝えられない/伝わらない）を追加。
+    # 新しい意味カテゴリは加えない -- fix/communication-interpreter-coverage
+    # (docs/audit/semantic-followup-decision-and-pr-split.md §18 Track C1:
+    # 語彙拡張はタクソノミー決定と独立して安全)。
+    "communication": [
+        "会話", "発信", "伝える", "話す", "営業", "交渉", "プレゼン", "面接",
+        "コミュニケーション", "話せる", "話せない", "伝えられない", "伝わらない",
+    ],
     "career": [
         "転職", "仕事", "就職", "昇進", "独立", "起業", "キャリア", "天職",
         "副業", "働き方", "好きな仕事", "仕事を辞めたい", "会社を作りたい", "道を開く",
@@ -81,6 +99,9 @@ KEYWORDS: Dict[NeedTag, List[str]] = {
         "背中を押してほしい", "背中を押して",
         "行動", "きっかけ", "行動したい", "動き出したい", "動きたい",
         "前向きになりたい", "前向きになれる", "後押ししてほしい",
+        # やり直し系（2026-11-22 えつこ決定。挑戦だけにつなぐ。気持ちにはつながない。「もう一度」は足さない）
+        # 正本：ドライブ「KAMI MUSUBI 相談の種類を取る辞書の決まり」
+        "やり直し", "やり直す", "再出発", "再挑戦", "立て直し",
     ],
     "focus": ["集中", "習慣", "継続", "怠け", "先延ばし", "やる気", "ルーティン"],
     "rest": [
@@ -113,6 +134,14 @@ REGEX: Dict[NeedTag, List[re.Pattern]] = {
         re.compile(r"辛い"),
         re.compile(r"苦しい"),
         re.compile(r"心を整え"),
+        # 使役・鎮静の意図表現「気持ち／心を落ち着けたい（落ち着けたく）」を
+        # mental として加算的に拾う。desiderative 形（たい／たく）に限定し、
+        # rest 側の語根 REGEX r"落ち着" は変更しない。可能形の連体
+        # 「落ち着ける（場所）」や接続形「落ち着けて」は対象外に保ち、
+        # 既存の rest 単独判定（例: 「落ち着ける場所に行きたい」）を維持する。
+        # docs/audit/remaining-need-semantic-decision-packets.md §16-17
+        # (Mental/Rest = EXPAND_MENTAL, Track D1a)。
+        re.compile(r"落ち着け(たい|たく)"),
         re.compile(r"疲れ(て|が|た)?"),
         re.compile(r"流れが悪い"),
         re.compile(r"最近うまくいかない"),

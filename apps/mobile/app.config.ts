@@ -19,9 +19,39 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "KAMI MUSUBI",
   slug: "jinja-app",
+  // アプリアイコン。1024x1024 / アルファ無し / 角丸無しで置く。
+  // 角丸はOSがマスクする(iOSは連続角丸、Androidはランチャー依存)ため自分では付けない。
+  // アルファを含むとApp Store Connectのアップロードで弾かれる。
+  // 図柄は注連縄の円に水引の蝶結び。地は紺(#010E28)で、画面の骨格色である
+  // 深藍(#172A40)と同系。決定記録: docs/design/color-direction-v1.md
+  icon: "./assets/icon.png",
   scheme: "ai-sanpai-navi",
+  // App Storeに表示されるバージョン。機能の追加・修正を出すたびに上げる。
+  // ビルド番号(ios.buildNumber)はEASのautoIncrementが上げるため、ここでは触らない。
+  version: "1.0.0",
+  // 本文カラムは max-width 430 の1カラムで、横向きのレイアウトを持たない。
+  // 未指定だと全向き許容になり、横向きで左右が余白色で埋まる。
+  orientation: "portrait",
+  // 画面は明基調(kamimusubiLight)のみ。これを指定しないと、端末をダークに
+  // している利用者で、OSが用意するキーボード・アラート・アクションシートだけが
+  // 暗く出る。決定記録: docs/design/color-direction-v1.md
+  userInterfaceStyle: "light",
   plugins: [
     "expo-router",
+    // SDK 58 では expo-font / expo-splash-screen / expo-status-bar が config plugin を
+    // 持つようになり、`expo install --fix` がここへの明示を要求する。
+    // app.config.ts は動的configのためCLIが自動で書けず、非ゼロ終了していた。
+    "expo-font",
+    [
+      "expo-splash-screen",
+      {
+        // plugin の既定は #ffffff。素のまま足すとネイティブの起動画面に白が焼き込まれ、
+        // 直後に出る DawnSplash(濃藍から始まる朝焼け)との間で白が一瞬差し込む。
+        // design/theme.ts の dawn.colors[0] と同値にして、継ぎ目を無くす。
+        backgroundColor: "#16213C",
+      },
+    ],
+    "expo-status-bar",
     [
       "expo-location",
       {
@@ -40,6 +70,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
   ],
   ios: {
+    // iPhone専用。iPadでは互換モードで動作する。
+    supportsTablet: false,
+    // EAS Buildのautoincrement(eas.json)が提出ごとに上げる。初回の基準値。
+    buildNumber: "1",
     infoPlist: {
       NSLocationWhenInUseUsageDescription: "近場の人気神社を提案するため、アプリ使用中に位置情報を利用します。",
       NSLocationAlwaysAndWhenInUseUsageDescription: "バックグラウンド含め近場の神社提案や現在地更新に位置情報を利用します。",
@@ -49,6 +83,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: "com.morietsu.kamimusubi",
+    // Androidのアダプティブアイコンは、108dpのうち中央72dp(66%)しか必ず見える保証が
+    // 無い。元画像は紋が81%を占めるため、そのまま使うと縁が切れる。
+    // assets/adaptive-icon.png は画像全体を76%へ縮めて紋を約62%に収めてある。
+    adaptiveIcon: {
+      foregroundImage: "./assets/adaptive-icon.png",
+      backgroundColor: "#010E28",
+    },
     permissions: ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
   },
   extra: {

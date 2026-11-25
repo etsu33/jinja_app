@@ -2,9 +2,27 @@ from __future__ import annotations
 
 import math
 import logging
+import re
 from typing import Any, Dict, List, Optional, TypedDict
-from temples.domain.need_to_goriyaku_tag_ids import need_tags_to_goriyaku_ids
+from temples.domain.shrine_identity import resolve_shrine_id
+from temples.domain.need_to_goriyaku_concepts import matching_tag_names
+from temples.domain.visit_preference import IMPLIED_VISIT_STYLE_MAX_MATCHES
+from temples.services.channel_b_typed_need_match import (
+    CHANNEL_B_TYPED_NEED_MATCHES_KEY,
+    TypedNeedMatch,
+)
+from temples.services.channel_b_reason_copy import (
+    CHANNEL_B_REASON_PROVENANCE_KEY,
+    channel_b_reason_provenance,
+    render_channel_b_reason,
+    select_channel_b_reason_match,
+)
 from temples.services.concierge_history import (
+    EMPTY_SHRINE_HISTORY_FACTS,
+    ShrineHistoryFacts,
+    action_state_from_facts,
+    behavior_signal_breakdown_from_facts,
+    reflection_hint_from_facts,
     build_recent_reflection_hint,
     calculate_action_profile_breakdown,
     calculate_light_behavior_profile_breakdown,
@@ -30,7 +48,7 @@ class DirectionBonusResult(TypedDict):
 
 # Legacy score_v2 contract. Active direction scoring is direction_signal only.
 DIRECTION_BONUS_MAX = 0.0
-PROFILE_SIGNAL_MAX = 0.03
+PROFILE_SIGNAL_MAX = 0.02
 
 
 log = logging.getLogger(__name__)
@@ -248,6 +266,33 @@ SCORE_V3_HISTORY_THEME_BY_AXIS: dict[str, dict[str, float]] = {
 # 注意: 名称に "SCORE_V3" を含まない。SCORE_V3_HISTORY_THEME_BY_AXIS（shadow観測専用）の
 # 複製だが、resolve_history_theme_candidate_boost() 経由で score_need_rank_weighted と
 # 候補prefilterスコアへ直接加算されており、shadowではなく現行の本番ランキングに実影響する。
+# Policy C / Channel B の Need 単位の関連性（PR-F。docs/audit/shrine-expansion-wave0-db04-f1-
+# goriyaku-mapping-boundary.md §12.16.10 / §12.18）。Channel A がその Need に一致していない
+# ときだけ寄与する fallback であり、Channel A の値は変えない。prefilter と ranking は同じ規則を
+# 使うが、数値は別々に所有する（互いにも、gid のリテラルにも結合しない）。
+PREFILTER_CHANNEL_B_WEIGHT = 2
+CHANNEL_B_RANKING_WEIGHT = 2.0
+
+
+def _channel_b_request_need_keys(rec: Dict[str, Any], need_tags_clean: List[str]) -> set[str]:
+    """候補の Channel B carrier（PR-C の TypedNeedMatch）から、request の Need に一致する
+    Need key の集合を作る（一時的な数値用の projection。候補にも carrier にも書き戻さない）。
+
+    - TypedNeedMatch.need と request の Need key を完全一致で比べる（alias 正規化はしない）
+    - Need で重複を除く（Fact / Source / concept の数は寄与を増やさない）
+    - carrier が無い・空・想定外の要素は、その分の寄与を 0 にする（DB は読まない）
+    """
+    carrier = rec.get(CHANNEL_B_TYPED_NEED_MATCHES_KEY)
+    if not isinstance(carrier, (tuple, list)):
+        return set()
+    wanted = set(need_tags_clean)
+    return {
+        item.need
+        for item in carrier
+        if isinstance(item, TypedNeedMatch) and isinstance(item.need, str) and item.need in wanted
+    }
+
+
 HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS: dict[str, dict[str, float]] = {
     axis: dict(theme_scores)
     for axis, theme_scores in SCORE_V3_HISTORY_THEME_BY_AXIS.items()
@@ -328,8 +373,8 @@ def _score_profile_signal(
     profile_context: Optional[Dict[str, Any]],
 ) -> tuple[float, List[str]]:
     """
-    profile_context（参拝スタイル・五行）を補助シグナルとして評価する。
-    最大 PROFILE_SIGNAL_MAX (+0.03) を返す。
+    profile_context（五行）を補助シグナルとして評価する。
+    最大 PROFILE_SIGNAL_MAX (+0.02) を返す。
     既存の need / distance / history_theme スコアを上書きしない。
     """
     if not isinstance(profile_context, dict):
@@ -339,7 +384,6 @@ def _score_profile_signal(
     matched: List[str] = []
 
     derived = profile_context.get("derived_profile") or {}
-    user = profile_context.get("user_profile") or {}
 
     # 五行マッチ (+0.02)
     gogyo = str(derived.get("gogyo") or "").strip()
@@ -354,26 +398,10 @@ def _score_profile_signal(
             score += 0.02
             matched.append(f"gogyo:{gogyo}")
 
-    # 参拝スタイルマッチ (+0.01)
-    worship_style = str(user.get("worshipStyle") or "").strip()
-    if worship_style:
-        shrine_material = " ".join(
-            filter(None, [
-                rec.get("goriyaku") or "",
-                rec.get("description") or "",
-                " ".join(rec.get("visit_style_tags") or []),
-            ])
-        )
-        if worship_style in shrine_material:
-            score += 0.01
-            matched.append(f"worshipStyle:{worship_style}")
-
     return min(score, PROFILE_SIGNAL_MAX), matched
 
 NEED_TAG_ALIASES: Dict[str, str] = {
-    "marriage": "love",
     "romance": "love",
-    "relationship": "love",
     "anxiety": "mental",
     "healing": "rest",
     "career_change": "career",
@@ -383,6 +411,23 @@ NEED_TAG_ALIASES: Dict[str, str] = {
     "ambition": "courage",
     "success": "courage",
 }
+# "relationship" (人間関係全般) is a distinct need tag from "love"
+# (恋愛) -- see the identical fix + rationale in
+# temples/services/concierge_chat_need.NEED_TAG_ALIASES (this module
+# has its own independent copy of the same table, used by
+# _attach_breakdown's matching path; both had to be fixed for the
+# alias removal to actually take effect end-to-end, see
+# docs/audit/concierge-l1-freetext-readiness.md Finding C / PR #2409).
+#
+# "marriage" (結婚/婚活/夫婦円満) was removed from this table for the
+# same reason relationship was: need_tags.py and consultation_interpreter.py
+# both independently define a real, distinct marriage keyword list, and
+# collapsing it into "love" discarded that distinction end-to-end -- see
+# docs/audit/marriage-love-alias-boundary.md (PRODUCT_SEMANTIC_DECISION_REQUIRED,
+# resolved in favor of independence) and
+# docs/audit/marriage-need-independence-implementation.md. "romance" (a
+# plain English synonym with no independent keyword list of its own)
+# remains aliased to "love".
 
 
 NEED_TEXT_WEIGHTS: Dict[str, Dict[str, int]] = {
@@ -419,8 +464,8 @@ NEED_TEXT_WEIGHTS: Dict[str, Dict[str, int]] = {
         "変わりたい": 2,
     },
     "mental": {
-        "厄除": 2,
-        "厄払い": 3,
+        # 「厄除」「厄払い」は外した（2026-11-23 えつこ決定）。厄除けは protection の相談で
+        # ご利益の対応表から扱う。正本：ドライブ「KAMI MUSUBI 相談の種類を取る辞書の決まり」
         "浄化": 2,
         "心を整える": 2,
         "不安": 2,
@@ -482,10 +527,23 @@ NEED_LABELS_JA: Dict[str, str] = {
     "protection": "厄除け・守り",
     "focus": "集中・継続",
     "travel_safe": "移動・安全",
+    # Added by fix/need-labels-ja-completeness (docs/audit/need-labels-ja-completeness-implementation.md):
+    # the remaining 5 of 15 canonical Need tags (temples/domain/need_tags.py
+    # NEED_TAGS), previously absent from every copy of this dict and
+    # falling back to the raw English key. See that doc's Label Contract
+    # section for sourcing; scope-sensitive labels ("family") are
+    # deliberately scope-neutral pending the separate Mother Ship decision
+    # in docs/audit/semantic-followup-decision-and-pr-split.md.
+    "marriage": "結婚・夫婦円満",
+    "relationship": "人間関係",
+    "communication": "コミュニケーション",
+    "health": "健康",
+    "family": "家族",
     "element": "生年月日との相性",
     "fallback": "近い候補",
     "history_theme": "歴史文脈",
     "culture_translation": "神社固有文脈",
+    "visit_style": "参拝スタイル",
 }
 
 # Recommendation Reason Responsibility:
@@ -494,16 +552,58 @@ NEED_LABELS_JA: Dict[str, str] = {
 # - 「仕事」「金運」「恋愛」など語彙は重複してよいが、入力側と神社側で責務を分ける。
 # - primary_reason は固定相談文ではなく、フリーワードや短いキーワードから抽出された相談テーマとの接続を優先する。
 
+# _resolve_primary_reason() が「一致する evidence がない」ことを表す内部の sentinel（type / label）。
+FALLBACK_REASON_SENTINEL = "fallback"
+
 PRIMARY_REASON_PRIORITY: Dict[str, int] = {
     "history_theme": 0,
-    "culture_translation": 1,
+    # culture_translation is deliberately absent: per
+    # docs/product/recommendation-signal-authority.md §6 it is
+    # Explanation-only and holds no Primary Recommendation / Ranking
+    # Authority, so it must not be Primary Tier eligible either
+    # (PRIMARY_TIER_REASON_TYPES is derived from this dict). It still
+    # appears as a non-primary reason_fact -- see _build_reason_facts().
     "need_tag": 2,
     "text_hint": 3,
     "user_selected_tag": 4,
     "goriyaku_tag": 5,
     "element": 6,
+    # visit_style: Level 2 Visit Preference. Lowest priority short of
+    # fallback -- it is a "fallback primary reason candidate" (Task 8,
+    # Recommendation Primary Reason Contract Unification): it only becomes
+    # the primary reason when nothing else (not even element) matched.
+    # This mirrors the precedence the previous, now-removed
+    # concierge_explanation_payload._build_visit_style_primary_reason()
+    # override enforced (it only fired when the reason_facts primary was
+    # None/"fallback"), now expressed as a single ordinary priority tier
+    # instead of a second, independent resolver.
+    "visit_style": 7,
     "fallback": 9,
 }
+
+# Signal Authority boundary (docs/product/recommendation-signal-authority.md
+# §5/§7 Primary Recommendation Contract): only these reason_facts types are
+# grounded in Consultation Meaning x Shrine-side Evidence. "element"
+# (birthdate/Personalization) and "visit_style" (Secondary/Context
+# boundary) may still surface as a reason, but per §7 must never alone
+# constitute Recommendation Meaning -- used to keep Context-driven
+# re-ranking (e.g. distance_mode) from promoting a candidate with no
+# Primary Recommendation Meaning ahead of one that has it.
+PRIMARY_TIER_REASON_TYPES: frozenset[str] = frozenset(
+    reason_type
+    for reason_type, priority in PRIMARY_REASON_PRIORITY.items()
+    if priority < PRIMARY_REASON_PRIORITY["element"]
+)
+
+
+def has_primary_tier_reason(reason_facts: List[Dict[str, Any]] | None) -> bool:
+    """True if any reason_fact is grounded in Recommendation Meaning
+    (Primary tier), as opposed to Context/Secondary/Personalization only."""
+    return any(
+        str(fact.get("type") or "") in PRIMARY_TIER_REASON_TYPES
+        for fact in (reason_facts or [])
+        if isinstance(fact, dict)
+    )
 
 
 def _make_reason_fact(
@@ -512,6 +612,7 @@ def _make_reason_fact(
     label: str,
     evidence: List[str],
     score: float,
+    matched_benefit_names: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     return {
         "type": type_,
@@ -520,7 +621,79 @@ def _make_reason_fact(
         "evidence": [str(x).strip() for x in evidence if isinstance(x, str) and str(x).strip()],
         "score": float(score),
         "is_primary": False,
+        # 相談と一致した神社のご利益の名前(記録して返すだけ。順位・点数には使わない)。
+        # goriyaku_tag / text_hint 以外は空の一覧。_collect_matched_benefit_names を参照。
+        "matched_benefit_names": list(matched_benefit_names or []),
     }
+
+
+# Shrine.goriyaku(自由記述)を1つずつのご利益に区切る記号。
+_GORIYAKU_SEGMENT_SEPARATORS = re.compile(r"[・、,，/／\s　]+")
+
+
+def _dedupe_keep_order(values: List[str]) -> List[str]:
+    out: List[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if value and value not in seen:
+            seen.add(value)
+            out.append(value)
+    return out
+
+
+def _goriyaku_tag_names(rec: Dict[str, Any]) -> List[str]:
+    """候補のご利益の札の名前（concierge_chat_candidates が載せる goriyaku_tag_names）。
+
+    相談の種類との一致は、札の番号ではなく札の名前から概念を引いて決める
+    （temples.domain.need_to_goriyaku_concepts）。名前が無い候補は一致しない。
+    """
+    names = rec.get("goriyaku_tag_names") or []
+    if not isinstance(names, list):
+        return []
+    return _dedupe_keep_order([name.strip() for name in names if isinstance(name, str) and name.strip()])
+
+
+def _collect_matched_benefit_names(
+    *,
+    rec: Dict[str, Any],
+    goriyaku_text: str,
+    matched_by_gid: List[str],
+    text_hints_by_tag: Dict[str, List[str]],
+) -> Dict[str, Dict[str, List[str]]]:
+    """相談と一致したご利益の名前を、一致の手がかりごとに集める(順位・点数は変えない)。
+
+    - goriyaku_tag: 神社のご利益の札のうち、札の名前から引いた概念が、その相談の種類の
+      概念(need_to_goriyaku_concepts)に入っている札の名前(札の並び順)。
+    - text_hint: 一致した言葉がご利益の文字列(Shrine.goriyaku)の中にあるときだけ返す。
+      説明文(description)の中だけにあるときは、タグの名前に同じ言葉があっても返さない。
+      言葉を含むタグがあればタグの名前だけ(タグの並び順)、無いときだけご利益の文字列を
+      区切った1つずつから言葉を含むもの(文字列の中の順)。
+    """
+    tag_names = _goriyaku_tag_names(rec)
+    segments = _dedupe_keep_order(
+        [seg.strip() for seg in _GORIYAKU_SEGMENT_SEPARATORS.split(goriyaku_text or "") if seg.strip()]
+    )
+
+    by_gid: Dict[str, List[str]] = {}
+    for tag in matched_by_gid:
+        by_gid[tag] = matching_tag_names(tag_names, tag)
+
+    by_text: Dict[str, List[str]] = {}
+    for tag, hints in text_hints_by_tag.items():
+        hints_in_goriyaku = [hint for hint in hints if hint and hint in (goriyaku_text or "")]
+        matched_tags: set[str] = set()
+        matched_segments: set[str] = set()
+        for hint in hints_in_goriyaku:
+            containing_tags = [name for name in tag_names if hint in name]
+            if containing_tags:
+                matched_tags.update(containing_tags)
+            else:
+                matched_segments.update(seg for seg in segments if hint in seg)
+        ordered = [name for name in tag_names if name in matched_tags]
+        ordered += [seg for seg in segments if seg in matched_segments]
+        by_text[tag] = _dedupe_keep_order(ordered)
+
+    return {"goriyaku_tag": by_gid, "text_hint": by_text}
 
 
 NEED_TAG_LABELS_JA = {
@@ -534,6 +707,13 @@ NEED_TAG_LABELS_JA = {
     "protection": "厄除け・守り",
     "focus": "集中・継続",
     "travel_safe": "移動・安全",
+    # Added by fix/need-labels-ja-completeness -- kept textually identical
+    # to NEED_LABELS_JA's own additions above (same 5 Needs, same source).
+    "marriage": "結婚・夫婦円満",
+    "relationship": "人間関係",
+    "communication": "コミュニケーション",
+    "health": "健康",
+    "family": "家族",
 }
 
 
@@ -552,8 +732,12 @@ def _build_reason_facts(
     score_element: int,
     astro_bonus_enabled: bool,
     shrine_meaning_profile: Optional[Dict[str, Any]] = None,
+    matched_visit_style_tags: Optional[List[str]] = None,
+    history_theme_candidate_boost: float = 0.0,
+    matched_benefit_names_by_type: Optional[Dict[str, Dict[str, List[str]]]] = None,
 ) -> List[Dict[str, Any]]:
     facts: List[Dict[str, Any]] = []
+    benefit_names = matched_benefit_names_by_type or {}
     profile = shrine_meaning_profile or {}
     profile_matched_need_tags = [
         str(tag).strip()
@@ -563,7 +747,16 @@ def _build_reason_facts(
     history_theme = str(profile.get("history_theme") or "").strip()
     culture_translation_present = bool(profile.get("culture_translation_present"))
 
-    if profile_matched_need_tags and history_theme:
+    # docs/product/recommendation-signal-authority.md §6: history_theme is
+    # "Primary（条件付き）" -- Rank寄与はconsultation_axis一致時のみ
+    # (history_theme_candidate_boost). A candidate whose theme does not
+    # correspond to the resolved axis (boost == 0.0) had zero ranking
+    # authority from history_theme, so it must not be presented as the
+    # (or a) reason this candidate ranked -- gating this fact on the same
+    # boost signal that actually reached the score keeps the Explanation
+    # SSOT aligned with the real Ranking Authority (Explanation Alignment
+    # Hardening audit finding).
+    if profile_matched_need_tags and history_theme and history_theme_candidate_boost > 0:
         facts.append(
             _make_reason_fact(
                 type_="history_theme",
@@ -612,6 +805,7 @@ def _build_reason_facts(
                 label=tag,
                 evidence=["goriyaku_tag_ids"],
                 score=2.0,
+                matched_benefit_names=(benefit_names.get("goriyaku_tag") or {}).get(tag),
             )
         )
 
@@ -622,6 +816,22 @@ def _build_reason_facts(
                 label=tag,
                 evidence=[f"text_score:{text_score_by_tag.get(tag, 0)}"],
                 score=float(text_score_by_tag.get(tag, 0)),
+                matched_benefit_names=(benefit_names.get("text_hint") or {}).get(tag),
+            )
+        )
+
+    visit_style_tags = [
+        str(tag).strip()
+        for tag in (matched_visit_style_tags or [])
+        if str(tag).strip()
+    ]
+    if visit_style_tags:
+        facts.append(
+            _make_reason_fact(
+                type_="visit_style",
+                label="visit_style",
+                evidence=list(visit_style_tags),
+                score=float(len(visit_style_tags)),
             )
         )
 
@@ -641,7 +851,16 @@ def _build_reason_facts(
 def _resolve_primary_reason(
     facts: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    if not facts:
+    # culture_translation is curated Explanation material, not a Ranking
+    # Authority. Keep its fact in the payload, but never let its presence
+    # select or replace the Primary Ranking Reason (PR #2421).
+    primary_candidates = [
+        fact
+        for fact in facts
+        if str(fact.get("type") or "").strip() != "culture_translation"
+    ]
+
+    if not primary_candidates:
         return {
             "type": "fallback",
             "label": "fallback",
@@ -649,10 +868,11 @@ def _resolve_primary_reason(
             "evidence": [],
             "score": 0.0,
             "is_primary": True,
+            "matched_benefit_names": [],
         }
 
     ordered = sorted(
-        facts,
+        primary_candidates,
         key=lambda x: (
             PRIMARY_REASON_PRIORITY.get(str(x.get("type") or "").strip(), 99),
             -float(x.get("score") or 0.0),
@@ -948,14 +1168,19 @@ def _attach_breakdown(
     visit_style_tags: set[str] | None = None,
     query: Optional[str] = None,
     requested_goriyaku_tag_ids: Optional[List[int]] = None,
+    implied_visit_style_tags: set[str] | None = None,
     goriyaku_tag_label_by_id: Optional[Dict[int, str]] = None,
     user_origin: Optional[Dict[str, Any]] = None,
     user=None,
     profile_context: Optional[Dict[str, Any]] = None,
     consultation_axis: Optional[str] = None,
+    history_facts: Optional[Dict[int, ShrineHistoryFacts]] = None,
 ) -> None:
     """
     rec（1件の神社辞書）にスコアの内訳を追加する。
+
+    history_facts: concierge_history.load_shrine_history_facts の結果（B-1）。渡されたときは user 履歴を
+    per-shrine クエリではなくこの値から計算する（結果は同一）。None なら従来どおり per-shrine 関数を使う。
 
     契約用:
       - breakdown.score_total
@@ -1001,18 +1226,23 @@ def _attach_breakdown(
 
     matched_by_text: List[str] = []
     text_score_by_tag: Dict[str, int] = {}
+    # どの言葉で一致したかを記録する(点数の数え方は変えない)。
+    text_hints_by_tag: Dict[str, List[str]] = {}
 
     for tag in need_tags_clean:
         text_weights = NEED_TEXT_WEIGHTS.get(tag, {})
         score = 0
+        hints: List[str] = []
 
         for hint, weight in text_weights.items():
             if hint in material:
                 score += int(weight)
+                hints.append(hint)
 
         if score > 0:
             text_score_by_tag[tag] = score
             matched_by_text.append(tag)
+            text_hints_by_tag[tag] = hints
 
     candidate_gid_set = {
         int(x)
@@ -1027,10 +1257,12 @@ def _attach_breakdown(
     }
     matched_by_user_selected_gid = sorted(candidate_gid_set & requested_gid_set)
 
+    # 札と相談の種類の一致（名前のある札だけ。番号では結ばない）。変数名は既存の
+    # 項目名（matched_by_gid など）に合わせて残している。
+    candidate_tag_names = _goriyaku_tag_names(rec)
     matched_by_gid: List[str] = []
     for tag in need_tags_clean:
-        expected_gids = need_tags_to_goriyaku_ids([tag])
-        if expected_gids and (candidate_gid_set & expected_gids):
+        if matching_tag_names(candidate_tag_names, tag):
             matched_by_gid.append(tag)
 
     is_study_need = "study" in need_tags_clean
@@ -1047,11 +1279,9 @@ def _attach_breakdown(
 
     score_need = len(matched_all)
 
-    shrine_id = rec.get("shrine_id") or rec.get("id")
-    try:
-        shrine_id_int = int(shrine_id) if shrine_id is not None else None
-    except (TypeError, ValueError):
-        shrine_id_int = None
+    # F-5B #7: 独自の int / fallback 解析を廃止し共有 resolver へ集約。
+    # int(True) / int(1.5) が Shrine 1 に化けることはなくなる。
+    shrine_id_int = resolve_shrine_id(rec, policy="live_candidate")
 
     shrine_meaning_profile = _build_shrine_meaning_profile(
         rec=rec,
@@ -1063,19 +1293,58 @@ def _attach_breakdown(
         matched_by_user_selected_gid=matched_by_user_selected_gid,
     )
 
+    # Text Evidence Scoring Contract (docs/audit/compass-text-evidence-scoring-decision.md,
+    # RECOMMEND_C1_MAX): per-tag, GID and Text evidence are no longer summed
+    # -- the larger of the two is taken (tie -> GID), removing the BOTH-state
+    # double-count while GID_ONLY/TEXT_ONLY/NONE stay exactly as before.
+    # matched_by_gid/matched_by_text/text_score_by_tag/matched_all are left
+    # untouched (raw evidence stays observable) -- only the rank contribution
+    # formula changes. astro (matched_by_tag) is a separate evidence channel,
+    # out of this Contract's scope, and keeps its own flat +2 unconditionally.
+    need_evidence_winner_by_tag: Dict[str, str] = {}
+    gid_text_contribution = 0
+    gid_text_contribution_weighted = 0.0
+    for tag in set(matched_by_gid) | set(matched_by_text):
+        gid_present = tag in matched_by_gid
+        text_present = tag in matched_by_text
+        gid_raw, gid_weighted = (2, 2.0) if gid_present else (0, 0.0)
+        text_raw = text_score_by_tag.get(tag, 0) if text_present else 0
+        text_weighted = text_raw * 1.2
+
+        if gid_present and text_present:
+            winner = "text" if text_weighted > gid_weighted else "gid"
+        elif gid_present:
+            winner = "gid"
+        else:
+            winner = "text"
+        need_evidence_winner_by_tag[tag] = winner
+
+        if winner == "gid":
+            gid_text_contribution += gid_raw
+            gid_text_contribution_weighted += gid_weighted
+        else:
+            gid_text_contribution += text_raw
+            gid_text_contribution_weighted += text_weighted
+
     score_need_rank = (
         len(matched_by_tag) * 2
-        + len(matched_by_gid) * 2
-        + sum(text_score_by_tag.values())
+        + gid_text_contribution
         + study_bonus
     )
 
     score_need_rank_weighted = (
         len(matched_by_tag) * 2.0
-        + len(matched_by_gid) * 2.0
-        + sum(text_score_by_tag.values()) * 1.2
+        + gid_text_contribution_weighted
         + study_bonus
     )
+
+    # Channel B（PR-F）: Channel A（astro / gid / text = matched_all）が一致していない Need に
+    # だけ、Need ごとに CHANNEL_B_RANKING_WEIGHT を加える。matched_all / score_need /
+    # score_need_rank（rank_raw）は変えない。
+    channel_b_only_need_keys = _channel_b_request_need_keys(rec, need_tags_clean) - set(
+        matched_all
+    )
+    score_need_rank_weighted += len(channel_b_only_need_keys) * CHANNEL_B_RANKING_WEIGHT
 
     history_theme_candidate_boost = resolve_history_theme_candidate_boost(
         consultation_axis=consultation_axis,
@@ -1129,6 +1398,17 @@ def _attach_breakdown(
     matched_visit_style_tags = sorted(user_visit_style_tag_set & shrine_visit_style_tag_set)
     score_visit_style = len(matched_visit_style_tags)
 
+    # 相談の種類から自動で足した参拝の好み（visit_preference.implied_visit_style_tags_for_needs）。
+    # 点数にだけ使う: matched_visit_style_tags・score_visit_style・context_profile・reason_facts・
+    # 説明の文には入れない。利用者の好みと同じものは数えず、何個一致しても上限までにする。
+    implied_visit_style_tag_set = {
+        str(t).strip()
+        for t in (implied_visit_style_tags or set())
+        if isinstance(t, str) and str(t).strip()
+    } - user_visit_style_tag_set
+    matched_implied_visit_style_tags = sorted(implied_visit_style_tag_set & shrine_visit_style_tag_set)
+    score_implied_visit_style = min(len(matched_implied_visit_style_tags), IMPLIED_VISIT_STYLE_MAX_MATCHES)
+
     context_profile = _build_context_profile(
         distance_m=distance_m,
         score_distance=score_distance,
@@ -1150,21 +1430,29 @@ def _attach_breakdown(
 
     # shrine_id_int is already computed above for use in behavior_breakdown etc.
 
-    behavior_breakdown = calculate_shrine_behavior_signal_breakdown(
-        user=user,
-        shrine_id=shrine_id_int,
-    )
+    if history_facts is not None and shrine_id_int is not None:
+        # B-1: 一括取得済みの履歴から計算する（per-shrine 関数と同じ結果。tests/test_concierge_history_batch.py）
+        facts = history_facts.get(shrine_id_int, EMPTY_SHRINE_HISTORY_FACTS)
+        behavior_breakdown = behavior_signal_breakdown_from_facts(facts)
+        action_state = action_state_from_facts(facts)
+        reflection_hint = reflection_hint_from_facts(facts)
+    else:
+        # anonymous（DB を読まない）と shrine_id を解決できない候補は従来どおり
+        behavior_breakdown = calculate_shrine_behavior_signal_breakdown(
+            user=user,
+            shrine_id=shrine_id_int,
+        )
+        action_state = classify_shrine_action_state(
+            user=user,
+            shrine_id=shrine_id_int,
+        )
+        reflection_hint = build_recent_reflection_hint(
+            user=user,
+            shrine_id=shrine_id_int,
+        )
     behavior_signal = float(behavior_breakdown.get("total") or 0.0)
     visit_signal = float(behavior_breakdown.get("visit_signal") or 0.0)
     reflection_signal = float(behavior_breakdown.get("reflection_signal") or 0.0)
-    action_state = classify_shrine_action_state(
-        user=user,
-        shrine_id=shrine_id_int,
-    )
-    reflection_hint = build_recent_reflection_hint(
-        user=user,
-        shrine_id=shrine_id_int,
-    )
     rec["action_state"] = action_state
     rec["reflection_hint"] = reflection_hint
     behavior_weight = 0.1
@@ -1176,6 +1464,7 @@ def _attach_breakdown(
         + score_popular * w3
         + score_distance * w4
         + score_visit_style * w5
+        + score_implied_visit_style * w5
         + astro_bonus
     )
     # 行動の影響を相談内容に対して最大30％または0.5に制限
@@ -1206,7 +1495,7 @@ def _attach_breakdown(
     # Reflection Profile v1: reflection_signal のみ（意味解析はまだしない）
     reflection_profile = calculate_reflection_profile_breakdown(behavior_breakdown=behavior_breakdown)
 
-    # profile_context 補助シグナル（最大 +0.03、主重みには影響しない）
+    # profile_context 補助シグナル（最大 +0.02、主重みには影響しない）
     profile_signal_score, profile_signal_matched = _score_profile_signal(rec, profile_context)
 
     # direction_profile 補助シグナル（最大 +0.02、候補に方位情報がある場合のみ加算）
@@ -1235,6 +1524,7 @@ def _attach_breakdown(
             "direction_bonus": 0.0,
         },
         "matched_need_tags": matched_all,
+        "need_evidence_winner_by_tag": dict(need_evidence_winner_by_tag),
         "profile_signal": {
             "score": float(profile_signal_score),
             "matched": profile_signal_matched,
@@ -1328,6 +1618,15 @@ def _attach_breakdown(
                 "matched_tags": matched_visit_style_tags,
                 "contribution": float(score_visit_style * w5),
             },
+            # 自動で足した好みの点（説明・主な根拠には使わない）。
+            "implied_visit_style": {
+                "raw": int(score_implied_visit_style),
+                "weight": float(w5),
+                "max_matches": int(IMPLIED_VISIT_STYLE_MAX_MATCHES),
+                "requested_tags": sorted(implied_visit_style_tag_set),
+                "matched_tags": matched_implied_visit_style_tags,
+                "contribution": float(score_implied_visit_style * w5),
+            },
             "behavior": {
                 "raw": float(behavior_signal),
                 "weight": float(behavior_weight),
@@ -1411,6 +1710,12 @@ def _attach_breakdown(
     )
     rec["score_v2"] = score_v2_result.as_dict()
 
+    matched_benefit_names_by_type = _collect_matched_benefit_names(
+        rec=rec,
+        goriyaku_text=str(rec.get("goriyaku") or ""),
+        matched_by_gid=matched_by_gid,
+        text_hints_by_tag=text_hints_by_tag,
+    )
     reason_facts = _build_reason_facts(
         matched_by_tag=matched_by_tag,
         matched_by_gid=matched_by_gid,
@@ -1421,6 +1726,9 @@ def _attach_breakdown(
         score_element=score_element,
         astro_bonus_enabled=astro_bonus_enabled,
         shrine_meaning_profile=shrine_meaning_profile,
+        matched_visit_style_tags=matched_visit_style_tags,
+        history_theme_candidate_boost=history_theme_candidate_boost,
+        matched_benefit_names_by_type=matched_benefit_names_by_type,
     )
     primary_reason = _resolve_primary_reason(reason_facts)
 
@@ -1497,11 +1805,7 @@ def _prefilter_candidates_for_need(
             str(t).strip() for t in astro_tags if isinstance(t, str) and str(t).strip()
         }
 
-        candidate_gid_set = {
-            int(x)
-            for x in (c.get("goriyaku_tag_ids") or [])
-            if isinstance(x, int) or (isinstance(x, str) and str(x).strip().isdigit())
-        }
+        candidate_tag_names = _goriyaku_tag_names(c)
 
         material = f"{c.get('goriyaku') or ''} {c.get('description') or ''}".replace("　", " ")
 
@@ -1511,16 +1815,20 @@ def _prefilter_candidates_for_need(
         text_score_by_tag: Dict[str, int] = {}
         matched_gid_tags: List[str] = []
 
+        channel_b_need_keys = _channel_b_request_need_keys(c, need_tags_clean)
+
         for tag in need_tags_clean:
+            channel_a_matched = False
             if tag in astro_tag_set:
                 score += 2
                 matched.append(f"{tag}:astro")
+                channel_a_matched = True
 
-            expected_gids = need_tags_to_goriyaku_ids([tag])
-            if expected_gids and (candidate_gid_set & expected_gids):
+            if matching_tag_names(candidate_tag_names, tag):
                 score += 2
                 matched.append(f"{tag}:gid")
                 matched_gid_tags.append(tag)
+                channel_a_matched = True
 
             text_weights = NEED_TEXT_WEIGHTS.get(tag, {})
             tag_matched_hints = [hint for hint in text_weights.keys() if hint in material]
@@ -1530,6 +1838,12 @@ def _prefilter_candidates_for_need(
                 matched.append(f"{tag}:text")
                 matched_text_hints_by_tag[tag] = tag_matched_hints
                 text_score_by_tag[tag] = sum(text_weights[h] for h in tag_matched_hints)
+                channel_a_matched = True
+
+            # Channel B（PR-F）: Channel A がこの Need に一致していないときだけ加える。
+            # Channel A の debug field（matched / matched_gid_tags / text_*）には入れない。
+            if not channel_a_matched and tag in channel_b_need_keys:
+                score += PREFILTER_CHANNEL_B_WEIGHT
 
         if is_study_need and any(h in material for h in STUDY_SHRINE_HINTS):
             score += 2
@@ -1594,6 +1908,7 @@ def _prefilter_candidates_for_need(
 def _diversify_by_need(
     recs: List[Dict[str, Any]],
     limit: int = 3,
+    need_tags: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     """
     上位候補で matched_need_tags の偏りを少し緩和する。
@@ -1601,10 +1916,24 @@ def _diversify_by_need(
     - 先頭 limit 件だけ多様化を意識
     - ただし元のスコア順を大きく壊さない
     - matched_need_tags が無い候補も除外しない
+
+    Need の被覆（Pre-G6 U1）: Channel A の matched_need_tags に、request の Need に一致する
+    Channel B の Need key（PR-F と同じ _channel_b_request_need_keys()）を和集合で加える。
+    和集合は多様化の判断の中だけで使い、matched_all / matched_need_tags / breakdown /
+    候補 / carrier には書き戻さない。need_tags を渡さない呼び出しは従来どおり Channel A だけ。
     """
     pool = [r for r in recs if isinstance(r, dict)]
     if len(pool) <= 1:
         return pool
+
+    need_tags_clean = _normalize_need_tags(need_tags or [], max_tags=10)
+
+    def _need_coverage(r: Dict[str, Any]) -> set[str]:
+        tags = (r.get("breakdown") or {}).get("matched_need_tags") or []
+        coverage = {str(t).strip() for t in tags if isinstance(t, str) and str(t).strip()}
+        if need_tags_clean:
+            coverage |= _channel_b_request_need_keys(r, need_tags_clean)
+        return coverage
 
     picked: List[Dict[str, Any]] = []
     used_tags: set[str] = set()
@@ -1613,15 +1942,12 @@ def _diversify_by_need(
         best_index: Optional[int] = None
 
         for i, r in enumerate(pool):
-            tags = (r.get("breakdown") or {}).get("matched_need_tags") or []
-            normalized_tags = [
-                str(t).strip() for t in tags if isinstance(t, str) and str(t).strip()
-            ]
+            coverage = _need_coverage(r)
 
-            if not normalized_tags:
+            if not coverage:
                 continue
 
-            if any(t not in used_tags for t in normalized_tags):
+            if any(t not in used_tags for t in coverage):
                 best_index = i
                 break
 
@@ -1631,10 +1957,7 @@ def _diversify_by_need(
         picked_row = pool.pop(best_index)
         picked.append(picked_row)
 
-        picked_tags = (picked_row.get("breakdown") or {}).get("matched_need_tags") or []
-        used_tags.update(
-            str(t).strip() for t in picked_tags if isinstance(t, str) and str(t).strip()
-        )
+        used_tags.update(_need_coverage(picked_row))
 
     picked.extend(pool)
     return picked
@@ -1675,6 +1998,46 @@ def _resolve_flow_from_mode(
     return "A"
 
 
+def _resolve_matched_lead_evidence(
+    rec: Dict[str, Any],
+    tag: str,
+) -> tuple[Optional[str], Optional[str]]:
+    """Resolve Lead evidence for `tag` from data `_prefilter_candidates_for_need`/
+    `_attach_breakdown` already attached to `rec` -- no per-candidate DB query
+    (docs/audit/compass-need-lead-purpose-alignment.md Phase A7/A8).
+
+    Priority follows the C1 Max scoring winner recorded by `_attach_breakdown`
+    in `rec["breakdown"]["need_evidence_winner_by_tag"]` (docs/audit/compass-
+    scoring-explanation-evidence-handoff.md, USE_WINNER_FOR_LEAD_ONLY): the
+    Lead cites whichever of GID/Text evidence the score actually used for
+    `tag`. `_build_need_lead` itself is unchanged and always prefers a
+    non-empty matched_gid_label over matched_text_hint -- when the winner is
+    text, matched_gid_label is withheld here so that preference falls through
+    to matched_text_hint. When no winner is recorded for `tag` (rec built
+    without going through `_attach_breakdown`), this falls back to the
+    pre-C1 GID-first order.
+    """
+    # 札の一致（札の名前から概念を引く）のうち、札の並び順で最初の名前を Lead に使う。
+    matched_names = matching_tag_names(_goriyaku_tag_names(rec), tag)
+    matched_gid_label: Optional[str] = matched_names[0] if matched_names else None
+
+    winner = ((rec.get("breakdown") or {}).get("need_evidence_winner_by_tag") or {}).get(tag)
+
+    matched_text_hint: Optional[str] = None
+    if winner == "text" or not matched_gid_label:
+        hints = ((rec.get("_prefilter_debug") or {}).get("matched_text_hints_by_tag") or {}).get(tag) or []
+        if hints:
+            text_weights = NEED_TEXT_WEIGHTS.get(tag, {})
+            matched_text_hint = max(hints, key=lambda h: text_weights.get(h, 0))
+
+    if winner == "text":
+        # Withhold matched_gid_label so _build_need_lead's unchanged
+        # gid-first check falls through to matched_text_hint.
+        return None, matched_text_hint
+
+    return matched_gid_label, matched_text_hint
+
+
 def build_recommendation_reason(
     rec: Dict[str, Any],
     *,
@@ -1682,6 +2045,8 @@ def build_recommendation_reason(
     birthdate: Optional[str],
     need_tags: List[str],
 ) -> str:
+    # MS-5 provenance は、この呼び出しで Channel B の理由文を返すときにだけ付け直す。
+    rec.pop(CHANNEL_B_REASON_PROVENANCE_KEY, None)
     if public_mode == "compat":
         user_element = None
         if birthdate:
@@ -1714,6 +2079,15 @@ def build_recommendation_reason(
         str(tag).strip() for tag in matched if isinstance(tag, str) and str(tag).strip()
     ]
     primary_label = str(rec.get("_primary_reason_label") or "").strip()
+    # SP3: _resolve_primary_reason() は一致する evidence がないとき type / label とも
+    # "fallback" を返す。これは内部の制御 sentinel であり Need label ではない。Need 用の
+    # 事実の文（「〜のご利益で知られる」）へ流すと、根拠のない御利益の断定になる
+    # （_build_need_lead("fallback") -> "ご利益"）。sentinel は Need label として扱わない。
+    if (
+        primary_label == FALLBACK_REASON_SENTINEL
+        or str(rec.get("_primary_reason_source") or "").strip() == FALLBACK_REASON_SENTINEL
+    ):
+        primary_label = ""
 
     try:
         log.info(
@@ -1732,30 +2106,59 @@ def build_recommendation_reason(
     goriyaku = str(rec.get("goriyaku") or "").strip()
 
     if primary_label:
+        matched_gid_label, matched_text_hint = _resolve_matched_lead_evidence(rec, primary_label)
         return _build_need_reason_text(
             primary_label,
             name=name,
             goriyaku=goriyaku,
+            matched_gid_label=matched_gid_label,
+            matched_text_hint=matched_text_hint,
         )
 
     if matched_tags:
+        matched_gid_label, matched_text_hint = _resolve_matched_lead_evidence(rec, matched_tags[0])
         return _build_need_reason_text(
             matched_tags[0],
             name=name,
             goriyaku=goriyaku,
+            matched_gid_label=matched_gid_label,
+            matched_text_hint=matched_text_hint,
         )
+
+    # MS-5: Channel A の理由が無く、request の Need に Channel B だけが一致したときは、
+    # 既存の carrier の Source Fact から evidence の種類に従った理由文を作る（DB は読まない）。
+    channel_b_match = select_channel_b_reason_match(
+        rec, _normalize_need_tags(need_tags or [], max_tags=10), matched_tags
+    )
+    if channel_b_match is not None:
+        channel_b_reason = render_channel_b_reason(channel_b_match, name=name)
+        if channel_b_reason:
+            # 理由文と provenance は同じ match から作る（provenance のために選び直さない）。
+            rec[CHANNEL_B_REASON_PROVENANCE_KEY] = channel_b_reason_provenance(channel_b_match)
+            return channel_b_reason
 
     if name:
         return f"{name}は、今の悩みや願いに合わせて参拝先の候補に入れています。"
     return "今の悩みや願いに合わせた参拝先の候補としておすすめしています。"
 
 
-def _build_need_lead(tag: str, goriyaku: str) -> str:
-    if goriyaku:
-        normalized = goriyaku.replace("、", "・").replace("，", "・").replace("/", "・")
-        parts = [p.strip() for p in normalized.split("・") if p.strip()]
-        if parts:
-            return parts[0]
+def _build_need_lead(
+    tag: str,
+    goriyaku: str,
+    *,
+    matched_gid_label: str | None = None,
+    matched_text_hint: str | None = None,
+) -> str:
+    # Evidence Chain (docs/audit/compass-need-lead-purpose-alignment.md
+    # Option C): matched goriyaku_tag label -> matched text_hint -> Purpose
+    # fallback -> generic. `goriyaku`'s own first-listed item is no longer
+    # used -- it is not matched evidence for `tag` and produced Purpose-
+    # unrelated leads (see the audit's MISALIGNED cases). Kept as a
+    # parameter only for call-site/signature stability.
+    if matched_gid_label:
+        return matched_gid_label
+    if matched_text_hint:
+        return matched_text_hint
 
     fallback = {
         "study": "学業成就",
@@ -1765,6 +2168,9 @@ def _build_need_lead(tag: str, goriyaku: str) -> str:
         "career": "仕事運",
         "money": "金運",
         "courage": "開運",
+        # need_to_goriyaku_concepts["protection"]の主要な一致先である実在
+        # GoriyakuTag「厄除け」(id=2) をそのまま短いlead語として使う。
+        "protection": "厄除け",
     }
     return fallback.get(tag, "ご利益")
 
@@ -1878,7 +2284,7 @@ def _to_rank_explanation(
 
     if top_contributors:
         tail = "・".join(c["axis_ja"] for c in top_contributors)
-        summary_parts.append(f"特に {tail} が順位を押し上げています")
+        summary_parts.append(f"特に{tail}が順位を押し上げています")
 
     return {
         "version": 1,
@@ -1974,6 +2380,8 @@ def _build_need_reason_text(
     *,
     name: str = "",
     goriyaku: str = "",
+    matched_gid_label: str | None = None,
+    matched_text_hint: str | None = None,
 ) -> str:
     intent_map = {
         "study": "学業や合格",
@@ -1983,12 +2391,41 @@ def _build_need_reason_text(
         "career": "仕事や転機",
         "money": "金運向上",
         "courage": "前進や後押し",
+        # NEED_LABELS_JA["protection"]（"厄除け・守り"）と同じ2語を、
+        # 既存の「AやB」文型へそのまま流し込む。新しい意味解釈は加えない
+        # (docs/audit/compass-protection-signal-completion.md Phase 6/7)。
+        "protection": "厄除けや守り",
+        # 縁結び（GoriyakuTag id=1、結婚を願う相談）と夫婦円満（id=18、既に
+        # ある夫婦関係を願う相談）の両方を1語で言い切らず、"良縁"（marriage
+        # の実キーワードの一つ、temples/domain/need_tags.py KEYWORDS
+        # ["marriage"]）と"夫婦円満"（id=18の実ラベルそのもの）をそのまま
+        # 組み合わせる。"恋愛"を含めず"love"の"恋愛や良縁"と区別しつつ、
+        # 結婚成立や関係修復を保証する断定表現も避ける
+        # (docs/audit/marriage-reason-copy-implementation.md)。
+        "marriage": "良縁や夫婦円満",
+        "relationship": "人間関係の改善や修復",
+        "health": "健康や体調の安定",
+        "focus": "集中や習慣づくり",
+        "travel_safe": "移動や旅の安全",
+        # family の M1 後マッピング {16, 35} の実ラベルそのもの
+        # （子宝 = id=35、安産 = id=16）を、既存の「AやB」文型へそのまま
+        # 流し込む。Mother Ship 2026-08-29: Family = NARROW / DROP_ALL
+        # （docs/audit/remaining-need-semantic-decision-packets.md
+        # 「## Mother Ship Decisions」）で family は fertility / childbirth /
+        # parenting に限定されており、家庭円満・家族関係の修復・対人関係へ
+        # 広げる語は含めない。断定的・超自然的な表現も避ける。
+        "family": "子宝や安産",
     }
 
     user_intent = intent_map.get(tag, "今の願い")
 
     if name:
-        lead = _build_need_lead(tag, goriyaku)
+        lead = _build_need_lead(
+            tag,
+            goriyaku,
+            matched_gid_label=matched_gid_label,
+            matched_text_hint=matched_text_hint,
+        )
         return f"{lead}のご利益で知られる{name}は、{user_intent}を願う参拝先として適しています。"
 
     mapping = {
@@ -1999,6 +2436,8 @@ def _build_need_reason_text(
         "career": "仕事や転機を後押ししたい今の願いに寄り添いやすく、参拝にも向いています。",
         "money": "金運や仕事の流れを整えたい今の願いに寄り添いやすく、参拝にも向いています。",
         "courage": "前に進みたい、流れを変えたい今の気持ちを後押しする参拝に向いています。",
+        # study/loveと同じ「〜を願う今の気持ちに寄り添いやすく」文型を再利用。
+        "protection": "厄除けや守りを願う今の気持ちに寄り添いやすく、参拝にも向いています。",
     }
     return mapping.get(tag, "今の悩みや願いに寄り添いやすい神社としておすすめしています。")
 
@@ -2026,4 +2465,6 @@ __all__ = [
     "resolve_score_sort_key",
     "resolve_score_v3_history_signal",
     "resolve_history_theme_candidate_boost",
+    "PRIMARY_TIER_REASON_TYPES",
+    "has_primary_tier_reason",
 ]

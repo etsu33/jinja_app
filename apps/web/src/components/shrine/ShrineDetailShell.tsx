@@ -7,6 +7,7 @@ import { LABELS } from "@/lib/ui/labels";
 import DetailSection from "@/components/shrine/DetailSection";
 import GoogleMapRouteLink from "@/components/shrine/GoogleMapRouteLink";
 import type { DirectionRouteContext } from "@/lib/analytics/directionRouteContext";
+import type { RecommendationAnalyticsProvenance } from "../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 type SaveAction = {
   shrineId: number;
@@ -37,6 +38,8 @@ type Props = {
   tid?: string | number | null;
   historyTheme?: string | null;
   directionRouteContext?: DirectionRouteContext | null;
+  analyticsProvenance?: RecommendationAnalyticsProvenance;
+  recommendationInstanceId?: string | null;
 };
 
 export default function ShrineDetailShell({
@@ -56,6 +59,8 @@ export default function ShrineDetailShell({
   tid = null,
   historyTheme = null,
   directionRouteContext = null,
+  analyticsProvenance,
+  recommendationInstanceId = null,
 }: Props) {
   const shouldShowActions = !hideActions && Boolean(googleDirHref || saveAction?.node || addGoshuinHref);
 
@@ -90,7 +95,9 @@ export default function ShrineDetailShell({
                 tid={tid}
                 historyTheme={historyTheme}
                 directionRouteContext={directionRouteContext}
-                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--kt-radius-panel)] bg-slate-900 px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-inverse)] hover:bg-slate-800"
+                analyticsProvenance={analyticsProvenance}
+                recommendationInstanceId={recommendationInstanceId}
+                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-action-primary)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-inverse)] hover:bg-[var(--kt-color-action-primary-hover)]"
               />
             ) : null}
 
@@ -101,7 +108,7 @@ export default function ShrineDetailShell({
             {addGoshuinHref ? (
               <Link
                 href={addGoshuinHref}
-                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--kt-radius-panel)] border bg-[var(--kt-color-surface-default)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-primary)] hover:bg-slate-50"
+                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--kt-radius-panel)] border bg-[var(--kt-color-surface-default)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-primary)] hover:bg-[var(--kt-color-background-subtle)]"
               >
                 {LABELS.addGoshuin}
               </Link>

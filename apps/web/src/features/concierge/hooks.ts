@@ -1,4 +1,5 @@
 "use client";
+import { normalizeConciergeCandidates } from "../../../../../packages/shared/conciergeCandidates";
 
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
@@ -16,8 +17,13 @@ import {
 } from "@/lib/api/concierge";
 
 import type { ConciergeChatRequestV1, ConciergeChatFilters } from "@/features/concierge/types/chatRequest";
-import { normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
 import { trackRecommendationQuality } from "@/lib/analytics/searchEvents";
+import {
+  buildRecommendationResultSetId,
+  normalizeRecommendationInstanceId,
+  recommendationAnalyticsProperties,
+  recommendationAnalyticsProvenance,
+} from "../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 /* ====== スレッド一覧 ====== */
 
@@ -124,24 +130,39 @@ type SendInput = string | Omit<ConciergeChatRequestV1, "thread_id">;
 
 type ConciergeAccessLevel = "anonymous" | "free" | "premium" | null;
 
-function normalizeAccessLevel(value: unknown): ConciergeAccessLevel {
+export function normalizeAccessLevel(value: unknown): ConciergeAccessLevel {
   return value === "anonymous" || value === "free" || value === "premium" ? value : null;
 }
 
-function trackRecommendationQualityFromRecommendations(args: {
+/**
+ * F-4: live Concierge recommendation の analytics identity。
+ *
+ * generic `id` は COMPATIBILITY_FIELD であり identity authority ではないため、
+ * ここでは使わない（F-7 が backend 側で
+ * candidate["id"] == candidate["shrine_id"] == Shrine.id を固定しており、
+ * live recommendation はその共有 producer 由来）。
+ * 確認済みの登録候補だけを共有表示契約で重複排除し、登録連番と最初の attribution を送る。
+ * 外部・不正・競合 identity は registered quality event の対象にしない。
+ *
+ * docs/audit/shared-shrine-identity-resolver-design.md §14
+ */
+export function trackRecommendationQualityFromRecommendations(args: {
   recommendations: ConciergeRecommendation[];
   threadId: string | null;
   accessLevel: ConciergeAccessLevel;
 }) {
-  args.recommendations.forEach((rec, index) => {
+  const registered = normalizeConciergeCandidates(args.recommendations).registered;
+  const resultSetId = buildRecommendationResultSetId(args.threadId, registered.map(c => ({shrineId:c.shrineId})));
+  registered.forEach(({record:rec, shrineId, recommendationRank}) => {
     const quality = rec.recommendation_reason_quality;
     if (!quality || typeof quality !== "object") return;
 
     trackRecommendationQuality({
       source: "concierge_result",
       threadId: args.threadId,
-      shrineId: rec.shrine_id ?? rec.id ?? null,
-      recommendationRank: index + 1,
+      shrineId,
+      recommendationRank,
+      resultSetId,
       accessLevel: args.accessLevel,
       shrine_data_rate: quality.shrine_data_rate ?? null,
       consultation_reflection_rate: quality.consultation_reflection_rate ?? null,
@@ -150,11 +171,22 @@ function trackRecommendationQualityFromRecommendations(args: {
       action_grounding_rate: quality.action_grounding_rate ?? null,
       is_ai_inference_only: quality.is_ai_inference_only ?? null,
       fallback_source: quality.fallback_source ?? null,
+      knowledge_backing_class: quality.knowledge_backing_class ?? null,
+      deity_knowledge_used: quality.deity_knowledge_used ?? null,
+      history_knowledge_used: quality.history_knowledge_used ?? null,
+      recommendationInstanceId: normalizeRecommendationInstanceId(
+        (rec as any).recommendation_instance_id ?? (rec as any).recommendationInstanceId,
+      ),
+      ...recommendationAnalyticsProperties(recommendationAnalyticsProvenance({
+        primaryReasonSource: (rec as any).primary_reason_source ?? (rec as any)._primary_reason_source,
+        reasonFacts: rec.reason_facts,
+        actionSuggestionPreview: (rec as any).action_suggestion_v4_preview,
+      })),
     });
   });
 }
 
-function normalizeConciergeResponse(raw: any, recs: ConciergeRecommendation[]): UnifiedConciergeResponse {
+export function normalizeConciergeResponse(raw: any, recs: ConciergeRecommendation[]): UnifiedConciergeResponse {
   const limitReached = raw?.limitReached === true;
 
   const stop: StopReason =
@@ -203,26 +235,17 @@ export function useConciergeChat(threadId: string | null, options?: UseConcierge
     async (input: SendInput) => {
       const baseFilters = options?.filters;
 
-      const inputBirthdate =
-        typeof input === "string"
-          ? undefined
-          : typeof input.birthdate === "string" && input.birthdate.trim()
-            ? normalizeBirthdateInput(input.birthdate.trim()) ?? undefined
-            : undefined;
-
       const req: ConciergeChatRequestV1 =
         typeof input === "string"
           ? { version: 1, query: input.trim(), thread_id: threadId ?? undefined }
           : { ...input, version: 1, thread_id: threadId ?? undefined };
 
-      const normalizedQuery = typeof req.query === "string" ? req.query.trim() : "";
-      const rescuedBirthdate = !inputBirthdate && req.mode === "compat" ? normalizeBirthdateInput(normalizedQuery) ?? undefined : undefined;
-
-      if (rescuedBirthdate) {
-        req.query = "";
-      } else {
-        req.query = normalizedQuery;
-      }
+      // コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）。
+      // 生年月日・profile_context は送らず、モードは常に need にする（backend も入り口で外す）。
+      req.query = typeof req.query === "string" ? req.query.trim() : "";
+      req.mode = "need";
+      delete (req as any).birthdate;
+      delete (req as any).profile_context;
 
       // ✅ filters を必ず合成（input 側が優先、無ければ base）
       const mergedFiltersRaw: Record<string, any> = {
@@ -230,12 +253,7 @@ export function useConciergeChat(threadId: string | null, options?: UseConcierge
         ...((req as any).filters ?? {}),
       };
 
-      if (!mergedFiltersRaw.birthdate && inputBirthdate) {
-        mergedFiltersRaw.birthdate = inputBirthdate;
-      }
-      if (!mergedFiltersRaw.birthdate && rescuedBirthdate) {
-        mergedFiltersRaw.birthdate = rescuedBirthdate;
-      }
+      delete mergedFiltersRaw.birthdate;
 
       // ✅ undefined / null / 空文字 / 空配列 を落とす
       const mergedFiltersClean = Object.fromEntries(
@@ -278,38 +296,19 @@ export function useConciergeChat(threadId: string | null, options?: UseConcierge
       if (Array.isArray(compat.goriyaku_tag_ids) && compat.goriyaku_tag_ids.length > 0) {
         (req as any).goriyaku_tag_ids = compat.goriyaku_tag_ids;
       }
-      if (inputBirthdate) {
-        (req as any).birthdate = inputBirthdate;
-      } else if (rescuedBirthdate) {
-        (req as any).birthdate = rescuedBirthdate;
-      } else if (typeof compat.birthdate === "string" && compat.birthdate.trim()) {
-        (req as any).birthdate = compat.birthdate.trim();
-      }
-
-      const mode = req.mode;
-      const hasBirthdate = typeof (req as any).birthdate === "string" && (req as any).birthdate.trim().length > 0;
-
       const hasUsableFilters =
         (Array.isArray((req as any).goriyaku_tag_ids) && (req as any).goriyaku_tag_ids.length > 0) ||
         (typeof (req as any).extra_condition === "string" && (req as any).extra_condition.trim().length > 0) ||
-        (typeof (req as any).filters?.birthdate === "string" && (req as any).filters.birthdate.trim().length > 0) ||
         (Array.isArray((req as any).filters?.goriyaku_tag_ids) && (req as any).filters.goriyaku_tag_ids.length > 0) ||
         (typeof (req as any).filters?.extra_condition === "string" &&
           (req as any).filters.extra_condition.trim().length > 0);
 
-      if (mode === "compat") {
-        if (!req.query?.trim() && !hasBirthdate && !hasUsableFilters) {
-          return;
-        }
-      } else {
-        if (!req.query?.trim() && !hasUsableFilters) {
-          return;
-        }
+      if (!req.query?.trim() && !hasUsableFilters) {
+        return;
       }
 
       setSending(true);
       setError(null);
-
 
       try {
         const res = await postConciergeChat(req);
@@ -337,6 +336,9 @@ export function useConciergeChat(threadId: string | null, options?: UseConcierge
           threadId: threadIdForAnalytics,
           accessLevel: normalizeAccessLevel(payload?.plan),
         });
+
+        // コンシェルジュでは生年月日を使わないため、相談の送信で生年月日を保存しない
+        // （保存はマイページ・コンパスの画面で行う）。
 
         options?.onUnified?.(unified);
         options?.onRecommendations?.(recs);

@@ -145,7 +145,7 @@ describe("ConciergeSectionsRenderer - 他候補の開閉UI", () => {
     expect(screen.getByText("東京都中央区2-2-2")).toBeInTheDocument();
   });
 
-  it("他候補カードも一致理由の後に通常理由を表示する", () => {
+  it("他候補カードは単一のreason blockのみを表示する(旧2見出しの反復を解消、Compact Recommendation Reason / Explanation Consistency)", () => {
     const payload = buildTestPayload([heroRec, otherRecWithAddress]);
     render(<ConciergeSectionsRenderer payload={payload} threadId={768} isPremiumActive={true} />);
 
@@ -153,11 +153,9 @@ describe("ConciergeSectionsRenderer - 他候補の開閉UI", () => {
 
     const compactCard = screen.getByText("他候補神社A").closest("article");
     expect(compactCard).not.toBeNull();
-    const match = compactCard?.querySelector('[data-testid="recommendation-match-reason"]');
-    const reason = compactCard?.querySelector('[data-testid="recommendation-standard-reason"]');
-    expect(match).not.toBeNull();
-    expect(reason).not.toBeNull();
-    expect(match!.compareDocumentPosition(reason!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // 旧「相談内容・ご利益との一致」+「この神社を選んだ理由」の2見出しはもう存在しない。
+    expect(compactCard?.querySelectorAll('[data-testid="recommendation-match-reason"]')).toHaveLength(1);
+    expect(compactCard?.querySelector('[data-testid="recommendation-standard-reason"]')).toBeNull();
   });
 
   it("addressがない他候補カードでもエラーにならず表示される", () => {

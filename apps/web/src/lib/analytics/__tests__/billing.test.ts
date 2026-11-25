@@ -82,7 +82,7 @@ describe("billing analytics", () => {
 
     it("serialize後のpayloadをprovider.trackに渡す", () => {
       const providerTrackMock = vi.fn();
-      setAnalyticsProvider({ track: providerTrackMock });
+      setAnalyticsProvider({ track: providerTrackMock, identify: vi.fn(), reset: vi.fn() });
 
       trackBillingEvent("checkout_started", {
         checkoutSessionId: "cs_test_123",
@@ -107,6 +107,8 @@ describe("billing analytics", () => {
         track: () => {
           throw new Error("analytics failed");
         },
+        identify: vi.fn(),
+        reset: vi.fn(),
       });
 
       expect(() => {
@@ -130,7 +132,7 @@ describe("billing analytics", () => {
 
     it("session_id / sessionIdをtrack payloadに残さない", () => {
       const providerTrackMock = vi.fn();
-      setAnalyticsProvider({ track: providerTrackMock });
+      setAnalyticsProvider({ track: providerTrackMock, identify: vi.fn(), reset: vi.fn() });
 
       trackBillingEvent("checkout_started", {
         checkoutSessionId: "cs_test_123",

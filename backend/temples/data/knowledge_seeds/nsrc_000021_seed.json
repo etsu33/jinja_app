@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "NIIGATA_PREF_KITAMAEBUNE02",
+      "source_type": "government",
+      "title": "北前船の魅力を訪ねて",
+      "publisher": "新潟県",
+      "url": "https://www.pref.niigata.lg.jp/site/shibata/kitamaebune02.html",
+      "language": "ja",
+      "accessed_at": "2026-10-19",
+      "verified_at": "2026-10-19T14:35:38+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "荒川神社",
+        "address": "新潟県胎内市桃崎浜187番地"
+      },
+      "deities": [
+        {
+          "display_name": "天鈿女命",
+          "role": "unknown",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "NIIGATA_PREF_KITAMAEBUNE02"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "regional_context",
+          "title": "船主による船絵馬の奉納",
+          "content": "荒川神社には、船主が航海安全を祈願して奉納した船絵馬が86枚ある。",
+          "period_text": "",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-19T14:35:38+09:00",
+          "source_keys": [
+            "NIIGATA_PREF_KITAMAEBUNE02"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -14,6 +14,10 @@ on:
         description: "DRF throttle for concierge"
         type: string
         default: 100/min
+      pytest_target:
+        description: "Optional pytest file/path for targeted integration validation"
+        type: string
+        default: ""
 
 concurrency:
   group: backend-integration-${{ github.ref }}
@@ -27,6 +31,7 @@ jobs:
     with:
       mode: integration
       concierge_throttle: ${{ inputs.concierge_throttle || '100/min' }}
+      pytest_target: ${{ inputs.pytest_target || '' }}
     secrets:
       GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
       GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}

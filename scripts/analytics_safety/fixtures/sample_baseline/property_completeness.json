@@ -1,0 +1,9 @@
+{
+  "results": [[0, 0, 0, 0]],
+  "columns": [
+    "knowledge_backing_class_present",
+    "deity_knowledge_used_present",
+    "history_knowledge_used_present",
+    "total"
+  ]
+}

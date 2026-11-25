@@ -4,27 +4,45 @@ import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { trackShrineInteraction } from "@/lib/api/shrineInteractions";
 import { trackWebDirection } from "@/lib/analytics/directionEvents";
 import type { DirectionRouteContext } from "@/lib/analytics/directionRouteContext";
+import {
+  recommendationAnalyticsProperties,
+  type RecommendationAnalyticsProvenance,
+} from "../../../../../packages/shared/recommendationAnalyticsProvenance";
+
+/**
+ * route_open を送る surface。SearchAnalyticsPayload["source"] の部分集合で、
+ * 実際にこのコンポーネントを使っている画面だけに限定する（推測で広げない）。
+ * ShrineInteractionLog の source にも同じ値を使う。
+ */
+export type GoogleMapRouteLinkSource = "shrine_detail" | "map" | "compass";
 
 type Props = {
   href: string;
   label: string;
+  /** 既定は既存互換の "shrine_detail"。 */
+  source?: GoogleMapRouteLinkSource;
   shrineId?: number | string | null;
   ctx?: string | null;
   tid?: string | number | null;
   historyTheme?: string | null;
   className?: string;
   directionRouteContext?: DirectionRouteContext | null;
+  analyticsProvenance?: RecommendationAnalyticsProvenance;
+  recommendationInstanceId?: string | null;
 };
 
 export default function GoogleMapRouteLink({
   href,
   label,
+  source = "shrine_detail",
   shrineId = null,
   ctx = null,
   tid = null,
   historyTheme = null,
   className,
   directionRouteContext = null,
+  analyticsProvenance,
+  recommendationInstanceId = null,
 }: Props) {
   let routeUrl: URL | null = null;
   try {
@@ -55,12 +73,14 @@ export default function GoogleMapRouteLink({
         }
         try {
           trackSearchEvent("route_open", {
-            source: "shrine_detail",
+            source,
             routeTarget: "google_maps",
             shrineId: shrineId ?? undefined,
             threadId: tid != null ? String(tid) : undefined,
             historyTheme: historyTheme ?? undefined,
             ctx,
+            recommendationInstanceId,
+            ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
           });
         } catch {
           console.warn("route_analytics_delivery_failed");
@@ -72,13 +92,15 @@ export default function GoogleMapRouteLink({
             void trackShrineInteraction({
               shrineId: shrineIdNumber,
               actionType: "route_open",
-              source: "shrine_detail",
+              source,
               threadId: tid,
               metadata: {
                 event: "route_open",
                 routeTarget: "google_maps",
                 historyTheme,
                 ctx,
+                recommendation_instance_id: recommendationInstanceId,
+                ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
               },
             }).catch(() => console.warn("route_interaction_delivery_failed"));
           } catch {

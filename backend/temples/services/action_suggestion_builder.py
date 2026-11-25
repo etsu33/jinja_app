@@ -281,6 +281,8 @@ def build_action_suggestion(
     interpretation_profile: dict[str, Any] | None = None,
     meaning_translation: dict[str, Any] | None = None,
     recommendation_reason_v4: dict[str, Any] | None = None,
+    action_source_override: ActionSource | None = None,
+    source_keys_override: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build a preview-only Action Suggestion v4 payload.
 
@@ -331,7 +333,7 @@ def build_action_suggestion(
         primary_decision=primary_decision,
         primary_outcome=primary_outcome,
     )
-    action_source = _build_action_source(
+    action_source = action_source_override or _build_action_source(
         action_context=action_context,
         reflection_question_seed=reflection_question_seed,
         primary_constraint=primary_constraint,
@@ -339,16 +341,20 @@ def build_action_suggestion(
         primary_outcome=primary_outcome,
     )
 
-    source_keys = [
-        key
-        for key, value in {
-            "recommendation_input_profile": recommendation_input,
-            "interpretation_profile": interpretation,
-            "meaning_translation": meaning,
-            "recommendation_reason_v4": reason,
-        }.items()
-        if value
-    ]
+    source_keys = (
+        source_keys_override
+        if source_keys_override is not None
+        else [
+            key
+            for key, value in {
+                "recommendation_input_profile": recommendation_input,
+                "interpretation_profile": interpretation,
+                "meaning_translation": meaning,
+                "recommendation_reason_v4": reason,
+            }.items()
+            if value
+        ]
+    )
 
     return ActionSuggestionV4(
         primary_action=primary_action,
@@ -375,23 +381,45 @@ def attach_action_suggestion_v4_preview(recs: dict[str, Any]) -> dict[str, Any]:
         explanation_payload = _as_dict(rec.get("_explanation_payload"))
         history_context = _as_dict(explanation_payload.get("history_context"))
         action_suggestions = _as_list(explanation_payload.get("action_suggestions"))
-        first_action_suggestion = action_suggestions[0] if action_suggestions and isinstance(action_suggestions[0], dict) else {}
-
-        meaning_translation = {
-            "history_theme": _first_string(history_context.get("label"), rec.get("history_theme")),
-            "action_context": _first_string(
-                first_action_suggestion.get("description"),
-                rec.get("action_meaning"),
-            ),
-            "reflection_question_seed": _first_string(
-                first_action_suggestion.get("title"),
-                "この神社を見たあと、何を整理したいですか？",
-            ),
-        }
-
-        rec["action_suggestion_v4_preview"] = build_action_suggestion(
-            meaning_translation=meaning_translation,
+        first_action_suggestion = (
+            action_suggestions[0]
+            if action_suggestions and isinstance(action_suggestions[0], dict)
+            else {}
         )
+
+        ranked_history_theme = _first_string(history_context.get("theme"))
+        if ranked_history_theme and first_action_suggestion:
+            rec["action_suggestion_v4_preview"] = build_action_suggestion(
+                meaning_translation={
+                    "history_theme": ranked_history_theme,
+                    "action_context": _first_string(first_action_suggestion.get("description")),
+                    "reflection_question_seed": _first_string(first_action_suggestion.get("title")),
+                },
+                action_source_override=ActionSource(
+                    source="action_context",
+                    reason=f"ランキングに寄与したhistory_theme「{ranked_history_theme}」の行動カタログから提案した",
+                ),
+                source_keys_override=["ranked_history_theme", "action_catalog"],
+            )
+            continue
+
+        reason_detail = _as_dict(rec.get("recommendation_reason_v4_detail"))
+        reason_action = _as_dict(reason_detail.get("action"))
+        reason_action_source = _first_string(reason_action.get("source"))
+        if reason_action_source and reason_action_source.startswith("meaning_translation."):
+            rec["action_suggestion_v4_preview"] = build_action_suggestion(
+                recommendation_reason_v4=reason_detail,
+                action_source_override=ActionSource(
+                    source="action_context",
+                    reason="culture_translationの行動文脈を相談に基づく説明素材として提案した",
+                ),
+                source_keys_override=["recommendation_reason_v4", "culture_translation"],
+            )
+            continue
+
+        # Keep a Generic Safe action for the existing UX, but preserve its
+        # actual ungrounded provenance instead of synthesizing meaning data.
+        rec["action_suggestion_v4_preview"] = build_action_suggestion()
 
     return recs
 

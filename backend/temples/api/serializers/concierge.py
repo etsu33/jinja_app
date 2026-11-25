@@ -9,9 +9,6 @@ from temples.models import ConciergeThread, ConciergeMessage
 
 # まず新モジュールからインポート（存在すればそれを使う）
 try:
-    from temples.serializers.concierge import (
-        ConciergeHistorySerializer as _NewConciergeHistorySerializer,  # あるなら使う
-    )
     from temples.serializers.concierge import (  # type: ignore
         ConciergePlanRequestSerializer,
         ConciergePlanResponseSerializer,
@@ -35,43 +32,11 @@ except Exception:  # 新モジュールがない環境でも壊れないよう�
         PlaceLiteSerializer,
     )
 
-    _NewConciergeHistorySerializer = None
     _NewConciergeRecommendationsQuery = None
     _NewConciergeRecommendationsResponse = None
     _NewShrineNearbySerializer = None
 
 # --- フォールバック定義（新モジュールに無い場合のみ） ---
-
-try:
-    from temples.models import ConciergeHistory, Shrine
-except Exception:  # モデルの import で落ちないように（migrate 前など）
-    ConciergeHistory = None  # type: ignore
-    Shrine = None  # type: ignore
-
-
-# History 一覧用
-class _FallbackConciergeHistorySerializer(serializers.ModelSerializer):
-    shrine_name = serializers.SerializerMethodField(read_only=True)
-
-    class Meta:
-        model = ConciergeHistory  # type: ignore
-        fields = [
-            "id",
-            "user",
-            "shrine",
-            "shrine_name",
-            "reason",
-            "tags",
-            "created_at",
-        ]
-        read_only_fields = ["id", "user", "created_at", "shrine_name"]
-
-    def get_shrine_name(self, obj):
-        s = getattr(obj, "shrine", None)
-        if s is not None and Shrine is not None:
-            # name_jp 優先、無ければ name
-            return getattr(s, "name_jp", None) or getattr(s, "name", None)
-        return None
 
 
 # レコメンド入力クエリ
@@ -175,8 +140,6 @@ class ConciergeChatRequestSerializer(serializers.Serializer):
 
 
 # --- 公開シンボルの最終決定 ---
-ConciergeHistorySerializer = _NewConciergeHistorySerializer or _FallbackConciergeHistorySerializer
-
 ConciergeRecommendationsQuery = (
     _NewConciergeRecommendationsQuery or _FallbackConciergeRecommendationsQuery
 )
@@ -193,7 +156,6 @@ __all__ = [
     "PlaceLiteSerializer",
     "ConciergePlanRequestSerializer",
     "ConciergePlanResponseSerializer",
-    "ConciergeHistorySerializer",
     "ConciergeRecommendationsQuery",
     "ConciergeRecommendationsResponse",
     "ShrineNearbySerializer",
@@ -202,5 +164,5 @@ __all__ = [
     "ConciergeThreadDetailSerializer",
 ]
 
-# ※ それ以外のシンボル（ConciergeHistorySerializer など）は
+# ※ それ以外のシンボル（_Fallback* など）は
 #    直接 import では使えるが、__all__ には載せない（互換APIの契約を崩さないため）。

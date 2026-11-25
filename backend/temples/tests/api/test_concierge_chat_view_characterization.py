@@ -63,7 +63,7 @@ def test_chat_view_promotes_filters_to_top_level_when_missing(client, monkeypatc
     r = client.post(URL, data=json.dumps(payload), content_type="application/json")
     assert r.status_code == 200
 
-    assert captured["birthdate"] == "1984-05-15"
+    assert captured["birthdate"] is None  # コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）
     assert captured["goriyaku_tag_ids"] == [10, 20]
     assert captured["extra_condition"] == "静か"
 
@@ -89,7 +89,7 @@ def test_chat_view_top_level_wins_over_filters(client, monkeypatch):
     r = client.post(URL, data=json.dumps(payload), content_type="application/json")
     assert r.status_code == 200
 
-    assert captured["birthdate"] == "1990-01-01"
+    assert captured["birthdate"] is None  # コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）
     assert captured["goriyaku_tag_ids"] == [999]
     assert captured["extra_condition"] == "にぎやか"
 

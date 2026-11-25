@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-
 from typing import Any, Dict, List, Optional
 
-from temples.services.action_suggestions import get_action_suggestions_for_theme
-
+from temples.services.action_suggestions import (
+    HISTORY_THEME_ACTION_SUGGESTIONS,
+    get_action_suggestions_for_theme,
+)
 
 NEED_LABELS_JA: Dict[str, str] = {
     "study": "学業・合格",
@@ -17,6 +18,14 @@ NEED_LABELS_JA: Dict[str, str] = {
     "protection": "厄除け・守り",
     "focus": "集中・継続",
     "travel_safe": "移動・安全",
+    # Added by fix/need-labels-ja-completeness -- kept textually identical
+    # to concierge_chat_ranking.py's NEED_LABELS_JA/NEED_TAG_LABELS_JA
+    # (docs/audit/need-labels-ja-completeness-implementation.md).
+    "marriage": "結婚・夫婦円満",
+    "relationship": "人間関係",
+    "communication": "コミュニケーション",
+    "health": "健康",
+    "family": "家族",
     "element": "生年月日との相性",
     "fallback": "近い候補",
     "visit_style": "参拝スタイル",
@@ -57,6 +66,20 @@ HISTORY_THEME_TONE_JA: Dict[str, str] = {
 def _build_history_context(rec: Dict[str, Any]) -> Dict[str, Any] | None:
     raw_theme = str(rec.get("history_theme") or "").strip()
     if not raw_theme:
+        return None
+
+    # docs/product/recommendation-signal-authority.md §6: history_theme
+    # only has Rank Authority when consultation_axis corresponds to it
+    # (history_theme_candidate_boost > 0, already computed in
+    # _attach_breakdown's breakdown_detail). Reusing that same signal here
+    # keeps history_context (and the action_suggestions derived from it)
+    # from presenting a candidate's history_theme as relevant context when
+    # it had zero actual ranking authority (Explanation Alignment
+    # Hardening audit finding, mirrors the _build_reason_facts() gate).
+    boost_detail = (
+        ((rec.get("breakdown_detail") or {}).get("features") or {}).get("history_theme_candidate_boost") or {}
+    )
+    if not (float(boost_detail.get("raw") or 0.0) > 0):
         return None
 
     return {
@@ -143,38 +166,6 @@ def _normalize_reason_facts(value: Any, *, limit: int | None = None) -> List[Dic
     return out
 
 
-def _build_visit_style_primary_reason(rec: Dict[str, Any]) -> Dict[str, Any] | None:
-    breakdown_detail = (
-        rec.get("breakdown_detail")
-        if isinstance(rec.get("breakdown_detail"), dict)
-        else {}
-    )
-    features = breakdown_detail.get("features") if isinstance(breakdown_detail, dict) else {}
-    if not isinstance(features, dict):
-        return None
-
-    visit_style = features.get("visit_style")
-    if not isinstance(visit_style, dict):
-        return None
-
-    matched_tags = _safe_str_list(visit_style.get("matched_tags"), limit=5)
-    if not matched_tags:
-        return None
-
-    contribution = float(visit_style.get("contribution") or 0.0)
-    if contribution <= 0:
-        return None
-
-    return {
-        "type": "visit_style",
-        "label": matched_tags[0],
-        "label_ja": NEED_LABELS_JA["visit_style"],
-        "evidence": matched_tags,
-        "score": contribution,
-        "is_primary": True,
-    }
-
-
 def build_explanation_payload(rec: Dict[str, Any], *, birthdate: Optional[str] = None) -> Dict[str, Any]:
     """
     explanation 用の正規化 payload を作る。
@@ -231,20 +222,15 @@ def build_explanation_payload(rec: Dict[str, Any], *, birthdate: Optional[str] =
         limit=5,
     )
 
+    # Single Source of Truth (Recommendation Primary Reason Contract
+    # Unification): primary_reason comes exclusively from
+    # rec["_reason_facts"] (concierge_chat_ranking._build_reason_facts /
+    # _resolve_primary_reason), which now includes a "visit_style" fact
+    # type (PRIMARY_REASON_PRIORITY) -- no independent second resolver.
     primary_reason = next(
         (x for x in reason_facts if x.get("is_primary")),
         None,
     )
-
-    visit_style_primary_reason = _build_visit_style_primary_reason(rec)
-    if (
-        visit_style_primary_reason is not None
-        and (
-            primary_reason is None
-            or str(primary_reason.get("type") or "").strip() == "fallback"
-        )
-    ):
-        primary_reason = visit_style_primary_reason
 
     if primary_reason is None:
         source = str(rec.get("_primary_reason_source") or "").strip()
@@ -263,9 +249,20 @@ def build_explanation_payload(rec: Dict[str, Any], *, birthdate: Optional[str] =
 
     gogyou_context = _build_gogyou_context(birthdate)
     history_context = _build_history_context(rec)
-    action_suggestions = get_action_suggestions_for_theme(
-        history_context.get("theme") if isinstance(history_context, dict) else None,
+    # Preserve the legacy Generic Safe copy for UX compatibility, while
+    # making its actual grounding explicit.  A catalog action is grounded in
+    # history_theme only when that theme had Rank Authority.
+    ranked_history_theme = (
+        history_context.get("theme") if isinstance(history_context, dict) else None
     )
+    action_suggestions = get_action_suggestions_for_theme(ranked_history_theme)
+    has_grounded_history_theme = ranked_history_theme in HISTORY_THEME_ACTION_SUGGESTIONS
+    grounding = (
+        {"grounding_class": "consultation_grounded", "grounding_source": "ranked_history_theme"}
+        if has_grounded_history_theme
+        else {"grounding_class": "generic_safe", "grounding_source": "fallback"}
+    )
+    action_suggestions = [{**suggestion, **grounding} for suggestion in action_suggestions]
 
     return {
         "version": 2,

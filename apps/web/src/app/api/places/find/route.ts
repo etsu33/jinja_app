@@ -11,6 +11,7 @@ async function forwardToUpstream(body: unknown, req?: Request) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    clientIdentityFrom: req,
   });
 
   const text = await upstream.text();

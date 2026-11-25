@@ -2,11 +2,12 @@
 import * as React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
 import { ctaSizes } from "../../design/ctaSizes";
+import { typography } from "../../design/typography";
 import {
   hasVisibleKnowledgeFact,
   isDisputedDisplayState,
@@ -117,19 +118,15 @@ const styles = StyleSheet.create({
   // apps/mobile/app/shrines/[id].tsxのstyles.cardTitleと同一の値（他セクション見出しとの
   // 視覚的整合を保つため）。componentをscreenのstylesから独立させるためここで複製する。
   sectionTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: "900",
   },
   factSection: {
     gap: spacing.smGap,
   },
   factSubLabel: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.1,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   factDeityRow: {
     flexDirection: "row",
@@ -151,9 +148,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surfaceSoft,
   },
   factDeityText: {
+    ...typography.subhead,
     color: theme.text,
-    fontSize: 13,
-    fontWeight: "700",
     flexShrink: 1,
   },
   factHistoryList: {
@@ -174,27 +170,20 @@ const styles = StyleSheet.create({
     gap: spacing.inlineGap,
   },
   factHistoryTypeLabel: {
+    ...typography.eyebrow,
     color: theme.muted,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.4,
   },
   factHistoryPeriod: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "600",
   },
   factHistoryTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "800",
   },
   factHistoryContent: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 21,
-    fontWeight: "500",
   },
   factDisputedBadge: {
     paddingHorizontal: 8,
@@ -205,8 +194,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   factDisputedBadgeText: {
+    ...typography.caption,
     color: theme.muted,
-    fontSize: 10,
-    fontWeight: "700",
   },
 });

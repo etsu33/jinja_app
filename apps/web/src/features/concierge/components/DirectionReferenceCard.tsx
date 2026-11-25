@@ -12,12 +12,12 @@ export default function DirectionReferenceCard({ reference, recommendationKey = 
   if (!reference) return null;
 
   return (
-    <aside aria-labelledby={headingId} className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-3 text-sm leading-6 text-stone-700">
-      <h3 id={headingId} className="font-semibold text-stone-800">方位の参考情報</h3>
+    <aside aria-labelledby={headingId} className="rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] px-3 py-3 text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+      <h3 id={headingId} className="font-semibold text-[var(--kt-color-text-primary)]">方位の参考情報</h3>
       <p className="mt-1">現在地から見た方角：{reference.actual_direction}</p>
       <p>予定日の参考方位：{reference.reference_directions.join("・")}</p>
       <p className="mt-1">{directionReferenceMatchCopy(reference)}</p>
-      <p className="mt-1 text-stone-500">{reference.note}</p>
+      <p className="mt-1 text-[var(--kt-color-text-muted)]">{reference.note}</p>
     </aside>
   );
 }
