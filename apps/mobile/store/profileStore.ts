@@ -16,7 +16,7 @@ type ProfileState = {
 };
 
 const initialUserProfile: UserProfile = {};
-const PROFILE_STORAGE_NAME = "kamimusubi:mobile:profile:v1";
+export const PROFILE_STORAGE_NAME = "kamimusubi:mobile:profile:v1";
 const PROFILE_STORAGE_VERSION = 1;
 
 function recompute(userProfile: UserProfile): { derivedProfile: DerivedProfile; directionProfile: DirectionProfile } {

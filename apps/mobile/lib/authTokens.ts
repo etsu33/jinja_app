@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const KEY_ACCESS = "auth:access_token";
-const KEY_REFRESH = "auth:refresh_token";
+export const KEY_ACCESS = "auth:access_token";
+export const KEY_REFRESH = "auth:refresh_token";
 
 // ---- storage ----
 

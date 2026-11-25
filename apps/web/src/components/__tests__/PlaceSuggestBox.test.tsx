@@ -11,7 +11,7 @@ vi.mock("@/lib/api/placesResolveSuggest", () => ({
   fetchPlacesResolveSuggest: (...args: unknown[]) => fetchPlacesResolveSuggestMock(...args),
 }));
 
-import { PlaceSuggestBox } from "../PlaceSuggestBox";
+import { PlaceSuggestBox, ingestErrorMessage } from "../PlaceSuggestBox";
 
 // NF-2 (Production Smoke Re-check) 回帰ガード。
 // 入力中テキストがDark UIで実質判読不能だった(1.78:1が実測されたP1)。
@@ -46,5 +46,19 @@ describe("PlaceSuggestBox", () => {
 
     await waitFor(() => expect(screen.getAllByText("富岡八幡宮").length).toBeGreaterThan(0), { timeout: 3000 });
     expect(container.innerHTML).not.toMatch(LIGHT_RESIDUE);
+  });
+});
+
+describe("ingestErrorMessage", () => {
+  it("未登録 Place の 404 を、作成されなかったことが分かる文言にする", () => {
+    expect(ingestErrorMessage("ingest failed: 404")).toBe("この場所はまだ神社として登録されていません。");
+  });
+
+  it("401 はログイン案内のまま", () => {
+    expect(ingestErrorMessage("ingest failed: 401")).toBe("取り込みにはログインが必要です。");
+  });
+
+  it("その他はメッセージをそのまま返す", () => {
+    expect(ingestErrorMessage("ingest failed: 502")).toBe("ingest failed: 502");
   });
 });

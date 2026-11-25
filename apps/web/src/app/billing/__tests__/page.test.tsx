@@ -46,4 +46,25 @@ describe("BillingPage", () => {
     expect(text).not.toContain("決済連携はこの後でOK");
     expect(text).not.toContain("まずは「状態が見える」ことを優先");
   });
+
+  it("Premium なら日本時間の有効期限と、パスの追加購入の導線を出す", async () => {
+    getBillingStatusMock.mockResolvedValue(
+      status({ plan: "premium", is_active: true, current_period_end: "2026-11-10T06:30:00Z" }),
+    );
+
+    render(<BillingPage />);
+
+    expect(await screen.findByText("有効期限：2026年11月10日 15:30")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "パスを追加で購入する" })).toHaveAttribute("href", "/billing/upgrade");
+    expect(screen.queryByRole("link", { name: "プランを管理" })).toBeNull();
+  });
+
+  it("Free ならパスの購入の導線を出し、期限は出さない", async () => {
+    getBillingStatusMock.mockResolvedValue(status());
+
+    render(<BillingPage />);
+
+    expect(await screen.findByRole("link", { name: "パスを購入する" })).toHaveAttribute("href", "/billing/upgrade");
+    expect(screen.queryByText(/有効期限/)).toBeNull();
+  });
 });

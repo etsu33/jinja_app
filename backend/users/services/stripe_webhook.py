@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from datetime import timezone as dt_timezone
 from typing import Any, Optional
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from users.models import UserProfile
+from users.models import PremiumPassPurchase, UserProfile
+from users.services.premium_pass import (
+    get_pass_definition,
+    grant_premium_pass,
+    revoke_premium_pass_for_refund,
+)
 
 log = logging.getLogger(__name__)
 User = get_user_model()
-
-DEBUG_WEBHOOK = bool(getattr(settings, "STRIPE_WEBHOOK_DEBUG", False))
 
 
 class StripeWebhookError(RuntimeError):
@@ -87,18 +88,6 @@ def construct_stripe_event(*, payload: bytes, sig_header: str) -> dict[str, Any]
     return {"type": getattr(event, "type", None), "data": {}}
 
 
-def _to_dt_from_unix(ts: Any) -> Optional[datetime]:
-    try:
-        if ts is None:
-            return None
-        # Stripeはunix秒。DBはUSE_TZ=True前提で aware にする
-        return datetime.fromtimestamp(int(ts), tz=dt_timezone.utc)
-    except Exception:
-        # ここは障害調査の価値があるので例外は残す
-        log.exception("[stripe] _to_dt_from_unix failed ts=%r type=%s", ts, type(ts).__name__)
-        return None
-
-
 def _get_event_type(event: dict[str, Any]) -> str:
     event_dict = _stripe_object_to_plain(event)
     if not isinstance(event_dict, dict):
@@ -142,97 +131,29 @@ def _extract_user_id_from_checkout_session(obj: dict[str, Any]) -> Optional[int]
     return None
 
 
-def _is_trueish(v: Any) -> bool:
-    if v is True:
-        return True
-    if isinstance(v, (int, float)):
-        return v == 1
-    if isinstance(v, str):
-        return v.strip().lower() in {"1", "true", "yes", "on"}
-    return False
 
-
-def _extract_current_period_end(obj: dict[str, Any]) -> Optional[datetime]:
-    """
-    Stripe subscription の period end は payload によって場所がブレる。
-    優先順:
-      1) subscription.current_period_end
-      2) items.data[0].current_period_end
-      3) cancel_at (cancel_at_period_end=true のときは「今期末」と一致しがち)
-    """
-    # 1) top-level
-    dt = _to_dt_from_unix(obj.get("current_period_end"))
-    if dt is not None:
-        return dt
-
-    # 2) items[0]
-    try:
-        items = (obj.get("items") or {}).get("data") or []
-        if isinstance(items, list) and items:
-            dt = _to_dt_from_unix((items[0] or {}).get("current_period_end"))
-            if dt is not None:
-                return dt
-    except Exception:
-        pass
-
-    # 3) cancel_at fallback
-    if _is_trueish(obj.get("cancel_at_period_end")):
-        dt = _to_dt_from_unix(obj.get("cancel_at"))
-        if dt is not None:
-            return dt
-
+def _as_int(value: Any) -> Optional[int]:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
     return None
 
 
-def _fetch_subscription_period_end_from_api(sub_id: str) -> Optional[datetime]:
-    """
-    Webhook payload が薄い/展開されないケースに備えて、Stripe API から subscription を取得して period_end を確定させる。
-    """
-    try:
-        import stripe  # type: ignore
-
-        sk = getattr(settings, "STRIPE_SECRET_KEY", "") or ""
-        if not sk.strip():
-            if DEBUG_WEBHOOK:
-                log.debug("[stripe] api fallback skipped: STRIPE_SECRET_KEY missing")
-            return None
-
-        stripe.api_key = sk.strip()
-
-        sub = stripe.Subscription.retrieve(sub_id, expand=["items.data"])
-        sub_dict = sub.to_dict_recursive() if hasattr(sub, "to_dict_recursive") else dict(sub)
-
-        # 1) current_period_end
-        dt = _to_dt_from_unix(sub_dict.get("current_period_end"))
-        if dt is not None:
-            return dt
-
-        # 2) items.data[0].current_period_end
-        try:
-            items = (sub_dict.get("items") or {}).get("data") or []
-            if items:
-                dt = _to_dt_from_unix((items[0] or {}).get("current_period_end"))
-                if dt is not None:
-                    return dt
-        except Exception:
-            pass
-
-        # 3) cancel_at fallback
-        if _is_trueish(sub_dict.get("cancel_at_period_end")):
-            dt = _to_dt_from_unix(sub_dict.get("cancel_at"))
-            if dt is not None:
-                return dt
-
-        return None
-    except Exception:
-        log.exception("[stripe] subscription retrieve failed sub=%r", sub_id)
-        return None
+def _as_str(value: Any) -> str:
+    return value.strip() if isinstance(value, str) else ""
 
 
 @transaction.atomic
 def apply_stripe_event(*, event: dict[str, Any]) -> None:
     """
-    Stripe event(dict) を受けて UserProfile を更新する。
+    Stripe event(dict) を受けて、買い切りの旅行パスの購入・返金を反映する。
+
+    - checkout.session.completed（mode=payment、payment_status=paid）: 期限を延ばす。
+    - charge.refunded（全額返金）: そのパスの日数を期限から引く。一部返金は何もしない（Stripe 側の記録だけ）。
+    - 月額の自動更新（mode=subscription、customer.subscription.*）は扱わない。
     """
     etype = _get_event_type(event)
     obj = _get_object(event)
@@ -243,12 +164,8 @@ def apply_stripe_event(*, event: dict[str, Any]) -> None:
         _apply_checkout_session_completed(obj)
         return
 
-    if etype in {
-        "customer.subscription.created",
-        "customer.subscription.updated",
-        "customer.subscription.deleted",
-    }:
-        _apply_subscription_object(obj, etype=etype)
+    if etype == "charge.refunded":
+        _apply_charge_refunded(obj)
         return
 
     return
@@ -256,181 +173,82 @@ def apply_stripe_event(*, event: dict[str, Any]) -> None:
 
 def _apply_checkout_session_completed(obj: dict[str, Any]) -> None:
     """
-    checkout.session.completed:
-    - customer_id を profile に保存する「入口」
-    - subscription_id も取れたら一緒に保存
+    checkout.session.completed（買い切りの旅行パス）:
+    - mode が payment で、payment_status が paid のときだけ期限を延ばす（Stripe の推奨どおり）。
+      支払い方法はカードだけに絞っているので、遅れて確定する支払いは扱わない。
+    - 客（customer）の ID を profile に保存する（退会のときに Stripe の客を消すため）。
+    - パスの日数はサーバー側の表（metadata.pass_type）から決める。
     """
-    customer_id = obj.get("customer")
-    if not isinstance(customer_id, str) or not customer_id.strip():
+    if _as_str(obj.get("mode")) != "payment":
         return
 
+    session_id = _as_str(obj.get("id"))
     user_id = _extract_user_id_from_checkout_session(obj)
-    if user_id is None:
+    payment_status = _as_str(obj.get("payment_status"))
+
+    if payment_status != "paid":
+        log.warning(
+            "[stripe] checkout session not paid session=%s status=%s",
+            session_id,
+            payment_status or None,
+        )
+        return
+
+    if not session_id or user_id is None:
+        log.warning("[stripe] checkout session missing id or user session=%s", session_id or None)
         return
 
     user = User.objects.filter(id=user_id).first()
     if user is None:
+        log.warning("[stripe] checkout session user not found session=%s", session_id)
         return
 
-    profile, _ = UserProfile.objects.select_for_update().get_or_create(user=user)
+    metadata = obj.get("metadata") if isinstance(obj.get("metadata"), dict) else {}
+    definition = get_pass_definition(metadata.get("pass_type"))
+    if definition is None:
+        log.error("[stripe] checkout session has unknown pass_type session=%s", session_id)
+        return
 
-    # 事故防止: 既に埋まってるなら上書きしない（必要なら方針変更）
-    if not (profile.stripe_customer_id or "").strip():
-        profile.stripe_customer_id = customer_id.strip()
+    customer_id = _as_str(obj.get("customer"))
+    if customer_id:
+        profile, _ = UserProfile.objects.select_for_update().get_or_create(user=user)
+        # 事故防止: 既に埋まってるなら上書きしない
+        if not (profile.stripe_customer_id or "").strip():
+            profile.stripe_customer_id = customer_id
+            profile.save(update_fields=["stripe_customer_id", "updated_at"])
 
-    sub_id = obj.get("subscription")
-    if isinstance(sub_id, str) and sub_id.strip():
-        profile.stripe_subscription_id = sub_id.strip()
-
-    profile.subscription_status = "active"
-
-    profile.save(
-        update_fields=[
-            "stripe_customer_id",
-            "stripe_subscription_id",
-            "subscription_status",
-            "updated_at",
-        ]
+    grant_premium_pass(
+        user=user,
+        days=definition.days,
+        source=PremiumPassPurchase.SOURCE_STRIPE,
+        external_id=session_id,
+        pass_type=definition.pass_type,
+        amount=_as_int(obj.get("amount_total")),
+        currency=_as_str(obj.get("currency")),
+        payment_intent_id=_as_str(obj.get("payment_intent")),
     )
 
 
-def _apply_subscription_object(obj: dict[str, Any], *, etype: str) -> None:
+def _apply_charge_refunded(obj: dict[str, Any]) -> None:
     """
-    customer.subscription.*:
-    - customer_id で profile を引いて status/period_end/price_id を反映
+    charge.refunded:
+    - 全額返金（refunded=true、または amount_refunded >= amount）のときだけ、パスの日数を期限から引く。
+    - 一部返金は期限を変えない（Stripe 側に記録が残る）。
     """
-    if DEBUG_WEBHOOK:
-        log.debug(
-            "[stripe] _apply_subscription_object HIT etype=%s sub=%r customer=%r",
-            etype,
-            obj.get("id"),
-            obj.get("customer"),
-        )
-
-    customer_id = obj.get("customer")
-    if not isinstance(customer_id, str) or not customer_id.strip():
+    payment_intent_id = _as_str(obj.get("payment_intent"))
+    if not payment_intent_id:
         return
 
-    profile = (
-        UserProfile.objects.select_for_update()
-        .filter(stripe_customer_id=customer_id.strip())
-        .first()
+    amount = _as_int(obj.get("amount"))
+    amount_refunded = _as_int(obj.get("amount_refunded"))
+    fully_refunded = obj.get("refunded") is True or (
+        amount is not None and amount_refunded is not None and amount > 0 and amount_refunded >= amount
     )
-    if profile is None:
-        # 入口（checkout）で customer_id 保存ができてないとここに来る
-        if DEBUG_WEBHOOK:
-            log.debug("[stripe] profile not found for customer=%r", customer_id)
+    if not fully_refunded:
+        log.info("[stripe] partial refund recorded only payment_intent=%s", payment_intent_id)
         return
 
-    update_fields: list[str] = ["updated_at"]
-
-    # subscription ID
-    sub_id = obj.get("id")
-    if isinstance(sub_id, str) and sub_id.strip():
-        profile.stripe_subscription_id = sub_id.strip()
-        update_fields.append("stripe_subscription_id")
-
-    # price id (items.data[0].price.id)
-    price_id: Optional[str] = None
-    try:
-        items = obj.get("items") or {}
-        items_data = items.get("data") or []
-        if isinstance(items_data, list) and items_data:
-            price = (items_data[0] or {}).get("price") or {}
-            pid = price.get("id")
-            if isinstance(pid, str) and pid.strip():
-                price_id = pid.strip()
-    except Exception:
-        price_id = None
-
-    if price_id:
-        profile.stripe_price_id = price_id
-        update_fields.append("stripe_price_id")
-
-    # status
-    status = obj.get("status")
-    if etype == "customer.subscription.deleted":
-        profile.subscription_status = (
-            status.strip() if isinstance(status, str) and status.strip() else "canceled"
-        )
-        profile.current_period_end = None
-        update_fields.extend(["subscription_status", "current_period_end"])
-    elif isinstance(status, str) and status.strip():
-        profile.subscription_status = status.strip()
-        update_fields.append("subscription_status")
-
-    # cancel_at_period_end（Customer Portal の「期間終了時に解約」予約）
-    #
-    # - deleted: subscription 自体が消えたので予約は存在しない → False へ戻す
-    # - created / updated: payload に値があれば True/False の両方向で同期する
-    #   （キーが無い = Stripe が何も言っていないので、既存値を上書きしない）
-    #
-    # これは表示用のミラーであり、Premium/Free の判定には使わない。
-    # 期間終了までは Premium を維持する契約は subscription_status と
-    # current_period_end 側が持つ（is_subscription_active を参照）。
-    if etype == "customer.subscription.deleted":
-        profile.cancel_at_period_end = False
-        update_fields.append("cancel_at_period_end")
-    elif "cancel_at_period_end" in obj:
-        profile.cancel_at_period_end = _is_trueish(obj.get("cancel_at_period_end"))
-        update_fields.append("cancel_at_period_end")
-
-    # ---- 観測ログ（payloadの形を確定）: DEBUG時だけ ----
-    raw_cpe = obj.get("current_period_end")
-    raw_cancel_at = obj.get("cancel_at")
-    raw_cape = obj.get("cancel_at_period_end")
-    items_container = obj.get("items")
-
-    item0_cpe = None
-    try:
-        if isinstance(items_container, dict):
-            data0 = (items_container.get("data") or [None])[0]
-            if isinstance(data0, dict):
-                item0_cpe = data0.get("current_period_end")
-    except Exception:
-        pass
-
-    if DEBUG_WEBHOOK:
-        log.debug(
-            "[stripe] raw types cpe=%s cancel_at=%s cape=%s items=%s item0_cpe=%s",
-            type(raw_cpe).__name__,
-            type(raw_cancel_at).__name__,
-            type(raw_cape).__name__,
-            type(items_container).__name__,
-            type(item0_cpe).__name__,
-        )
-        log.debug(
-            "[stripe] raw values cpe=%r cancel_at=%r cape=%r item0_cpe=%r",
-            raw_cpe,
-            raw_cancel_at,
-            raw_cape,
-            item0_cpe,
-        )
-
-    # ---- 抽出 + fallback ----
-    period_end = _extract_current_period_end(obj)
-
-    if period_end is None and isinstance(sub_id, str) and sub_id.strip():
-        period_end = _fetch_subscription_period_end_from_api(sub_id.strip())
-        if DEBUG_WEBHOOK:
-            log.debug("[stripe] api fallback sub=%r period_end=%r", sub_id, period_end)
-
-    # INFO に残すのはこれ1行だけ（運用ログとして意味がある）
-    log.info(
-        "[stripe] sub=%r customer=%r status=%r period_end=%r",
-        obj.get("id"),
-        obj.get("customer"),
-        obj.get("status"),
-        period_end,
+    revoke_premium_pass_for_refund(
+        source=PremiumPassPurchase.SOURCE_STRIPE,
+        payment_intent_id=payment_intent_id,
     )
-
-    if etype != "customer.subscription.deleted" and period_end is not None:
-        profile.current_period_end = period_end
-        update_fields.append("current_period_end")
-
-    profile.save(update_fields=sorted(set(update_fields)))
-
-
-def apply_stripe_subscription_event(*, event: dict[str, Any]) -> None:
-    """互換エイリアス（過去コード向け）"""
-    apply_stripe_event(event=event)

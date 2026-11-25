@@ -42,6 +42,7 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from temples.domain.removed_shrines import is_removed_shrine
 from temples.models import (
     Shrine,
     ShrineDeity,
@@ -729,6 +730,16 @@ class Command(BaseCommand):
             raise CommandError(f"seed file is not valid JSON: {exc}") from exc
 
         parsed = parse_seed(raw)
+
+        # 本番から削除した神社は取り込まない（temples/domain/removed_shrines.py）。
+        # 知識データも「後ろに足すだけ」の決まりで行を外せないため、ここで飛ばす。
+        kept_blocks = []
+        for block in parsed.shrines:
+            if is_removed_shrine(block.name_jp, block.address):
+                self.stdout.write(f"SKIP removed shrine {block.name_jp!r}")
+                continue
+            kept_blocks.append(block)
+        parsed.shrines = kept_blocks
 
         if options["validate_only"]:
             errors = list(parsed.errors)

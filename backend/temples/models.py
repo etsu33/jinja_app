@@ -12,6 +12,7 @@ from .models_places_seeds import PlacesSeed, PlacesSeedState  # noqa
 from .models_concierge_analytics import ConciergeRecommendationLog
 from .models_usage import FeatureUsage  # noqa
 from .models_weekly_presentation import WeeklyPresentationSnapshot  # noqa
+from .models_feature_words_en import ShrineFeatureWordEn  # noqa
 from .models_canonical_anchor import (  # noqa
     ShrineCanonicalAnchor,
     ShrineCanonicalAnchorComponent,
@@ -786,6 +787,9 @@ class ShrineHistory(models.Model):
     class Meta:
         ordering = ["sort_order", "id"]
         verbose_name_plural = "Shrine histories"
+        constraints = [
+            models.UniqueConstraint(fields=["id", "shrine"], name="history_id_shrine_unique"),
+        ]
         indexes = [
             models.Index(fields=["shrine", "sort_order"], name="idx_shrine_history_sort"),
         ]
@@ -1791,3 +1795,13 @@ class PlaceCache(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} ({self.place_id})"
+
+
+# Register Highlights after the shared Knowledge constants/models are defined.
+from .models_highlights import (  # noqa: E402, F401, I001
+    ShrineHighlight,
+    ShrineHighlightAnswer,
+    ShrineHighlightHistory,
+    ShrineHighlightSource,
+    ShrineHighlightTranslation,
+)

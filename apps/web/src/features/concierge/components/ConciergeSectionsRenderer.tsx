@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import DetailSection from "@/components/shrine/DetailSection";
+import ConciergeHighlightPick from "@/features/concierge/components/ConciergeHighlightPick";
 import PlaceShrineCard from "@/components/shrine/PlaceShrineCard";
 import ShrineSaveButton from "@/components/shrine/ShrineSaveButton";
 import ConciergeFilterPanel from "@/features/concierge/components/ConciergeFilterPanel";
@@ -430,6 +431,7 @@ export default function ConciergeSectionsRenderer({
         ),
         analyticsProvenance: item.analyticsProvenance,
         recommendationInstanceId: item.recommendationInstanceId ?? null,
+        highlightPick: item.highlightPick ?? null,
       }));
     });
   }, [payload, normalizedModeForTracking]);
@@ -460,6 +462,10 @@ export default function ConciergeSectionsRenderer({
         mode: item.mode,
         historyTheme: item.historyTheme ?? analyticsContext?.historyTheme,
         recommendationInstanceId: item.recommendationInstanceId,
+        // 見どころ単位の推薦 PR-3：「ここで見る」を出したカードと出さなかったカードを比べるため
+        hasHighlightPick: item.highlightPick !== null,
+        highlightId: item.highlightPick?.highlightId ?? null,
+        highlightNeedTag: item.highlightPick?.needTag ?? null,
         ...consultationAxisAnalytics(item.consultationAxis ?? analyticsContext?.consultationAxis),
         ...(item.analyticsProvenance ? recommendationAnalyticsProperties(item.analyticsProvenance) : {}),
       });
@@ -722,14 +728,7 @@ export default function ConciergeSectionsRenderer({
                   }}
                   canApply={canApply}
                   applyLabel={isEntryRoute ? "この条件で提案を見る" : "この条件で提案を更新"}
-                  birthdate={state.birthdate}
-                  onBirthdateChange={(v: string) => onAction?.({ type: "filter_set_birthdate", birthdate: v })}
-                  // 認証判定の入口はここ1箇所。auth解決前は false 扱いにして、
-                  // 未確定の状態で保存説明を出さない（accessLevel と同じ条件）。
-                  isLoggedIn={!authLoading && isLoggedIn}
-                  element4={state.element4}
                   goriyakuTags={state.goriyakuTags}
-                  suggestedTags={state.suggestedTags}
                   selectedTagIds={state.selectedTagIds}
                   onToggleTag={(tagId: number) => onAction?.({ type: "filter_toggle_tag", tagId })}
                   tagsLoading={state.tagsLoading}
@@ -889,7 +888,6 @@ export default function ConciergeSectionsRenderer({
                           reasonFacts: heroItem.reasonFacts ?? null,
                           index: 0,
                           mode: normalizedMode,
-                          birthdate: filterState?.birthdate ?? null,
                           needTags: effectiveNeedTags,
                         });
                         const reasonDisplay = buildRecommendationReasonDisplay({
@@ -956,15 +954,18 @@ export default function ConciergeSectionsRenderer({
                         // 新たな一致判定は行わない(Concierge Evidence Explanation PR、
                         // docs/product/recommendation-signal-authority.md §10)。
                         const adaptedReasonFacts = adaptReasonFactsForViewModel(heroItem.reasonFacts ?? null);
-                        const runtimeMatchGoriyakuLabel =
-                          adaptedReasonFacts?.primary_fact_type === "goriyaku_tag"
-                            ? (adaptedReasonFacts.shrine_benefit ?? null)
-                            : heroReasonV4.factSource === "goriyaku"
-                              ? heroReasonV4.factText
-                              : null;
+                        // 表示には日本語名(shrine_benefit_display_label = label_ja、無ければ label)を使う。
+                        // 内部名だけのときは null になり、名前を入れない文に切り替わる。
+                        const runtimeMatchGoriyakuMatched = adaptedReasonFacts?.primary_fact_type === "goriyaku_tag";
+                        const runtimeMatchGoriyakuLabel = runtimeMatchGoriyakuMatched
+                          ? (adaptedReasonFacts?.shrine_benefit_display_label ?? null)
+                          : heroReasonV4.factSource === "goriyaku"
+                            ? heroReasonV4.factText
+                            : null;
                         const runtimeMatchLines = buildRuntimeMatchLines({
                           needTags: effectiveNeedTags,
                           goriyakuLabel: runtimeMatchGoriyakuLabel,
+                          goriyakuMatched: runtimeMatchGoriyakuMatched,
                         });
 
                         return (
@@ -1077,6 +1078,21 @@ export default function ConciergeSectionsRenderer({
                               </div>
                             ) : null}
 
+                            {/* 見どころ単位の推薦 PR-3：「ここで見る」（Action Layer）。推薦理由の
+                                見出しの外に置く（順位に寄与していないので理由として見せない）。
+                                無料の層に置くので、Premium の境目より上。 */}
+                            {heroItem.highlightPick ? (
+                              <ConciergeHighlightPick
+                                pick={heroItem.highlightPick}
+                                variant="hero"
+                                shrineId={heroItem.shrineId}
+                                recommendationRank={1}
+                                threadId={tid ?? null}
+                                resultSetId={resultSetId}
+                                recommendationInstanceId={heroItem.recommendationInstanceId ?? null}
+                              />
+                            ) : null}
+
                             {/* Free -> Premium seam (PR-G2): one restrained boundary, placed
                                 where the FREE reason layers end and the deeper meaning begins.
                                 Guest / Free see the seam here instead of the gated
@@ -1120,6 +1136,7 @@ export default function ConciergeSectionsRenderer({
                               tid={tid}
                               nextPath={heroItem.detailHref}
                               variant="subtle"
+                              idleLabel="この神社をお気に入り登録"
                               recommendationInstanceId={heroItem.recommendationInstanceId ?? null}
                               analyticsProvenance={heroItem.analyticsProvenance}
                             />
@@ -1202,8 +1219,7 @@ export default function ConciergeSectionsRenderer({
                                 reasonFacts: item.reasonFacts ?? null,
                                 index: compactIdx + 1,
                                 mode: normalizedMode,
-                                birthdate: filterState?.birthdate ?? null,
-                                needTags: item.breakdown?.matched_need_tags ?? [],
+                                      needTags: item.breakdown?.matched_need_tags ?? [],
                               });
                               const compactReasonDisplay = buildRecommendationReasonDisplay({
                                 matchReason: compactReasonVm.list.primaryPhrase,
@@ -1280,6 +1296,17 @@ export default function ConciergeSectionsRenderer({
                                     recommendationKey={item.shrineId}
                                     rank={compactIdx + 2}
                                   />
+                                  {item.highlightPick ? (
+                                    <ConciergeHighlightPick
+                                      pick={item.highlightPick}
+                                      variant="compact"
+                                      shrineId={item.shrineId}
+                                      recommendationRank={compactIdx + 2}
+                                      threadId={tid ?? null}
+                                      resultSetId={resultSetId}
+                                      recommendationInstanceId={item.recommendationInstanceId ?? null}
+                                    />
+                                  ) : null}
                                 </div>
                               );
                             })}
@@ -1290,9 +1317,10 @@ export default function ConciergeSectionsRenderer({
                   ) : null}
 
                   {placeItems.length > 0 ? (
-                    <div className="space-y-3 pt-4">
-                      {placeItems.map((item: PlaceShrineItem, placeIdx: number) => (
-                        <div key={`rec-${i}-${placeIdx}-place-${item.placeId}`} className="space-y-2">
+                    <section aria-label="参考候補" className="space-y-3 pt-4">
+                      <h3 className="text-sm font-semibold">参考候補</h3>
+                      {placeItems.map((item: PlaceShrineItem) => (
+                        <div key={`place-${item.placeId}`} className="space-y-2">
                           <PlaceShrineCard
                             placeId={item.placeId}
                             title={item.title}
@@ -1304,7 +1332,7 @@ export default function ConciergeSectionsRenderer({
                           />
                         </div>
                       ))}
-                    </div>
+                    </section>
                   ) : null}
 
                   {!isEntryRoute && savePromptVisibility !== "hidden" ? (

@@ -13,6 +13,7 @@ from temples.management.commands.sync_visit_style_tags_from_seed import (
     MIN_TAGS_PER_SHRINE,
     REQUEST_ONLY_TAGS,
 )
+from temples.domain.removed_shrines import is_removed_shrine
 from temples.models import GoriyakuTag, Shrine
 
 
@@ -37,10 +38,30 @@ COORDINATE_ABS_TOLERANCE = 1e-12
 COORDINATE_FIELDS = frozenset({"latitude", "longitude"})
 
 
+def _is_empty_value(value) -> bool:
+    """シードの「空」を判定する（None・空白だけの文字列・空のリスト/タプル）。
+
+    既存の神社を UPDATE するとき、シード側が空で本番側に値がある項目は上書きしない。
+    文字の項目はシードで「キーを省く」書き方が無く毎回すべて送られるため、
+    空は「消す」ではなく「触らない」と読む（2026-11-12 の goriyaku 空上書き事故の再発防止）。
+    緯度・経度も対象に含める（シードが None でも本番の座標を残す）。
+    数値の 0 や False は空として扱わない。
+    """
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    if isinstance(value, (list, tuple)):
+        return len(value) == 0
+    return False
+
+
 def _coordinate_values_equal(current, incoming) -> bool:
     """latitude / longitude を `COORDINATE_ABS_TOLERANCE` 以内なら同値とみなす。
 
     None の意味は厳密に維持する（FC-05）。
+    ただし UPDATE では、シード側が None で本番に値がある場合は比較の前に
+    「残す」（`_is_empty_value`）と判定し、ここまで来ない（2026-11-13）。
 
     * None vs None       -> equal
     * None vs numeric    -> different
@@ -61,6 +82,37 @@ def _coordinate_values_equal(current, incoming) -> bool:
         float(incoming),
         rel_tol=0.0,
         abs_tol=COORDINATE_ABS_TOLERANCE,
+    )
+
+
+def _location_values_equal(current, incoming) -> bool:
+    """location（PointField）を X / Y ごとに `_coordinate_values_equal` で比較する。
+
+    `location` は latitude / longitude から作る派生値のため、同じ float8 round-trip
+    差分を WKT の文字列比較で UPDATE に昇格させないよう、座標 tolerance を揃える。
+
+    * None vs None                    -> equal
+    * None vs geometry / geometry vs None -> different
+    * どちらかが Point でない、Z 座標を持つ -> 従来どおり WKT（SRID 付き）の strict comparison
+    * SRID が異なる                    -> different
+    * Point vs Point（同一 SRID）      -> X / Y の両方が tolerance 内なら equal
+    """
+    if current is None or incoming is None:
+        return current is None and incoming is None
+
+    if (
+        getattr(current, "geom_type", None) != "Point"
+        or getattr(incoming, "geom_type", None) != "Point"
+        or getattr(current, "hasz", False)
+        or getattr(incoming, "hasz", False)
+    ):
+        return str(current) == str(incoming)
+
+    if current.srid != incoming.srid:
+        return False
+
+    return _coordinate_values_equal(current.x, incoming.x) and _coordinate_values_equal(
+        current.y, incoming.y
     )
 
 
@@ -139,6 +191,13 @@ def _parse_explicit_goriyaku_tags(data: list[dict]) -> dict[int, list[str]]:
         if not isinstance(raw, list):
             raise CommandError(
                 f"{name}: goriyaku_tags must be a list of canonical tag names"
+            )
+        # visit_style_tags と同じ約束：key なし＝触らない、key あり＝中身が答え。
+        # `[]` は本番のタグを全部外してしまうため、書き間違いとして止める（fail closed）。
+        if not raw:
+            raise CommandError(
+                f"{name}: goriyaku_tags must not be empty "
+                "(omit the key entirely to leave existing tags untouched)"
             )
 
         names: list[str] = []
@@ -249,6 +308,8 @@ class Command(BaseCommand):
         updated = 0
         skipped = 0
         goriyaku_tag_rows = 0
+        kept_shrines = 0
+        kept_field_count = 0
         goriyaku_tag_updated = 0
         goriyaku_tag_added_links = 0
         goriyaku_tag_removed_links = 0
@@ -272,6 +333,12 @@ class Command(BaseCommand):
                 if not name or not address:
                     skipped += 1
                     self.stdout.write(f"SKIP invalid row name={name!r} address={address!r}")
+                    continue
+
+                # 本番から削除した神社は作り直さない（temples/domain/removed_shrines.py）
+                if is_removed_shrine(name, address):
+                    skipped += 1
+                    self.stdout.write(f"SKIP removed {name}")
                     continue
 
                 requested_tag_names = (
@@ -358,13 +425,18 @@ class Command(BaseCommand):
                     removed = sorted(current_tag_names - requested_tag_set)
 
                 changed_fields = []
+                kept_fields = []
                 for field, value in payload.items():
                     current = getattr(obj, field)
 
+                    # シードが空で本番に値がある項目は上書きしない（_is_empty_value 参照）
+                    if _is_empty_value(value) and not _is_empty_value(current):
+                        kept_fields.append(field)
+                        continue
+
                     if field == "location":
-                        current_cmp = str(current) if current is not None else None
-                        value_cmp = str(value) if value is not None else None
-                        if current_cmp != value_cmp:
+                        # latitude / longitude と同じ tolerance で比較する（Point 同士・同一 SRID のみ）。
+                        if not _location_values_equal(current, value):
                             setattr(obj, field, value)
                             changed_fields.append(field)
                     elif field in COORDINATE_FIELDS:
@@ -377,6 +449,13 @@ class Command(BaseCommand):
                         if current != value:
                             setattr(obj, field, value)
                             changed_fields.append(field)
+
+                if kept_fields:
+                    kept_shrines += 1
+                    kept_field_count += len(kept_fields)
+                    self.stdout.write(
+                        f"KEEP id={obj.id} {obj.name_jp} reason=seed_empty kept={kept_fields}"
+                    )
 
                 if changed_fields:
                     if not dry_run:
@@ -413,6 +492,11 @@ class Command(BaseCommand):
             self.style.SUCCESS(
                 f"goriyaku_tags rows={goriyaku_tag_rows} updated={goriyaku_tag_updated} "
                 f"added_links={goriyaku_tag_added_links} removed_links={goriyaku_tag_removed_links}"
+            )
+        )
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"kept_existing shrines={kept_shrines} field_count={kept_field_count}"
             )
         )
         self.stdout.write(

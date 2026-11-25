@@ -1,9 +1,11 @@
 "use client";
 // apps/web/src/lib/auth/AuthProvider.tsx
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { AuthState, AuthUser } from "@/lib/auth/types";
+import { identifyAnalyticsUser, resetAnalyticsIdentity } from "@/lib/analytics/identity";
 import { markLoggedIn, markLoggedOut, maybeLoggedIn } from "@/lib/auth/loggedInMarker";
+import { clearConciergeAnonymousSnapshot, clearConciergeThreadCache } from "@/lib/concierge/conciergeLocalState";
 
 type AuthCtx = {
   user: AuthUser | null;
@@ -138,11 +140,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isHydrating: true,
   });
 
+  // 直近に identify した内部ユーザーID。同じ ID で何度も identify しないため、
+  // また Guest に戻ったときに reset が必要かを判断するために持つ。
+  const identifiedUserIdRef = useRef<string | null>(null);
 
+  const resetIdentity = useCallback(() => {
+    resetAnalyticsIdentity();
+    identifiedUserIdRef.current = null;
+  }, []);
+
+  /**
+   * 401（未認証が確定）で Guest に戻るときは、前のユーザーの識別を残さない。
+   * ただし最初から匿名の Guest で毎回 reset すると、匿名 ID が読み込みのたびに
+   * 作り直されてしまうため、識別済み、または直近ログインしていた（marker あり）
+   * 場合に限る。marker は applyMeResult() で消えるので、その前に判定する。
+   */
+  const resolveMeResult = useCallback(
+    (result: MeResult): AuthState => {
+      if (result.kind === "unauthenticated" && (identifiedUserIdRef.current !== null || maybeLoggedIn())) {
+        resetIdentity();
+      }
+      return applyMeResult(result);
+    },
+    [resetIdentity],
+  );
 
   const refreshMe = async () => {
-    setAuthState(applyMeResult(await fetchMe()));
+    setAuthState(resolveMeResult(await fetchMe()));
   };
+
+  // 認証済みになったら、内部ユーザーIDだけで identify する。
+  // マウント時・login() 後・refreshMe() 後のどの経路でも、この effect が受け持つ。
+  const authenticatedUserId =
+    authState.status === "authenticated" && authState.user?.id != null ? String(authState.user.id) : null;
+
+  useEffect(() => {
+    if (authenticatedUserId === null) return;
+    if (identifiedUserIdRef.current === authenticatedUserId) return;
+
+    // ログアウトを経ずに別のユーザーへ切り替わった場合も、前の識別を引き継がない。
+    if (identifiedUserIdRef.current !== null) {
+      resetAnalyticsIdentity();
+    }
+
+    identifyAnalyticsUser(authenticatedUserId);
+    identifiedUserIdRef.current = authenticatedUserId;
+  }, [authenticatedUserId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -167,14 +210,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await fetchMe();
 
       if (!cancelled) {
-        setAuthState(applyMeResult(result));
+        setAuthState(resolveMeResult(result));
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [resolveMeResult]);
 
   const login = async (username: string, password: string) => {
     const r = await fetch("/api/auth/login", {
@@ -186,6 +229,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!r.ok) throw new Error("login failed");
 
+    // 前の identity が残した相談 state の local cache を新しい identity に引き継がない。
+    // 匿名相談 snapshot（sessionStorage, 同じタブの匿名相談）はログイン後も残す。
+    clearConciergeThreadCache();
     markLoggedIn();
     await refreshMe();
   };
@@ -197,6 +243,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     markLoggedOut();
+    // ログアウト後の Guest（同じブラウザの別の人を含む）に、相談 state の local cache を残さない。
+    clearConciergeThreadCache();
+    clearConciergeAnonymousSnapshot();
+    // ログアウト後のイベントを前のユーザーに紐づけない。
+    resetIdentity();
 
     setAuthState({
       status: "guest",

@@ -103,8 +103,8 @@ EXPECTED_NON_FALLBACK_IDS = {
 # NEED_TEXT_WEIGHTS["relationship"] entry, no shrine here carries
 # history_theme="縁" either (representative_shrines.yaml has no
 # history_theme field at all yet), and these test candidates carry no
-# goriyaku_tag_ids (even though NEED_TO_GORIYAKU_IDS["relationship"] =
-# {1, 27, 34, 43} already exists -- temples/domain/need_to_goriyaku_tag_ids.py).
+# goriyaku tags (the need -> concept mapping for "relationship" lives in
+# temples/domain/need_to_goriyaku_concepts.py).
 # This is a real, reported gap (Task 8 of the axis-followup PR), not fixed
 # here -- see docs/audit/concierge-relationship-axis-followup.md.
 EXPECTED_FALLBACK_CLASSIFICATION = {

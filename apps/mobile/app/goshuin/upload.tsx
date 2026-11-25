@@ -5,7 +5,17 @@ import { View, Text, Pressable, Image, StyleSheet, Alert, ScrollView } from "rea
 import { useRouter } from "expo-router";
 import { pushStamp } from "../../lib/storage";
 import Button from "../../components/ui/Button";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
+import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// ボタンと空状態の印。グリフの □ は端末のフォント次第で豆腐になる。
+const PICK_ICON_SIZE = 22;
+const PLACEHOLDER_ICON_SIZE = 32;
+
+function showSaveFailure() {
+  Alert.alert("保存できませんでした", "時間をおいて、もう一度お試しください。");
+}
 
 export default function GoshuinUpload() {
   const router = useRouter();
@@ -50,7 +60,10 @@ export default function GoshuinUpload() {
     setSaving(true);
     try {
       const savedItem = await pushStamp(uri);
-      if (!savedItem) return;
+      if (!savedItem) {
+        showSaveFailure();
+        return;
+      }
 
       Alert.alert("保存しました");
       goBack();
@@ -58,6 +71,7 @@ export default function GoshuinUpload() {
       if (__DEV__) {
         console.warn("[GoshuinUpload] failed to save stamp", error);
       }
+      showSaveFailure();
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -66,32 +80,40 @@ export default function GoshuinUpload() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Pressable onPress={goBack} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← 戻る</Text>
-        </Pressable>
-      </View>
-
       <View style={styles.titleBlock}>
-        <Text style={styles.lead}>参拝の記録</Text>
-        <Text style={styles.title}>御朱印を登録</Text>
         <Text style={styles.subtitle}>カメラで撮影、またはアルバムから選択してください。</Text>
       </View>
 
       <View style={styles.pickRow}>
-        <Pressable onPress={takePhoto} style={({ pressed }) => [styles.pickBtn, pressed && styles.pressed]}>
-          <Text style={styles.pickBtnIcon}>□</Text>
+        <Pressable
+          onPress={takePhoto}
+          style={({ pressed }) => [styles.pickBtn, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel="カメラで御朱印を撮影する"
+        >
+          <Ionicons name="camera-outline" size={PICK_ICON_SIZE} color={theme.accent} />
           <Text style={styles.pickBtnText}>カメラ</Text>
         </Pressable>
-        <Pressable onPress={pickFromLibrary} style={({ pressed }) => [styles.pickBtn, pressed && styles.pressed]}>
-          <Text style={styles.pickBtnIcon}>□</Text>
+        <Pressable
+          onPress={pickFromLibrary}
+          style={({ pressed }) => [styles.pickBtn, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel="アルバムから御朱印画像を選択する"
+        >
+          <Ionicons name="images-outline" size={PICK_ICON_SIZE} color={theme.accent} />
           <Text style={styles.pickBtnText}>アルバム</Text>
         </Pressable>
       </View>
 
       {uri ? (
         <View style={styles.previewBlock}>
-          <Image source={{ uri }} style={styles.previewImage} />
+          <Image
+            source={{ uri }}
+            style={styles.previewImage}
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel="選択した御朱印画像"
+          />
           <Button
             title="この御朱印を保存する"
             variant="primary"
@@ -102,7 +124,7 @@ export default function GoshuinUpload() {
         </View>
       ) : (
         <View style={styles.placeholder}>
-          <Text style={styles.placeholderIcon}>□</Text>
+          <Ionicons name="image-outline" size={PLACEHOLDER_ICON_SIZE} color={theme.muted} />
           <Text style={styles.placeholderTitle}>画像を選択してください</Text>
           <Text style={styles.placeholderText}>結んだご縁を、あとから振り返れる形で残します。</Text>
         </View>
@@ -126,45 +148,16 @@ const styles = StyleSheet.create({
     paddingTop: 22,
     paddingBottom: 48,
   },
-  header: {
-    marginBottom: 28,
-  },
-  backBtn: {
-    alignSelf: "flex-start",
-    paddingVertical: 8,
-    paddingHorizontal: 13,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.borderGold,
-    backgroundColor: "transparent",
-  },
-  backBtnText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
-  },
   titleBlock: {
     marginBottom: 24,
   },
-  lead: {
-    color: theme.mutedSoft,
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 1,
-    marginBottom: 10,
-  },
   title: {
+    ...typography.display,
     color: theme.text,
-    fontSize: 30,
-    fontWeight: "900",
-    lineHeight: 40,
-    letterSpacing: 1,
   },
   subtitle: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
     marginTop: 10,
   },
   pickRow: {
@@ -183,15 +176,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
   },
-  pickBtnIcon: {
-    color: theme.gold,
-    fontSize: 24,
-    fontWeight: "900",
-  },
   pickBtnText: {
+    ...typography.label,
     color: theme.text,
-    fontSize: 14,
-    fontWeight: "900",
   },
   pressed: {
     opacity: 0.75,
@@ -219,21 +206,13 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     backgroundColor: theme.surface,
   },
-  placeholderIcon: {
-    color: theme.gold,
-    fontSize: 34,
-    fontWeight: "900",
-  },
   placeholderTitle: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 17,
-    fontWeight: "900",
   },
   placeholderText: {
+    ...typography.body,
     color: theme.mutedDark,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
     textAlign: "center",
   },
 });

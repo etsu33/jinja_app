@@ -101,6 +101,24 @@ describe("ShrineSaveButton", () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
+  it("idleLabel を渡すとログイン済み・未保存時のラベルだけが置き換わる（未指定時は従来ラベル）", () => {
+    useFavoriteMock.mockImplementation(() => ({ fav: false, busy: false, toggle: vi.fn() }));
+
+    render(
+      <ShrineSaveButton
+        shrineId={17}
+        ctx="concierge"
+        guestMode={false}
+        variant="subtle"
+        idleLabel="この神社をお気に入り登録"
+        initial={{ fav: false, favorite_id: null }}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "この神社をお気に入り登録" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "あとで見返すために保存" })).toBeNull();
+  });
+
   it("ctx=compassの場合、favorite_click / shrine_decisionともにsource=compassを送る（PR-C）", async () => {
     const toggleMock = vi.fn().mockResolvedValue(undefined);
 

@@ -3,19 +3,16 @@ import type { ConciergeModeSignal } from "@/features/concierge/types/unified";
 import type { DirectionReference } from "../../../../../../packages/shared/directionReference";
 import type { RecommendationAnalyticsProvenance } from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
 import type { UserOrigin } from "../../../../../../packages/shared/userOrigin";
+import type { ConciergeHighlightPick } from "@/features/concierge/highlightPick";
 
 /* =========================
  * filter state
  * ========================= */
-export type Element4 = "火" | "地" | "風" | "水";
 export type GoriyakuTag = { id: number; name: string };
 
 export type ConciergeFilterState = {
   isOpen: boolean;
-  birthdate: string; // YYYY-MM-DD（空文字OK）
-  element4: Element4 | null;
   goriyakuTags: readonly GoriyakuTag[];
-  suggestedTags: readonly GoriyakuTag[];
   selectedTagIds: readonly number[];
   tagsLoading: boolean;
   tagsError: string | null;
@@ -59,6 +56,8 @@ export type RegisteredShrineItem = {
     disclaimer?: string | null;
   } | null;
   directionReference?: DirectionReference | null;
+  /** 見どころ単位の推薦 PR-3：相談に合う「ここで見る」見どころ（backend の highlight_pick）。推薦理由ではない。 */
+  highlightPick?: ConciergeHighlightPick | null;
 };
 
 export type PlaceShrineItem = {
@@ -157,7 +156,6 @@ export type RendererAction =
   | { type: "add_condition" }
   | { type: "filter_close" }
   | { type: "filter_apply" }
-  | { type: "filter_set_birthdate"; birthdate: string }
   | { type: "filter_toggle_tag"; tagId: number }
   | { type: "filter_set_extra"; extraCondition: string }
   | { type: "filter_set_visit_preferences"; visitPreferences: string[] }

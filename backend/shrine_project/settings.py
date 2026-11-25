@@ -7,6 +7,12 @@ import dj_database_url
 import environ
 from urllib.parse import urlparse
 
+from shrine_project.secret_key import resolve_secret_key
+from shrine_project.throttle_config import (
+    load_throttle_identity_config,
+    relax_rates_for_disable_throttle,
+)
+
 
 # --- Paths ---
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -99,12 +105,8 @@ if USE_SQLITE and USE_GIS:
     os.environ.setdefault("SPATIALITE_LIBRARY_PATH", "mod_spatialite")
 
 # --- security / DEBUG ---
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
-if not SECRET_KEY:
-    if os.getenv("CI") or IS_PYTEST:
-        SECRET_KEY = "django-insecure-ci-only-secret-key-please-override"
-    else:
-        SECRET_KEY = "django-insecure-dev-only-secret"
+# 未設定なら起動を止める（SPH-02）。許可される例外と trust boundary は shrine_project/secret_key.py。
+SECRET_KEY = resolve_secret_key(os.environ)
 
 DEBUG = env.bool("DEBUG", default=True)
 
@@ -304,9 +306,10 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_THROTTLE_CLASSES": (
-        "rest_framework.throttling.ScopedRateThrottle",
-        "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.UserRateThrottle",
+        # 匿名の識別子は shrine_project/throttling.py（WS-04）。scope・rate は DRF 既定クラスと同じ
+        "shrine_project.throttling.ScopedRateThrottle",
+        "shrine_project.throttling.AnonRateThrottle",
+        "shrine_project.throttling.UserRateThrottle",
     ),
     "DEFAULT_THROTTLE_RATES": {
         "anon": "100/min",
@@ -325,12 +328,24 @@ REST_FRAMEWORK = {
         "favorites": "30/min",
         "routes": "60/min",
         "shrines_ingest": "1/min",
+        # POST /api/places/resolve/ 専用（GET は対象外）。Google Places 呼び出しと DB 書き込みを伴う
+        "places-resolve": "10/min",
     },
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
+
+# --- Throttle client identity（WS-04, shrine_project/throttling.py）---
+# CF-Connecting-IP を信頼するのは、Render の edge（Cloudflare）がその値を上書きする境界の内側だと
+# デプロイ設定で明示したときだけ。未設定なら X-Forwarded-For も CF-Connecting-IP も使わず fail-safe に倒す。
+# KM_CLIENT_IDENTITY_SECRET は Web BFF と共有する server-only の HMAC secret（MD-2）。
+# 設定の検証は import 時に行い、Render 上で THROTTLE_TRUSTED_EDGE が無い・不正な値・短い secret なら
+# ImproperlyConfigured で起動を止める（shrine_project/throttle_config.py）。
+_throttle_identity = load_throttle_identity_config(os.environ)
+THROTTLE_TRUSTED_EDGE = _throttle_identity.trusted_edge
+THROTTLE_CLIENT_IDENTITY_SECRET = _throttle_identity.client_identity_secret
 
 _rates = REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]
 
@@ -347,11 +362,12 @@ if os.getenv("THROTTLE_PLACES_NEARBY"):
 if os.getenv("THROTTLE_SHRINES_INGEST"):
     _rates["shrines_ingest"] = os.environ["THROTTLE_SHRINES_INGEST"]
 
-# ローカルでスロットルほぼ無効（例外: ingestは守る）
+if os.getenv("THROTTLE_PLACES_RESOLVE"):
+    _rates["places-resolve"] = os.environ["THROTTLE_PLACES_RESOLVE"]
+
+# ローカルでスロットルほぼ無効（例外: ingest と places-resolve は守る。DISABLE_THROTTLE_EXEMPT_SCOPES）
 if os.getenv("DISABLE_THROTTLE", "0") == "1":
-    for k in list(_rates.keys()):
-        if k != "shrines_ingest":
-            _rates[k] = "1000/min"
+    relax_rates_for_disable_throttle(_rates)
 
 # 旧 env 名互換（これも “あれば上書き” だけ）
 if os.getenv("CONCIERGE_THROTTLE"):
@@ -398,8 +414,10 @@ GOOGLE_PLACES_ENABLED = os.getenv("GOOGLE_PLACES_ENABLED", "1").strip().lower() 
 # Stripe
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
-STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID", "")
-STRIPE_PREMIUM_PRICE_ID = os.getenv("STRIPE_PREMIUM_PRICE_ID", "") or STRIPE_PRICE_ID
+# 買い切りの旅行パス（自動更新しない）の Stripe Price ID。1日 / 7日 / 14日。
+STRIPE_PASS_PRICE_ID_1D = os.getenv("STRIPE_PASS_PRICE_ID_1D", "")
+STRIPE_PASS_PRICE_ID_7D = os.getenv("STRIPE_PASS_PRICE_ID_7D", "")
+STRIPE_PASS_PRICE_ID_14D = os.getenv("STRIPE_PASS_PRICE_ID_14D", "")
 STRIPE_WEBHOOK_DEBUG = os.getenv("STRIPE_WEBHOOK_DEBUG", "0") == "1"
 
 
@@ -539,3 +557,9 @@ LOGGING = {
         },
     },
 }
+
+APPLE_STOREKIT_ENVIRONMENTS = os.getenv(
+    "APPLE_STOREKIT_ENVIRONMENTS", os.getenv("APPLE_STOREKIT_ENVIRONMENT", "Production")
+)
+APPLE_STOREKIT_ROOT_CERTIFICATES = os.getenv("APPLE_STOREKIT_ROOT_CERTIFICATES", "")
+APPLE_STOREKIT_APP_ID = os.getenv("APPLE_STOREKIT_APP_ID", "")

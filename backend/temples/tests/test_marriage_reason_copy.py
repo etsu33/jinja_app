@@ -22,6 +22,7 @@ import pytest
 
 from temples.models import GoriyakuTag
 from temples.services.concierge_chat import build_chat_recommendations
+from temples.tests.fixtures.goriyaku_canonical import canonical_tag_names
 
 
 def _candidate(name, goriyaku_tag_ids, **overrides):
@@ -36,6 +37,7 @@ def _candidate(name, goriyaku_tag_ids, **overrides):
         "popular_score": 5.0,
     }
     base.update(overrides)
+    base.setdefault("goriyaku_tag_names", canonical_tag_names(base.get("goriyaku_tag_ids") or []))
     return base
 
 

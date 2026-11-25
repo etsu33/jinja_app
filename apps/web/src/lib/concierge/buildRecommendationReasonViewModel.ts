@@ -2,6 +2,7 @@ import { buildReasonNarrative } from "./buildReasonNarrative";
 import { buildStateNarrative } from "./buildStateNarrative";
 import { buildMeaningNarrative } from "./buildMeaningNarrative";
 import { adaptReasonFactsForViewModel, type RecommendationReasonViewFacts } from "./adaptReasonFactsForViewModel";
+import { toDisplayLabel } from "./displayLabel";
 import type { ConciergeReasonFacts } from "@/lib/api/concierge";
 import {
   HERO_COMPAT_SUBTITLE,
@@ -117,9 +118,15 @@ export type NeedTagMeaningSlots = {
 };
 
 export type ShrineMeaningSlots = {
+  /** 判定用(あるかないかで理由の種類を決める)。表示には benefitPrimaryDisplay を使う。 */
   benefitPrimary: string | null;
+  /** 表示用。英字・数字・記号だけの内部名は null(名前を入れない文に切り替える)。 */
+  benefitPrimaryDisplay?: string | null;
   benefitSecondary?: string | null;
+  /** 判定用(あるかないかで理由の種類を決める)。表示には featureDisplay を使う。 */
   feature?: string | null;
+  /** 表示用。英字・数字・記号だけの内部名や、名前を入れない種類(visit_style)は null。 */
+  featureDisplay?: string | null;
   symbol?: string | null;
   tone?: "strong" | "quiet" | "tight" | "open" | "neutral" | null;
   actionRole?: string | null;
@@ -243,11 +250,17 @@ export function resolveInputType(params: BuildParams): ReasonInputType {
   return "query";
 }
 
+/**
+ * 表示用の五行の名前。matched_element は Backend の label(実際は内部名 "element")が入るため、
+ * 表示名として確かめ、内部名なら神社に登録された五行(astro_elements)を使う。どちらも無ければ null。
+ */
 export function getPrimaryElement(rec: RecommendationLike): string | null {
-  const element = clean(rec.reason_facts?.matched_element);
-  if (element) return element;
-  const first = rec.astro_elements?.[0];
-  return clean(first) || null;
+  return toDisplayLabel(rec.reason_facts?.matched_element) ?? toDisplayLabel(rec.astro_elements?.[0]);
+}
+
+/** 五行の手がかり(表示名かどうかは問わない)があるか。表示名が無いときに既定の文へ切り替える判断に使う。 */
+export function hasElementSignal(rec: RecommendationLike): boolean {
+  return Boolean(clean(rec.reason_facts?.matched_element) || clean(rec.astro_elements?.[0]));
 }
 
 function getPrimaryNeedBenefitLabel(rec: RecommendationLike, shrineBenefitLabels?: string[]): string | null {
@@ -259,6 +272,45 @@ function getPrimaryNeedBenefitLabel(rec: RecommendationLike, shrineBenefitLabels
 
   const matchedBenefit = clean(rec.reason_facts?.matched_benefits?.[0]);
   if (matchedBenefit) return matchedBenefit;
+
+  return null;
+}
+
+type ReasonFacts = NonNullable<RecommendationLike["reason_facts"]>;
+
+/**
+ * 判定用の値に対応する表示用の値を返す。adapter が表示用の値を持たせていればそれを使い
+ * (null なら「名前を入れない」)、持たせていなければ判定用の値を表示名として確かめて使う。
+ */
+function displayOf(
+  facts: ReasonFacts | null | undefined,
+  rawKey: "shrine_benefit" | "shrine_feature" | "visit_fit",
+  displayKey: "shrine_benefit_display_label" | "shrine_feature_display_label" | "visit_fit_display_label",
+): string | null {
+  if (!facts) return null;
+  if (Object.prototype.hasOwnProperty.call(facts, displayKey)) return toDisplayLabel(facts[displayKey]);
+  return toDisplayLabel(facts[rawKey]);
+}
+
+// 判定用の getPrimaryNeedBenefitLabel と同じ順番で選び、その表示用の値を返す。
+function getPrimaryNeedBenefitDisplayLabel(rec: RecommendationLike, shrineBenefitLabels?: string[]): string | null {
+  const preferredBenefit = (shrineBenefitLabels ?? []).map(clean).find(Boolean);
+  if (preferredBenefit) return toDisplayLabel(preferredBenefit);
+
+  const facts = rec.reason_facts;
+  if (clean(facts?.shrine_benefit)) return displayOf(facts, "shrine_benefit", "shrine_benefit_display_label");
+
+  return toDisplayLabel(facts?.matched_benefits?.[0]);
+}
+
+// 判定用の getShrineFeatureLabel と同じ順番で選び、その表示用の値を返す。
+function getShrineFeatureDisplayLabel(rec: RecommendationLike, shrineFeatureLabels?: string[]): string | null {
+  const preferredFeature = (shrineFeatureLabels ?? []).map(clean).find(Boolean);
+  if (preferredFeature) return toDisplayLabel(preferredFeature);
+
+  const facts = rec.reason_facts;
+  if (clean(facts?.shrine_feature)) return displayOf(facts, "shrine_feature", "shrine_feature_display_label");
+  if (clean(facts?.visit_fit)) return displayOf(facts, "visit_fit", "visit_fit_display_label");
 
   return null;
 }
@@ -383,8 +435,10 @@ export function buildNeedTagMeaningSlots(params: BuildParams): NeedTagMeaningSlo
 
 export function buildShrineMeaningSlots(params: BuildParams): ShrineMeaningSlots {
   const benefitPrimary = getPrimaryNeedBenefitLabel(params.rec, params.shrineBenefitLabels);
+  const benefitPrimaryDisplay = getPrimaryNeedBenefitDisplayLabel(params.rec, params.shrineBenefitLabels);
   const benefitSecondary = clean(params.rec.reason_facts?.matched_benefits?.[0]) || undefined;
   const feature = getShrineFeatureLabel(params.rec, params.shrineFeatureLabels) || undefined;
+  const featureDisplay = getShrineFeatureDisplayLabel(params.rec, params.shrineFeatureLabels);
   const shrineName = clean(params.rec.display_name ?? params.rec.name ?? params.rec.title);
 
   let tone: ShrineMeaningSlots["tone"] = "neutral";
@@ -408,8 +462,10 @@ export function buildShrineMeaningSlots(params: BuildParams): ShrineMeaningSlots
 
   return {
     benefitPrimary,
+    benefitPrimaryDisplay,
     benefitSecondary,
     feature,
+    featureDisplay,
     symbol: undefined,
     tone,
     actionRole,

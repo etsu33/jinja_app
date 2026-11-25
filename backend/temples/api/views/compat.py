@@ -7,7 +7,7 @@ from drf_spectacular.utils import OpenApiExample
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response as DRFResponse
-from rest_framework.throttling import ScopedRateThrottle
+from shrine_project.throttling import ScopedRateThrottle
 
 from temples import api_views_concierge as concierge
 

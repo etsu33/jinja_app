@@ -46,6 +46,24 @@ echo "=== migration divergence diagnostics (temples 0079-0089) ==="
 } || echo "migration divergence diagnostics failed; continuing startup"
 echo "=== end migration divergence diagnostics ==="
 
+# --- Database role probe (read-only, opt-in, one-shot) ---------------------
+# Prints only `[db-role-probe] current_user=<role> session_user=<role>` from
+# `SELECT current_user, session_user` on Django's own connection. No URL, host,
+# database name or password is printed. A failure is logged and startup
+# continues. Disabled unless RUN_DB_ROLE_PROBE_ON_START=1; unset it again after
+# the one deploy that needs it.
+if [ "${RUN_DB_ROLE_PROBE_ON_START:-0}" = "1" ]; then
+  echo "Running database role probe because RUN_DB_ROLE_PROBE_ON_START=1..."
+  if python manage.py report_db_role; then
+    echo "Database role probe completed."
+  else
+    db_role_probe_exit=$?
+    echo "ERROR: Database role probe failed (exit=${db_role_probe_exit}); startup continues."
+  fi
+else
+  echo "Skipping database role probe. Set RUN_DB_ROLE_PROBE_ON_START=1 to run it once."
+fi
+
 # --- Visit Style Production audit (read-only, opt-in, fail closed) ---------
 # Runs the Visit-Style-only sync command in its DEFAULT DRY RUN mode: no
 # --apply, no --expected-* locks, so it cannot write. It reports PRESERVE
@@ -129,6 +147,15 @@ if [ "${RUN_MIGRATIONS_ON_START:-0}" = "1" ]; then
 else
   echo "Skipping migrations. Set RUN_MIGRATIONS_ON_START=1 to run them on startup."
 fi
+
+# --- Unapplied migration check (read-only, always on, never blocks startup) --
+# Logs `[migration-check] ...` lines only: no migration execution (that stays
+# behind RUN_MIGRATIONS_ON_START). Unapplied migrations are listed by name so a
+# forgotten `python manage.py migrate` after a merge shows up in the Render
+# logs. Grouped as the left side of `||` so a failure cannot trigger `set -e`.
+{
+  python manage.py check_unapplied_migrations
+} || echo "[migration-check] CHECK FAILED (command error); startup continues"
 
 if [ "${RUN_SHRINE_REFLECTION_REPAIR:-0}" = "1" ]; then
   echo "Ensuring ShrineReflection table exists because RUN_SHRINE_REFLECTION_REPAIR=1..."

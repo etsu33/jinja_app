@@ -22,11 +22,11 @@ from rest_framework_simplejwt.exceptions import TokenError
 from temples.api.serializers.concierge import (
     ConciergePlanRequestSerializer,
     ConciergePlanResponseSerializer,
-    ConciergeThreadSerializer,
 )
 from temples.geocoding.client import geocode_google_point
 from temples.models import ConciergeThread
 from temples.domain.consultation_axis import resolve_consultation_axis
+from temples.domain.feature_words_en import build_travel_feature_payload, is_travel_mode
 from temples.domain.kyusei import annual_lucky_directions, planned_visit_lucky_directions
 
 from temples.services.plan_service import resolve_plan_context
@@ -34,7 +34,10 @@ from temples.services.quota_service import check_quota, consume_quota
 from temples.services.anonymous_id import attach_anonymous_cookie, build_anonymous_cookie_value
 from temples.services.concierge_input_contract import (
     normalize_concierge_request,
+    concierge_birthdate_request_sources,
+    resolve_concierge_requested_mode,
     resolve_profile_context_birthdate,
+    strip_concierge_birthdate_inputs,
     build_concierge_recommendation_context,
 )
 
@@ -56,6 +59,7 @@ from temples.services.concierge_plan import build_plan_response
 from temples.services.consultation_interpreter import interpret_consultation
 from temples.services.consultation_meaning import extract_consultation_meaning
 from temples.services.billing_state import is_premium_for_user  # test monkeypatch compatibility
+from temples.services.shrine_features_en import build_shrine_feature_matches
 
 
 
@@ -279,6 +283,31 @@ def _resolve_request_location_inputs(
             lat, lng = pt
     return lat, lng
 
+def _attach_shrine_matches(
+    feature_words_en: Optional[Dict[str, Any]],
+    recs: Dict[str, Any],
+    rid: str,
+) -> Optional[Dict[str, Any]]:
+    """英語の相談のとき、推薦された神社ごとに「相談の語と神社の語の重なり」を足す。
+
+    記録用で、並び順には使わない（temples/services/shrine_features_en.py）。
+    失敗しても応答は止めない。
+    """
+    if feature_words_en is None:
+        return None
+    try:
+        return {
+            **feature_words_en,
+            "shrine_matches": build_shrine_feature_matches(
+                recs.get("recommendations") or [],
+                feature_words_en.get("ids") or [],
+            ),
+        }
+    except Exception:
+        log.exception("[concierge/feature_words_en] shrine_matches failed rid=%s", rid)
+        return feature_words_en
+
+
 def _build_chat_response(
     intent: Dict[str, Any],
     recs: Dict[str, Any],
@@ -291,6 +320,7 @@ def _build_chat_response(
     debug: Optional[Dict[str, Any]],
     anon_cookie_value: Optional[str],
     consultation_meaning: Dict[str, Any],
+    feature_words_en: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     thread_id = str(thread.id) if thread is not None else None
 
@@ -316,6 +346,10 @@ def _build_chat_response(
         # arrays, never omitted) regardless of quota/Recommendation state.
         "consultation_meaning": consultation_meaning,
     }
+    # 英語の相談（language=en）のときだけ載せる。日本語の応答の形は変えない。
+    # travel モードのときだけ。英語の辞書を使ったときは、取り出した特徴語で並べ替えている（temples/services/travel_ranking.py）。
+    if feature_words_en is not None:
+        body["feature_words_en"] = feature_words_en
 
     if remaining is not None:
         body["remaining"] = remaining
@@ -508,6 +542,8 @@ class ConciergeChatView(APIView):
             phase = "resolve_inputs"
             t0 = time.perf_counter()
 
+            # 入力を読み取ると本文・filters・日付だけの相談文が birthdate にまとめられるため、先に出どころを見る。
+            birthdate_sources = concierge_birthdate_request_sources(data)
             canonical_input = normalize_concierge_request(data)
             query = canonical_input.query
             message = canonical_input.message
@@ -517,7 +553,19 @@ class ConciergeChatView(APIView):
             extra_condition = canonical_input.extra_condition
             visit_preferences = canonical_input.visit_preferences
 
-            birthdate = (canonical_input.birthdate or "").strip() or None
+            # travel モード（旅行・文化体験）のときだけ、相談文から特徴語を取り出す。
+            # 言語とは独立（英語の辞書は language=en のときだけ使う）。
+            # 英語の辞書を使ったとき（dictionary=en）は、この語で候補を並べ替える
+            # （temples/services/travel_ranking.py）。応答と ConciergeRecommendationLog にも残す。
+            feature_words_en = (
+                build_travel_feature_payload(query or message or "", language)
+                if is_travel_mode(data.get("mode"))
+                else None
+            )
+
+            # コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）。
+            # Web・モバイルから送られても、順位付け・説明の文・見出しに使わない。
+            birthdate = None
 
             log.info(
                 "[concierge/perf] step=resolve_inputs rid=%s elapsed=%.3f",
@@ -526,7 +574,14 @@ class ConciergeChatView(APIView):
             )
 
             raw_profile_context_value = data.get("profile_context")
-            raw_profile_context = dict(raw_profile_context_value) if isinstance(raw_profile_context_value, dict) else None
+            requested_mode = resolve_concierge_requested_mode(data.get("mode"))
+            raw_profile_context = strip_concierge_birthdate_inputs(
+                sources=birthdate_sources,
+                canonical_birthdate=canonical_input.birthdate,
+                profile_context=dict(raw_profile_context_value) if isinstance(raw_profile_context_value, dict) else None,
+                mode=data.get("mode"),
+                rid=rid,
+            )
             # Level 3-A Personal Profile (direction-calc precedence chain --
             # separate from canonical_input.birthdate, see
             # resolve_profile_context_birthdate() docstring).
@@ -564,7 +619,7 @@ class ConciergeChatView(APIView):
 
 
             public_mode = _resolve_public_mode(
-                mode=str(data.get("mode") or "").strip().lower() or None,
+                mode=requested_mode,
                 birthdate=birthdate,
                 query=query,
             )
@@ -772,6 +827,12 @@ class ConciergeChatView(APIView):
                     user=user if getattr(user, "is_authenticated", False) else None,
                     profile_context=raw_profile_context if isinstance(raw_profile_context, dict) else None,
                     interpretation_profile=interpretation_profile,
+                    # travel モードで英語の辞書を使ったときだけ並べ替える（日本語などは辞書が無いので並びは変えない）
+                    travel_request_feature_ids=(
+                        list(feature_words_en.get("ids") or [])
+                        if feature_words_en is not None and feature_words_en.get("dictionary") == "en"
+                        else None
+                    ),
                 )
             except Exception:
                 log.exception(
@@ -933,6 +994,11 @@ class ConciergeChatView(APIView):
 
             from temples.services.concierge_observability import save_concierge_recommendation_log
 
+            feature_words_en = _attach_shrine_matches(feature_words_en, recs, rid)
+            travel_ranking = recs.pop("_travel_ranking", None)
+            if feature_words_en is not None and travel_ranking is not None:
+                feature_words_en = {**feature_words_en, "travel_ranking": travel_ranking}
+
             signals = recs.get("_signals") or {}
             llm_meta = signals.get("llm") or {}
             result_state = signals.get("result_state") or {}
@@ -952,7 +1018,12 @@ class ConciergeChatView(APIView):
                     llm_enabled=bool(llm_meta.get("enabled")),
                     llm_used=bool(llm_meta.get("used")),
                     recommendations=recs.get("recommendations") or [],
-                    result_state=result_state,
+                    # travel モードの相談では、取り出した特徴語を記録に足す。dictionary="en" で ids が空の行が「辞書の取りこぼし」。
+                    result_state=(
+                        {**result_state, "feature_words_en": feature_words_en}
+                        if feature_words_en is not None
+                        else result_state
+                    ),
                     lat=lat,
                     lng=lng,
                     radius_m=radius_m,
@@ -1016,6 +1087,7 @@ class ConciergeChatView(APIView):
                         else None
                     ),
                     consultation_meaning=extract_consultation_meaning(query).as_dict(),
+                    feature_words_en=feature_words_en,
                 )
 
             phase = "response"
@@ -1113,38 +1185,18 @@ class ConciergePlanViewLegacy(ConciergePlanView):
     schema = None
 
 
-@extend_schema(exclude=True)
-class ConciergeThreadView(APIView):
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        tid = request.query_params.get("tid")
-        if not tid:
-            return Response({"error": "tid required"}, status=400)
-
-        try:
-            thread = ConciergeThread.objects.get(id=tid)
-        except ConciergeThread.DoesNotExist:
-            return Response({"error": "not found"}, status=404)
-
-        return Response(ConciergeThreadSerializer(thread).data)
-
-
 chat = ConciergeChatView.as_view()
 plan = ConciergePlanView.as_view()
-thread = ConciergeThreadView.as_view()
 chat_legacy = ConciergeChatViewLegacy.as_view()
 plan_legacy = ConciergePlanViewLegacy.as_view()
 
 __all__ = [
     "chat",
     "plan",
-    "thread",
     "chat_legacy",
     "plan_legacy",
     "ConciergeChatView",
     "ConciergePlanView",
-    "ConciergeThreadView",
     "ConciergeChatViewLegacy",
     "ConciergePlanViewLegacy",
 ]

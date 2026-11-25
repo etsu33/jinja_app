@@ -7,7 +7,8 @@ as a small service before wiring an endpoint.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 from typing import Any, Iterable, Literal, Mapping, TypedDict
 from temples.services.shrine_culture_translation import get_shrine_culture_translation
 
@@ -343,6 +344,10 @@ class ShrineMeaningInput:
     direction_reason: str | None = None
     interpretation_profile: dict[str, Any] | None = None
     translation_result: dict[str, Any] | None = None
+    # 相談と一致したご利益の名前が渡されたとき(神社詳細を相談から開いたとき)だけ True。
+    # True のときは、タグの先頭ではなく matched_benefit を「使うご利益」にする(None は「ご利益なし」)。
+    benefit_from_matched_names: bool = False
+    matched_benefit: str | None = None
 
 
 def _clean_str(value: Any) -> str | None:
@@ -463,7 +468,45 @@ def _clip(text: str, max_length: int = 56) -> str:
 
 
 
+# backend/temples/services/concierge_chat_ranking.py の _GORIYAKU_SEGMENT_SEPARATORS と同じ区切り。
+# 相談の結果(matched_benefit_names)と同じ区切り方で、ご利益の文字列を1つずつに分ける。
+# どちらかを変えるときは、もう一方も合わせて変えること。
+_GORIYAKU_SEGMENT_SEPARATORS = re.compile(r"[・、,，/／\s　]+")
+
+
+def _owned_benefit_names(input_: ShrineMeaningInput) -> tuple[str, ...]:
+    """神社が実際に持っているご利益の名前(タグの名前と、ご利益の文字列を区切った1つずつ)。"""
+    segments = [seg.strip() for seg in _GORIYAKU_SEGMENT_SEPARATORS.split(input_.goriyaku or "") if seg.strip()]
+    return _clean_str_list([*input_.goriyaku_tags, *segments])
+
+
+def _select_matched_benefit(input_: ShrineMeaningInput, names: Iterable[Any]) -> str | None:
+    """渡された名前のうち、神社が持っているご利益に入る最初の1つ。無ければ None(ご利益なし)。"""
+    owned = set(_owned_benefit_names(input_))
+    for name in names:
+        text = _clean_str(name)
+        if text and text in owned:
+            return text
+    return None
+
+
+def with_matched_benefit_names(input_: ShrineMeaningInput, names: Iterable[Any]) -> ShrineMeaningInput:
+    """「使うご利益」を、相談と一致したご利益の名前から1回だけ決める。"""
+    return replace(
+        input_,
+        benefit_from_matched_names=True,
+        matched_benefit=_select_matched_benefit(input_, names),
+    )
+
+
 def _primary_benefit(input_: ShrineMeaningInput) -> str | None:
+    """各欄で使う「使うご利益」。
+
+    相談と一致したご利益の名前が渡されたときは、その中で決めた1つ(無ければ None)。
+    タグの先頭には戻らない。渡されていないときは、今までどおりタグの先頭(無ければご利益の文字列)。
+    """
+    if input_.benefit_from_matched_names:
+        return input_.matched_benefit
     if input_.goriyaku_tags:
         return input_.goriyaku_tags[0]
     return input_.goriyaku
@@ -487,7 +530,14 @@ def _benefit_state_themes(input_: ShrineMeaningInput) -> tuple[str, ...]:
     themes: list[str] = []
     seen: set[str] = set()
 
-    for label in _benefit_labels(input_):
+    # 相談と一致したご利益の名前が渡されたときは、「使うご利益」1つのテーマだけを使う
+    # (ほかのご利益、たとえばタグの先頭のテーマを混ぜない)。渡されていないときは今までどおり。
+    if input_.benefit_from_matched_names:
+        labels: tuple[str, ...] = (input_.matched_benefit,) if input_.matched_benefit else ()
+    else:
+        labels = _benefit_labels(input_)
+
+    for label in labels:
         for theme in BENEFIT_STATE_THEME_MAP.get(label, ()):
             if theme in seen:
                 continue
@@ -855,10 +905,19 @@ def build_display_fields(generated: ShrineMeaningGeneratedV2) -> ShrineMeaningDi
     }
 
 
-def compose_shrine_meaning_payload(source: Any) -> ShrineMeaningPayloadV2:
-    """Build ShrineMeaningPayloadV2 from a Shrine-like object or dict."""
+def compose_shrine_meaning_payload(
+    source: Any,
+    matched_benefit_names: Iterable[Any] | None = None,
+) -> ShrineMeaningPayloadV2:
+    """Build ShrineMeaningPayloadV2 from a Shrine-like object or dict.
+
+    matched_benefit_names: 相談と一致したご利益の名前。渡されたとき(None 以外)は、神社が持っている
+    ご利益に入る最初の1つを、すべての欄の「使うご利益」にする。None のときは今までどおり。
+    """
 
     input_ = normalize_shrine_meaning_source(source)
+    if matched_benefit_names is not None:
+        input_ = with_matched_benefit_names(input_, matched_benefit_names)
     generated = build_generated_fields(input_)
     return {
         "version": "v2",

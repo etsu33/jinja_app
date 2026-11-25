@@ -1,10 +1,15 @@
 // apps/mobile/app/goshuin/index.tsx
 import * as React from "react";
-import { View, Text, Image, Pressable, StyleSheet, ScrollView, Dimensions } from "react-native";
+import { View, Text, Image, StyleSheet, ScrollView, Dimensions } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { getStamps } from "../../lib/storage";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import Button from "../../components/ui/Button";
+import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// 空状態の印の大きさ。
+const EMPTY_ICON_SIZE = 32;
 
 const GAP = 10;
 const COLS = 3;
@@ -39,9 +44,6 @@ export default function GoshuinList() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.headerBar}>
-        <Pressable onPress={() => router.replace("/records")} style={styles.back}>
-          <Text style={styles.backText}>← 記録へ戻る</Text>
-        </Pressable>
         <Button
           title="＋ 記録する"
           variant="outline"
@@ -67,6 +69,9 @@ export default function GoshuinList() {
               <Image
                 key={String(s.id)}
                 source={{ uri: s.uri }}
+                accessible
+                accessibilityRole="image"
+                accessibilityLabel={`御朱印の記録 ${index + 1}件目`}
                 style={[
                   styles.stampImage,
                   {
@@ -82,7 +87,7 @@ export default function GoshuinList() {
         </View>
       ) : (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>□</Text>
+          <Ionicons name="images-outline" size={EMPTY_ICON_SIZE} color={theme.muted} />
           <Text style={styles.emptyTitle}>まだ記録はありません</Text>
           <Text style={styles.emptyText}>参拝した神社や御朱印を残すと、あとから自分の流れを振り返れます。</Text>
           <Button
@@ -116,50 +121,29 @@ const styles = StyleSheet.create({
   headerBar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     marginBottom: 28,
-  },
-  back: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: theme.borderGold,
-    paddingVertical: 8,
-    paddingHorizontal: 13,
-    borderRadius: 999,
-    backgroundColor: "transparent",
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
   },
   heroBlock: {
     paddingBottom: 24,
   },
   heroLead: {
+    ...typography.body,
     color: theme.mutedSoft,
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 1,
     marginBottom: 10,
   },
   heroTitle: {
+    ...typography.display,
     color: theme.text,
-    fontSize: 30,
-    fontWeight: "900",
-    lineHeight: 40,
-    letterSpacing: 1,
   },
   heroCount: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-    fontWeight: "700",
     marginTop: 12,
   },
   stateText: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 15,
-    fontWeight: "700",
     marginTop: 40,
     textAlign: "center",
   },
@@ -169,17 +153,15 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
     borderRadius: 24,
     padding: 16,
-    shadowColor: "#000",
+    shadowColor: theme.text,
     shadowOpacity: 0.28,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
   sectionLabel: {
+    ...typography.eyebrow,
     color: theme.mutedSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 2,
     marginBottom: 14,
   },
   grid: {
@@ -201,22 +183,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  emptyIcon: {
-    color: theme.gold,
-    fontSize: 28,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
   emptyTitle: {
+    ...typography.subheading,
     color: theme.text,
-    fontSize: 18,
-    fontWeight: "900",
   },
   emptyText: {
+    ...typography.body,
     color: theme.muted,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
     textAlign: "center",
   },
   emptyCtaPlacement: {

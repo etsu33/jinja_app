@@ -15,8 +15,10 @@ import sys
 from pathlib import Path
 
 import pytest
+from django.conf import settings
 from django.core.management import call_command
 from django.db import DataError, connection, transaction
+from django.db.migrations.recorder import MigrationRecorder
 
 from temples.models import (
     KNOWLEDGE_CONFIDENCE_CHOICES,
@@ -216,17 +218,27 @@ def test_url_pattern_set_sql_drives_the_g7_sequence(tmp_path):
     post = spec["post_state"]
 
     preflight = _run(sql["g7_preflight.sql"])
-    # The non-GIS test DB uses temples.migrations_nogis, where the Production migration
-    # 0120_shrine_source_fact_foundation exists as 0019_shrine_source_fact_foundation.
-    assert spec["url_pattern_set_sql"]["required_temples_migration"] == (
-        "0120_shrine_source_fact_foundation"
+    # The spec names the Production migration. The test DB records it under that name only
+    # when it uses the full migration lineage (GIS job); the non-GIS job uses
+    # temples.migrations_nogis, where the same migration is 0019_shrine_source_fact_foundation.
+    production_name = "0120_shrine_source_fact_foundation"
+    nogis_name = "0019_shrine_source_fact_foundation"
+    assert spec["url_pattern_set_sql"]["required_temples_migration"] == production_name
+    uses_nogis = settings.MIGRATION_MODULES.get("temples") == "temples.migrations_nogis"
+    applied_name, unapplied_name = (
+        (nogis_name, production_name) if uses_nogis else (production_name, nogis_name)
     )
-    assert preflight[2] == [(False,)]
-    test_db_spec = copy.deepcopy(spec)
-    test_db_spec["url_pattern_set_sql"]["required_temples_migration"] = (
-        "0019_shrine_source_fact_foundation"
-    )
-    assert _run(dict(g7.generate_sql(test_db_spec))["g7_preflight.sql"])[2] == [(True,)]
+    recorded = {
+        name for app, name in MigrationRecorder(connection).applied_migrations() if app == "temples"
+    }
+    assert applied_name in recorded and unapplied_name not in recorded
+
+    # The preflight reports TRUE / FALSE for exactly what django_migrations records here.
+    assert preflight[2] == [(applied_name == production_name,)]
+    for name, expected in ((applied_name, True), (unapplied_name, False)):
+        test_db_spec = copy.deepcopy(spec)
+        test_db_spec["url_pattern_set_sql"]["required_temples_migration"] = name
+        assert _run(dict(g7.generate_sql(test_db_spec))["g7_preflight.sql"])[2] == [(expected,)]
     assert preflight[5] == [(0, 0)]  # target exact / same name
     assert _run(sql["g7_pre_base_guard.sql"]) == [[(1,)]]
     assert _run(sql["g7_post_base_guard.sql"]) is DataError

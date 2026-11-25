@@ -6,10 +6,13 @@ from typing import Any, Dict, List, Optional
 from django.conf import settings as dj_settings
 from temples.domain.consultation_axis import resolve_consultation_axis
 from temples.domain.shrine_identity import resolve_shrine_id, resolve_shrine_identity
-from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
 from temples.models import GoriyakuTag
 
 from temples.services.concierge_candidate_utils import _normalize_candidate_fields
+from temples.services.concierge_adaptive_radius import apply_adaptive_radius
+from temples.services.highlight_pick import attach_highlight_picks
+from temples.services.travel_ranking import rerank_for_travel
+from temples.services.concierge_history import load_shrine_history_facts
 from temples.services.channel_b_typed_need_match import strip_channel_b_carrier
 from temples.services.consultation_interpreter import interpret_consultation
 from temples.services.recommendation_algorithm_v3 import (
@@ -29,6 +32,7 @@ from temples.services.concierge_chat_extra_condition import (
     resolve_extra_condition_tags,
     resolve_visit_preference_tags,
 )
+from temples.domain.visit_preference import implied_visit_style_tags_for_needs
 from temples.services.concierge_chat_llm_route import (
     resolve_llm_route,
 )
@@ -192,12 +196,27 @@ def _attach_chat_rec_enrichment(
     visit_style_tags: set[str],
     goriyaku_tag_ids: Optional[List[int]],
     goriyaku_tag_label_by_id: Dict[int, str],
+    implied_visit_style_tags: Optional[set[str]] = None,
     user_origin: Optional[Dict[str, Any]] = None,
     user=None,
     profile_context: Optional[Dict[str, Any]] = None,
     consultation_axis: Optional[str] = None,
-    need_gid_label_by_id: Optional[Dict[int, str]] = None,
+    batch_history: bool = True,
 ) -> Dict[str, Any]:
+    # B-1: 認証済み user の履歴を候補ぶんまとめて読む（table ごとに 1 クエリ、候補数に依存しない）。
+    # anonymous / batch_history=False（同値性テスト用）では None になり、従来の per-shrine 経路を使う。
+    history_facts = (
+        load_shrine_history_facts(
+            user=user,
+            shrine_ids=[
+                resolve_shrine_id(rec, policy="live_candidate")
+                for rec in (recs.get("recommendations") or [])
+                if isinstance(rec, dict)
+            ],
+        )
+        if batch_history
+        else None
+    )
     for rec in recs.get("recommendations") or []:
         if not isinstance(rec, dict):
             continue
@@ -209,12 +228,14 @@ def _attach_chat_rec_enrichment(
             weights=weights,
             astro_bonus_enabled=astro_bonus_enabled,
             visit_style_tags=visit_style_tags,
+            implied_visit_style_tags=implied_visit_style_tags,
             requested_goriyaku_tag_ids=goriyaku_tag_ids,
             goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
             user_origin=user_origin,
             user=user,
             profile_context=profile_context,
             consultation_axis=consultation_axis,
+            history_facts=history_facts,
         )
         _apply_soft_signal_highlights(
             rec,
@@ -225,7 +246,6 @@ def _attach_chat_rec_enrichment(
             public_mode=public_mode,  # type: ignore[arg-type]
             birthdate=birthdate,
             need_tags=need_tags,
-            need_gid_label_by_id=need_gid_label_by_id,
         )
         _attach_reason_source(
             rec,
@@ -706,6 +726,7 @@ def build_chat_recommendations(
     user=None,
     profile_context: Optional[Dict[str, Any]] = None,
     interpretation_profile: dict[str, Any] | None = None,
+    travel_request_feature_ids: list[str] | None = None,
 ) -> Dict[str, Any]:
     """
     候補リストからおすすめ神社を選んで返す関数。
@@ -727,6 +748,12 @@ def build_chat_recommendations(
     valid_candidates = [
         _normalize_candidate_fields(c) for c in (candidates or []) if isinstance(c, dict)
     ]
+    # 場所ごとの物差しで候補の範囲を決める（2026-11-23。英語の相談には当てない）。
+    # 決まり：docs/product/recommendation-signal-authority.md §9「Semantic Fit vs Distance」
+    if travel_request_feature_ids is None:
+        valid_candidates, adaptive_radius_info = apply_adaptive_radius(valid_candidates)
+    else:
+        adaptive_radius_info = {"applied": False, "reason": "travel_mode"}
 
     need_payload = resolve_need_payload(
         query=query or "",
@@ -773,6 +800,11 @@ def build_chat_recommendations(
         structured=visit_preferences,
         legacy_visit_style_tags=extra_tags["visit_style_tags"],
     )
+    # 休息・不安の相談では、参拝の好み（静か・自然・人が少なめ）を自動で足す。点数にだけ使い、
+    # 主な根拠・説明の文には使わないため、visit_style_tags とは別に渡す。
+    implied_visit_style_tags = set(
+        implied_visit_style_tags_for_needs(need_tags, explicit_tags=visit_style_tags)
+    )
 
     log.info(
         "[dbg] extra_tags resolved sort=%r soft=%r visit_style=%r has_query=%s has_extra=%s has_visit_preferences=%s",
@@ -804,6 +836,7 @@ def build_chat_recommendations(
             "sort_tags": sorted(sort_tags),
             "hard_filter_tags": sorted(hard_filter_tags),
             "visit_style_tags": sorted(visit_style_tags),
+            "implied_visit_style_tags": sorted(implied_visit_style_tags),
         },
     )
 
@@ -865,16 +898,8 @@ def build_chat_recommendations(
 
     goriyaku_tag_label_by_id = _build_goriyaku_tag_label_by_id(goriyaku_tag_ids)
 
-    # Lead Purpose Alignment (docs/audit/compass-need-lead-purpose-alignment.md
-    # Option C): batch-fetch labels for each requested need tag's own expected
-    # GoriyakuTag ids -- one query for the whole request (not per-candidate),
-    # independent of goriyaku_tag_label_by_id above, which is scoped to
-    # user-selected search filter ids and is empty for Compass's purpose-only
-    # calls.
-    need_expected_gid_ids: set[int] = set()
-    for tag in need_tags or []:
-        need_expected_gid_ids |= NEED_TO_GORIYAKU_IDS.get(str(tag).strip(), set())
-    need_gid_label_by_id = _build_goriyaku_tag_label_by_id(sorted(need_expected_gid_ids))
+    # Lead Purpose Alignment: 一致した札の名前は、各候補の goriyaku_tag_names から
+    # need_to_goriyaku_concepts で引く（札の番号は使わない。データベースへの問い合わせも無い）。
 
     recs = _attach_chat_rec_enrichment(
         recs,
@@ -888,11 +913,11 @@ def build_chat_recommendations(
         visit_style_tags=visit_style_tags,
         goriyaku_tag_ids=goriyaku_tag_ids,
         goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
+        implied_visit_style_tags=implied_visit_style_tags,
         user_origin=bias,
         user=user,
         profile_context=profile_context,
         consultation_axis=consultation_axis_value,
-        need_gid_label_by_id=need_gid_label_by_id,
     )
     recs["consultation_axis"] = consultation_axis_value
     for rec in recs.get("recommendations") or []:
@@ -932,6 +957,15 @@ def build_chat_recommendations(
     )
     recs.setdefault("_debug", {})["score_v3_mode"] = score_v3_mode
     recs.setdefault("_debug", {})["score_v3_mode_source"] = score_v3_mode_detail["source"]
+    # travel モード（英語の相談）：need で並んだ候補を、特徴語の重なりと場所の価値で並べ替える。
+    # None のとき（travel でない・英語でない）は何もしない（temples/services/travel_ranking.py）。
+    if travel_request_feature_ids is not None:
+        reordered, travel_observation = rerank_for_travel(
+            recs.get("recommendations") or [],
+            travel_request_feature_ids,
+        )
+        recs["recommendations"] = reordered
+        recs["_travel_ranking"] = travel_observation
     recs["recommendations"] = _attach_rank_comparison(recs.get("recommendations") or [])
     recs.setdefault("_debug", {})["user_state_profile"] = _build_user_state_profile(
         query=query or "",
@@ -985,6 +1019,16 @@ def build_chat_recommendations(
         language=language,
     )
     _trim_to_top3_and_fill_message(recs)
+
+    # 見どころ単位の推薦 段階A：残った推薦の各神社に「ここで見る」見どころを1つ付ける。
+    # 順位・推薦理由は変えない（temples/services/highlight_pick.py）。
+    # travel モード（英語の相談）は英語のアンサーだけを使う。
+    recs.setdefault("_debug", {})["adaptive_radius"] = adaptive_radius_info
+    recs.setdefault("_debug", {})["highlight_pick"] = attach_highlight_picks(
+        recs.get("recommendations") or [],
+        need_tags,
+        language_code="en" if travel_request_feature_ids is not None else "ja",
+    )
 
     trim_after = observe_trim_after(recs)
     recs.setdefault("_debug", {})["trim_observation"] = build_trim_observation(

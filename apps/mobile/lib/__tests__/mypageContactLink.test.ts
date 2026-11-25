@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const source = readFileSync(resolve(mobileRoot, "app/mypage/index.tsx"), "utf8");
+const source = readFileSync(resolve(mobileRoot, "app/(tabs)/mypage/index.tsx"), "utf8");
 
 /** <MyPageCard ... /> を1枚ずつ取り出し、title -> props本文 のMapにする。 */
 function readCards(): Map<string, string> {
@@ -36,14 +36,28 @@ const APPROVED_MAILTO =
   "mailto:j33db05@gmail.com?subject=KAMI%20MUSUBI%20%E3%81%8A%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B";
 
 describe("MyPage お問い合わせカード", () => {
-  it("お問い合わせカードだけがonPressを持ち、activeになる", () => {
+  it("お問い合わせカードがonPressを持ち、activeになる", () => {
     expect(readCards().get("お問い合わせ")).toMatch(/onPress=\{openContactMail\}/);
   });
 
-  it("設定・利用規約のカードは現状のまま（onPressを持たない）", () => {
-    const cards = readCards();
-    expect(cards.get("設定")).not.toMatch(/onPress=/);
-    expect(cards.get("利用規約")).not.toMatch(/onPress=/);
+  it("「設定・サポート」セクションのカードがすべてonPressを持つ", () => {
+    // 押せない飾りのカードを置かない(App Store Review Guideline 2.1 / 4.2)。
+    // 中身の無かった「設定」カードは削除し、規約類はWebページへ繋いだ。
+    const support = source.slice(source.indexOf("設定・サポート"));
+
+    expect(support).not.toContain('title="設定"');
+    for (const [, props] of support.matchAll(/<MyPageCard\s+([\s\S]*?)\/>/g)) {
+      expect(props).toMatch(/onPress=/);
+    }
+  });
+
+  it("利用規約とプライバシーポリシーをWebページへ繋ぐ", () => {
+    // App Store Review Guideline 3.1.2 は、自動更新サブスクリプションを持つ
+    // アプリに「機能する」リンクをバイナリ内へ置くことを求める。
+    expect(source).toMatch(/title=\{LEGAL_LABELS\.terms\}[\s\S]*?onPress=\{openTerms\}/);
+    expect(source).toMatch(/title=\{LEGAL_LABELS\.privacy\}[\s\S]*?onPress=\{openPrivacy\}/);
+    expect(source).toMatch(/openLegalDocument\("terms", Linking\.openURL\)/);
+    expect(source).toMatch(/openLegalDocument\("privacy", Linking\.openURL\)/);
   });
 
   it("宛先と件名を可読な定数として保持する", () => {

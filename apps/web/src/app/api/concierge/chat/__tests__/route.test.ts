@@ -148,7 +148,8 @@ describe("/api/concierge/chat BFF contract", () => {
     });
 
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ ok: true, _anon_cookie_value: "next-anon" });
+    // 匿名 credential は HttpOnly cookie にだけ載せ、browser 向け body からは除く（FU-2-P7 F1）。
+    await expect(res.json()).resolves.toEqual({ ok: true });
     expect(cookies).toContain("access_token=NEXT_ACCESS");
     expect(cookies).toContain("refresh_token=NEXT_REFRESH");
     expect(cookies).toContain("concierge_anon_id=next-anon");

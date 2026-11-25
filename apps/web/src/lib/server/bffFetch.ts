@@ -5,6 +5,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getDjangoOrigin } from "@/lib/server/backend";
 import { isSecureRequest, setAccessTokenCookie } from "@/lib/server/authCookies";
+import { clientIdentityHeaders } from "@/lib/server/clientIdentity";
 
 
 
@@ -53,11 +54,12 @@ function getUpstreamSetCookies(upstream: Response): string[] {
  */
 const refreshInFlightByToken = new Map<string, Promise<string | null>>();
 
-async function refreshAccessViaBackendMutex(refresh: string): Promise<string | null> {
+async function refreshAccessViaBackendMutex(refresh: string, req: NextRequest): Promise<string | null> {
   const inFlight = refreshInFlightByToken.get(refresh);
   if (inFlight) return inFlight;
 
-  const pending: Promise<string | null> = refreshAccessViaBackend(refresh).finally(() => {
+  // 同じ refresh token を共有するのは同一ユーザーだけなので、最初のリクエストの client identity で足りる。
+  const pending: Promise<string | null> = refreshAccessViaBackend(refresh, req).finally(() => {
     // 自分が登録した entry だけを消す（同じ token で後続の refresh が
     // 既に登録し直している可能性があるため）。
     if (refreshInFlightByToken.get(refresh) === pending) {
@@ -75,10 +77,15 @@ export function __resetRefreshInFlightForTest(): void {
   refreshInFlightByToken.clear();
 }
 
-async function refreshAccessViaBackend(refresh: string): Promise<string | null> {
-  const r = await fetch(`${apiBase()}/api/auth/jwt/refresh/`, {
+async function refreshAccessViaBackend(refresh: string, req: NextRequest): Promise<string | null> {
+  const refreshPath = "/api/auth/jwt/refresh/";
+  const r = await fetch(`${apiBase()}${refreshPath}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...clientIdentityHeaders(req, "POST", refreshPath),
+    },
     body: JSON.stringify({ refresh }),
     cache: "no-store",
   });
@@ -140,7 +147,7 @@ export async function bffFetchWithAuthFromReq(
     retryOn401 && refresh && !headerAuth && (!access || (exp != null && exp <= nowSec + skewSec));
 
   if (shouldPreRefresh) {
-    preRefreshedAccess = await refreshAccessViaBackendMutex(refresh);
+    preRefreshedAccess = await refreshAccessViaBackendMutex(refresh, req);
   }
 
   const buildAuth = (override?: string | null) => {
@@ -185,6 +192,7 @@ export async function bffFetchWithAuthFromReq(
         ...(init.headers ?? {}),
         ...(auth ? { Authorization: auth } : {}),
         ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+        ...clientIdentityHeaders(req, init.method ?? "GET", upstreamPath),
       },
     });
   };
@@ -198,7 +206,7 @@ export async function bffFetchWithAuthFromReq(
   // backend 往復が増え、不要な token 再発行まで起きる
   // （docs/audit/beta-core-flow-e2e-audit.md E2E-023）。
   if (upstream.status === 401 && retryOn401 && refresh) {
-    newAccess = await refreshAccessViaBackendMutex(refresh);
+    newAccess = await refreshAccessViaBackendMutex(refresh, req);
     if (newAccess) upstream = await doFetch(newAccess);
   }
 

@@ -26,8 +26,15 @@ const filterState: any = {
   userOrigin: null,
 };
 
-function fact(type: string, label: string, isPrimary = true) {
-  return { type, label, evidence: [`${type}:${label}`], score: 1, ...(isPrimary ? { is_primary: true } : {}) };
+function fact(type: string, label: string, isPrimary = true, labelJa?: string) {
+  return {
+    type,
+    label,
+    ...(labelJa !== undefined ? { label_ja: labelJa } : {}),
+    evidence: [`${type}:${label}`],
+    score: 1,
+    ...(isPrimary ? { is_primary: true } : {}),
+  };
 }
 
 function renderBackendResponse(recommendations: any[]) {
@@ -43,14 +50,17 @@ function renderBackendResponse(recommendations: any[]) {
 describe("Backend reason_facts[] end-to-end consumption", () => {
   beforeEach(() => window.localStorage.clear());
 
-  it("API normalize → Unified → Renderer → Hero visible textへelement Primaryを通す", () => {
-    const result = renderBackendResponse([{ shrine_id: 1, name: "火の神社", reason_facts: [fact("element", "火")] }]);
+  it("API normalize → Unified → Renderer → Hero visible textへPrimaryの日本語名(label_ja)を通す", () => {
+    const result = renderBackendResponse([
+      { shrine_id: 1, name: "仕事の神社", reason_facts: [fact("need_tag", "career", true, "転機・仕事")] },
+    ]);
 
     expect(Array.isArray(result.recs[0].reason_facts)).toBe(true);
     expect(Array.isArray(result.unified.data.recommendations[0].reason_facts)).toBe(true);
     const recommendationSection = result.payload.sections.find((section) => section.type === "recommendations");
     expect(recommendationSection && Array.isArray(recommendationSection.items[0].reasonFacts)).toBe(true);
-    expect(screen.getByTestId("recommendation-conclusion")).toHaveTextContent("火");
+    expect(screen.getByTestId("recommendation-conclusion")).toHaveTextContent("転機・仕事");
+    expect(screen.getByTestId("recommendation-conclusion")).not.toHaveTextContent("career");
   });
 
   it("history_theme PrimaryをHeroと詳細meaning文言へ通す", () => {
@@ -59,14 +69,20 @@ describe("Backend reason_facts[] end-to-end consumption", () => {
     expect(screen.getAllByText(/再出発/).length).toBeGreaterThan(0);
   });
 
-  it("compact recommendationのPrimaryへBackend factを通す", () => {
+  it("compact recommendationのPrimaryへBackend factの日本語名を通す", () => {
     renderBackendResponse([
       { shrine_id: 1, name: "第一候補", reason_facts: [fact("need_tag", "仕事")] },
-      { shrine_id: 2, name: "第二候補", reason_facts: [fact("visit_style", "自然")] },
+      { shrine_id: 2, name: "第二候補", reason_facts: [fact("goriyaku_tag", "rest", true, "休息")] },
+      { shrine_id: 3, name: "第三候補", reason_facts: [fact("visit_style", "visit_style", true, "参拝スタイル")] },
     ]);
     fireEvent.click(screen.getByRole("button", { name: "迷った時だけ、ほかの神社を見る" }));
-    const compactCard = screen.getByText("第二候補").closest("article");
-    expect(compactCard?.querySelector('[data-testid="recommendation-match-reason"]')).toHaveTextContent("自然");
+    const secondReason = screen.getByText("第二候補").closest("article")?.querySelector('[data-testid="recommendation-match-reason"]');
+    expect(secondReason).toHaveTextContent("休息");
+    expect(secondReason).not.toHaveTextContent("rest");
+    // visit_style は分類名「参拝スタイル」しか無いため、名前を文に入れない。
+    const thirdCard = screen.getByText("第三候補").closest("article");
+    expect(thirdCard).not.toHaveTextContent("参拝スタイル");
+    expect(thirdCard).not.toHaveTextContent("visit_style");
   });
 
   it("malformed factとis_primaryなしを安全に無視しPrimaryを推測しない", () => {

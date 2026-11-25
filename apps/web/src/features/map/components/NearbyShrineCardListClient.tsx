@@ -8,6 +8,7 @@ import type { PlacesNearbyResponse } from "@/lib/api/places.nearby.types";
 import { requestCurrentPosition } from "@/lib/geo/currentPosition";
 import GoogleMapRouteLink from "@/components/shrine/GoogleMapRouteLink";
 import { buildGoogleMapsDirUrl, buildGoogleMapsSearchUrl } from "@/lib/maps/googleMaps";
+import { toValidDestinationCoords } from "@/lib/maps/destinationContract";
 import { buildMapDetailHref } from "@/lib/nav/buildMapDetailHref";
 
 import Link from "next/link";
@@ -277,19 +278,27 @@ export default function NearbyShrineCardListClient() {
           {items.map((p, idx) => {
             const shrineId = (p as any).shrine_id ?? null;
 
-            // destinationを解決できない候補では経路案内CTAを出さない。
-            // 東京駅などの既定値へフォールバックさせないため（destinationContract.ts）。
-            const routeHref = buildGoogleMapsDirUrl({
-              // 実現在地が取れているときだけ origin を渡す。
-              // 東京駅 fallback (usedFallback) は Google Maps の出発地にしない。
-              origin: usedFallback ? null : coords,
-              destination: {
-                lat: p.lat ?? undefined,
-                lng: p.lng ?? undefined,
-                address: p.address ?? undefined,
-                fallbackName: p.name,
-              },
-            });
+            // DB-backed shrine には検証済みの座標が無い限り経路CTAを出さない。
+            // 住所・同名社への誤誘導を避けるため。Google Places-only の検索候補は
+            // 既存の住所/名称フォールバックを維持する（別の責務）。
+            const hasShrineIdentity = shrineId !== null;
+            const hasDestinationCoords = Boolean(
+              toValidDestinationCoords({ lat: p.lat ?? null, lng: p.lng ?? null }),
+            );
+            const routeHref =
+              hasShrineIdentity && !hasDestinationCoords
+                ? null
+                : buildGoogleMapsDirUrl({
+                    // 実現在地が取れているときだけ origin を渡す。
+                    // 東京駅 fallback (usedFallback) は Google Maps の出発地にしない。
+                    origin: usedFallback ? null : coords,
+                    destination: {
+                      lat: p.lat ?? undefined,
+                      lng: p.lng ?? undefined,
+                      address: p.address ?? undefined,
+                      fallbackName: p.name,
+                    },
+                  });
 
             const key =
               p.place_id ??

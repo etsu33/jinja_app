@@ -1,17 +1,16 @@
-# Mobile App（WIP）
+# Mobile App
 
 AI参拝ナビの **モバイル版（iOS / Android）** です。  
-現在は **未着手 / プロトタイプ段階** のため、開発・検証は行っていません。
+Expo Router で実装済みで、現在は **iOS リリース準備中**（App Store 審査対応）です。
 
 ---
 
 ## 現在のステータス
 
-- 実装：❌ 未着手
-- Git 管理：❌ 対象外
-- リリース予定：未定
-
-このディレクトリは **将来の Expo アプリ用の置き場所**としてのみ存在します。
+- 実装：✅ 実装済み（Expo Router / 既存 Backend API に接続）
+- Git 管理：✅ 対象（`apps/mobile`）
+- リリース：iOS リリース準備中
+- iOS 内課金：✅ 実装済み（StoreKit 2 / expo-iap。後述の「iOS Premium purchases」を参照）
 
 ---
 
@@ -53,3 +52,32 @@ AI参拝ナビの **モバイル版（iOS / Android）** です。
 > NOTE  
 > この README は **「今は触らなくていい」ことを明確にするためのもの**です。  
 > 実装が始まったら、迷わず書き換えてください。
+
+### iOS Premium purchases
+
+The Premium screen uses Expo IAP 6.4.4 with StoreKit 2. The module autolinks
+on iOS and is excluded from Android autolinking. Use a new native development
+build or TestFlight on a physical iPhone. Expo Go cannot run this integration.
+Android retains the existing purchase flow.
+
+Configure these products in App Store Connect for `com.morietsu.kamimusubi`:
+
+- `com.morietsu.kamimusubi.premium.monthly` as an auto-renewable monthly subscription.
+- `com.morietsu.kamimusubi.pass.1day`, `com.morietsu.kamimusubi.pass.7day`, and
+  `com.morietsu.kamimusubi.pass.14day` as Non-Renewing Subscriptions.
+  Pass duration is applied by the backend.
+
+For App Review and TestFlight, use a backend with StoreKit verification
+configured and Sandbox enabled. On a device, verify the localized product prices,
+purchase each product, cancel the purchase sheet, and confirm the Premium status
+from the backend. Test Restore Purchases on the same KAMI MUSUBI account, including
+a purchase whose backend registration was temporarily unavailable.
+
+The app sends the verified transaction JWS to the existing authenticated
+billing API. It finishes the StoreKit transaction only after the API accepts it.
+If a purchase is pending, registration fails, or finishing fails, Restore
+Purchases can resend unfinished transactions. Restore also resends active monthly
+entitlements and the StoreKit transaction history for all three non-renewing
+Passes, including previously finished transactions. The backend applies Pass durations
+and returns the billing status for the signed-in account. The client finishes only unfinished transactions after server acceptance,
+using `isConsumable: false` for both product types.

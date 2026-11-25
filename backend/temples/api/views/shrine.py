@@ -18,19 +18,23 @@ from rest_framework import status, viewsets
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.permissions import AllowAny, IsAdminUser
+from shrine_project.throttling import ScopedRateThrottle
 from rest_framework.decorators import action
 
 from temples.api.serializers.places import (
     ShrineCollisionConflictSerializer,
     ShrineIngestRequestSerializer,
+    ShrineNotRegisteredSerializer,
 )
 from temples.services.places import (
     SHRINE_COLLISION_PUBLIC_CODE,
     SHRINE_COLLISION_PUBLIC_DETAIL,
+    SHRINE_NOT_REGISTERED_PUBLIC_CODE,
+    SHRINE_NOT_REGISTERED_PUBLIC_DETAIL,
     get_or_create_shrine_by_place_id,
     PlacesError,
+    resolve_shrine_by_place_id,
     ShrineCollisionReviewRequired,
 )
 from rest_framework import serializers
@@ -51,6 +55,7 @@ from temples.models import (
     ShrineDeity,
     ShrineHistory,
     ShrineKnowledgeSource,
+    ShrineHighlight,
 )
 from temples.services import evidence_gate
 from temples.queries import (
@@ -270,10 +275,17 @@ class ShrineViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ["name_jp", "name_romaji", "address", "goriyaku"]
 
+    # 公開するのは読み取りと throttle 付きの ingest だけ（ingest も Shrine マスタの新規作成は
+    # staff 限定。staff 以外は登録済み Shrine の解決のみ）。それ以外の action（create / update /
+    # partial_update / destroy や将来追加される action）は、どの URL route から到達しても
+    # staff 限定に倒す（default-deny）。Shrine は所有者を持たない共有カタログのため、
+    # 一般ユーザーに object-level の書き込み権限は無い。
+    PUBLIC_ACTIONS = frozenset({"list", "retrieve", "nearest", "ingest"})
+
     def get_permissions(self):
-        if self.action in ("list", "retrieve", "nearest", "ingest"):
+        if self.action in self.PUBLIC_ACTIONS:
             return [AllowAny()]
-        return [IsAuthenticated()]
+        return [IsAdminUser()]
 
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):
@@ -344,6 +356,17 @@ class ShrineViewSet(viewsets.ModelViewSet):
                     .prefetch_related(_fact_ready_sources_prefetch())
                     .order_by("sort_order", "id"),
                 ),
+                # 見どころ（Highlights PR-4）。published かつ確認済みだけを候補として先読みし、
+                # 出典・翻訳を含む最終判定は highlight_publication（Serializer側）で行う。
+                Prefetch(
+                    "highlights",
+                    queryset=ShrineHighlight.objects.filter(
+                        publication_status=ShrineHighlight.PublicationStatus.PUBLISHED,
+                        verification_status__in=evidence_gate.FACT_READY_VERIFICATION_STATUSES,
+                    )
+                    .prefetch_related("translations", "source_links__source", "history_links")
+                    .order_by("sort_order", "id"),
+                ),
             )
 
         return qs
@@ -368,6 +391,8 @@ class ShrineViewSet(viewsets.ModelViewSet):
         responses={
             200: ShrineDetailSerializer,
             # F-6B: 登録済み Shrine がこの Place を表しうる場合。作成も束縛もしない。
+            # Shrine マスタ未登録で、呼び出しに作成権限（staff）が無い場合。作成しない。
+            404: ShrineNotRegisteredSerializer,
             409: ShrineCollisionConflictSerializer,
         },
         tags=["shrines"],
@@ -384,8 +409,28 @@ class ShrineViewSet(viewsets.ModelViewSet):
         if not place_id:
             return Response({"detail": "place_id is required"}, status=400)
 
+        # 呼び出し自体は誰でもできるが、Shrine マスタを新規作成できるのは staff だけ。
+        # staff 以外は登録済み Shrine の解決だけを行い、未登録なら作らずに 404 を返す。
+        user = getattr(request, "user", None)
+        can_create = bool(user and user.is_authenticated and user.is_staff)
+
         try:
-            shrine = get_or_create_shrine_by_place_id(place_id)
+            if can_create:
+                shrine = get_or_create_shrine_by_place_id(place_id)
+            else:
+                resolution = resolve_shrine_by_place_id(place_id, allow_create=False)
+                if resolution.is_review_required:
+                    raise ShrineCollisionReviewRequired(place_id, resolution.candidates)
+                if resolution.shrine is None:
+                    return Response(
+                        {
+                            "detail": SHRINE_NOT_REGISTERED_PUBLIC_DETAIL,
+                            "code": SHRINE_NOT_REGISTERED_PUBLIC_CODE,
+                            "place_id": place_id,
+                        },
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
+                shrine = resolution.shrine
             data = ShrineDetailSerializer(shrine, context={"request": request}).data
             data["place_id"] = place_id
             return Response(data, status=status.HTTP_200_OK)

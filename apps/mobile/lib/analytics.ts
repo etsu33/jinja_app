@@ -6,6 +6,9 @@ export type AnalyticsPayload = Record<string, string | number | boolean>;
 // 実際の送信手段(Console/PostHog等)はこのinterfaceの実装差し替えで切り替える。
 export interface AnalyticsProvider {
   track(eventName: string, payload: AnalyticsPayload): void;
+  // 端末側の解析用ID(匿名ID・端末ID)を作り直す。退会時に使う。
+  // 実装しないprovider(Console等)では何もしない。
+  resetIdentity?(): Promise<void>;
 }
 
 function isPrimitiveValue(value: unknown): value is string | number | boolean {
@@ -81,6 +84,18 @@ export function track(eventName: string, payload: Record<string, unknown> = {}):
   } catch (error) {
     if (__DEV__) {
       console.warn("[track] failed", error);
+    }
+  }
+}
+
+// 端末側の解析用IDを作り直す。退会完了後に呼び出す。
+// 失敗してもアプリ本体の動作(退会完了の表示)を止めないよう握り潰す。
+export async function resetAnalyticsIdentity(): Promise<void> {
+  try {
+    await getAnalyticsProvider().resetIdentity?.();
+  } catch (error) {
+    if (__DEV__) {
+      console.warn("[resetAnalyticsIdentity] failed", error);
     }
   }
 }

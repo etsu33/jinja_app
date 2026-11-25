@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
     const r = await djFetch(upstreamPath, {
       method: "POST",
       cache: "no-store",
+      clientIdentityFrom: req,
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
