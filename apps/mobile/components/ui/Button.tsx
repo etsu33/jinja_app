@@ -1,10 +1,10 @@
 // apps/mobile/components/ui/Button.tsx
-import { ActivityIndicator, Pressable, StyleSheet, Text, type ViewStyle } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, type TextStyle, type ViewStyle } from "react-native";
 
 import { ctaSizes } from "../../design/ctaSizes";
 import { semanticRadius } from "../../design/radius";
 import { semanticShadow } from "../../design/shadow";
-import { appSemanticTheme } from "../../design/theme";
+import { appSemanticTheme, isIndigoIOS } from "../../design/platformTheme";
 import { typography } from "../../design/typography";
 
 type Props = {
@@ -12,6 +12,8 @@ type Props = {
   variant?: "primary" | "accent" | "neutral" | "outline" | "success";
   size?: "default" | "compact";
   style?: ViewStyle;
+  /** 呼び出し元の背景に合わせる任意の文字スタイル。既定の色は維持する。 */
+  textStyle?: TextStyle;
   onPress?: () => void;
   disabled?: boolean;
   loading?: boolean;
@@ -23,6 +25,7 @@ export default function Button({
   variant = "neutral",
   size = "default",
   style,
+  textStyle: textStyleOverride,
   onPress,
   disabled = false,
   loading = false,
@@ -76,6 +79,7 @@ export default function Button({
       style={({ pressed }) => [
         styles.btn,
         size === "compact" ? styles.btnCompact : styles.btnDefault,
+        isIndigoIOS && size === "default" ? styles.btnIOS : null,
         theme,
         pressed && !isDisabled ? styles.btnPressed : null,
         isDisabled ? styles.btnDisabled : null,
@@ -85,7 +89,7 @@ export default function Button({
       {loading ? (
         <ActivityIndicator color={indicatorColor} />
       ) : (
-        <Text style={[styles.btnTextBase, size === "compact" ? styles.btnTextCompact : null, textStyle]}>{title}</Text>
+        <Text style={[styles.btnTextBase, size === "compact" ? styles.btnTextCompact : null, textStyle, textStyleOverride]}>{title}</Text>
       )}
     </Pressable>
   );
@@ -99,6 +103,12 @@ const styles = StyleSheet.create({
   btnDefault: {
     height: ctaSizes.mediumHeight,
     borderRadius: semanticRadius.control,
+  },
+  btnIOS: {
+    height: "auto",
+    minHeight: ctaSizes.mediumHeight,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   btnCompact: {
     alignSelf: "flex-start",

@@ -3,7 +3,7 @@ import Constants from "expo-constants";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { View, Text, ScrollView, Pressable, Image, StyleSheet, Platform } from "react-native";
 import { SHRINES } from "../../data/shrines";
-import { appColors as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/platformTheme";
 import { spacing } from "../../design/spacing";
 import { StateCard } from "../../components/common/StateCard";
 import Button from "../../components/ui/Button";

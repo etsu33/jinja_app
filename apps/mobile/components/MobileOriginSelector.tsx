@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { get } from "../lib/http";
-import { appColors as theme } from "../design/theme";
+import { appColors as theme, inputAppearance } from "../design/platformTheme";
 import { ProfilePickerModal } from "./profile/ProfilePickerModal";
 import {
   originSearchAnnouncement,
@@ -112,6 +112,7 @@ export function MobileOriginSelector({
       {mode === "manual" ? (
         <>
           <TextInput
+            {...inputAppearance}
             accessibilityLabel="駅名または住所"
             accessibilityHint="2文字以上入力すると候補を検索します"
             value={query}

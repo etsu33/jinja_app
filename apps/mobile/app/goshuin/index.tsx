@@ -3,7 +3,7 @@ import * as React from "react";
 import { View, Text, Image, StyleSheet, ScrollView, Dimensions } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { getStamps } from "../../lib/storage";
-import { appColors as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/platformTheme";
 import Button from "../../components/ui/Button";
 import { typography } from "../../design/typography";
 import Ionicons from "@expo/vector-icons/Ionicons";

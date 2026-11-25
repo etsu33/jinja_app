@@ -9,7 +9,7 @@ import {
   validateSignupInput,
   type SignupFieldErrors,
 } from "../lib/signup";
-import { appColors as theme } from "../design/theme";
+import { appColors as theme, inputAppearance, isIndigoIOS } from "../design/platformTheme";
 import { spacing } from "../design/spacing";
 import { radius } from "../design/radius";
 import { typography } from "../design/typography";
@@ -55,7 +55,7 @@ export default function SignupScreen() {
   }, [email, password, router, username]);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets={isIndigoIOS}>
       <View style={styles.card}>
         <Text style={styles.eyebrow}>SIGN UP</Text>
         <Text style={styles.title}>新規登録</Text>
@@ -65,6 +65,7 @@ export default function SignupScreen() {
           <View style={styles.field}>
             <Text style={styles.label}>ユーザー名</Text>
             <TextInput
+              {...inputAppearance}
               value={username}
               onChangeText={setUsername}
               editable={!submitting}
@@ -83,6 +84,7 @@ export default function SignupScreen() {
           <View style={styles.field}>
             <Text style={styles.label}>メールアドレス</Text>
             <TextInput
+              {...inputAppearance}
               value={email}
               onChangeText={setEmail}
               editable={!submitting}
@@ -102,6 +104,7 @@ export default function SignupScreen() {
           <View style={styles.field}>
             <Text style={styles.label}>パスワード</Text>
             <TextInput
+              {...inputAppearance}
               value={password}
               onChangeText={setPassword}
               editable={!submitting}

@@ -6,7 +6,7 @@ import { fetchPopularShrines, type PopularShrine } from "../../lib/popularShrine
 import { getFavorites, toggleFavorite } from "../../lib/storage";
 import { StateCard } from "../../components/common/StateCard";
 import Button from "../../components/ui/Button";
-import { appColors as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/platformTheme";
 import { spacing } from "../../design/spacing";
 import { typography } from "../../design/typography";
 import { cardSizes } from "../../design/cardSizes";

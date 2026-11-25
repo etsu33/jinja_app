@@ -187,6 +187,19 @@ export type KamimusubiLightColorKey = keyof typeof kamimusubiLight;
 // 画面が参照する実値。配色を切り替えるときはここだけを差し替える。
 export const appColors = kamimusubiLight;
 
+// 承認済みホームのIndigo & Gold。iOS全画面パレットもこの色を基準にする。
+export const homeIndigo = {
+  background: "#08162D",
+  backgroundSubtle: "#142D50",
+  surface: "#1B304A",
+  ornament: "#C9A044",
+  action: "#D8C39B",
+  actionText: "#08162D",
+  text: "#F7F5F0",
+  secondaryText: "#BFC9D6",
+  border: "#8290A3",
+} as const;
+
 export type AppColorKey = keyof typeof colors;
 export type KamimusubiDarkColorKey = keyof typeof kamimusubiDark;
 
@@ -279,3 +292,86 @@ export const kamimusubiLightSemanticTheme: PlatformColorTheme = {
 
 // UI Component が参照する Semantic Theme。配色の切り替えはここ1行。
 export const appSemanticTheme: PlatformColorTheme = kamimusubiLightSemanticTheme;
+
+// 2026-11-24: ホーム実画面の承認後、iOS全画面へ展開。
+// 旧Light/Darkの値とWebのSemantic契約は変更しない。
+export const iosIndigoColors: Record<keyof typeof kamimusubiLight, string> = {
+  ...kamimusubiLight,
+  background: homeIndigo.background,
+  surfaceSoft: "#14263F",
+  surface: homeIndigo.surface,
+  surfaceRaised: "#243F5D",
+  outside: homeIndigo.background,
+  borderSoft: "#788AA0",
+  borderHeader: "#304862",
+  borderMuted: "#788AA0",
+  border: homeIndigo.border,
+  borderStrong: "#9AAAC0",
+  borderAccent: homeIndigo.ornament,
+  borderAccentDark: "#B69B64",
+  accent: homeIndigo.action,
+  accentSoft: "#E4D3B2",
+  premiumAccent: "#E4D3B2",
+  selectedSurface: "#263F5A",
+  // 既存画面の主CTA参照を保つ互換キー。iOSでは朱ではなく淡金を割り当てる。
+  vermilion: homeIndigo.action,
+  vermilionDeep: "#C9B389",
+  cedar: "#B3D2BC",
+  cedarBorder: "#7FA88B",
+  cedarSurface: "#203F37",
+  text: homeIndigo.text,
+  mutedSoft: homeIndigo.secondaryText,
+  muted: homeIndigo.secondaryText,
+  mutedDark: "#A8B8CB",
+  navMuted: homeIndigo.secondaryText,
+  warning: "#EBC784",
+  error: "#F0ADA5",
+  errorSurface: "#402A38",
+};
+
+export const iosIndigoSemanticTheme: PlatformColorTheme = {
+  "background.base": iosIndigoColors.background,
+  "background.subtle": iosIndigoColors.surfaceSoft,
+  "surface.default": iosIndigoColors.surface,
+  "surface.elevated": iosIndigoColors.surfaceRaised,
+  "text.primary": iosIndigoColors.text,
+  "text.secondary": iosIndigoColors.muted,
+  "text.muted": iosIndigoColors.mutedDark,
+  "text.inverse": homeIndigo.actionText,
+  "border.default": iosIndigoColors.border,
+  "border.strong": iosIndigoColors.borderStrong,
+  "border.focus": iosIndigoColors.accent,
+  "action.primary": homeIndigo.action,
+  "action.primaryHover": iosIndigoColors.vermilionDeep,
+  "action.primaryText": homeIndigo.actionText,
+  "action.disabled": iosIndigoColors.mutedDark,
+  "status.success": iosIndigoColors.cedar,
+  "status.successText": iosIndigoColors.cedar,
+  "status.successSurface": iosIndigoColors.cedarSurface,
+  "status.successBorder": iosIndigoColors.cedarBorder,
+  "status.warning": iosIndigoColors.warning,
+  "status.error": iosIndigoColors.error,
+  "status.info": iosIndigoColors.muted,
+  "premium.accent": iosIndigoColors.premiumAccent,
+  "premium.surface": iosIndigoColors.surfaceRaised,
+  "premium.border": iosIndigoColors.borderAccent,
+  "overlay.default": "rgba(3, 10, 23, 0.76)",
+};
+
+const iosIndigoDawn = {
+  ...dawn,
+  // Native Splashの先頭色は維持し、既存のフェード時間・順序も変えない。
+  colors: [dawn.colors[0], homeIndigo.background, "#102441", homeIndigo.backgroundSubtle, "#102441", homeIndigo.background],
+} as const;
+
+// React Nativeに依存しない選択関数。iOS以外の戻り値は既存の実体を保つ。
+export function selectAppTheme(platform: string) {
+  const isIOS = platform === "ios";
+  return {
+    colors: isIOS ? iosIndigoColors : appColors,
+    semantic: isIOS ? iosIndigoSemanticTheme : appSemanticTheme,
+    splash: isIOS ? iosIndigoDawn : dawn,
+    statusBarStyle: isIOS ? "light" as const : "dark" as const,
+    primaryActionText: isIOS ? homeIndigo.actionText : kamimusubiLight.surfaceRaised,
+  };
+}

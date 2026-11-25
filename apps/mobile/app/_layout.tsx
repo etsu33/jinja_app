@@ -3,7 +3,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { DawnSplash } from "../components/common/DawnSplash";
-import { appColors as theme } from "../design/theme";
+import { appColors as theme, statusBarStyle } from "../design/platformTheme";
 import { typography } from "../design/typography";
 import { initAnalyticsProvider } from "../lib/posthogAnalyticsProvider";
 
@@ -50,8 +50,8 @@ export default function Root() {
 
   return (
     <>
-      {/* 地が生成り (#F5F1E8) のため、ステータスバーの文字は暗色で固定する。 */}
-      <StatusBar style="dark" />
+      {/* iOSは深藍に明色文字。Web/Androidは既存の配色を維持する。 */}
+      <StatusBar style={statusBarStyle} />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: theme.background },

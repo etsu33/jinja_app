@@ -2,7 +2,7 @@ import * as React from "react";
 import { type ColorValue } from "react-native";
 import { Tabs } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { appColors as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/platformTheme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 
@@ -60,7 +60,7 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        // 選択中は深藍。朱はホームの主CTAだけに残す。
+        // iOSは全タブを深藍・淡金へ統一。Web/Androidの値はadapterで維持する。
         tabBarActiveTintColor: theme.accent,
         tabBarInactiveTintColor: theme.muted,
         tabBarLabelStyle: {

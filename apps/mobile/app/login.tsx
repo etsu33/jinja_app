@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { post } from "../lib/http";
 import Button from "../components/ui/Button";
 import { setTokens } from "../lib/authTokens";
-import { appColors as theme } from "../design/theme";
+import { appColors as theme, inputAppearance, isIndigoIOS } from "../design/platformTheme";
 import { spacing } from "../design/spacing";
 import { radius } from "../design/radius";
 import { typography } from "../design/typography";
@@ -45,7 +45,7 @@ export default function LoginScreen() {
   }, [canSubmit, password, router, username]);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets={isIndigoIOS}>
       <View style={styles.card}>
         <Text style={styles.eyebrow}>LOGIN</Text>
         <Text style={styles.title}>ログイン</Text>
@@ -55,6 +55,7 @@ export default function LoginScreen() {
           <View style={styles.field}>
             <Text style={styles.label}>ユーザー名</Text>
             <TextInput
+              {...inputAppearance}
               accessibilityLabel="ユーザー名"
               value={username}
               onChangeText={setUsername}
@@ -70,6 +71,7 @@ export default function LoginScreen() {
           <View style={styles.field}>
             <Text style={styles.label}>パスワード</Text>
             <TextInput
+              {...inputAppearance}
               accessibilityLabel="パスワード"
               value={password}
               onChangeText={setPassword}

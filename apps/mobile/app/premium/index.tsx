@@ -32,7 +32,7 @@ import {
 import { ApplePurchaseSection } from "../../components/ApplePurchaseSection";
 import { StateCard } from "../../components/common/StateCard";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
-import { appColors as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/platformTheme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";

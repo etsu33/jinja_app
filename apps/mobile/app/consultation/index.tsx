@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Location from "expo-location";
 
-import { appColors as theme } from "../../design/theme";
+import { appColors as theme, primaryActionText, inputAppearance } from "../../design/platformTheme";
 import { typography } from "../../design/typography";
 import { spacing } from "../../design/spacing";
 import { radius } from "../../design/radius";
@@ -239,6 +239,7 @@ export default function ConsultationScreen() {
               />
             ))}
             <TextInput
+              {...inputAppearance}
               accessibilityLabel="相談内容"
               placeholder="自分の言葉で書いてもかまいません"
               placeholderTextColor={theme.mutedDark}
@@ -475,7 +476,7 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     ...typography.button,
-    color: theme.surfaceRaised,
+    color: primaryActionText,
   },
   secondary: {
     minHeight: 44,

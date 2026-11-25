@@ -13,6 +13,8 @@ Guided Journey × Quiet Editorial
 
 ---
 
+> **個別承認（2026-11-24）**：ホームの実画面承認後、iOS全画面を深藍・明色文字・淡金CTAへ統一する。以下のLight Theme規則はWeb/Androidの既存表示と過去の設計根拠として維持する。iOSの実値は `design/theme.ts` の `iosIndigoColors` / `iosIndigoSemanticTheme`、選択は `design/platformTheme.ts` を正本とする。装飾はホームの雲文様を維持し、読み物画面では単色背景を使う。機能・導線・入力項目・推薦・課金の契約を変更しない。
+
 ## 01 目的
 
 iOSのUIを「静かな紙面をめくりながら、自分の状態を整理し、神社との接点へ進む体験」として統一する。

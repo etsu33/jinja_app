@@ -6,11 +6,11 @@
 import { readFileSync, globSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
-import { dawn, kamimusubiLight as light } from "../../design/theme";
+import { dawn, homeIndigo, iosIndigoColors, iosIndigoSemanticTheme, selectAppTheme, kamimusubiLight as light } from "../../design/theme";
 
 function channel(value: number): number {
   const c = value / 255;
@@ -215,12 +215,105 @@ describe("和の朝焼け（区切りの画面のグラデーション）", () =
     expect(contrast("#FFFFFF", colorAt(markTop))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("グラデーションを使う画面を区切りの画面に限る", () => {
-    // 40節の Gradient 禁止は、区切りの4画面を除いて有効。
+  it("グラデーションは区切り画面と承認済みのiOSホームに限る", () => {
+    // 2026-11-24承認: iOSホームのみIndigo & Goldを適用。他画面は従来どおり。
     const users = globSync(["app/**/*.tsx", "components/**/*.tsx"], { cwd: mobileRoot })
       .filter((file) => readFileSync(resolve(mobileRoot, file), "utf8").includes("LinearGradient"))
       .sort();
 
-    expect(users).toEqual(["components/common/DawnSplash.tsx"]);
+    expect(users).toEqual(["app/(tabs)/index.tsx", "components/common/DawnSplash.tsx"]);
+  });
+});
+
+describe("iOSホームのIndigo & Goldの可読性", () => {
+  it("本文・補助文字が背景全域と入力面でAAを満たす", () => {
+    for (const surface of [homeIndigo.background, homeIndigo.backgroundSubtle, homeIndigo.surface]) {
+      for (const text of [homeIndigo.text, homeIndigo.secondaryText]) {
+        expect(contrast(text, surface)).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(contrast(homeIndigo.border, surface)).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("主要CTAと検索CTA・選択中タブを識別できる", () => {
+    expect(contrast(homeIndigo.actionText, homeIndigo.action)).toBeGreaterThanOrEqual(4.5);
+    for (const background of [homeIndigo.background, homeIndigo.backgroundSubtle]) {
+      expect(contrast(homeIndigo.action, background)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+describe("iOS全画面テーマの可読性とプラットフォーム分離", () => {
+  const surfaces = [iosIndigoColors.background, iosIndigoColors.surfaceSoft, iosIndigoColors.surface, iosIndigoColors.surfaceRaised, iosIndigoColors.selectedSurface];
+
+  it("本文・補足・状態文字が全ての面でAAを満たす", () => {
+    const texts = [iosIndigoColors.text, iosIndigoColors.mutedSoft, iosIndigoColors.mutedDark, iosIndigoColors.accent, iosIndigoColors.warning, iosIndigoColors.error];
+    for (const text of texts) for (const surface of surfaces) {
+      expect(contrast(text, surface), `${text} on ${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("入力枠・選択線は全ての面に対して3以上ある", () => {
+    for (const border of [iosIndigoColors.borderSoft, iosIndigoColors.border, iosIndigoColors.borderStrong, iosIndigoColors.borderAccent]) {
+      for (const surface of surfaces) expect(contrast(border, surface), `${border} on ${surface}`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("塗りボタン上の文字と成功・エラー表示が読める", () => {
+    for (const fill of [iosIndigoColors.vermilion, iosIndigoColors.vermilionDeep, iosIndigoColors.accent, iosIndigoColors.premiumAccent]) {
+      expect(contrast(iosIndigoSemanticTheme["action.primaryText"], fill)).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(contrast(iosIndigoColors.cedar, iosIndigoColors.cedarSurface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(iosIndigoColors.error, iosIndigoColors.errorSurface)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("Web/Android/その他は既存テーマの実体を返す", async () => {
+    const original = await import("../../design/theme");
+    for (const platform of ["web", "android", "windows"]) {
+      const selected = selectAppTheme(platform);
+      expect(selected.colors).toBe(original.appColors);
+      expect(selected.semantic).toBe(original.appSemanticTheme);
+      expect(selected.splash).toBe(original.dawn);
+      expect(selected.statusBarStyle).toBe("dark");
+    }
+  });
+
+  it("iOSだけ承認済みホームと同じ基調色を返す", () => {
+    const selected = selectAppTheme("ios");
+    expect(selected.colors).toBe(iosIndigoColors);
+    expect(selected.semantic).toBe(iosIndigoSemanticTheme);
+    expect(selected.colors.background).toBe(homeIndigo.background);
+    expect(selected.semantic["action.primary"]).toBe(homeIndigo.action);
+    expect(selected.statusBarStyle).toBe("light");
+    expect(selected.primaryActionText).toBe(homeIndigo.actionText);
+    expect(selected.splash.colors[0]).toBe(dawn.colors[0]);
+  });
+});
+
+describe("実行時adapterの選択", () => {
+  it.each(["ios", "android", "web"])("%sでテーマと入力外観を選べる", async (platform) => {
+    vi.resetModules();
+    vi.doMock("react-native", () => ({ Platform: { OS: platform } }));
+    try {
+      const runtime = await import("../../design/platformTheme");
+      const expected = selectAppTheme(platform);
+      expect(runtime.appColors).toEqual(expected.colors);
+      expect(runtime.appSemanticTheme).toEqual(expected.semantic);
+      expect(runtime.statusBarStyle).toBe(expected.statusBarStyle);
+      expect(runtime.inputAppearance).toEqual(platform === "ios"
+        ? { keyboardAppearance: "dark", selectionColor: homeIndigo.action }
+        : {});
+    } finally {
+      vi.doUnmock("react-native");
+      vi.resetModules();
+    }
+  });
+
+  it("全画面と共通部品が実行時adapter経由で色を読む", () => {
+    const sources = globSync(["app/**/*.tsx", "components/**/*.tsx"], { cwd: mobileRoot });
+    for (const file of sources) {
+      const source = readFileSync(resolve(mobileRoot, file), "utf8");
+      expect(source, file).not.toMatch(/from ["'][^"']*design\/theme["']/);
+    }
   });
 });
