@@ -129,6 +129,22 @@ describe("ConciergeSectionsRenderer - save_prompt 保存フィードバック", 
     expect(within(feedback).queryByRole("link")).toBeNull();
   });
 
+  it("server_unavailable: サーバー一時不応答の文言を表示し、再クリック可能", () => {
+    const onAction = renderWith({ status: "error", error: "server_unavailable", historyHref: null });
+
+    const feedback = screen.getByTestId("concierge-thread-save-feedback");
+    expect(feedback).toHaveTextContent("サーバーが一時的に応答していないため");
+    expect(within(feedback).queryByRole("link")).toBeNull();
+    fireEvent.click(savePromptButton());
+    expect(onAction).toHaveBeenCalledWith({ type: "save_concierge_thread" });
+  });
+
+  it("invalid_response: 読み取り失敗の文言を表示する", () => {
+    renderWith({ status: "error", error: "invalid_response", historyHref: null });
+
+    expect(screen.getByTestId("concierge-thread-save-feedback")).toHaveTextContent("保存の確認結果を読み取れませんでした");
+  });
+
   it("未ログイン: ログイン誘導ラベルのままで保存フィードバックは出さない", () => {
     authMock.useAuth.mockReturnValue({ isLoggedIn: false, loading: false });
     renderWith({ status: "saved", error: null, historyHref: "/mypage/history/500" });
