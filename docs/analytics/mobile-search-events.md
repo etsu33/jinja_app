@@ -8,7 +8,7 @@ Mobile／Expo WebのHome→Search入口、Search画面、神社一覧・人気�
 
 | Event | 発火条件 | Payload | 重複の単位 |
 | --- | --- | --- | --- |
-| `search_entry_click` | Homeの「神社を地図・一覧から探す」CTAを押した操作 | `source: "home"`, `platform: "mobile"` | クリックごと |
+| `search_entry_click` | Homeの「神社を探す」CTAを押した操作。表示名は 2026-11 に『神社を地図・一覧から探す』から『神社を探す』に変更。送信条件は変更なし | `source: "home"`, `platform: "mobile"` | クリックごと |
 | `search_screen_view` | Search画面(`/search`)がマウントされたとき | `source: "mobile_search"`, `platform: "mobile"` | 画面マウント中に1回(`React.useEffect`の空配列依存で再レンダーでの重複を防ぐ) |
 | `shrine_card_click` | 神社一覧・人気の神社・地図選択カードのいずれかから、神社詳細への遷移操作を行ったとき(カードの単なる表示では発火しない) | `source`(`"mobile_search"` \| `"map"`), `shrineId`, `position`(`"list"` \| `"popular"` \| `"map"`), `platform: "mobile"` | 遷移操作ごと |
 | `map_marker_select` | Marker(Native/Web)、Native座標欠損リスト、Web fallback一覧のいずれかで神社を選択した操作(神社詳細への遷移ではない) | `source: "map"`, `shrineId`, `position: "map"`, `platform: "mobile"` | 選択操作ごと(同じ神社の再選択も1回として送る) |

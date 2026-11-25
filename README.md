@@ -68,6 +68,8 @@ Concierge First では、トップ画面とコンシェルジュ画面を統合�
 
 Mobile（Expo / Android / iOS）、御朱印画像登録等の画像機能拡張、課金機能の拡張は**新規開発を保留**する。既存コードや導線は直ちに削除しない。ただし**UIの保留はAPI停止を意味しない**。公開中のエンドポイントはセキュリティ上の管理対象に含め、停止または保護の実装・検証は別PRで行う。再開条件と優先順位は母艦判断とする。
 
+**Mobile保留の限定例外（2026-11-24 母艦判断）：** `ShrineNearbySpot` の神社周辺歴史スポット機能に限り、Webと同一のデータ・Publication Gate・Position Gate・カテゴリー3分類・同一神社性・出典／翻訳承認・未確認座標非表示ルールをMobile（Expo / React Native）にも適用する。公開可否の判定はBackendを唯一の正本とし、WebとMobileに重複実装しない。Mobile UIはPR-5の対象とするが、PR開始・マージ・配布には個別の母艦判断が必要。Mobile全体の新規開発保留、ストア公開保留、既存APIの安全性管理は変更しない。正本：`docs/product/shrine-nearby-spot-spec.md`。
+
 技術責務の正本は `docs/core/architecture.md`、開発順序の正本は `docs/core/roadmap.md`。セキュリティ監査の所見は `docs/audit/` で管理し、Critical/High修正が完了したとは扱わない。
 
 ---
@@ -94,6 +96,7 @@ Mobile（Expo / Android / iOS）、御朱印画像登録等の画像機能拡張
 
 - AIコンシェルジュ（悩みや願いごとに応じた神社提案。失敗時は距離順 top3 フォールバック）
 - 神社詳細の確認（推薦理由、基本情報、公開御朱印を確認）
+  - 神社周辺の歴史スポット（境内の見どころとは別に表示する。仕様は承認済み・実装は未着手。正本：`docs/product/shrine-nearby-spot-spec.md`）
 - 経路案内（神社詳細から参拝導線をつなぐ）
 - 地図ページ `/map` による周辺探索（補助機能）
 - お気に入り・御朱印（補助機能）

@@ -99,6 +99,14 @@ describe("PrivacyPolicyPage", () => {
     expect(text).not.toContain("完全に削除します");
   });
 
+  it("PostHogイベントの1年保持とIPアドレス非保存を記載する", () => {
+    const { container } = render(<PrivacyPolicyPage />);
+    const text = container.textContent ?? "";
+
+    expect(text).toContain("送信から1年を経過したものを順次削除します");
+    expect(text).toContain("2026年11月5日以降、PostHogではIPアドレスを保存していません");
+  });
+
   it("現行実装で確認できる取得情報と外部サービスを記載する", () => {
     const { container } = render(<PrivacyPolicyPage />);
     const text = container.textContent ?? "";
@@ -118,13 +126,22 @@ describe("PrivacyPolicyPage", () => {
   });
 });
 
-  it("アカウント削除とPremium課金停止の現在仕様を明記する", () => {
+  it("アカウント削除と旅行パス（買い切り）の現在仕様を明記する", () => {
     const { container } = render(<PrivacyPolicyPage />);
     const text = container.textContent ?? "";
 
     expect(text).toContain("利用者は設定画面から、自身のアカウントを削除できます");
-
-    expect(text).toContain("将来の請求停止を確認したうえでPremiumを終了し、アカウント削除を進めます");
-
+    expect(text).toContain("アカウントを削除するとPremiumは終了します");
+    expect(text).toContain("パスの購入の記録（パスの種類・金額・決済の識別子・有効期限）は、アカウントと一緒に削除します");
     expect(text).toContain("アカウントとの紐付けを解除したうえで保持される場合があります");
+  });
+
+  it("月額の自動更新を前提にした文言を残さない", () => {
+    const { container } = render(<PrivacyPolicyPage />);
+    const text = container.textContent ?? "";
+
+    expect(text).toContain("購入したパスの種類・金額・決済の識別子、Premiumの有効期限");
+    for (const banned of ["サブスクリプションID", "契約期間の終了日", "Customer Portal", "将来の請求停止"]) {
+      expect(text).not.toContain(banned);
+    }
   });

@@ -79,15 +79,38 @@ async function fetchAnonymousDirect(path: string): Promise<Response> {
   });
 }
 
+/** 相談と一致したご利益の名前を Backend へ渡す引数の名前(Backend の ShrineMeaningView と同じ)。 */
+export const MATCHED_BENEFITS_QUERY_PARAM = "benefits";
+
+export type FetchShrineMeaningOptions = {
+  /**
+   * 相談と一致したご利益の名前(collectMatchedBenefitNames)。相談から開いた神社詳細のときだけ渡す。
+   * 空・未指定のときは引数を付けない(Backend は今までどおりの文を作る)。
+   * 神社が持っているご利益に入るかどうかは Backend が確かめる。
+   */
+  matchedBenefitNames?: readonly string[] | null;
+};
+
+function buildMeaningPath(shrineId: number, matchedBenefitNames: readonly string[] | null | undefined): string {
+  const path = `/api/shrines/${encodeURIComponent(String(shrineId))}/meaning/`;
+  const names = (matchedBenefitNames ?? []).filter((name) => typeof name === "string" && name.trim());
+  if (names.length === 0) return path;
+
+  const query = new URLSearchParams();
+  for (const name of names) query.append(MATCHED_BENEFITS_QUERY_PARAM, name.trim());
+  return `${path}?${query.toString()}`;
+}
+
 export async function fetchShrineMeaningPayloadV2Server(
   shrineId: number,
+  options: FetchShrineMeaningOptions = {},
 ): Promise<ShrineMeaningPayloadV2 | null> {
   if (!Number.isFinite(shrineId) || shrineId <= 0) {
     return null;
   }
 
   try {
-    const path = `/api/shrines/${encodeURIComponent(String(shrineId))}/meaning/`;
+    const path = buildMeaningPath(shrineId, options.matchedBenefitNames);
 
     const res = (await hasAuthContext()) ? await fetchViaBff(path) : await fetchAnonymousDirect(path);
 

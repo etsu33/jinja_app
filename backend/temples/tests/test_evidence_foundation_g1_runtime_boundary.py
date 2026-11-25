@@ -24,7 +24,7 @@ _RUNTIME_PATTERNS = (
     "services/shrine_meaning_composer.py",
     "services/action_suggestions.py",
     "domain/consultation_axis.py",
-    "domain/need_to_goriyaku_tag_ids.py",
+    "domain/need_to_goriyaku_concepts.py",
     "management/commands/backfill_goriyaku_tags.py",
 )
 _ALIAS_IMPORT_PATTERN = re.compile(

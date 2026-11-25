@@ -7,15 +7,17 @@
 > 現在のRoute構成・Navigation・Layoutは、以下のコードを正本とする。
 >
 > - `apps/mobile/app/`
-> - `apps/mobile/app/_layout.tsx`
-> - `apps/mobile/app/index.tsx`
-> - `apps/mobile/app/concierge/`
+> - `apps/mobile/app/_layout.tsx`（root の Stack）
+> - `apps/mobile/app/(tabs)/_layout.tsx`（タブバーに出す4画面）
+> - `apps/mobile/app/(tabs)/index.tsx`
+> - `apps/mobile/app/(tabs)/concierge/`
+> - `apps/mobile/app/(tabs)/records/`
+> - `apps/mobile/app/(tabs)/mypage/`
 > - `apps/mobile/app/shrines/`
 > - `apps/mobile/app/goshuin/`
 > - `apps/mobile/app/search/`
 > - `apps/mobile/app/profile/`
 > - `apps/mobile/app/favorites/`
-> - `apps/mobile/app/records/`
 > - `apps/mobile/app/ranking/`
 
 # Mobile Route Structure Audit

@@ -11,8 +11,11 @@
 //
 // Level tagging on the returned fields follows
 // apps/web/src/features/concierge/types/chatRequest.ts.
+//
+// コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）。保存した生年月日・
+// 九星・五行・ライフパス・出生時刻・出生地は、相談の送信に入れない（birthdate・filters.birthdate・
+// profile_context を送らない）。mode も常に "need"（相性モードは送らない）。backend も入り口で外す。
 import { normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
-import { buildProfileContext, normalizeBirthday as normalizeProfileBirthday, type ProfileInput } from "@/lib/profile/derivedProfile";
 import type { ConciergeChatFilters, ConciergeChatRequestV1 } from "@/features/concierge/types/chatRequest";
 import { toOriginPayload, type UserOrigin } from "../../../../../packages/shared/userOrigin";
 
@@ -39,10 +42,7 @@ export type BuildConciergeRequestPayloadInput = Partial<Omit<ConciergeChatReques
 export type BuildConciergeRequestPayloadParams = {
   // Level 1 Consultation
   needText: string;
-  // Level 3-A Personal Profile
-  temporaryBirthdate: string | null | undefined;
-  savedProfile?: ProfileInput | null;
-  // Level 2 (extra_condition/crowd/duration_max_min) + Level 3-A (birthdate) +
+  // Level 2 (extra_condition/crowd/duration_max_min) +
   // Level 3-B (goriyaku_tag_ids) baseline, already resolved by the caller
   // (ConciergeClientFull's `baseFilters` memo -- unchanged by this extraction).
   baseFilters: ConciergeChatFilters;
@@ -58,16 +58,12 @@ export type BuildConciergeRequestPayloadParams = {
 
 export function buildConciergeRequestPayload({
   needText,
-  temporaryBirthdate,
-  savedProfile,
   baseFilters,
   visitPreferences,
   plannedVisitDate,
   userOrigin,
   input,
 }: BuildConciergeRequestPayloadParams): Omit<ConciergeChatRequestV1, "thread_id"> {
-  const birthdate = normalizeBirthdateInput(temporaryBirthdate ?? "") ?? normalizeProfileBirthday(savedProfile?.birthday);
-  const payloadBirthdate = input?.birthdate ?? birthdate;
   const payloadGoriyakuTagIds = input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids;
   const payloadExtraCondition = input?.extra_condition ?? baseFilters.extra_condition;
   const payloadVisitPreferences = input?.visit_preferences ?? (visitPreferences.length ? [...visitPreferences] : undefined);
@@ -76,7 +72,6 @@ export function buildConciergeRequestPayload({
   const payloadFreeText = input?.free_text ?? input?.extra_condition ?? baseFilters.free_text;
   const rawQuery = normalizeQueryText(input?.query ?? needText);
   const hasPayloadFilter =
-    !!payloadBirthdate ||
     (payloadGoriyakuTagIds?.length ?? 0) > 0 ||
     !!payloadExtraCondition ||
     !!payloadCrowd?.length ||
@@ -86,11 +81,9 @@ export function buildConciergeRequestPayload({
 
   return {
     version: input?.version ?? 1,
-    mode: input?.mode ?? "need",
+    mode: "need",
     query,
-    birthdate: payloadBirthdate,
     filters: {
-      birthdate: payloadBirthdate,
       goriyaku_tag_ids: payloadGoriyakuTagIds,
       extra_condition: payloadExtraCondition,
       crowd: payloadCrowd,
@@ -102,10 +95,5 @@ export function buildConciergeRequestPayload({
     visit_preferences: payloadVisitPreferences,
     visit_date: plannedVisitDate || undefined,
     location: toOriginPayload(userOrigin),
-    profile_context: buildProfileContext({
-      birthday: payloadBirthdate,
-      birth_time: savedProfile?.birth_time,
-      birth_place: savedProfile?.birth_place,
-    }),
   };
 }

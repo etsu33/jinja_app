@@ -42,8 +42,11 @@ vi.mock("@/lib/server/favorites.server", () => ({
   getShrineFavoriteInitialState: vi.fn().mockResolvedValue({ fav: false, favorite_id: null, guestMode: true }),
 }));
 
+const { fetchShrineMeaningPayloadV2ServerMock } = vi.hoisted(() => ({
+  fetchShrineMeaningPayloadV2ServerMock: vi.fn(),
+}));
 vi.mock("@/lib/api/shrineMeaning.server", () => ({
-  fetchShrineMeaningPayloadV2Server: vi.fn().mockResolvedValue(null),
+  fetchShrineMeaningPayloadV2Server: (...args: unknown[]) => fetchShrineMeaningPayloadV2ServerMock(...args),
 }));
 
 vi.mock("@/lib/shrine/buildShrineDetailModel", () => ({
@@ -150,5 +153,73 @@ describe("/shrines/[id] page -- route_open Compass attribution (PR5)", () => {
         recommendationRank: 2,
       }),
     );
+  });
+});
+
+describe("/shrines/[id] page -- 意味の窓口へ渡す、相談と一致したご利益の名前", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getShrineDetailServerMock.mockResolvedValue(baseShrine);
+    fetchShrineMeaningPayloadV2ServerMock.mockResolvedValue(null);
+    getConciergeThreadsServerMock.mockResolvedValue([]);
+  });
+
+  function meaningCall() {
+    expect(fetchShrineMeaningPayloadV2ServerMock).toHaveBeenCalledTimes(1);
+    return fetchShrineMeaningPayloadV2ServerMock.mock.calls[0];
+  }
+
+  it("相談から開いたときは、一致したご利益の名前（主な根拠の項目が先）を渡す", async () => {
+    getConciergeThreadServerMock.mockResolvedValue({
+      id: 768,
+      recommendations: [
+        {
+          shrine_id: 42,
+          id: 42,
+          reason_facts: [
+            { type: "goriyaku_tag", label: "protection", evidence: [], score: 2, matched_benefit_names: ["家内安全"] },
+            {
+              type: "text_hint",
+              label: "mental",
+              evidence: [],
+              score: 5,
+              is_primary: true,
+              matched_benefit_names: ["厄除け"],
+            },
+          ],
+        },
+      ],
+    });
+
+    await renderPage({ ctx: "concierge", tid: "768" });
+
+    expect(meaningCall()).toEqual([42, { matchedBenefitNames: ["厄除け", "家内安全"] }]);
+  });
+
+  it("相談から開いても、一致したご利益が無いときは名前を渡さない", async () => {
+    getConciergeThreadServerMock.mockResolvedValue({
+      id: 768,
+      recommendations: [
+        {
+          shrine_id: 42,
+          id: 42,
+          reason_facts: [{ type: "need_tag", label: "rest", evidence: [], score: 1, is_primary: true, matched_benefit_names: [] }],
+        },
+      ],
+    });
+
+    await renderPage({ ctx: "concierge", tid: "768" });
+
+    expect(meaningCall()).toEqual([42, { matchedBenefitNames: [] }]);
+  });
+
+  it.each([
+    ["直接開いたとき", {}],
+    ["コンパスから開いたとき", { ctx: "compass", recommendation_instance_id: "compass01", recommendation_rank: "2" }],
+  ])("%sは名前を渡さない", async (_label, searchParams) => {
+    await renderPage(searchParams as Record<string, string>);
+
+    expect(meaningCall()).toEqual([42, { matchedBenefitNames: [] }]);
+    expect(getConciergeThreadServerMock).not.toHaveBeenCalled();
   });
 });

@@ -2,10 +2,11 @@ import * as React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme, appSemanticTheme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { radius } from "../../design/radius";
 import Button from "../ui/Button";
+import { typography } from "../../design/typography";
 
 type AuthPromptProps = {
   visible: boolean;
@@ -29,6 +30,11 @@ export function AuthPrompt({
     router.push("/login");
   };
 
+  const handleSignup = () => {
+    onClose();
+    router.push("/signup");
+  };
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
@@ -44,6 +50,10 @@ export function AuthPrompt({
             style={styles.loginButtonSpacing}
           />
 
+          <Pressable onPress={handleSignup} style={styles.signupButton} accessibilityRole="link">
+            <Text style={styles.signupButtonText}>アカウントをお持ちでない方は 新規登録はこちら</Text>
+          </Pressable>
+
           <Pressable onPress={onClose} style={styles.closeButton} accessibilityRole="button">
             <Text style={styles.closeButtonText}>{closeLabel}</Text>
           </Pressable>
@@ -56,7 +66,7 @@ export function AuthPrompt({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(7, 16, 31, 0.72)",
+    backgroundColor: appSemanticTheme["overlay.default"],
     alignItems: "center",
     justifyContent: "center",
     padding: spacing.screenX,
@@ -65,21 +75,28 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 360,
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: radius.cardLg,
     backgroundColor: theme.surface,
     padding: spacing.contentX,
     gap: spacing.mdGap,
   },
   title: {
-    color: theme.gold,
-    fontSize: 18,
-    fontWeight: "800",
+    ...typography.subheading,
+    color: theme.accent,
   },
   description: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 21,
+  },
+  signupButton: {
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  signupButtonText: {
+    ...typography.label,
+    color: theme.accent,
   },
   closeButton: {
     minHeight: 44,
@@ -87,9 +104,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   closeButtonText: {
+    ...typography.label,
     color: theme.muted,
-    fontSize: 14,
-    fontWeight: "700",
   },
   loginButtonSpacing: {
     marginTop: spacing.smGap,

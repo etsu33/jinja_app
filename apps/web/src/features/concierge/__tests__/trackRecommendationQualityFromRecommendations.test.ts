@@ -23,7 +23,7 @@ describe("trackRecommendationQualityFromRecommendations: Knowledge品質property
 
   beforeEach(() => {
     trackMock.mockReset();
-    mockedGetAnalyticsProvider.mockReturnValue({ track: trackMock });
+    mockedGetAnalyticsProvider.mockReturnValue({ track: trackMock, identify: vi.fn(), reset: vi.fn() });
   });
 
   afterEach(() => {
@@ -89,7 +89,7 @@ describe("trackRecommendationQualityFromRecommendations: Knowledge品質property
       trackRecommendationQualityFromRecommendations({
         recommendations: [
           rec({
-            shrine_id: index,
+            shrine_id: index + 1,
             recommendation_reason_quality: {
               deity_knowledge_used: deityUsed,
               history_knowledge_used: historyUsed,
@@ -202,7 +202,7 @@ describe("trackRecommendationQualityFromRecommendations: F-4 Shrine identity契�
 
   beforeEach(() => {
     trackMock.mockReset();
-    mockedGetAnalyticsProvider.mockReturnValue({ track: trackMock });
+    mockedGetAnalyticsProvider.mockReturnValue({ track: trackMock, identify: vi.fn(), reset: vi.fn() });
   });
 
   afterEach(() => {
@@ -243,13 +243,7 @@ describe("trackRecommendationQualityFromRecommendations: F-4 Shrine identity契�
       accessLevel: "free",
     });
 
-    const payload = trackMock.mock.calls[0]?.[1] as Record<string, unknown>;
-    // shrineId を fabricate しない。null は既存の serializeSearchAnalyticsPayload
-    // 契約により送信payloadから落ちる（searchEvents.ts）。
-    expect(payload).not.toHaveProperty("shrineId");
-    expect(payload.resultSetId).toBe("thread-1:1:unknown");
-    // イベント自体は従来どおり送信される（identity 欠落で落とさない）。
-    expect(trackMock).toHaveBeenCalledTimes(1);
+    expect(trackMock).not.toHaveBeenCalled(); // Unsupported identity is not a registered recommendation.
   });
 
   it("shrine_id と shrineId が食い違う場合は conflict として shrineId を送らない", () => {
@@ -266,8 +260,47 @@ describe("trackRecommendationQualityFromRecommendations: F-4 Shrine identity契�
       accessLevel: "free",
     });
 
-    const payload = trackMock.mock.calls[0]?.[1] as Record<string, unknown>;
-    expect(payload).not.toHaveProperty("shrineId");
+    expect(trackMock).not.toHaveBeenCalled(); // Conflicting aliases fail closed.
+  });
+
+  it("混在・重複でも最初の品質・instanceと登録連番を保持する", () => {
+    trackRecommendationQualityFromRecommendations({
+      recommendations: [
+        { place_id: "A", name: "reference", recommendation_reason_quality: { shrine_data_rate: 1 } },
+        {
+          shrine_id: 31,
+          name: "first",
+          recommendation_instance_id: "first-instance",
+          recommendation_reason_quality: { shrine_data_rate: 0.25 },
+        },
+        {
+          shrine_id: 12,
+          name: "second",
+          recommendation_instance_id: "first-instance",
+          recommendation_reason_quality: { shrine_data_rate: 0.5 },
+        },
+        {
+          shrine_id: 31,
+          name: "later",
+          recommendation_instance_id: "later-instance",
+          recommendation_reason_quality: { shrine_data_rate: 1 },
+        },
+      ] as ConciergeRecommendation[],
+      threadId: "thread-1",
+      accessLevel: "free",
+    });
+    expect(trackMock).toHaveBeenCalledTimes(2);
+    expect(
+      trackMock.mock.calls.map(([, p]) => [
+        p.shrineId,
+        p.recommendationRank,
+        p.recommendationInstanceId,
+        p.shrine_data_rate,
+      ]),
+    ).toEqual([
+      [31, 1, "first-instance", 0.25],
+      [12, 2, "first-instance", 0.5],
+    ]);
   });
 
   it("正常な shrine_id はそのまま shrineId になる（既存挙動の維持）", () => {

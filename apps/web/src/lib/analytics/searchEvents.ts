@@ -23,6 +23,12 @@ export type SearchAnalyticsEventName =
   | "add_shrine_click"
   | "shrine_card_click"
   | "shrine_detail_view"
+  // Highlights PR-5: 神社詳細の「ここで見られるもの」。節が画面に入ったこと／由緒・歴史との行き来。
+  | "shrine_highlights_view"
+  | "shrine_highlight_link_click"
+  // 見どころ単位の推薦 PR-3：推薦カードの「ここで見る」から神社詳細の見どころへ移った。
+  // 出したかどうかは concierge_result_impression の hasHighlightPick で数える。
+  | "concierge_highlight_pick_click"
   | "nearby_fetch"
   // Compass lifecycle (docs/audit/compass-analytics-contract-readiness.md
   // §6-7, PR-A scope only -- discovery/entry/result, no downstream
@@ -149,6 +155,16 @@ export type SearchAnalyticsPayload = {
   direction_candidate_count?: number | null;
   /** Compass lifecycle only (compass_result). Candidate count within the adopted distance_stage_km ring. */
   distance_candidate_count?: number | null;
+  /** shrine_highlights_view only. 画面に出た見どころの件数。 */
+  highlightCount?: number | null;
+  /** shrine_highlight_link_click / concierge_result_impression / concierge_highlight_pick_click. 見どころの id（本文は送らない）。 */
+  highlightId?: number | null;
+  /** shrine_highlight_link_click only. どちらからどちらへ移ったか。 */
+  linkDirection?: "history_to_highlight" | "highlight_to_history" | null;
+  /** concierge_result_impression only. その推薦に「ここで見る」見どころを出したか。 */
+  hasHighlightPick?: boolean | null;
+  /** concierge_result_impression / concierge_highlight_pick_click. 見どころが答えた相談の種類（need_tag）。 */
+  highlightNeedTag?: string | null;
   [key: string]: SearchAnalyticsPrimitive;
 };
 

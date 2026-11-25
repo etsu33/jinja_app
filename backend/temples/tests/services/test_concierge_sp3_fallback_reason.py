@@ -20,6 +20,7 @@ from temples.services.concierge_chat_ranking import (
     FALLBACK_REASON_SENTINEL,
     build_recommendation_reason,
 )
+from temples.tests.fixtures.goriyaku_canonical import canonical_tag_names
 
 UNSUPPORTED_BENEFIT_CLAIMS = ("ご利益で知られる", "のご利益がある", "ご利益のご利益")
 REASON_KWARGS = dict(public_mode="need", birthdate=None, need_tags=["money"])
@@ -36,6 +37,7 @@ def _rec(**overrides) -> dict:
         "_primary_reason_source": "",
     }
     rec.update(overrides)
+    rec.setdefault("goriyaku_tag_names", canonical_tag_names(rec.get("goriyaku_tag_ids") or []))
     return rec
 
 
@@ -55,6 +57,7 @@ def _candidate(name: str, **overrides) -> dict:
         "popular_score": 0.0,
     }
     row.update(overrides)
+    row.setdefault("goriyaku_tag_names", canonical_tag_names(row.get("goriyaku_tag_ids") or []))
     return row
 
 
@@ -138,9 +141,10 @@ def test_c_channel_a_goriyaku_tag_reason_is_unchanged(settings):
     rec = recs["recommendations"][0]
     assert rec["_primary_reason_label"] == "money"
     # 実際の Need / Channel A の evidence があるときは、従来どおり Need 用の文を作る。
+    # Lead は、一致した札の名前（候補の goriyaku_tag_names、番号4＝商売繁盛）を使う。
     assert (
         rec["reason"]
-        == "金運のご利益で知られる金運神社は、金運向上を願う参拝先として適しています。"
+        == "商売繁盛のご利益で知られる金運神社は、金運向上を願う参拝先として適しています。"
     )
 
 

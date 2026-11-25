@@ -14,7 +14,7 @@ describe("nearby_fetch analytics contract", () => {
 
   beforeEach(() => {
     trackMock.mockReset();
-    mockedGetAnalyticsProvider.mockReturnValue({ track: trackMock });
+    mockedGetAnalyticsProvider.mockReturnValue({ track: trackMock, identify: vi.fn(), reset: vi.fn() });
   });
 
   it("nearby_fetchの許可済み最小payloadだけを送る", () => {

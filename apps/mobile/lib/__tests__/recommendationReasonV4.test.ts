@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildReasonV4Sections,
+  buildShrineDetailFactSections,
   normalizeRecommendationReasonV4Detail,
   serializeReasonV4Detail,
   type RecommendationReasonV4Detail,
@@ -246,7 +247,8 @@ describe("buildReasonV4Sections", () => {
     const result = buildReasonV4Sections({ detail: makeDetail(), fallbackReason: null });
     expect(result).not.toHaveProperty("actionSource");
     expect(result).not.toHaveProperty("source");
-    expect(Object.keys(result)).toEqual(["factText", "interpretationText", "actionText", "hasStructured", "fallbackText"]);
+    // factSource は表示した事実の項目名(deity など)で、action.source ではない。
+    expect(Object.keys(result)).toEqual(["factText", "factSource", "interpretationText", "actionText", "hasStructured", "fallbackText"]);
   });
 
   it("構造化表示が可能な場合、fallbackTextと重複しない(fallbackTextはnull)", () => {
@@ -279,5 +281,222 @@ describe("serializeReasonV4Detail", () => {
 
   it("detailがundefinedの場合は空文字を返す", () => {
     expect(serializeReasonV4Detail(undefined)).toBe("");
+  });
+});
+
+describe("神社詳細の「選ばれた背景」と「この神社について」の出し分け", () => {
+  const primary = (type: string) => [{ type, label: "x", evidence: [], score: 1, is_primary: true }];
+  const detailWith = (fact: Partial<RecommendationReasonV4Detail["fact"]>) =>
+    buildReasonV4Sections({
+      detail: makeDetail({
+        fact: { deity: null, shrine_history: null, goriyaku: null, history_theme: null, ...fact },
+      }),
+    });
+
+  it("factSource に表示した項目が入る", () => {
+    expect(detailWith({ deity: "武神", goriyaku: "縁結び" }).factSource).toBe("deity");
+    expect(detailWith({ goriyaku: "縁結び" }).factSource).toBe("goriyaku");
+  });
+
+  it.each(["history_theme", "need_tag", "text_hint", "goriyaku_tag"])(
+    "ご利益で、主な根拠が %s のときは「選ばれた背景」",
+    (type) => {
+      expect(buildShrineDetailFactSections(detailWith({ goriyaku: "縁結び" }), primary(type))).toEqual({
+        reasonBenefitNames: [],
+        aboutShrineFactText: null,
+        aboutShrineFactTitle: null,
+      });
+    },
+  );
+
+  it("歴史のテーマで、主な根拠が意味の一致のときは「選ばれた背景」", () => {
+    expect(buildShrineDetailFactSections(detailWith({ history_theme: "再出発" }), primary("need_tag")).aboutShrineFactText).toBeNull();
+  });
+
+  it.each([
+    ["deity", { deity: "武神" }, "神社の由緒・御祭神"],
+    ["shrine_history", { shrine_history: "由緒あり" }, "神社の由緒・御祭神"],
+  ] as const)("%s は主な根拠が意味の一致でも「この神社について」", (_source, fact, title) => {
+    const result = buildShrineDetailFactSections(detailWith(fact), primary("need_tag"));
+    expect(result.reasonBenefitNames).toEqual([]);
+    expect(result.aboutShrineFactText).toBe(Object.values(fact)[0]);
+    expect(result.aboutShrineFactTitle).toBe(title);
+  });
+
+  it.each(["element", "visit_style", "fallback", "user_selected_tag"])(
+    "主な根拠が %s のときは、ご利益も「この神社について」",
+    (type) => {
+      expect(buildShrineDetailFactSections(detailWith({ goriyaku: "縁結び" }), primary(type))).toEqual({
+        reasonBenefitNames: [],
+        aboutShrineFactText: "縁結び",
+        aboutShrineFactTitle: "ご利益",
+      });
+    },
+  );
+
+  it.each([
+    ["reason_factsが無い", undefined],
+    ["reason_factsが空", []],
+    ["is_primaryが無い", [{ type: "need_tag", label: "love", evidence: [], score: 1 }]],
+  ])("%sときは根拠が分からないため「この神社について」", (_case, reasonFacts) => {
+    const result = buildShrineDetailFactSections(detailWith({ history_theme: "再出発" }), reasonFacts);
+    expect(result.reasonBenefitNames).toEqual([]);
+    expect(result.aboutShrineFactText).toBe("再出発");
+    expect(result.aboutShrineFactTitle).toBe("歴史のテーマ");
+  });
+
+  it("出し分けは reason_text(補助情報の文の有無)では判定しない", () => {
+    const sections = buildReasonV4Sections({
+      detail: makeDetail({
+        reason_text: "縁結び。この情報は神社を説明する補助情報であり、今回の順位根拠ではありません。",
+        fact: { deity: null, shrine_history: null, goriyaku: "縁結び", history_theme: null },
+      }),
+    });
+    expect(buildShrineDetailFactSections(sections, primary("need_tag")).aboutShrineFactText).toBeNull();
+  });
+
+  it("事実が無いときはどちらにも出さない", () => {
+    expect(buildShrineDetailFactSections(detailWith({}), primary("need_tag"))).toEqual({
+      reasonBenefitNames: [],
+      aboutShrineFactText: null,
+      aboutShrineFactTitle: null,
+    });
+  });
+});
+
+describe("神社詳細の「この神社について」: 確認済みの御祭神・由緒のデータとの重なり", () => {
+  const primary = (type: string) => [{ type, label: "x", evidence: [], score: 1, is_primary: true }];
+  const detailWith = (fact: Partial<RecommendationReasonV4Detail["fact"]>) =>
+    buildReasonV4Sections({
+      detail: makeDetail({
+        fact: { deity: null, shrine_history: null, goriyaku: null, history_theme: null, ...fact },
+      }),
+    });
+  const none = { reasonBenefitNames: [], aboutShrineFactText: null, aboutShrineFactTitle: null };
+
+  it("選ばれた事実が御祭神で、確認済みの御祭神データがあるとき、「この神社について」は出ない", () => {
+    expect(
+      buildShrineDetailFactSections(detailWith({ deity: "八幡大神", goriyaku: "勝運" }), primary("need_tag"), {
+        hasDeities: true,
+        hasHistories: false,
+      }),
+    ).toEqual(none);
+  });
+
+  it("選ばれた事実が由緒で、確認済みの由緒データがあるとき、「この神社について」は出ない", () => {
+    expect(
+      buildShrineDetailFactSections(detailWith({ shrine_history: "古くからの由緒" }), primary("need_tag"), {
+        hasDeities: false,
+        hasHistories: true,
+      }),
+    ).toEqual(none);
+  });
+
+  it("確認済みのデータが無いとき、古い項目から来た御祭神を「この神社について」に出す", () => {
+    expect(
+      buildShrineDetailFactSections(detailWith({ deity: "八幡大神" }), primary("need_tag"), {
+        hasDeities: false,
+        hasHistories: false,
+      }),
+    ).toEqual({ reasonBenefitNames: [], aboutShrineFactText: "八幡大神", aboutShrineFactTitle: "神社の由緒・御祭神" });
+  });
+
+  it("御祭神と由緒は別々に見分ける", () => {
+    expect(
+      buildShrineDetailFactSections(detailWith({ deity: "八幡大神" }), primary("need_tag"), {
+        hasDeities: false,
+        hasHistories: true,
+      }).aboutShrineFactText,
+    ).toBe("八幡大神");
+    expect(
+      buildShrineDetailFactSections(detailWith({ shrine_history: "古くからの由緒" }), primary("need_tag"), {
+        hasDeities: true,
+        hasHistories: false,
+      }).aboutShrineFactText,
+    ).toBe("古くからの由緒");
+  });
+
+  it("根拠にならないご利益・歴史のテーマは、確認済みのデータがあっても「この神社について」に出す", () => {
+    const knowledge = { hasDeities: true, hasHistories: true };
+    expect(
+      buildShrineDetailFactSections(detailWith({ goriyaku: "縁結び" }), primary("element"), knowledge).aboutShrineFactText,
+    ).toBe("縁結び");
+    expect(
+      buildShrineDetailFactSections(detailWith({ history_theme: "再出発" }), primary("element"), knowledge)
+        .aboutShrineFactText,
+    ).toBe("再出発");
+  });
+
+  it("根拠になるご利益・歴史のテーマは「選ばれた背景」のまま", () => {
+    const knowledge = { hasDeities: true, hasHistories: true };
+    expect(
+      buildShrineDetailFactSections(detailWith({ goriyaku: "縁結び" }), primary("need_tag"), knowledge).aboutShrineFactText,
+    ).toBeNull();
+    expect(
+      buildShrineDetailFactSections(detailWith({ history_theme: "再出発" }), primary("need_tag"), knowledge)
+        .aboutShrineFactText,
+    ).toBeNull();
+  });
+});
+
+describe("神社詳細の「選ばれた背景」: 相談と一致したご利益(matched_benefit_names)", () => {
+  const fact = (type: string, names: string[] | undefined, isPrimary = false) => ({
+    type,
+    label: "x",
+    evidence: [],
+    score: 1,
+    ...(isPrimary ? { is_primary: true } : {}),
+    ...(names !== undefined ? { matched_benefit_names: names } : {}),
+  });
+  const sectionsWith = (fact: Partial<RecommendationReasonV4Detail["fact"]>) =>
+    buildReasonV4Sections({
+      detail: makeDetail({
+        fact: { deity: null, shrine_history: null, goriyaku: null, history_theme: null, ...fact },
+      }),
+    });
+
+  it("一致したご利益の名前だけを出し、fact.goriyaku の全部は出さない", () => {
+    const result = buildShrineDetailFactSections(sectionsWith({ goriyaku: "勝運・厄除け・家内安全" }), [
+      fact("text_hint", ["厄除け"], true),
+    ]);
+    expect(result.reasonBenefitNames).toEqual(["厄除け"]);
+    expect(result.reasonBenefitNames.join()).not.toContain("勝運");
+  });
+
+  it("御祭神がある神社でも、一致したご利益があれば「選ばれた背景」を出す", () => {
+    const result = buildShrineDetailFactSections(
+      sectionsWith({ deity: "八幡大神", goriyaku: "勝運・厄除け" }),
+      [fact("text_hint", ["厄除け"], true)],
+      { hasDeities: true, hasHistories: false },
+    );
+    expect(result.reasonBenefitNames).toEqual(["厄除け"]);
+    expect(result.aboutShrineFactText).toBeNull();
+  });
+
+  it.each([
+    ["一致したご利益が空", [fact("text_hint", [], true)]],
+    ["項目そのものが無い古い結果", [fact("text_hint", undefined, true)]],
+  ])("%sのときは「選ばれた背景」を出さない", (_case, reasonFacts) => {
+    expect(buildShrineDetailFactSections(sectionsWith({ goriyaku: "縁結び" }), reasonFacts).reasonBenefitNames).toEqual([]);
+  });
+
+  it.each(["element", "visit_style", "user_selected_tag", "fallback"])(
+    "主な根拠が %s のときは、一致したご利益があっても出さない",
+    (type) => {
+      expect(
+        buildShrineDetailFactSections(sectionsWith({ goriyaku: "縁結び" }), [fact(type, ["縁結び"], true)])
+          .reasonBenefitNames,
+      ).toEqual([]);
+    },
+  );
+
+  it("主な根拠の項目を先に並べ、同じ名前は1回だけにする", () => {
+    const result = buildShrineDetailFactSections(sectionsWith({}), [
+      fact("goriyaku_tag", ["健康長寿", "厄除け・方除け"]),
+      fact("visit_style", ["参拝スタイルの名前"]),
+      fact("text_hint", ["厄除け・方除け"], true),
+      fact("need_tag", ["健康長寿"]),
+    ]);
+    expect(result.reasonBenefitNames).toEqual(["厄除け・方除け", "健康長寿"]);
   });
 });

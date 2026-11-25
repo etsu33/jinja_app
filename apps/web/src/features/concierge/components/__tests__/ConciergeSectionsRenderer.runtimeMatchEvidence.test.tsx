@@ -60,7 +60,7 @@ describe("Concierge Runtime Match Evidence block", () => {
   });
 
   it("matched_need_tags(既知key)のみ → 今回の相談との接点ブロックにラベル化済みで表示される", () => {
-    renderHero(heroRec({ breakdown: { matched_need_tags: ["career"] } }));
+    renderHero(heroRec({ breakdown: { matched_need_tags: ["career"] }, primary_reason_source: "need_tag" }));
 
     const block = screen.getByTestId("recommendation-runtime-match");
     expect(block).toHaveTextContent("今回の相談との接点");
@@ -117,11 +117,73 @@ describe("Concierge Runtime Match Evidence block", () => {
           interpretation: { text: "相談内容から、今扱いたいテーマを読み取っています。" },
           action: { text: "" },
         },
+        primary_reason_source: "text_hint",
       }),
     );
 
     const block = screen.getByTestId("recommendation-runtime-match");
     expect(block).toHaveTextContent("縁結び");
+  });
+
+  // 表示の判断元を primary_reason_source に統一(2026-11-12)。
+  // 本文に「明確な意味的一致が確認できない」と出る推薦(element / visit_style / fallback)で、
+  // 一致を言う表示を出さないこと。
+  it.each(["fallback", "visit_style", "element"])(
+    "primary_reason_source=%s → 今回の相談との接点・相談との一致が強い を出さない(Reason V4 fact.goriyaku があっても)",
+    (source) => {
+      renderHero(
+        heroRec({
+          breakdown: { matched_need_tags: [] },
+          recommendation_reason_v4_detail: {
+            version: "v4",
+            reason_text: "検証神社は縁結びのご利益があります。",
+            fact: { label: "検証神社", name: "検証神社", deity: null, shrine_history: null, goriyaku: "縁結び", history_theme: null },
+            interpretation: { text: "今回は明確な意味的一致が確認できないため、条件に近い候補として整理しています。" },
+            action: { text: "" },
+          },
+          primary_reason_source: source,
+        }),
+      );
+
+      expect(screen.queryByTestId("recommendation-runtime-match")).not.toBeInTheDocument();
+      expect(screen.queryByText("相談との一致が強い")).not.toBeInTheDocument();
+      expect(screen.getByTestId("recommendation-conclusion")).toHaveTextContent("この神社が候補に入った理由");
+    },
+  );
+
+  it("相談文から取ったタグ(data._need.tags)だけでは「この神社に登録されています」と言わない", () => {
+    const u: any = {
+      data: {
+        recommendations: [heroRec({ breakdown: { matched_need_tags: [] }, primary_reason_source: "need_tag" })],
+        _need: { tags: ["rest"] },
+      },
+      thread: { id: 700 },
+      meta: {},
+    };
+    const payload = buildPayloadFromUnified(u, baseFilterState);
+    if (!payload) throw new Error("payload should not be null in this fixture");
+    render(<ConciergeSectionsRenderer payload={payload} threadId={700} isPremiumActive={true} />);
+
+    expect(screen.queryByText(/この神社に登録されています/)).not.toBeInTheDocument();
+  });
+
+  it("primary_reason_source=need_tag → 相談との一致として見出しと接点を出す", () => {
+    renderHero(
+      heroRec({
+        breakdown: { matched_need_tags: ["rest"] },
+        recommendation_reason_v4_detail: {
+          version: "v4",
+          reason_text: "検証神社は静かな境内があります。",
+          fact: { label: "検証神社", name: "検証神社", deity: null, shrine_history: null, goriyaku: null, history_theme: null },
+          interpretation: { text: "疲れを整えたい相談として受け取れます。" },
+          action: { text: "" },
+        },
+        primary_reason_source: "need_tag",
+      }),
+    );
+
+    expect(screen.getByTestId("recommendation-conclusion")).toHaveTextContent("相談内容・ご利益との一致");
+    expect(screen.getByTestId("recommendation-runtime-match")).toBeInTheDocument();
   });
 
   it("Fact/Meaning境界: history_theme由来のFrontend解釈テンプレートは「KAMI MUSUBIの解釈」であることが見出しから分かる", () => {

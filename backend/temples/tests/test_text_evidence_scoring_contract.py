@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from temples.services.concierge_chat_ranking import _attach_breakdown
 
+from temples.tests.fixtures.goriyaku_canonical import canonical_tag_names
+
 WEIGHTS = {"element": 0.0, "need": 1.0, "popular": 0.0, "distance": 0.0}
 
 
@@ -21,6 +23,7 @@ def _run(*, need_tags, goriyaku, description="", goriyaku_tag_ids=None):
         "goriyaku": goriyaku,
         "description": description,
         "goriyaku_tag_ids": goriyaku_tag_ids or [],
+        "goriyaku_tag_names": canonical_tag_names(goriyaku_tag_ids or []),
         "popular_score": 0,
     }
     _attach_breakdown(

@@ -34,6 +34,7 @@ from temples.services.concierge_chat_ranking import (
 )
 from temples.tests.support.recommendation_eligibility import attach_usable_deity_fact
 from temples.tests.test_bootstrap_goriyaku_master_exact39_contract import CANONICAL_MASTER
+from temples.tests.fixtures.goriyaku_canonical import canonical_tag_names
 
 WEIGHTS = {"element": 0.6, "need": 0.3, "popular": 0.1, "distance": 0.0}
 PRAYER = "official_prayer_supported"
@@ -60,6 +61,7 @@ def _cand(name: str, *b_needs: str, distance: float, signal: str = PRAYER, **fie
         "distance_m": float(distance),
     }
     row.update(fields)
+    row.setdefault("goriyaku_tag_names", canonical_tag_names(row.get("goriyaku_tag_ids") or []))
     if b_needs:
         row[CHANNEL_B_TYPED_NEED_MATCHES_KEY] = tuple(_m(n, signal) for n in b_needs)
     return row

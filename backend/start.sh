@@ -148,6 +148,15 @@ else
   echo "Skipping migrations. Set RUN_MIGRATIONS_ON_START=1 to run them on startup."
 fi
 
+# --- Unapplied migration check (read-only, always on, never blocks startup) --
+# Logs `[migration-check] ...` lines only: no migration execution (that stays
+# behind RUN_MIGRATIONS_ON_START). Unapplied migrations are listed by name so a
+# forgotten `python manage.py migrate` after a merge shows up in the Render
+# logs. Grouped as the left side of `||` so a failure cannot trigger `set -e`.
+{
+  python manage.py check_unapplied_migrations
+} || echo "[migration-check] CHECK FAILED (command error); startup continues"
+
 if [ "${RUN_SHRINE_REFLECTION_REPAIR:-0}" = "1" ]; then
   echo "Ensuring ShrineReflection table exists because RUN_SHRINE_REFLECTION_REPAIR=1..."
   python manage.py shell <<'PY'

@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildConciergeHref, HomeHeroConsultationInput } from "../HomeHeroConsultationInput";
+import { HOME_ORIGIN_HANDOFF_KEY } from "@/lib/concierge/homeOriginHandoff";
 
 const pushMock = vi.fn();
 
@@ -11,8 +12,11 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
+vi.mock("@/lib/analytics/directionEvents", () => ({ trackWebDirection: vi.fn() }));
+
 beforeEach(() => {
   pushMock.mockClear();
+  sessionStorage.clear();
 });
 
 describe("buildConciergeHref", () => {
@@ -68,5 +72,46 @@ describe("HomeHeroConsultationInput", () => {
     fireEvent.click(screen.getByRole("button", { name: "＋ 条件を追加する" }));
 
     expect(pushMock).toHaveBeenCalledWith("/concierge?openFilter=1");
+  });
+});
+
+describe("HomeHeroConsultationInput - 出発地の1行", () => {
+  it("相談の欄の下に、選ばれていないときの1行を出す", () => {
+    render(<HomeHeroConsultationInput />);
+    expect(screen.getByTestId("home-origin-row")).toHaveTextContent("出発地を選ぶ（任意）");
+  });
+
+  it("押すと下から出発地の選択肢（4つ）を出す", () => {
+    render(<HomeHeroConsultationInput />);
+    fireEvent.click(screen.getByTestId("home-origin-row"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    for (const label of ["現在地を使用", "駅名・住所から指定", "都道府県から指定", "方位情報を使用しない"]) {
+      expect(screen.getByRole("radio", { name: label })).toBeInTheDocument();
+    }
+  });
+
+  it("都道府県を選ぶと1行の表示が変わり、相談を始めると出発地を渡す（URL には載せない）", () => {
+    render(<HomeHeroConsultationInput />);
+    fireEvent.click(screen.getByTestId("home-origin-row"));
+    fireEvent.click(screen.getByRole("radio", { name: "都道府県から指定" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "都道府県" }), { target: { value: "東京都" } });
+
+    expect(screen.getByTestId("home-origin-row")).toHaveTextContent("東京都から");
+
+    fireEvent.click(screen.getByRole("button", { name: "疲れを整えたい" }));
+    fireEvent.click(screen.getByRole("button", { name: "この相談ではじめる" }));
+
+    const href = pushMock.mock.calls[0][0] as string;
+    expect(href).not.toMatch(/lat|lng|35\.|139\./);
+    const stored = JSON.parse(sessionStorage.getItem(HOME_ORIGIN_HANDOFF_KEY) ?? "null");
+    expect(stored.origin).toMatchObject({ source: "prefecture", displayName: "東京都" });
+  });
+
+  it("出発地を選ばずに相談を始めると、前の出発地を残さない", () => {
+    sessionStorage.setItem(HOME_ORIGIN_HANDOFF_KEY, JSON.stringify({ origin: {}, savedAt: 0 }));
+    render(<HomeHeroConsultationInput />);
+    fireEvent.click(screen.getByRole("button", { name: "疲れを整えたい" }));
+    fireEvent.click(screen.getByRole("button", { name: "この相談ではじめる" }));
+    expect(sessionStorage.getItem(HOME_ORIGIN_HANDOFF_KEY)).toBeNull();
   });
 });

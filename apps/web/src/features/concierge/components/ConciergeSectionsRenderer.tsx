@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import DetailSection from "@/components/shrine/DetailSection";
+import ConciergeHighlightPick from "@/features/concierge/components/ConciergeHighlightPick";
 import PlaceShrineCard from "@/components/shrine/PlaceShrineCard";
 import ShrineSaveButton from "@/components/shrine/ShrineSaveButton";
 import ConciergeFilterPanel from "@/features/concierge/components/ConciergeFilterPanel";
@@ -13,6 +14,7 @@ import { adaptReasonFactsForViewModel } from "@/lib/concierge/adaptReasonFactsFo
 import { buildHeroReasonV4Sections } from "@/features/concierge/buildHeroReasonV4Sections";
 import { buildHeroConclusionLines } from "@/features/concierge/buildHeroConclusion";
 import { buildRuntimeMatchLines } from "@/features/concierge/buildRuntimeMatchLine";
+import { MATCH_SECTION_LABEL, resolvePrimaryReasonMatchKind } from "@/lib/concierge/primaryReasonAuthority";
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
 import type {
   ConciergeThreadSaveError,
@@ -229,6 +231,8 @@ const THREAD_SAVE_ERROR_MESSAGES: Record<ConciergeThreadSaveError, string> = {
   no_thread: "この相談はまだ保存できる状態ではありません。もう一度相談してからお試しください。",
   not_owned: "この相談をあなたの履歴で確認できませんでした。ログイン後にもう一度相談すると保存されます。",
   unauthenticated: "ログインの有効期限が切れています。もう一度ログインしてからお試しください。",
+  server_unavailable: "サーバーが一時的に応答していないため、保存を確認できませんでした。少し時間をおいてもう一度お試しください。",
+  invalid_response: "保存の確認結果を読み取れませんでした。時間をおいてもう一度お試しください。",
   network: "保存を確認できませんでした。時間をおいてもう一度お試しください。",
 };
 
@@ -428,6 +432,7 @@ export default function ConciergeSectionsRenderer({
         ),
         analyticsProvenance: item.analyticsProvenance,
         recommendationInstanceId: item.recommendationInstanceId ?? null,
+        highlightPick: item.highlightPick ?? null,
       }));
     });
   }, [payload, normalizedModeForTracking]);
@@ -458,6 +463,10 @@ export default function ConciergeSectionsRenderer({
         mode: item.mode,
         historyTheme: item.historyTheme ?? analyticsContext?.historyTheme,
         recommendationInstanceId: item.recommendationInstanceId,
+        // 見どころ単位の推薦 PR-3：「ここで見る」を出したカードと出さなかったカードを比べるため
+        hasHighlightPick: item.highlightPick !== null,
+        highlightId: item.highlightPick?.highlightId ?? null,
+        highlightNeedTag: item.highlightPick?.needTag ?? null,
         ...consultationAxisAnalytics(item.consultationAxis ?? analyticsContext?.consultationAxis),
         ...(item.analyticsProvenance ? recommendationAnalyticsProperties(item.analyticsProvenance) : {}),
       });
@@ -720,14 +729,7 @@ export default function ConciergeSectionsRenderer({
                   }}
                   canApply={canApply}
                   applyLabel={isEntryRoute ? "この条件で提案を見る" : "この条件で提案を更新"}
-                  birthdate={state.birthdate}
-                  onBirthdateChange={(v: string) => onAction?.({ type: "filter_set_birthdate", birthdate: v })}
-                  // 認証判定の入口はここ1箇所。auth解決前は false 扱いにして、
-                  // 未確定の状態で保存説明を出さない（accessLevel と同じ条件）。
-                  isLoggedIn={!authLoading && isLoggedIn}
-                  element4={state.element4}
                   goriyakuTags={state.goriyakuTags}
-                  suggestedTags={state.suggestedTags}
                   selectedTagIds={state.selectedTagIds}
                   onToggleTag={(tagId: number) => onAction?.({ type: "filter_toggle_tag", tagId })}
                   tagsLoading={state.tagsLoading}
@@ -868,6 +870,10 @@ export default function ConciergeSectionsRenderer({
                         const inputNeedTags = payload?.meta?.needTags ?? [];
                         const matchedNeedTags = heroItem.breakdown?.matched_need_tags ?? [];
                         const effectiveNeedTags = inputNeedTags.length > 0 ? inputNeedTags : matchedNeedTags;
+                        // 一致を言う表示(ラベル・結論の見出し・今回の相談との接点)は、
+                        // バックエンドが決めた主な根拠だけで決める(lib/concierge/primaryReasonAuthority.ts)。
+                        const heroPrimaryReasonSource = heroItem.analyticsProvenance?.primaryReasonSource ?? null;
+                        const heroMatchKind = resolvePrimaryReasonMatchKind(heroPrimaryReasonSource);
 
                         const reasonVm = buildRecommendationReasonViewModel({
                           rec: {
@@ -887,8 +893,8 @@ export default function ConciergeSectionsRenderer({
                           reasonFacts: heroItem.reasonFacts ?? null,
                           index: 0,
                           mode: normalizedMode,
-                          birthdate: filterState?.birthdate ?? null,
                           needTags: effectiveNeedTags,
+                          primaryReasonSource: heroPrimaryReasonSource,
                         });
                         const reasonDisplay = buildRecommendationReasonDisplay({
                           matchReason: reasonVm.list.primaryPhrase,
@@ -954,16 +960,25 @@ export default function ConciergeSectionsRenderer({
                         // 新たな一致判定は行わない(Concierge Evidence Explanation PR、
                         // docs/product/recommendation-signal-authority.md §10)。
                         const adaptedReasonFacts = adaptReasonFactsForViewModel(heroItem.reasonFacts ?? null);
-                        const runtimeMatchGoriyakuLabel =
-                          adaptedReasonFacts?.primary_fact_type === "goriyaku_tag"
-                            ? (adaptedReasonFacts.shrine_benefit ?? null)
-                            : heroReasonV4.factSource === "goriyaku"
-                              ? heroReasonV4.factText
-                              : null;
-                        const runtimeMatchLines = buildRuntimeMatchLines({
-                          needTags: effectiveNeedTags,
-                          goriyakuLabel: runtimeMatchGoriyakuLabel,
-                        });
+                        // 表示には日本語名(shrine_benefit_display_label = label_ja、無ければ label)を使う。
+                        // 内部名だけのときは null になり、名前を入れない文に切り替わる。
+                        const runtimeMatchGoriyakuMatched = adaptedReasonFacts?.primary_fact_type === "goriyaku_tag";
+                        const runtimeMatchGoriyakuLabel = runtimeMatchGoriyakuMatched
+                          ? (adaptedReasonFacts?.shrine_benefit_display_label ?? null)
+                          : heroReasonV4.factSource === "goriyaku"
+                            ? heroReasonV4.factText
+                            : null;
+                        // 「この神社に登録されています」と言えるのは、神社と実際に一致したタグ
+                        // (matched_need_tags)だけ。相談文から取ったタグ(inputNeedTags)は使わない。
+                        // 主な根拠が相談との一致でないときは、この枠自体を出さない。
+                        const runtimeMatchLines =
+                          heroMatchKind === "consultation"
+                            ? buildRuntimeMatchLines({
+                                needTags: matchedNeedTags,
+                                goriyakuLabel: runtimeMatchGoriyakuLabel,
+                                goriyakuMatched: runtimeMatchGoriyakuMatched,
+                              })
+                            : [];
 
                         return (
                           /* PR-G1 (docs/design/premium-meaning-ui-direction.md §7, Direction C):
@@ -989,6 +1004,7 @@ export default function ConciergeSectionsRenderer({
                                 topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
                                 eyebrowLabel={reasonVm.hero.eyebrowLabel ?? null}
                                 conclusionLines={conclusionLines}
+                                conclusionLabel={MATCH_SECTION_LABEL[heroMatchKind]}
                                 explanationOnlyFactText={heroReasonV4.explanationOnlyFactText}
                                 actionReason={heroReasonV4.actionText}
                                 actionSuggestionV4Preview={(heroItem as any).actionSuggestionV4Preview ?? null}
@@ -1073,6 +1089,21 @@ export default function ConciergeSectionsRenderer({
                                   <p className={narrativeBodyClass}>{historyThemeDisplay.body}</p>
                                 </DetailSection>
                               </div>
+                            ) : null}
+
+                            {/* 見どころ単位の推薦 PR-3：「ここで見る」（Action Layer）。推薦理由の
+                                見出しの外に置く（順位に寄与していないので理由として見せない）。
+                                無料の層に置くので、Premium の境目より上。 */}
+                            {heroItem.highlightPick ? (
+                              <ConciergeHighlightPick
+                                pick={heroItem.highlightPick}
+                                variant="hero"
+                                shrineId={heroItem.shrineId}
+                                recommendationRank={1}
+                                threadId={tid ?? null}
+                                resultSetId={resultSetId}
+                                recommendationInstanceId={heroItem.recommendationInstanceId ?? null}
+                              />
                             ) : null}
 
                             {/* Free -> Premium seam (PR-G2): one restrained boundary, placed
@@ -1201,8 +1232,8 @@ export default function ConciergeSectionsRenderer({
                                 reasonFacts: item.reasonFacts ?? null,
                                 index: compactIdx + 1,
                                 mode: normalizedMode,
-                                birthdate: filterState?.birthdate ?? null,
-                                needTags: item.breakdown?.matched_need_tags ?? [],
+                                      needTags: item.breakdown?.matched_need_tags ?? [],
+                                primaryReasonSource: item.analyticsProvenance?.primaryReasonSource ?? null,
                               });
                               const compactReasonDisplay = buildRecommendationReasonDisplay({
                                 matchReason: compactReasonVm.list.primaryPhrase,
@@ -1237,6 +1268,11 @@ export default function ConciergeSectionsRenderer({
                                     imageUrl={item.imageUrl}
                                     address={item.address ?? null}
                                     reason={compactReason}
+                                    reasonLabel={
+                                      MATCH_SECTION_LABEL[
+                                        resolvePrimaryReasonMatchKind(item.analyticsProvenance?.primaryReasonSource ?? null)
+                                      ]
+                                    }
                                     explanationOnlyFactText={compactReasonV4.explanationOnlyFactText}
                                     tags={[]}
                                     distanceM={(item as any).distance_m ?? null}
@@ -1279,6 +1315,17 @@ export default function ConciergeSectionsRenderer({
                                     recommendationKey={item.shrineId}
                                     rank={compactIdx + 2}
                                   />
+                                  {item.highlightPick ? (
+                                    <ConciergeHighlightPick
+                                      pick={item.highlightPick}
+                                      variant="compact"
+                                      shrineId={item.shrineId}
+                                      recommendationRank={compactIdx + 2}
+                                      threadId={tid ?? null}
+                                      resultSetId={resultSetId}
+                                      recommendationInstanceId={item.recommendationInstanceId ?? null}
+                                    />
+                                  ) : null}
                                 </div>
                               );
                             })}
@@ -1289,9 +1336,10 @@ export default function ConciergeSectionsRenderer({
                   ) : null}
 
                   {placeItems.length > 0 ? (
-                    <div className="space-y-3 pt-4">
-                      {placeItems.map((item: PlaceShrineItem, placeIdx: number) => (
-                        <div key={`rec-${i}-${placeIdx}-place-${item.placeId}`} className="space-y-2">
+                    <section aria-label="参考候補" className="space-y-3 pt-4">
+                      <h3 className="text-sm font-semibold">参考候補</h3>
+                      {placeItems.map((item: PlaceShrineItem) => (
+                        <div key={`place-${item.placeId}`} className="space-y-2">
                           <PlaceShrineCard
                             placeId={item.placeId}
                             title={item.title}
@@ -1303,7 +1351,7 @@ export default function ConciergeSectionsRenderer({
                           />
                         </div>
                       ))}
-                    </div>
+                    </section>
                   ) : null}
 
                   {!isEntryRoute && savePromptVisibility !== "hidden" ? (

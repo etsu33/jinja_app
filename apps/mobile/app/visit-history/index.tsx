@@ -1,13 +1,13 @@
 import * as React from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { listVisits, type VisitHistoryItem } from "../../lib/visits";
 import { StateCard } from "../../components/common/StateCard";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
+import { typography } from "../../design/typography";
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return "日付未記録";
@@ -94,7 +94,6 @@ function VisitTimelineCard({ visit, isLast }: { visit: VisitHistoryItem; isLast:
 }
 
 export default function VisitHistoryScreen() {
-  const router = useRouter();
   const [visits, setVisits] = React.useState<VisitHistoryItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
@@ -132,13 +131,9 @@ export default function VisitHistoryScreen() {
       style={styles.screen}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.gold} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />}
     >
       <View style={styles.header}>
-        <Pressable onPress={() => router.replace("/records")} style={styles.backButton}>
-          <Text style={styles.backText}>← 記録へ戻る</Text>
-        </Pressable>
-        <Text style={styles.title}>参拝履歴</Text>
         <Text style={styles.subtitle}>
           参拝済みにした神社を、新しい順に見返せます。行動の積み重ねを確認するための記録です。
         </Text>
@@ -202,50 +197,30 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.mdGap,
   },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: spacing.smGap,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  title: {
-    color: theme.gold,
-    fontSize: 26,
-    fontWeight: "900",
-  },
   subtitle: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 15,
-    lineHeight: 23,
-    fontWeight: "600",
   },
   summaryCard: {
     backgroundColor: theme.surface,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: radius.lg,
     borderWidth: cardSizes.borderWidth,
     padding: cardSizes.cardPaddingLg,
     gap: spacing.smGap,
   },
   summaryLabel: {
-    color: theme.goldSoft,
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 1.2,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   summaryValue: {
-    color: theme.gold,
+    color: theme.accent,
     fontSize: 44,
     fontWeight: "900",
   },
   summaryText: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
   },
   timeline: {
     gap: spacing.lgGap,
@@ -254,10 +229,8 @@ const styles = StyleSheet.create({
     gap: spacing.smGap,
   },
   groupLabel: {
-    color: theme.goldSoft,
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 0.8,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   list: {
     gap: 0,
@@ -272,14 +245,14 @@ const styles = StyleSheet.create({
     width: 18,
   },
   timelineDot: {
-    backgroundColor: theme.gold,
+    backgroundColor: theme.accent,
     borderRadius: 7,
     height: 14,
     marginTop: 18,
     width: 14,
   },
   timelineLine: {
-    backgroundColor: theme.borderGold,
+    backgroundColor: theme.borderAccent,
     flex: 1,
     opacity: 0.45,
     width: 1,
@@ -298,20 +271,16 @@ const styles = StyleSheet.create({
     gap: spacing.tightGap,
   },
   shrineName: {
-    color: theme.gold,
-    fontSize: 17,
-    fontWeight: "900",
+    ...typography.title,
+    color: theme.accent,
   },
   visitedAt: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "700",
   },
   addressText: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "600",
   },
   noteBlock: {
     backgroundColor: theme.surfaceSoft,
@@ -322,15 +291,11 @@ const styles = StyleSheet.create({
     gap: spacing.tightGap,
   },
   noteLabel: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.1,
+    ...typography.eyebrow,
+    color: theme.accentSoft,
   },
   noteText: {
+    ...typography.subhead,
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
   },
 });

@@ -68,7 +68,7 @@ def test_chat_view_characterisation_top_level_takes_precedence_over_filters(clie
     r = client.post(URL, data=json.dumps(payload), content_type="application/json")
     assert r.status_code == 200
 
-    assert captured["birthdate"] == "1990-01-01"
+    assert captured["birthdate"] is None  # コンシェルジュでは生年月日を使わない（生年月日との相性はコンパスの役割）
     assert captured["goriyaku_tag_ids"] == [999]
     assert captured["extra_condition"] == "にぎやか"
 

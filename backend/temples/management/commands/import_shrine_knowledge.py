@@ -40,8 +40,10 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from temples.domain.removed_shrines import is_removed_shrine
 from temples.models import (
     Shrine,
     ShrineDeity,
@@ -391,8 +393,19 @@ def _build_plan(parsed: ParsedSeed) -> tuple[Plan, dict[str, ShrineKnowledgeSour
         identity = resolve_source_identity(entry)
         existing = identity.source
         source_existing[key] = existing
-        if identity.status in ("CONFLICT", "AMBIGUOUS"):
+        if identity.status in ("CONFLICT", "AMBIGUOUS", "INVALID_URL", "INVALID_EXISTING_URL"):
             errors.append(f"source {key!r}: SOURCE_REUSE_{identity.status} ({identity.detail})")
+        elif identity.status == "CREATE" and entry.url:
+            # _apply() full_clean()s every newly created Source, so a URL the
+            # model field rejects (URLValidator / max_length) would otherwise
+            # pass --dry-run and only fail mid-transaction. Checked only for
+            # CREATE so that REUSE_EXISTING behaves exactly as before.
+            try:
+                ShrineKnowledgeSource._meta.get_field("url").run_validators(entry.url)
+            except ValidationError as exc:
+                errors.append(
+                    f"source {key!r}: SOURCE_URL_REJECTED_ON_CREATE ({' '.join(exc.messages)})"
+                )
         items.append(
             PlanItem(
                 kind="source",
@@ -729,6 +742,16 @@ class Command(BaseCommand):
             raise CommandError(f"seed file is not valid JSON: {exc}") from exc
 
         parsed = parse_seed(raw)
+
+        # 本番から削除した神社は取り込まない（temples/domain/removed_shrines.py）。
+        # 知識データも「後ろに足すだけ」の決まりで行を外せないため、ここで飛ばす。
+        kept_blocks = []
+        for block in parsed.shrines:
+            if is_removed_shrine(block.name_jp, block.address):
+                self.stdout.write(f"SKIP removed shrine {block.name_jp!r}")
+                continue
+            kept_blocks.append(block)
+        parsed.shrines = kept_blocks
 
         if options["validate_only"]:
             errors = list(parsed.errors)

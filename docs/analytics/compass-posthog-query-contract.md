@@ -7,6 +7,28 @@
 > [#2498](../product/compass-product-contract.md) Section 2.1, #2499 implementation,
 > all merged). See §1.1, §8, §9, §13, §15 for the changes.
 
+> **Update — Web `identify()` / `reset()` introduced (implemented 2026-11-17, branch
+> `feature/web-pageview-identify`).** Statements below that "`posthog.identify()` is never called
+> anywhere in this codebase" (§1, §8, §10, §14, §15) describe the state **before** this change and
+> remain valid only for data captured before it reached production. From the production deploy of
+> this change onward:
+> - Web calls `identify(<internal user id as string>)` once a user is authenticated (no email,
+>   display name, username or other person properties are passed), and `reset()` on logout and when
+>   `/api/users/me/` returns 401 for a previously logged-in browser.
+> - Logged-in users are therefore keyed to their internal user ID, and a logout starts a new
+>   anonymous `distinct_id` on the same browser.
+> - **Any `distinct_id`- or person-based count (Same-Month Repeat, Month-over-Month Return, and any
+>   other identity-keyed metric) is not continuous across the deploy date** with the anonymous
+>   `distinct_id`-based numbers before it. Do not compare or trend across that boundary as if it were
+>   one series. Record the production deploy date here once known: `TBD`.
+> - Web `$pageview` is now captured on every App Router path change (`capture_pageview:
+>   "history_change"`), and URL properties (`$current_url`, `$initial_current_url`, `$referrer`,
+>   `$initial_referrer`, `$session_entry_url`, `$session_entry_referrer`, including inside `$set` /
+>   `$set_once`) keep only `utm_*` query parameters. The search-engine keyword properties
+>   `ph_keyword`, `$initial_ph_keyword` and `$session_entry_ph_keyword` are dropped.
+> - Web does not request feature flags (`advanced_disable_feature_flags: true`); remote config is
+>   still loaded, so project-level settings for autocapture and session recording are unaffected.
+
 This document defines how the already-implemented Compass analytics (PR-A #2488,
 PR-B #2489, PR-C #2490 — all merged) should be **queried** in PostHog. It is a
 companion to `docs/analytics/compass-analytics-contract.md` (the event/payload
@@ -866,7 +888,8 @@ Per the task's instruction to target ~4–6 primary metrics, not a 25-number das
 2. Whether PostHog's project-level timezone is actually configured to `Asia/Tokyo` — must be confirmed before any calendar-month query is trusted (§7).
 3. Whether PostHog project-level internal/QA-traffic filtering exists (§11B) — no app-level flag currently distinguishes Mother Ship QA traffic from organic usage.
 4. Numeric sample-size thresholds for any of the gates in §11 — explicitly left as PRODUCT/ANALYTICS DECISION REQUIRED, not fabricated here.
-5. Whether/how to eventually attach real account identity to PostHog (`identify()`) — a pre-existing, cross-cutting gap this document surfaces (§8, §10) but cannot resolve; doing so is out of this audit's authorization (would be new instrumentation).
+5. Whether/how to eventually attach real account identity to PostHog (`identify()`) — a pre-existing, cross-cutting gap this document surfaces (§8, §10) but cannot resolve; doing so is out of this audit's authorization (would be new instrumentation). **Resolved for Web by the 2026-11-17 update at the top of this document** (identity-keyed metrics are not continuous across its deploy date).
+6. Open issue: the app's own `analyticsSessionId` / `sessionId` (`apps/web/src/lib/analytics/track.ts`, stored in `localStorage`) is not cleared on logout or `reset()`, so events from a guest after logout on the same browser still carry the previous user's session ID.
 
 ---
 

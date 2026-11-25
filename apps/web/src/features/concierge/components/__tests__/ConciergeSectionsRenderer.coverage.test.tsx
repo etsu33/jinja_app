@@ -27,10 +27,7 @@ import { buildPayloadFromUnified } from "@/features/concierge/buildPayloadFromUn
 
 const baseFilterState: any = {
   isOpen: false,
-  birthdate: "",
-  element4: null,
   goriyakuTags: [{ id: 1, name: "健康" }],
-  suggestedTags: [],
   selectedTagIds: [],
   tagsLoading: false,
   tagsError: null,
@@ -125,9 +122,9 @@ describe("ConciergeSectionsRenderer - 既存経路のCoverage補完", () => {
     fireEvent.click(screen.getByRole("button", { name: "健康" }));
     expect(onAction).toHaveBeenCalledWith({ type: "filter_toggle_tag", tagId: 1 });
 
-    const birthdateInput = screen.getByLabelText("誕生日");
-    fireEvent.change(birthdateInput, { target: { value: "1990-01-01" } });
-    expect(onAction).toHaveBeenCalledWith({ type: "filter_set_birthdate", birthdate: "1990-01-01" });
+    // コンシェルジュでは生年月日を使わないため、誕生日の入力の代わりにコンパスへの案内がある。
+    expect(screen.queryByLabelText("誕生日")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "コンパスで相性を見る" })).toHaveAttribute("href", "/compass");
 
     expect(screen.queryByRole("button", { name: "キャンセル" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "閉じる" })).toHaveLength(1);
@@ -160,7 +157,7 @@ describe("ConciergeSectionsRenderer - 既存経路のCoverage補完", () => {
     expect(onAction).toHaveBeenCalledWith({ type: "back_to_entry" });
   });
 
-  it("open editorはL2 → L3-A → L3-B → L3-Cの順で表示し、Apply labelをcontext別にする", () => {
+  it("open editorはL2 → コンパスへの案内 → L3-B → L3-Cの順で表示し、Apply labelをcontext別にする", () => {
     const u: any = { data: { recommendations: [heroRec] }, thread: { id: 1 } };
     const payload = buildTestPayload(u, { ...baseFilterState, isOpen: true });
     const { container, rerender } = render(
@@ -169,7 +166,7 @@ describe("ConciergeSectionsRenderer - 既存経路のCoverage補完", () => {
 
     const sections = [
       screen.getByRole("region", { name: "今回の参拝の希望（任意）" }),
-      screen.getByRole("region", { name: "誕生日（任意）" }),
+      screen.getByRole("region", { name: "生年月日からの相性" }),
       screen.getByRole("region", { name: "ご利益を指定する" }),
       screen.getByRole("region", { name: "参拝の詳細（任意）" }),
     ];
