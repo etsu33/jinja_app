@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-jinja_db}
       POSTGRES_USER: ${POSTGRES_USER:-admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jdb50515}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD を .env か環境変数で設定してください}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -30,11 +30,11 @@ services:
     environment:
       # --- DB接続（DATABASE_URLを使わない方針） ---
       USE_GIS: "1"
-      DATABASE_URL: postgis://admin:jdb50515@db:5432/jinja_db
+      DATABASE_URL: postgis://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD を .env か環境変数で設定してください}@db:5432/${POSTGRES_DB:-jinja_db}
       # DB_HOST: db
       # DB_NAME: jinja_db
       # DB_USER: admin
-      # DB_PASSWORD: jdb50515
+      # DB_PASSWORD: ${POSTGRES_PASSWORD}
       # --- ロケール/GEOS/GDAL ---
       PYTHONUTF8: "1"
       PYTHONIOENCODING: "UTF-8"
