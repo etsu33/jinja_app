@@ -1363,7 +1363,8 @@ An untrusted connector gets neither `connect()` nor `release_unadopted()` called
 
 **Residual risks**
 
-1. **Asynchronous-interrupt windows.**
+1. **Asynchronous-interrupt windows.** *(Superseded by §15.7 for signal-originated interrupts; kept as the record
+   of the state at PR #3425.)*
    - An interrupt delivered inside a connector between allocating a handle and recording it（one statement）leaks that
      handle.
    - An interrupt between `conn = returned` and the transfer flag makes both the connector release and the runner
@@ -1373,5 +1374,99 @@ An untrusted connector gets neither `connect()` nor `release_unadopted()` called
 3. **Caller-injected objects are never cleaned up by the runner.** That stays the caller's responsibility.
 4. **`release_unadopted()` has no timeout.** A hanging release blocks the run.
 5. **In-process forgery or private-state mutation（SR-3）still bypasses provenance**, and with it this contract.
+
+OP-6 stays **STOP**; G-6 / G-7 **UNMET**; AG-3 / AG-4 **NOT_AUTHORIZED**; `PRODUCTION_CONNECTION = STOP`.
+
+### 15.7 R1 / R2 interrupt windows（Issue #3426 PR-A; verified offline and on a local disposable database）
+
+> **Status: bounded, not eliminated.** Baseline: `develop` @ `f9cf35c4`（PR #3425 merged）. The design audit in PR
+> #3427 was still an unmerged draft when this was written. It was read as reference only and is not a baseline.
+>
+> **An absolute guarantee is impossible in Python**（see "Not guaranteed" below）, so this section states what is
+> guaranteed and where it stops. It claims nothing further. R3（cleanup timeout）and R4（same-process spoofing）are
+> unchanged; their dependencies are recorded below. OP-6 stays **STOP**.
+
+**One ownership boundary**
+
+- `_Ownership.conn` is the only ownership marker.
+  - `None`: any resource belongs to the connector, and `release_unadopted()` is responsible.
+  - Set: the runner owns the connection, and `_end_session()` is responsible.
+- The transfer is one attribute store, `owner.conn = returned`, made in `_handoff()` only after
+  `_trusted_offline_connection()`. The PR #3425 pair `conn = returned` / `transferred = True` is gone, so neither the
+  "both release" nor the "neither releases" state exists.
+
+**Interrupt-deferral section（`_InterruptDeferral`）**
+
+- While the section is active, every Python-level signal handler is replaced by a recorder. On exit the original
+  handlers are restored first, then each recorded signal is re-dispatched to its original handler. An interrupting
+  handler raises there, after ownership is consistent.
+- The section is used around the whole handoff（connect → validate → adopt, or release）and around runner cleanup.
+- A mechanism based on `pthread_sigmask` was implemented first and **rejected**. A thread's mask does not defer a
+  process-directed signal in a multi-threaded process: the kernel hands the signal to another thread, and CPython
+  still runs the Python handler in the main thread.
+  - This showed up as real failures under pytest-xdist（3 failed with `-n 4`, while serial runs passed）.
+  - A scratch probe reproduced it on CPython 3.11 and 3.13.
+  - A committed negative-control test reproduces it as well.
+- Verified on CPython 3.11 and 3.13（scratch probe, not committed）: Python-level handlers always run in the main
+  thread and are looked up **when dispatched**. A signal recorded while the recorder is installed is therefore
+  deferred, including when the process is multi-threaded.
+- Outside the main thread the section does nothing. Python signal handlers never run there, so no
+  signal-originated exception can occur in that thread.
+- If the handler APIs are unavailable, the runner stops before connecting with `interrupt_deferral_unavailable`.
+
+**Runner cleanup**
+
+- Cleanup runs inside a deferral section and is retried once if an interrupt arrives at the section edge.
+- `_end_session()`（rollback, close）and `_release_unadopted()` are each attempted at most once per run: the attempt
+  is recorded before the call. A retry therefore never releases twice, without relying on the driver tolerating a
+  double close.
+
+**What is guaranteed（Python level, tested）**
+
+| Case | Result | Evidence |
+| --- | --- | --- |
+| A signal-originated interrupt inside the handoff: between acquiring and registering a handle（R1）, after registering but before adoption, during validation（R2） | Deferred to the end of the handoff. The resource is released exactly once: by the runner if adopted, by the connector if rejected. The rejected object is never touched, and no registry SQL is submitted | Unit: real `SIGUSR1` at each point, with a non-idempotent `FakeResource` whose second release raises. Local DB: exact backend PID gone, checked through a separate autocommit observer, with a positive control at the injection point |
+| The same in a multi-threaded process | Same result | Unit and DB tests with a background thread; the full suites also run under pytest-xdist |
+| The same points **without** deferral（negative controls） | R1 leaks the handle（unit: `released == 0`; DB: backend still alive）. R2 is still released exactly once, by the connector, because the single marker has no both / neither state | Unit and DB negative-control tests |
+| An interrupt after the transfer | The runner releases exactly once; the connector is not asked | Unit test |
+| One interrupt at the cleanup section edge（before the recorder is installed, or when it is removed） | Cleanup is retried; exactly one release | Unit test（simulated edge） |
+| Nested sections; handler restoration | Delivered only at the outermost exit; every Python handler is restored after a run | Unit tests |
+
+**Not guaranteed（documented limits; not tested unless stated）**
+
+1. **Two or more signals within the cleanup retry window.** Cleanup is best effort. The handle is then released only
+   by garbage collection or process exit.
+2. **Asynchronous exceptions not delivered through signals**（`PyThreadState_SetAsyncExc`, debugger injection）.
+   They are not deferred.
+3. **Process termination**（SIGKILL, a signal left at SIG_DFL such as SIGTERM, an interpreter crash）. No Python
+   cleanup runs. The operating system closes the socket, and the server is expected to end the backend.
+4. **Synchronous failures inside a connector between acquiring and registering a handle**（for example `MemoryError`
+   in `list.append`）. These remain the connector's responsibility. The deferral covers signals only.
+5. **Blocking calls inside a deferral section delay interrupt delivery until they return**（this is the dependency on
+   R3）.
+   - The local test connector bounds connect with `connect_timeout=5`.
+   - `release_unadopted()` and `close()` have no runner-enforced timeout（R3, unchanged）.
+   - SIGKILL, and SIGTERM at its default action, still end the process.
+6. **Re-dispatch is in order of arrival.** If more than one signal is recorded, the first interrupting handler raises
+   and later recorded signals are not re-dispatched.
+7. **Code that replaces a signal handler while a section is active is overwritten at exit**, because the original
+   handler is restored.
+8. **R4（SR-3）.** Code that forges provenance also runs inside the section, with interrupts deferred. The deferral is
+   not a trust boundary.
+
+**Proof that the tests detect leaks and double release**（mutation; unit mutants on a scratch copy, DB mutants as
+temporary in-place edits restored byte-for-byte; all detected）
+
+| Mutant | Unit（218 tests） | DB（18 tests） |
+| --- | --- | --- |
+| Handoff without deferral | 7 failed | 3 failed |
+| Connector releases even after adoption（double release） | 13 failed | 6 failed |
+| `_end_session()` not idempotent | 2 failed | — |
+| No cleanup retry | 1 failed | — |
+| Release skipped when an interrupt is already pending | 5 failed | — |
+| `_release_unadopted()` not at most once | 1 failed | — |
+| Deferral never fails closed | 1 failed | — |
+| Recorded signals never re-dispatched（interrupt swallowed） | 9 failed | — |
+| Original handlers not restored | 2 failed, 10 errors | — |
 
 OP-6 stays **STOP**; G-6 / G-7 **UNMET**; AG-3 / AG-4 **NOT_AUTHORIZED**; `PRODUCTION_CONNECTION = STOP`.
