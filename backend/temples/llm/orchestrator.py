@@ -70,8 +70,11 @@ class ConciergeOrchestrator:
                     "score": max(0.0, 1.0 - i * 0.1),
                 }
             )
-        if not recs:
-            recs = [{"name": "近隣の神社", "reason": "暫定"}]
+        # Shared Recommendation Eligibility gateにより、候補poolが空になる
+        # （= eligibleなShrineが1件も無い）ことが正常に起こり得る。その場合に
+        # プレースホルダの神社を1件でっち上げると、gateで除外したはずの
+        # 「Knowledge Factの裏付けが無い推薦」を作ることになるため、
+        # 空poolに対しては空のrecommendationsをそのまま返す（silent fallback禁止）。
         return {"recommendations": recs}
 
     def suggest(

@@ -49,9 +49,7 @@ NEED_PRIORITY = {
 
 
 NEED_TAG_ALIASES: Dict[str, str] = {
-    "marriage": "love",
     "romance": "love",
-    "relationship": "love",
     "anxiety": "mental",
     "healing": "rest",
     "career_change": "career",
@@ -61,6 +59,29 @@ NEED_TAG_ALIASES: Dict[str, str] = {
     "ambition": "courage",
     "success": "courage",
 }
+# "relationship" (人間関係全般: 職場/家族/友人/対人) is a distinct,
+# first-class need tag in temples/domain/need_tags.py -- with its own
+# keyword list, its own goriyaku concept mapping ({relationship_bonding},
+# temples/domain/need_to_goriyaku_concepts.py), and its own priority
+# slot -- deliberately separate from "love" (恋愛/出会い/良縁,
+# {love_fulfillment, relationship_bonding}). It must NOT be aliased to "love" here: doing so collapsed
+# workplace/family/friend relationship consultations into romantic-love
+# recommendation reasons (docs/audit/concierge-l1-freetext-readiness.md
+# Finding C, PR #2409). "romance" (a plain English synonym for "love"
+# with no independent keyword list of its own) remains aliased above.
+#
+# "marriage" (結婚/婚活/夫婦円満) was ALSO removed from this table --
+# unlike "romance", it has a real, independently-defined keyword list
+# (temples/domain/need_tags.py KEYWORDS["marriage"] and
+# temples/services/consultation_interpreter.py NEED_KEYWORDS["marriage"],
+# both identical) that the alias discarded end-to-end. See
+# docs/audit/marriage-love-alias-boundary.md
+# (PRODUCT_SEMANTIC_DECISION_REQUIRED, resolved in favor of independence)
+# and docs/audit/marriage-need-independence-implementation.md.
+# "relationship" is not a synonym of "love" either, so it is not in
+# this table at all -- normalize_need_tag("relationship") now returns
+# "relationship" unchanged, and normalize_need_tag("marriage") now
+# returns "marriage" unchanged.
 
 
 def normalize_need_tag(tag: Any) -> str:

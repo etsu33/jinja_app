@@ -236,14 +236,16 @@ def _solar_month_index(d: date) -> int:
     return index
 
 
-def planned_visit_lucky_directions(birthdate: Optional[str], visit_date: Optional[str]) -> Optional[Dict[str, Any]]:
-    """参拝予定日の年盤と月盤がともに吉となる方位を返す（日盤は対象外）。"""
+def monthly_lucky_directions(birthdate: Optional[str], visit_date: Optional[str]) -> Optional[Dict[str, Any]]:
+    """月盤の凶方位を除外し、本命星と比和・相生になる方位を返す（月盤単独、年盤とは交差しない）。日盤は対象外。
+
+    annual_lucky_directions() の月盤版。planned_visit_lucky_directions() が
+    従来インラインで計算していた月盤単独の吉方位を、そのまま切り出したもの
+    （計算式・除外ロジック・五行相生フィルタは一切変更していない）。
+    """
     planned = parse_birthdate(visit_date)
     honmei = honmei_star(birthdate)
     if not planned or not honmei:
-        return None
-    annual = annual_lucky_directions(birthdate, today=planned)
-    if not annual:
         return None
     month_index = _solar_month_index(planned)
     ki_year = year_star(today=planned).ki_year
@@ -262,22 +264,50 @@ def planned_visit_lucky_directions(birthdate: Optional[str], visit_date: Optiona
             excluded.add(OPPOSITE_DIRECTION[direction])
     excluded.add(OPPOSITE_DIRECTION[SOLAR_MONTH_DIRECTIONS[month_index]])
     honmei_element = STAR_ELEMENTS[honmei.num]
-    monthly_lucky = []
+    lucky = []
     for direction, star in stars.items():
         if direction in excluded:
             continue
         element = STAR_ELEMENTS[star]
         if element == honmei_element or GENERATES[element] == honmei_element or GENERATES[honmei_element] == element:
-            monthly_lucky.append(direction)
-    combined = [direction for direction in annual["luckyDirections"] if direction in monthly_lucky]
-    all_excluded = [direction for direction in DIRECTION_PALACES if direction in set(annual["excludedDirections"]) | excluded]
+            lucky.append(direction)
+    return {
+        "luckyDirection": lucky[0] if lucky else None,
+        "luckyDirections": lucky,
+        "targetYear": ki_year,
+        "solarMonthIndex": month_index + 1,
+        "visitDate": planned.isoformat(),
+        "calculationMethod": "monthly_kyusei_v1",
+        "excludedDirections": [direction for direction in DIRECTION_PALACES if direction in excluded],
+        "source": "calculated",
+    }
+
+
+def planned_visit_lucky_directions(birthdate: Optional[str], visit_date: Optional[str]) -> Optional[Dict[str, Any]]:
+    """参拝予定日の年盤と月盤がともに吉となる方位を返す（日盤は対象外）。"""
+    planned = parse_birthdate(visit_date)
+    honmei = honmei_star(birthdate)
+    if not planned or not honmei:
+        return None
+    annual = annual_lucky_directions(birthdate, today=planned)
+    if not annual:
+        return None
+    monthly = monthly_lucky_directions(birthdate, visit_date)
+    if not monthly:
+        return None
+    combined = [direction for direction in annual["luckyDirections"] if direction in monthly["luckyDirections"]]
+    all_excluded = [
+        direction
+        for direction in DIRECTION_PALACES
+        if direction in set(annual["excludedDirections"]) | set(monthly["excludedDirections"])
+    ]
     return {
         "luckyDirection": combined[0] if combined else None,
         "luckyDirections": combined,
         "targetYear": annual["targetYear"],
         "targetMonth": planned.month,
-        "solarMonthIndex": month_index + 1,
-        "visitDate": planned.isoformat(),
+        "solarMonthIndex": monthly["solarMonthIndex"],
+        "visitDate": monthly["visitDate"],
         "calculationMethod": "annual_monthly_kyusei_v1",
         "excludedDirections": all_excluded,
         "source": "calculated",

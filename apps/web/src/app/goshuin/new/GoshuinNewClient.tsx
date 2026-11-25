@@ -2,11 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { uploadMyGoshuin, fetchMyGoshuinCount, type GoshuinCount } from "@/lib/api/goshuin";
 import Image from "next/image";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { buildLoginHref } from "@/lib/nav/login";
 
 function safeDecode(v: string) {
   try {
@@ -26,6 +28,18 @@ function firstNonEmpty(...xs: Array<string | null | undefined>) {
 
 export default function GoshuinNewClient() {
   const sp = useSearchParams();
+  const router = useRouter();
+  const { isLoggedIn, loading } = useAuth();
+  const currentPath = useMemo(() => {
+    const query = sp.toString();
+    return query ? `/goshuin/new?${query}` : "/goshuin/new";
+  }, [sp]);
+
+  React.useEffect(() => {
+    if (!loading && !isLoggedIn) {
+      router.replace(buildLoginHref(currentPath));
+    }
+  }, [currentPath, isLoggedIn, loading, router]);
 
   const from = useMemo(() => sp.get("from"), [sp]);
   const shrine = useMemo(() => sp.get("shrine"), [sp]);
@@ -47,6 +61,8 @@ export default function GoshuinNewClient() {
   const [countLoading, setCountLoading] = useState(true);
 
   React.useEffect(() => {
+    if (loading || !isLoggedIn) return;
+
     let alive = true;
     (async () => {
       try {
@@ -63,7 +79,7 @@ export default function GoshuinNewClient() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [isLoggedIn, loading]);
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   React.useEffect(() => {
@@ -88,7 +104,6 @@ export default function GoshuinNewClient() {
     window.location.assign("/mypage?tab=goshuin");
   };
 
-  
   const limitLabel = countLoading
     ? "御朱印数を確認中…"
     : count
@@ -135,20 +150,28 @@ export default function GoshuinNewClient() {
     }
   }
 
+  if (loading || !isLoggedIn) {
+    return (
+      <div className="p-4 text-sm text-[var(--kt-color-text-secondary)]" role="status" aria-busy={loading}>
+        認証状態を確認しています...
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={onSubmit} className="mx-auto max-w-md space-y-4 p-4">
       <div className="space-y-1">
         <h1 className="text-lg font-bold">御朱印を登録</h1>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-[var(--kt-color-text-muted)]">
           {shrineId ? `神社ID: ${shrineId}` : "神社が未指定です（神社詳細から来る想定）"}
         </p>
 
         {limitLabel ? (
-          <div className="rounded-xl border bg-white px-3 py-2 text-xs text-slate-700">{limitLabel}</div>
+          <div className="rounded-xl border bg-[var(--kt-color-surface-default)] px-3 py-2 text-xs text-[var(--kt-color-text-secondary)]">{limitLabel}</div>
         ) : null}
 
         {!countLoading && count && !count.can_add ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <div className="rounded-xl border border-[var(--kt-color-notice-border)] bg-[var(--kt-color-notice-bg)] px-3 py-2 text-xs text-[var(--kt-color-notice-text)]">
             上限に達しています。
             <Link href="/billing/upgrade" className="underline font-semibold">
               プランを更新
@@ -162,12 +185,12 @@ export default function GoshuinNewClient() {
         <label className="text-sm font-semibold">御朱印画像</label>
 
         {previewUrl ? (
-          <div className="overflow-hidden rounded-2xl border bg-white">
+          <div className="overflow-hidden rounded-2xl border bg-[var(--kt-color-surface-default)]">
             // eslint-disable-next-line @next/next/no-img-element
             <Image src={previewUrl} alt="preview" width={800} height={800} className="h-auto w-full object-contain" />
           </div>
         ) : (
-          <div className="rounded-2xl border bg-slate-50 p-4 text-xs text-slate-600">
+          <div className="rounded-2xl border bg-[var(--kt-color-background-subtle)] p-4 text-xs text-[var(--kt-color-text-secondary)]">
             まだ画像が選択されていません（スマホはカメラが起動します）
           </div>
         )}
@@ -181,7 +204,7 @@ export default function GoshuinNewClient() {
           className="block w-full text-sm"
           aria-label="御朱印画像"
         />
-        <p className="text-[11px] text-slate-500">推奨：5MB以下。あとで公開/非公開は変更できます。</p>
+        <p className="text-[11px] text-[var(--kt-color-text-muted)]">推奨：5MB以下。あとで公開/非公開は変更できます。</p>
       </div>
 
       {/* タイトル */}
@@ -198,10 +221,10 @@ export default function GoshuinNewClient() {
       </div>
 
       {/* 公開設定 */}
-      <div className="flex items-center justify-between rounded-xl border bg-white px-3 py-3">
+      <div className="flex items-center justify-between rounded-xl border bg-[var(--kt-color-surface-default)] px-3 py-3">
         <div className="space-y-0.5">
           <div className="text-sm font-semibold">公開する</div>
-          <div className="text-xs text-slate-500">公開御朱印として神社詳細などに表示されます</div>
+          <div className="text-xs text-[var(--kt-color-text-muted)]">公開御朱印として神社詳細などに表示されます</div>
         </div>
         <input
           type="checkbox"

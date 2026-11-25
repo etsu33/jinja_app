@@ -3,12 +3,13 @@ import * as React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, type Region } from "react-native-maps";
 
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { radius } from "../../design/radius";
 import { spacing } from "../../design/spacing";
 import { prefectureOrigin } from "../../../../packages/shared/userOrigin";
 import { hasValidCoordinates, type ShrineSearchMapProps } from "../../lib/shrineMap";
 import { trackMapMarkerSelect } from "../../lib/searchAnalytics";
+import { typography } from "../../design/typography";
 
 const FALLBACK_ORIGIN = prefectureOrigin("東京都");
 const FALLBACK_REGION: Region = {
@@ -134,9 +135,8 @@ const styles = StyleSheet.create({
     gap: spacing.tightGap,
   },
   noCoordLabel: {
+    ...typography.eyebrow,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "700",
   },
   noCoordList: {
     gap: spacing.tightGap,
@@ -150,14 +150,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.tightGap,
   },
   noCoordItemSelected: {
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
   },
   noCoordItemPressed: {
     opacity: 0.74,
   },
   noCoordItemText: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    fontWeight: "800",
   },
 });

@@ -14,9 +14,28 @@ describe("ShrineDetailHeroCard", () => {
     expect(container.querySelector("img")).not.toBeInTheDocument();
   });
 
-  it("imageUrlがある場合はimg要素を表示する", () => {
-    render(<ShrineDetailHeroCard title="乃木神社" imageUrl="https://example.com/photo.jpg" />);
+  it("imageUrlがない場合は空のmedia slot（固定高さ / bg-slate-100）を描画しない (RH3-3)", () => {
+    const { container } = render(<ShrineDetailHeroCard title="乃木神社" imageUrl={null} />);
+    expect(container.querySelector(".bg-slate-100")).not.toBeInTheDocument();
+    expect(container.querySelector(".h-32")).not.toBeInTheDocument();
+    // 神社名（Hero content）は維持される
+    expect(screen.getByText("乃木神社")).toBeInTheDocument();
+    // 外枠カード自体は維持される
+    expect(container.querySelector("article")).toBeInTheDocument();
+  });
+
+  it("imageUrlが空文字の場合も空のmedia slotを描画しない (RH3-3)", () => {
+    const { container } = render(<ShrineDetailHeroCard title="乃木神社" imageUrl="   " />);
+    expect(container.querySelector("img")).not.toBeInTheDocument();
+    expect(container.querySelector(".bg-slate-100")).not.toBeInTheDocument();
+  });
+
+  it("imageUrlがある場合はmedia slotとimg要素を表示する（contract維持）", () => {
+    const { container } = render(
+      <ShrineDetailHeroCard title="乃木神社" imageUrl="https://example.com/photo.jpg" />,
+    );
     expect(screen.getByAltText("乃木神社")).toBeInTheDocument();
+    expect(container.querySelector(".h-32")).toBeInTheDocument();
   });
 
   describe("Design Token参照 (Semantic Token契約、CSS文字列全体の比較はしない)", () => {

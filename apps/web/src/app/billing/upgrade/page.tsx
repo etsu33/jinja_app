@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
 import { startBillingCheckout } from "@/lib/api/billing";
+import { BILLING_PASSES, type BillingPassType } from "@/lib/billing/passes";
 import {
   parseBillingFunnelSource,
   parseBillingFunnelStep,
@@ -16,6 +17,13 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { buildLoginHref } from "@/lib/nav/login";
 
 const UPGRADE_ENTRY_CONTEXT_STORAGE_KEY = "upgrade:entry-context";
+
+// 「今できること」だけを書く。将来予定・拡張予定はここに入れない。
+const PREMIUM_VALUES = [
+  "何度でも相談できる",
+  "なぜ今、この神社なのかを深く知る",
+  "前回からの自分の変化を振り返る",
+] as const;
 
 type UpgradeEntryContext = {
   entryPoint: BillingFunnelSource | null;
@@ -41,7 +49,8 @@ function BillingUpgradeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const auth = useAuth();
-  const [submitting, setSubmitting] = useState(false);
+  const [submittingPass, setSubmittingPass] = useState<BillingPassType | null>(null);
+  const submitting = submittingPass !== null;
   const [error, setError] = useState<string | null>(null);
   const upgradeClickTrackedRef = useRef(false);
   const checkoutStartedTrackedRef = useRef(false);
@@ -50,8 +59,8 @@ function BillingUpgradeContent() {
   const cardId = searchParams.get("cardId");
   const historyTheme = searchParams.get("historyTheme");
 
-  const startCheckout = async () => {
-    if (auth.loading) return;
+  const startCheckout = async (passType: BillingPassType) => {
+    if (auth.loading || submitting) return;
 
     const entryContext = {
       entryPoint: source,
@@ -65,6 +74,7 @@ function BillingUpgradeContent() {
     if (!upgradeClickTrackedRef.current) {
       upgradeClickTrackedRef.current = true;
       trackBillingEvent("upgrade_click", {
+        passType,
         source,
         funnelStep,
         cardId,
@@ -79,13 +89,14 @@ function BillingUpgradeContent() {
     }
 
     try {
-      setSubmitting(true);
+      setSubmittingPass(passType);
       setError(null);
-      const session = await startBillingCheckout();
+      const session = await startBillingCheckout(passType);
       if (!checkoutStartedTrackedRef.current) {
         checkoutStartedTrackedRef.current = true;
         trackBillingEvent("checkout_started", {
           checkoutSessionId: session.session_id,
+          passType,
           source,
           funnelStep,
           cardId,
@@ -95,35 +106,57 @@ function BillingUpgradeContent() {
       window.location.assign(session.checkout_url);
     } catch {
       setError("決済画面を開始できませんでした。時間をおいて再度お試しください。");
-      setSubmitting(false);
+      setSubmittingPass(null);
     }
   };
 
   return (
     <div className="mx-auto w-full max-w-md px-4 py-6">
       <section className="space-y-2">
-        <h1 className="text-xl font-semibold text-slate-900">もっと自分に合う神社提案を受け取りたい方へ</h1>
-        <p className="text-sm leading-6 text-slate-600">
-          プレミアムでは、より継続的にコンシェルジュ体験を使いやすくしていく予定です。
+        <h1 className="text-xl font-semibold text-[var(--kt-color-text-primary)]">KAMI MUSUBI Premium</h1>
+        <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+          一度の答えではなく、変化を重ねていくために。
         </p>
       </section>
 
-      <section className="mt-6 rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-900">無料プランとの違い</h2>
-        <div className="mt-3 space-y-3 text-sm text-slate-700">
-          <div className="rounded-lg bg-slate-50 p-3">
-            <p className="font-medium text-slate-900">無料</p>
-            <p className="mt-1 text-slate-600">
-              まずは気軽にコンシェルジュを試したい方向け。基本的な神社提案を利用できます。
-            </p>
-          </div>
-          <div className="rounded-lg border border-slate-200 p-3">
-            <p className="font-medium text-slate-900">プレミアム</p>
-            <p className="mt-1 text-slate-600">
-              継続的に使いたい方向け。より自分に合った提案体験や、今後の拡張機能を使いやすくしていく予定です。
-            </p>
-          </div>
-        </div>
+      <section className="mt-6 rounded-2xl border bg-[var(--kt-color-surface-default)] p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-[var(--kt-color-text-primary)]">Premiumでできること</h2>
+        <ul className="mt-3 space-y-3 text-sm text-[var(--kt-color-text-secondary)]">
+          {PREMIUM_VALUES.map((value) => (
+            <li key={value} className="flex gap-2">
+              <span aria-hidden="true" className="mt-[2px] text-[var(--kt-color-premium-accent)]">
+                ●
+              </span>
+              <span>{value}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="mt-4 rounded-2xl border bg-[var(--kt-color-surface-default)] p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-[var(--kt-color-text-primary)]">旅行パス</h2>
+        <p className="mt-1 text-xs leading-5 text-[var(--kt-color-text-secondary)]">
+          買い切りのパスです。自動更新はありません。期限が来ると、無料プランに戻ります。
+          期限が残っているうちに買い足すと、残りの期限に日数が足されます。
+        </p>
+        <ul className="mt-3 space-y-2">
+          {BILLING_PASSES.map((pass) => (
+            <li key={pass.type}>
+              <button
+                type="button"
+                onClick={() => void startCheckout(pass.type)}
+                disabled={auth.loading || submitting}
+                className="flex w-full items-center justify-between rounded-md bg-[var(--kt-color-surface-emphasis)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-primary)]"
+              >
+                <span>{pass.label}</span>
+                <span>{submittingPass === pass.type ? "決済画面を準備中…" : pass.priceLabel}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 text-[11px] leading-5 text-[var(--kt-color-text-muted)]">
+          お支払いはクレジットカードのみです。価格は米ドルです。
+        </p>
       </section>
 
       {error ? (
@@ -133,17 +166,27 @@ function BillingUpgradeContent() {
       ) : null}
 
       <div className="mt-6 flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={startCheckout}
-          disabled={auth.loading || submitting}
-          className="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
-        >
-          {submitting ? "決済画面を準備中…" : "プレミアムにする"}
-        </button>
+        {/* Legal導線はCTAより必ず弱く見せる（面を持たせず、文字も一段落とす）。
+            サイト全体の正本は RootLayout の LegalFooter で、ここは購入直前に
+            条件を確認できるようにするための最小の再掲に留める。 */}
+        <p className="text-[11px] leading-5 text-[var(--kt-color-text-muted)]">
+          ご購入の前に
+          <Link href="/terms" className="mx-1 underline underline-offset-2 hover:text-[var(--kt-color-text-secondary)]">
+            利用規約
+          </Link>
+          、
+          <Link href="/privacy" className="mx-1 underline underline-offset-2 hover:text-[var(--kt-color-text-secondary)]">
+            プライバシーポリシー
+          </Link>
+          と
+          <Link href="/tokushoho" className="mx-1 underline underline-offset-2 hover:text-[var(--kt-color-text-secondary)]">
+            特定商取引法に基づく表記
+          </Link>
+          をご確認ください。
+        </p>
         <Link
           href="/billing"
-          className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800"
+          className="inline-flex items-center justify-center rounded-md border border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-primary)]"
         >
           プラン状況を確認する
         </Link>
@@ -157,7 +200,7 @@ export default function BillingUpgradePage() {
     <Suspense
       fallback={
         <main className="mx-auto w-full max-w-md px-4 py-6">
-          <p className="text-sm leading-6 text-slate-600">プレミアム登録画面を準備しています...</p>
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">購入画面を準備しています...</p>
         </main>
       }
     >

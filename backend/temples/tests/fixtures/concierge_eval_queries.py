@@ -15,11 +15,15 @@ class ConciergeEvalQuery(TypedDict):
 
 CONCIERGE_EVAL_QUERIES: list[ConciergeEvalQuery] = [
     {
-        "id": "love_001",
+        # "良縁" is a domain-level "marriage" keyword (temples/domain/
+        # need_tags.py KEYWORDS["marriage"]), not "love" -- previously
+        # collapsed to "love" via the now-removed NEED_TAG_ALIASES entry,
+        # see docs/audit/marriage-need-independence-implementation.md.
+        "id": "marriage_001",
         "query": "良縁に恵まれたい",
-        "expected_need": "love",
+        "expected_need": "marriage",
         "expected_top_names": ["出雲大社", "明治神宮", "筑波山神社"],
-        "note": "王道の縁結びクエリ",
+        "note": "王道の縁結びクエリ（marriage）",
     },
     {
         "id": "love_002",
@@ -29,18 +33,21 @@ CONCIERGE_EVAL_QUERIES: list[ConciergeEvalQuery] = [
         "note": "恋愛直球",
     },
     {
-        "id": "love_003",
+        # "ご縁" is likewise a domain-level "marriage" keyword, not "love".
+        "id": "marriage_002",
         "query": "人とのご縁を大事にしたい",
-        "expected_need": "love",
+        "expected_need": "marriage",
         "expected_top_names": ["出雲大社", "明治神宮", "大國魂神社"],
-        "note": "恋愛に限らない広めの縁",
+        "note": "恋愛に限らない広めの縁（marriage）",
     },
     {
-        "id": "love_004",
+        # "夫婦円満" is the single clearest marriage-specific keyword and
+        # canonical GoriyakuTag (id=18) in the master.
+        "id": "marriage_003",
         "query": "夫婦円満を願いたい",
-        "expected_need": "love",
+        "expected_need": "marriage",
         "expected_top_names": ["筑波山神社", "明治神宮", "出雲大社"],
-        "note": "夫婦・関係改善寄り",
+        "note": "夫婦・関係改善寄り（marriage）",
     },
     {
         "id": "career_001",

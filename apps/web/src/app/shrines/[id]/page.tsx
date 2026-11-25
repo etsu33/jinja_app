@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import type { Shrine } from "@/lib/api/shrines";
 import type { ConciergeBreakdown } from "@/lib/api/concierge";
@@ -10,11 +12,16 @@ import { getShrineFavoriteInitialState } from "@/lib/server/favorites.server";
 
 import { serverLog } from "@/lib/server/logging";
 import { gmapsDirUrl } from "@/lib/maps";
+import { toValidDestinationCoords } from "@/lib/maps/destinationContract";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import { buildShrineClose } from "@/lib/navigation/shrineClose";
 import { buildDeepReason } from "@/lib/concierge/buildDeepReason";
 import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecommendationReasonViewModel";
 import { buildShrineDetailModel } from "@/lib/shrine/buildShrineDetailModel";
+import {
+  SHRINE_DETAIL_GENERIC_METADATA,
+  buildShrineDetailMetadata,
+} from "@/lib/shrine/buildShrineDetailMetadata";
 import type { NarrativeFallback } from "@/lib/concierge/narrative/types";
 import {
   pickExplanationPayloadFromThread,
@@ -31,6 +38,7 @@ import ShrineSaveButton from "@/components/shrine/ShrineSaveButton";
 import ShrineDetailShell from "@/components/shrine/ShrineDetailShell";
 import ShrineDetailArticle from "@/components/shrine/detail/ShrineDetailArticle";
 import ScrollToTopOnMount from "@/components/navigation/ScrollToTopOnMount";
+import ShrineDetailLoading from "./loading";
 
 import { getBenefitLabels } from "@/lib/shrine/getBenefitLabels";
 import {
@@ -41,20 +49,32 @@ import {
 } from "@/features/concierge/copy/needDisplayCopy";
 
 import { fetchShrineMeaningPayloadV2Server } from "@/lib/api/shrineMeaning.server";
+import { collectMatchedBenefitNames } from "../../../../../../packages/shared/recommendationReasonAuthority";
 
 import { buildPreviousConsultationSummary } from "@/lib/concierge/buildPreviousConsultationSummary";
 import { compareState } from "@/lib/concierge/compareState";
 import type { StateDelta } from "@/lib/concierge/stateComparison";
 import { parseDirectionRouteContext } from "@/lib/analytics/directionRouteContext";
 import { normalizeRecommendationReasonV4Detail } from "@/lib/shrine/buildShrineDetailReasonV4Sections";
+import {
+  normalizeRecommendationInstanceId,
+  recommendationAnalyticsProvenance,
+} from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
 
-function normalizeCtx(v?: string | null): "map" | "concierge" | null {
-  return v === "map" || v === "concierge" ? v : null;
+function normalizeCtx(v?: string | null): "map" | "concierge" | "compass" | null {
+  return v === "map" || v === "concierge" || v === "compass" ? v : null;
 }
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ ctx?: string; tid?: string; direction_matched?: string; direction_position?: string }>;
+  searchParams?: Promise<{
+    ctx?: string;
+    tid?: string;
+    recommendation_instance_id?: string;
+    recommendation_rank?: string;
+    direction_matched?: string;
+    direction_position?: string;
+  }>;
 };
 
 type RecommendationReasonDetailInput = NonNullable<
@@ -167,23 +187,72 @@ export function buildRecommendationReasonDetailInput(
   };
 }
 
-export default async function Page({ params, searchParams }: Props) {
+// Page本体と同じ getShrineDetailServer（cache: "no-store"）だけを使う。metadata専用endpoint・
+// React.cache()・unstable_cache()・force-cache等の共有キャッシュは追加しない。
+// 取得失敗時もPage本体のerror behaviorは変更せず、metadataだけをfail-safeなgenericへ倒す。
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const numericId = Number(id);
+
+  // 不正IDでは不要なAPI requestを発生させない（Page本体の不正ID判定と同じ条件）。
+  if (!Number.isFinite(numericId) || numericId <= 0) {
+    return SHRINE_DETAIL_GENERIC_METADATA;
+  }
+
+  let shrine: Shrine | null;
+  try {
+    shrine = await getShrineDetailServer(numericId);
+  } catch {
+    return SHRINE_DETAIL_GENERIC_METADATA;
+  }
+
+  if (!shrine) {
+    return SHRINE_DETAIL_GENERIC_METADATA;
+  }
+
+  return buildShrineDetailMetadata(shrine);
+}
+
+// Page 自体は何も await せず、Suspense 境界だけを即座に返す。
+// params / searchParams の解決・server fetch・model 構築はすべて
+// ShrineDetailContent（境界の内側）に置き、その間は Route loading と同じ
+// skeleton を出す（docs/audit/shrine-detail-transition-flash.md）。
+// ShrineDetailContent の中身は従来の Page 本体そのまま。
+export default function Page({ params, searchParams }: Props) {
+  return (
+    <Suspense fallback={<ShrineDetailLoading />}>
+      <ShrineDetailContent params={params} searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function ShrineDetailContent({ params, searchParams }: Props) {
 
   const { id } = await params;
   const sp = (await searchParams) ?? {};
   const ctx = normalizeCtx(sp?.ctx ?? null);
   const tid = sp?.tid ?? null;
+  const compassRecommendationInstanceId =
+    ctx === "compass" ? normalizeRecommendationInstanceId(sp.recommendation_instance_id) : null;
+  const parsedCompassRank = ctx === "compass" ? Number(sp.recommendation_rank) : NaN;
+  const compassRecommendationRank =
+    Number.isInteger(parsedCompassRank) && parsedCompassRank > 0 ? parsedCompassRank : null;
+  // downstreamCtx feeds only non-action rendering (close link, buildShrineDetailModel).
+  // Favorite/Visit/Reflection (PR-C) and route (PR5) action boundaries each
+  // receive the full, un-nulled ctx explicitly at their own call sites below --
+  // they do not read downstreamCtx.
+  const downstreamCtx = ctx === "compass" ? null : ctx;
   const directionRouteContext = parseDirectionRouteContext(sp);
 
   const hideActions = false;
-  const close = buildShrineClose({ ctx, tid });
+  const close = buildShrineClose({ ctx: downstreamCtx, tid });
 
   const numericId = Number(id);
   if (!Number.isFinite(numericId) || numericId <= 0) {
     return (
       <main className="mx-auto max-w-md space-y-6 p-4">
-        <div className="rounded-xl border bg-white p-4 text-center text-sm">不正な神社IDです。</div>
-        <Link href="/map" className="inline-flex items-center text-sm text-emerald-700 hover:underline">
+        <div className="rounded-xl border bg-[var(--kt-color-surface-default)] p-4 text-center text-sm">不正な神社IDです。</div>
+        <Link href="/map" className="inline-flex items-center text-sm text-[var(--kt-color-action-primary)] hover:underline">
           ← 地図に戻る
         </Link>
       </main>
@@ -193,6 +262,8 @@ export default async function Page({ params, searchParams }: Props) {
   const qs = new URLSearchParams();
   if (ctx) qs.set("ctx", ctx);
   if (tid) qs.set("tid", String(tid));
+  if (compassRecommendationInstanceId) qs.set("recommendation_instance_id", compassRecommendationInstanceId);
+  if (compassRecommendationRank) qs.set("recommendation_rank", String(compassRecommendationRank));
   const query = Object.fromEntries(qs.entries());
 
   let shrine: Shrine | null;
@@ -212,7 +283,7 @@ export default async function Page({ params, searchParams }: Props) {
         title="神社の詳細"
         subtitle={null}
         close={close}
-        ctx={ctx}
+        ctx={downstreamCtx}
         tid={tid}
         addGoshuinHref={null}
         saveAction={null}
@@ -220,7 +291,7 @@ export default async function Page({ params, searchParams }: Props) {
         googleDirFallbackText="神社情報が見つからなかったため、経路案内を表示できません。"
         hideActions={hideActions}
       >
-        <div className="rounded-2xl border bg-white p-4 text-sm text-slate-700">
+        <div className="rounded-2xl border bg-[var(--kt-color-surface-default)] p-4 text-sm text-[var(--kt-color-text-secondary)]">
           神社の詳細情報が見つかりませんでした。
         </div>
       </ShrineDetailShell>
@@ -229,20 +300,15 @@ export default async function Page({ params, searchParams }: Props) {
 
   const s = shrine;
   const pageTitle = (s.name_jp ?? "").trim() || `神社 #${numericId}`;
-  const shrineMeaningPayloadV2 = await fetchShrineMeaningPayloadV2Server(numericId);
-  const historyThemeForAnalytics = shrineMeaningPayloadV2?.source?.historyTheme ?? null;
+  // destination座標の有効判定は destinationContract.ts の共通契約へ寄せる
+  // （number / finite / WGS84値域）。APIがstringで返す場合があるためNumber()で
+  // 数値化してから渡す。座標が無効ならCTAを出さない（住所や名前へは落とさない）。
+  const destCoords = toValidDestinationCoords({
+    lat: Number(s.latitude ?? NaN),
+    lng: Number(s.longitude ?? NaN),
+  });
 
-  const latNum = Number(s.latitude ?? NaN);
-  const lngNum = Number(s.longitude ?? NaN);
-  const hasLocation =
-    Number.isFinite(latNum) &&
-    Number.isFinite(lngNum) &&
-    latNum >= -90 &&
-    latNum <= 90 &&
-    lngNum >= -180 &&
-    lngNum <= 180;
-
-  const googleDirHref = hasLocation ? gmapsDirUrl({ dest: { lat: latNum, lng: lngNum }, mode: "walk" }) : null;
+  const googleDirHref = destCoords ? gmapsDirUrl({ dest: destCoords, mode: "walk" }) : null;
   const nextPath = buildShrineHref(numericId, { query: Object.keys(query).length ? query : undefined });
 
   const addQ = new URLSearchParams();
@@ -409,12 +475,41 @@ export default async function Page({ params, searchParams }: Props) {
     conciergeDeepReason = builtReasonDetail.conciergeDeepReason;
   }
 
+  // 相談から開いたときだけ、相談と一致したご利益の名前(「選ばれた背景」と同じ集め方)を意味の窓口へ渡す。
+  // Backend は、神社が持っているご利益に入る最初の1つで「この場所が合う理由」などの文を作る。
+  // 直接開いたとき・一致したご利益が無いときは渡さない(今までどおりの文)。
+  const matchedBenefitNamesForMeaning =
+    ctx === "concierge" ? collectMatchedBenefitNames(selectedRecommendation?.reason_facts) : [];
+  const shrineMeaningPayloadV2 = await fetchShrineMeaningPayloadV2Server(numericId, {
+    matchedBenefitNames: matchedBenefitNamesForMeaning,
+  });
+  const historyThemeForAnalytics = shrineMeaningPayloadV2?.source?.historyTheme ?? null;
+
   // recommendation_reason_v4_detailはURL queryへ載せず、tidから再取得したselectedRecommendation
   // (Backend Runtime Snapshotに永続化済み)からそのまま読む。旧Threadにはfieldが存在しないため、
   // normalizeRecommendationReasonV4Detailが欠損・不正型を吸収してnullへfallbackする。
   const recommendationReasonV4Detail = normalizeRecommendationReasonV4Detail(
     selectedRecommendation?.recommendation_reason_v4_detail ?? null,
   );
+  const analyticsProvenance = recommendationAnalyticsProvenance({
+    primaryReasonSource:
+      selectedRecommendation?.primary_reason_source ?? selectedRecommendation?._primary_reason_source,
+    reasonFacts: selectedRecommendation?.reason_facts,
+    actionSuggestionPreview: selectedRecommendation?.action_suggestion_v4_preview,
+  });
+  // Recommendation Instance Identity Contract
+  // (docs/audit/recommendation-instance-identity-propagation.md): read-only, Backend
+  // rid persisted on the thread snapshot. Direct detail access (no ctx=concierge && tid,
+  // i.e. selectedRecommendation stays null) yields null here -- never synthesized.
+  const conciergeRecommendationInstanceId = normalizeRecommendationInstanceId(
+    selectedRecommendation?.recommendation_instance_id,
+  );
+  // PR-C (docs/analytics/compass-analytics-contract.md): the same merge
+  // ShrineDetailViewTracker already used below, now also reaching the
+  // Favorite/Visit/Reflection action boundary -- same-page-render (session/
+  // navigation-level) attribution only, never synthesized across a later,
+  // separate visit.
+  const detailRecommendationInstanceId = compassRecommendationInstanceId ?? conciergeRecommendationInstanceId;
 
   const model = buildShrineDetailModel({
     shrine: s,
@@ -427,26 +522,47 @@ export default async function Page({ params, searchParams }: Props) {
     conciergeMode,
     recommendationReasonDetail,
     recommendationReasonV4Detail,
+    // 同じ推薦(selectedRecommendation)の reason_facts。「選ばれた背景」と「この神社について」の出し分けに使う。
+    recommendationReasonFacts: selectedRecommendation?.reason_facts ?? null,
     recommendationRankExplanation,
     recommendationRankComparison,
     actionState,
-    ctx,
+    ctx: downstreamCtx,
     tid,
     signals,
   });
   return (
     <>
       <ScrollToTopOnMount />
-      <ShrineDetailViewTracker shrineId={numericId} ctx={ctx} tid={tid} />
+      <ShrineDetailViewTracker
+        shrineId={numericId}
+        ctx={ctx}
+        tid={tid}
+        analyticsProvenance={analyticsProvenance}
+        recommendationInstanceId={detailRecommendationInstanceId}
+        recommendationRank={compassRecommendationRank}
+      />
       <ShrineDetailToast shrineId={numericId} />
       <ShrineDetailShell
         title={pageTitle}
         subtitle={null}
         close={close}
         shrineId={numericId}
+        // PR5 (docs/audit/compass-route-attribution-contract.md): route_open
+        // is fired from inside this shell's GoogleMapRouteLink child. It must
+        // see the same Compass-aware ctx/recommendationInstanceId that the
+        // sibling Favorite/Visit/Reflection boundary already receives below
+        // (PR-C) -- downstreamCtx/conciergeRecommendationInstanceId were
+        // never valid for this specific child, since ctx/recommendationInstanceId
+        // here are used only to build the route_open analytics payload, not
+        // to gate rendering or navigation. For any non-Compass ctx this is a
+        // no-op: downstreamCtx === ctx and detailRecommendationInstanceId ===
+        // conciergeRecommendationInstanceId whenever ctx !== "compass".
         ctx={ctx}
         tid={tid}
         historyTheme={historyThemeForAnalytics}
+        analyticsProvenance={analyticsProvenance}
+        recommendationInstanceId={detailRecommendationInstanceId}
         directionRouteContext={directionRouteContext}
         addGoshuinHref={null}
         googleDirHref={googleDirHref}
@@ -456,10 +572,19 @@ export default async function Page({ params, searchParams }: Props) {
       >
         <ShrineDetailArticle
           {...model}
+          // PR-C: overrides model.ctx (downstreamCtx) for this component
+          // only -- the Favorite/Visit/Reflection action boundary may see
+          // the full ctx, including "compass". buildShrineDetailModel's own
+          // computation above (sections, recommendation meta, etc.) still
+          // uses downstreamCtx, unaffected by this override.
+          ctx={ctx}
           stateDelta={stateDelta}
           isPremiumActive={isPremiumActive}
           historyTheme={historyThemeForAnalytics}
+          analyticsProvenance={analyticsProvenance}
+          recommendationInstanceId={detailRecommendationInstanceId}
           addGoshuinHref={addGoshuinHref}
+          guestMode={guestMode}
           saveActionNode={
             <ShrineSaveButton
               key={`shrine-save-${numericId}`}
@@ -468,6 +593,8 @@ export default async function Page({ params, searchParams }: Props) {
               tid={tid}
               nextPath={nextPath}
               guestMode={guestMode}
+              analyticsProvenance={analyticsProvenance}
+              recommendationInstanceId={detailRecommendationInstanceId}
               initial={initialFavorite}
             />
           }

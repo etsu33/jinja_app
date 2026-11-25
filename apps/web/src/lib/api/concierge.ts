@@ -14,11 +14,17 @@ export type {
   ConciergeNeed,
   ConciergeBreakdown,
   ConciergeReasonFactAxis,
+  ConciergeReasonFact,
   ConciergeReasonFacts,
   RecommendationReasonV4Detail,
   RecommendationReasonV4Fact,
   RecommendationReasonV4Interpretation,
   RecommendationReasonV4Action,
+  ConsultationMeaning,
+  ConsultationMeaningEvidence,
+  SituationSignalType,
+  DesiredOutcomeSignalType,
+  ExplicitConstraintSignalType,
 } from "./concierge/types";
 
 import type {

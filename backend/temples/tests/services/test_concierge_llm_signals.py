@@ -29,6 +29,32 @@ def test_llm_disabled_used_must_be_false(settings, monkeypatch):
     assert llm.get("enabled") is False
     assert llm.get("used") is False
 
+@pytest.mark.django_db
+def test_explicit_llm_disabled_overrides_enabled_setting(settings, monkeypatch):
+    settings.CONCIERGE_USE_LLM = True
+
+    from temples.llm import orchestrator as orch_mod
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("LLM must not be called when llm_enabled=False")
+
+    monkeypatch.setattr(
+        orch_mod.ConciergeOrchestrator,
+        "suggest",
+        _boom,
+        raising=True,
+    )
+
+    out = build_chat_recommendations(
+        **_min_input(),
+        llm_enabled=False,
+    )
+
+    llm = (out.get("_signals") or {}).get("llm") or {}
+    assert llm.get("enabled") is False
+    assert llm.get("used") is False
+    assert llm.get("error") is None
+
 
 @pytest.mark.django_db
 def test_llm_enabled_used_true_even_if_orchestrator_raises(settings, monkeypatch):
@@ -75,3 +101,24 @@ def test_llm_disabled_never_uses_openai_adapter(settings, monkeypatch):
     monkeypatch.setattr(a, "OpenAIAdapter", _boom, raising=True)
 
     build_chat_recommendations(**_min_input())
+
+@pytest.mark.django_db
+def test_explicit_llm_disabled_overrides_enabled_setting(settings, monkeypatch):
+    settings.CONCIERGE_USE_LLM = True
+
+    from temples.llm import orchestrator as orch_mod
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("LLM must not be called when llm_enabled=False")
+
+    monkeypatch.setattr(orch_mod.ConciergeOrchestrator, "suggest", _boom, raising=True)
+
+    out = build_chat_recommendations(
+        **_min_input(),
+        llm_enabled=False,
+    )
+
+    llm = (out.get("_signals") or {}).get("llm") or {}
+    assert llm.get("enabled") is False
+    assert llm.get("used") is False
+    assert llm.get("error") is None

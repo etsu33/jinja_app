@@ -17,6 +17,13 @@ type Props = {
   addLoading?: boolean;
 
   canAddGoshuin?: boolean;
+
+  /**
+   * 公開御朱印の件数badgeと「御朱印を見る」導線を出すか。
+   * 既定はtrue（/favorites の全件一覧は従来どおり表示する）。
+   * /mypage HUBのpreviewだけがfalseを渡す。
+   */
+  showGoshuinInfo?: boolean;
 };
 
 export function FavoriteShrineCard({
@@ -27,6 +34,7 @@ export function FavoriteShrineCard({
   unsaveLoading,
   addLoading,
   canAddGoshuin,
+  showGoshuinInfo = true,
 }: Props) {
   const { shrineId, placeId } = normalizeFavorite(favorite);
 
@@ -39,22 +47,22 @@ export function FavoriteShrineCard({
   const sub = (favorite.shrine?.address && favorite.shrine.address.trim()) || null;
 
   const publicGoshuinCount = Number(favorite.public_goshuin_count ?? 0);
-  const hasPublicGoshuins = publicGoshuinCount > 0;
+  const hasPublicGoshuins = showGoshuinInfo && publicGoshuinCount > 0;
 
   const goshuinHref = shrineId && hasPublicGoshuins ? buildShrineHref(shrineId, { subpath: "goshuins" }) : null;
 
   const allowAdd = canAddGoshuin ?? Boolean(shrineId || placeId);
 
   return (
-    <div className="rounded-2xl border border-stone-200/20 bg-stone-50/20 p-3">
+    <div className="rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-stone-900">{title}</p>
-          {sub && <p className="mt-0.5 truncate text-xs text-stone-500">{sub}</p>}
+          <p className="truncate text-sm font-medium text-[var(--kt-color-text-primary)]">{title}</p>
+          {sub && <p className="mt-0.5 truncate text-xs text-[var(--kt-color-text-muted)]">{sub}</p>}
 
           {hasPublicGoshuins ? (
             <div className="mt-2">
-              <span className="inline-flex items-center rounded-full border border-emerald-700/10 bg-emerald-50/50 px-2 py-0.5 text-[11px] font-medium text-emerald-800/80">
+              <span className="inline-flex items-center rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-2 py-0.5 text-[11px] font-medium text-[var(--kt-color-text-secondary)]">
                 御朱印 {publicGoshuinCount}件
               </span>
             </div>
@@ -62,13 +70,13 @@ export function FavoriteShrineCard({
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
             {href && (
-              <Link href={href} className="text-xs text-stone-600 hover:text-stone-900 hover:underline">
+              <Link href={href} className="text-xs text-[var(--kt-color-text-secondary)] hover:text-[var(--kt-color-text-primary)] hover:underline">
                 {LABELS.shrineDetail}
               </Link>
             )}
 
             {goshuinHref && (
-              <Link href={goshuinHref} className="text-xs text-emerald-800/80 hover:text-emerald-900 hover:underline">
+              <Link href={goshuinHref} className="text-xs text-[var(--kt-color-action-primary)] hover:text-[var(--kt-color-action-primary-hover)] hover:underline">
                 御朱印を見る
               </Link>
             )}
@@ -81,7 +89,7 @@ export function FavoriteShrineCard({
               type="button"
               onClick={onAddGoshuin}
               disabled={disabled || addLoading || !allowAdd}
-              className="rounded-full border border-stone-200/40 bg-stone-50/20 px-3 py-1 text-xs font-medium text-stone-700 transition hover:bg-stone-100/50 disabled:opacity-40"
+              className="rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-1 text-xs font-medium text-[var(--kt-color-text-secondary)] transition hover:bg-[var(--kt-color-background-subtle)] disabled:opacity-40"
             >
               {addLoading ? LABELS.moving : LABELS.addGoshuin}
             </button>
@@ -92,7 +100,7 @@ export function FavoriteShrineCard({
               type="button"
               onClick={onUnsave}
               disabled={disabled || unsaveLoading}
-              className="rounded-full border border-stone-200/40 bg-stone-50/20 px-3 py-1 text-xs font-medium text-stone-600 transition hover:bg-stone-100/50 disabled:opacity-40"
+              className="rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-1 text-xs font-medium text-[var(--kt-color-text-secondary)] transition hover:bg-[var(--kt-color-background-subtle)] disabled:opacity-40"
             >
               {unsaveLoading ? LABELS.removing : LABELS.unsave}
             </button>

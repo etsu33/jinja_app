@@ -6,6 +6,7 @@ import type { PublicGoshuinItem } from "@/components/shrine/detail/PublicGoshuin
 import type {
   DetailActionSection,
   DetailFactSection,
+  DetailHighlightSection,
   DetailMeaningItem,
   DetailMeaningSection,
   DetailProposalSection,
@@ -20,6 +21,10 @@ import { buildShrineCardProps } from "@/components/shrine/buildShrineCardProps";
 import { getBenefitLabels } from "@/lib/shrine/getBenefitLabels";
 import { buildShrineExplanation } from "@/lib/shrine/buildShrineExplanation";
 import { buildShrineFactSection } from "@/lib/shrine/buildShrineFactSection";
+import {
+  attachHighlightLinksToFactSection,
+  buildShrineHighlightSection,
+} from "@/lib/shrine/buildShrineHighlightSection";
 import { buildShrineJudge } from "@/lib/shrine/buildShrineJudge";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import {
@@ -38,6 +43,17 @@ import {
   buildShrineDetailReasonV4Sections,
   type RecommendationReasonV4DetailShape,
 } from "@/lib/shrine/buildShrineDetailReasonV4Sections";
+import {
+  ABOUT_SHRINE_GROUP_TITLE_BY_SOURCE,
+  ABOUT_SHRINE_HEADING,
+  CONSULTATION_MEANING_HEADING,
+  CONSULTATION_SUMMARY_HEADING,
+  LEGACY_RECOMMENDATION_REASON_HEADING,
+  MATCHED_BENEFITS_SUBHEADING,
+  RECOMMENDATION_REASON_FACT_HEADING,
+  SHRINE_MEANING_HEADING,
+  VISIT_PERSPECTIVE_HEADING,
+} from "../../../../../packages/shared/recommendationReasonAuthority";
 
 type ShrineActionState = "none" | "detail_viewed" | "saved" | "route_opened" | "visited" | "reflected";
 
@@ -63,6 +79,8 @@ type Args = {
   // Concierge経由(ctx === "concierge")の場合のみBackendから渡される。
   // Direct Navigationでは常にnullのため、相談文脈からFact/Interpretation/Actionを推測しない。
   recommendationReasonV4Detail?: RecommendationReasonV4DetailShape | null;
+  // 同じ推薦の reason_facts(Backend wire)。「選ばれた背景」と「この神社について」の出し分けに使う。
+  recommendationReasonFacts?: unknown;
   signals?: {
     publicGoshuinsCount?: number;
     views30d?: number;
@@ -485,7 +503,7 @@ function buildReasonSection(args: {
     return groups.length > 0
       ? {
           kind: "reason",
-          heading: "② 選ばれた理由",
+          heading: LEGACY_RECOMMENDATION_REASON_HEADING,
           groups,
         }
       : null;
@@ -511,7 +529,7 @@ function buildReasonSection(args: {
   return groups.length > 0
     ? {
         kind: "reason",
-        heading: "② 選ばれた理由",
+        heading: LEGACY_RECOMMENDATION_REASON_HEADING,
         groups,
       }
     : null;
@@ -537,7 +555,7 @@ function buildProposalSection(args: {
 
   return {
     kind: "proposal",
-    heading: "① 今回の相談の整理",
+    heading: CONSULTATION_SUMMARY_HEADING,
     lead: args.consultationSummary ?? args.lead ?? "",
     body,
   };
@@ -1022,7 +1040,7 @@ function buildMeaningSection(args: {
 
   return {
     kind: "meaning",
-    heading: "③ この神社で受け取る意味",
+    heading: SHRINE_MEANING_HEADING,
     lead: args.lead?.trim() || undefined,
     items: [
       {
@@ -1058,7 +1076,7 @@ function buildActionSection(args: {
 
   return {
     kind: "action",
-    heading: "④ 参拝するときの視点",
+    heading: VISIT_PERSPECTIVE_HEADING,
     items: [
       {
         key: "action",
@@ -1094,7 +1112,7 @@ function buildSupplementSection(args: {
   return groups.length > 0
     ? {
         kind: "supplement",
-        heading: "⑤ 補足（象徴・ご利益）",
+        heading: "補足（象徴・ご利益）",
         groups,
       }
     : null;
@@ -1347,6 +1365,7 @@ export function buildShrineDetailModel({
   recommendationRankComparison = null,
   recommendationReasonDetail = null,
   recommendationReasonV4Detail = null,
+  recommendationReasonFacts = null,
   ctx = null,
   tid = null,
   signals,
@@ -1623,55 +1642,93 @@ export function buildShrineDetailModel({
   // Direct Navigation(isConciergeContext=false)ではrecommendationReasonV4Detailは常にnullのため、
   // 相談文脈をShrine APIの値から推測することはない。
   const reasonV4 = isConciergeContext
-    ? buildShrineDetailReasonV4Sections(recommendationReasonV4Detail)
-    : { factText: null, interpretationText: null, actionText: null, hasStructured: false };
+    ? buildShrineDetailReasonV4Sections(recommendationReasonV4Detail, recommendationReasonFacts, {
+        // 前からある「神社について」(buildShrineFactSection)は確認済みのデータだけを出す。
+        // 確認済みのデータがある御祭神・由緒は「この神社について」に重ねて出さない。
+        hasDeities: Array.isArray(shrine.deities) && shrine.deities.length > 0,
+        hasHistories: Array.isArray(shrine.histories) && shrine.histories.length > 0,
+      })
+    : {
+        reasonBenefitNames: [],
+        aboutShrineFactText: null,
+        aboutShrineFactSource: null,
+        interpretationText: null,
+        actionText: null,
+        hasStructured: false,
+      };
 
-  const premiumDisplaySections = reasonV4.hasStructured
-    ? [
-        ...premiumDisplaySectionsBeforeReasonV4.filter(
-          (item) => item.section.kind !== "reason" && item.section.kind !== "meaning" && item.section.kind !== "action",
-        ),
-        ...(reasonV4.factText
-          ? [
-              {
-                tier: "premium" as const,
-                layer: "context" as const,
-                section: {
-                  kind: "reason" as const,
-                  heading: "② 選ばれた背景",
-                  groups: [{ title: "神社の背景", items: [reasonV4.factText] }],
+  const premiumDisplaySections = [
+    ...(reasonV4.hasStructured
+      ? [
+          ...premiumDisplaySectionsBeforeReasonV4.filter(
+            (item) => item.section.kind !== "reason" && item.section.kind !== "meaning" && item.section.kind !== "action",
+          ),
+          ...(reasonV4.reasonBenefitNames.length > 0
+            ? [
+                {
+                  tier: "premium" as const,
+                  layer: "context" as const,
+                  section: {
+                    kind: "reason" as const,
+                    heading: RECOMMENDATION_REASON_FACT_HEADING,
+                    groups: [{ title: MATCHED_BENEFITS_SUBHEADING, items: reasonV4.reasonBenefitNames }],
+                  },
                 },
-              },
-            ]
-          : []),
-        ...(reasonV4.interpretationText
-          ? [
-              {
-                tier: "premium" as const,
-                layer: "context" as const,
-                section: {
-                  kind: "meaning" as const,
-                  heading: "③ 今回の相談との意味",
-                  items: [{ key: "reason_v4_interpretation", title: "今回の相談との意味", body: reasonV4.interpretationText }],
+              ]
+            : []),
+          ...(reasonV4.interpretationText
+            ? [
+                {
+                  tier: "premium" as const,
+                  layer: "context" as const,
+                  section: {
+                    kind: "meaning" as const,
+                    heading: CONSULTATION_MEANING_HEADING,
+                    items: [{ key: "reason_v4_interpretation", title: "今回の相談との意味", body: reasonV4.interpretationText }],
+                  },
                 },
-              },
-            ]
-          : []),
-        ...(reasonV4.actionText
-          ? [
-              {
-                tier: "premium" as const,
-                layer: "context" as const,
-                section: {
-                  kind: "action" as const,
-                  heading: "④ 参拝するときの視点",
-                  items: [{ key: "reason_v4_action", title: "参拝するときの視点", body: reasonV4.actionText }],
+              ]
+            : []),
+          ...(reasonV4.actionText
+            ? [
+                {
+                  tier: "premium" as const,
+                  layer: "context" as const,
+                  section: {
+                    kind: "action" as const,
+                    heading: VISIT_PERSPECTIVE_HEADING,
+                    items: [{ key: "reason_v4_action", title: "参拝するときの視点", body: reasonV4.actionText }],
+                  },
                 },
-              },
-            ]
-          : []),
-      ]
-    : premiumDisplaySectionsBeforeReasonV4;
+              ]
+            : []),
+        ]
+      : premiumDisplaySectionsBeforeReasonV4),
+    // 推薦の根拠になっていない神社の事実(根拠でないご利益・歴史のテーマ、確認済みのデータが
+    // 無い御祭神・由緒):
+    // 「選ばれた背景」とは別の「この神社について」に出し、選ばれた理由ではなく神社の紹介だと
+    // 見出しで伝える(判定は packages/shared/recommendationReasonAuthority.ts)。hasStructuredの
+    // 分岐と独立して、値がある場合は常に追加する -- ②③④が旧表示にfallbackした場合でも、
+    // 神社の事実の表示価値自体は失わない。
+    ...(reasonV4.aboutShrineFactText
+      ? [
+          {
+            tier: "premium" as const,
+            layer: "context" as const,
+            section: {
+              kind: "reason" as const,
+              heading: ABOUT_SHRINE_HEADING,
+              groups: [
+                {
+                  title: ABOUT_SHRINE_GROUP_TITLE_BY_SOURCE[reasonV4.aboutShrineFactSource ?? "deity"],
+                  items: [reasonV4.aboutShrineFactText],
+                },
+              ],
+            },
+          },
+        ]
+      : []),
+  ];
 
   const sections: ShrineDetailSectionModel[] = [
     ...freeDisplaySections.map((item) => item.section),
@@ -1680,7 +1737,10 @@ export function buildShrineDetailModel({
 
   const directionSupportCopy = shrineMeaningPayloadV2?.generated?.directionSupportCopy?.trim() || null;
 
-  const factSection: DetailFactSection | null = buildShrineFactSection(shrine);
+  const baseFactSection: DetailFactSection | null = buildShrineFactSection(shrine);
+  // 見どころ（Highlights PR-5）。由緒・歴史とのリンクは Fact Section に出ているものだけでつなぐ。
+  const highlightSection: DetailHighlightSection | null = buildShrineHighlightSection(shrine, baseFactSection);
+  const factSection: DetailFactSection | null = attachHighlightLinksToFactSection(baseFactSection, highlightSection);
 
   return {
     shrineId: shrine.id,
@@ -1715,5 +1775,6 @@ export function buildShrineDetailModel({
     actionState,
     directionSupportCopy,
     factSection,
+    highlightSection,
   };
 }

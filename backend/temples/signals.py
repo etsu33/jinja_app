@@ -156,3 +156,16 @@ def fill_latlng_if_missing(sender, instance, **kwargs):
             instance.latitude = 35.0
         if getattr(instance, "longitude", None) is None:
             instance.longitude = 139.0
+
+# --- Storage cleanup ---------------------------------------------------------
+# GoshuinImage.image の実ファイルを DB row の削除に合わせて消す。
+# 登録は TemplesConfig.ready()（TEMPLES_LOAD_SIGNALS の分岐より前）。
+#
+# この receiver が登録されていること自体に意味がある副作用がある:
+# receiver が無いと Django は GoshuinImage を fast-delete 経路で消してしまい、
+# CASCADE 時に post_delete が飛ばない。登録することで、Goshuin 削除の
+# CASCADE でも1件ずつ signal が届くようになる。
+def cleanup_deleted_goshuin_image_file(sender, instance, **kwargs):
+    from common.storage_cleanup import schedule_stored_file_delete
+
+    schedule_stored_file_delete(instance.image)

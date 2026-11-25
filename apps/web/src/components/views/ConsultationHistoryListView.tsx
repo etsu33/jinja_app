@@ -44,22 +44,22 @@ export default function ConsultationHistoryListView({ initialThreads, fetchFaile
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-3xl p-6 text-stone-800">
+      <main className="mx-auto max-w-3xl p-6 text-[var(--kt-color-text-primary)]">
         <h1 className="mb-4 text-xl font-semibold">相談履歴</h1>
-        <p className="text-sm text-stone-500">読み込み中…</p>
+        <p className="text-sm text-[var(--kt-color-text-muted)]">読み込み中…</p>
       </main>
     );
   }
 
   if (!isLoggedIn) {
     return (
-      <main className="mx-auto max-w-3xl p-6 text-stone-800">
+      <main className="mx-auto max-w-3xl p-6 text-[var(--kt-color-text-primary)]">
         <h1 className="mb-4 text-xl font-semibold">相談履歴</h1>
-        <div className="rounded-2xl border border-stone-200/20 bg-stone-50/30 p-6">
-          <p className="mb-3 text-sm text-stone-600">ログインすると、これまでの相談履歴を見返せます。</p>
+        <div className="rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] p-6">
+          <p className="mb-3 text-sm text-[var(--kt-color-text-secondary)]">ログインすると、これまでの相談履歴を見返せます。</p>
           <Link
             href={buildLoginHref("/mypage/history")}
-            className="inline-block rounded-full border border-emerald-700/20 bg-emerald-800 px-4 py-2 text-sm text-white transition hover:bg-emerald-900"
+            className="inline-block rounded-full bg-[var(--kt-color-action-primary)] px-4 py-2 text-sm text-[var(--kt-color-action-primary-text)] transition hover:bg-[var(--kt-color-action-primary-hover)]"
           >
             ログインへ
           </Link>
@@ -70,14 +70,14 @@ export default function ConsultationHistoryListView({ initialThreads, fetchFaile
 
   if (fetchFailed) {
     return (
-      <main className="mx-auto max-w-3xl p-6 text-stone-800">
+      <main className="mx-auto max-w-3xl p-6 text-[var(--kt-color-text-primary)]">
         <h1 className="mb-4 text-xl font-semibold">相談履歴</h1>
-        <div className="rounded-2xl border border-rose-200/40 bg-rose-50/40 p-6">
-          <p className="mb-3 text-sm text-rose-700">相談履歴を読み込めませんでした。</p>
+        <div className="rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] p-6">
+          <p className="mb-3 text-sm text-[var(--kt-color-status-error)]">相談履歴を読み込めませんでした。</p>
           <button
             type="button"
             onClick={() => router.refresh()}
-            className="inline-block rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-50"
+            className="inline-block rounded-full border border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] px-4 py-2 text-sm text-[var(--kt-color-text-primary)] transition hover:bg-[var(--kt-color-background-subtle)]"
           >
             もう一度読み込む
           </button>
@@ -88,13 +88,13 @@ export default function ConsultationHistoryListView({ initialThreads, fetchFaile
 
   if (initialThreads.length === 0) {
     return (
-      <main className="mx-auto max-w-3xl p-6 text-stone-800">
+      <main className="mx-auto max-w-3xl p-6 text-[var(--kt-color-text-primary)]">
         <h1 className="mb-4 text-xl font-semibold">相談履歴</h1>
-        <div className="rounded-2xl border border-stone-200/20 bg-stone-50/30 p-6">
-          <p className="mb-3 text-sm text-stone-600">まだ相談履歴がありません。</p>
+        <div className="rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] p-6">
+          <p className="mb-3 text-sm text-[var(--kt-color-text-secondary)]">まだ相談履歴がありません。</p>
           <Link
             href="/concierge"
-            className="inline-block rounded-full border border-emerald-700/20 bg-emerald-800 px-4 py-2 text-sm text-white transition hover:bg-emerald-900"
+            className="inline-block rounded-full bg-[var(--kt-color-action-primary)] px-4 py-2 text-sm text-[var(--kt-color-action-primary-text)] transition hover:bg-[var(--kt-color-action-primary-hover)]"
           >
             コンシェルジュに相談する
           </Link>
@@ -104,7 +104,7 @@ export default function ConsultationHistoryListView({ initialThreads, fetchFaile
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-6 text-stone-800">
+    <main className="mx-auto max-w-3xl p-6 text-[var(--kt-color-text-primary)]">
       <h1 className="mb-4 text-xl font-semibold">相談履歴</h1>
       <ul className="space-y-3">
         {initialThreads.map((thread, idx) => (
@@ -114,14 +114,14 @@ export default function ConsultationHistoryListView({ initialThreads, fetchFaile
               onClick={() =>
                 trackConsultationHistoryDetailOpened({ threadId: thread.id, position: idx + 1 })
               }
-              className="block rounded-2xl border border-stone-200/20 bg-stone-50/30 p-4 transition hover:bg-stone-50/60"
+              className="block rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] p-4 transition hover:bg-[var(--kt-color-surface-default)]"
             >
               <div className="flex items-center justify-between gap-3">
-                <p className="font-semibold text-stone-900">{thread.title?.trim() || "相談タイトル未設定"}</p>
-                <p className="shrink-0 text-xs text-stone-500">{formatDate(thread.last_message_at)}</p>
+                <p className="font-semibold text-[var(--kt-color-text-primary)]">{thread.title?.trim() || "相談タイトル未設定"}</p>
+                <p className="shrink-0 text-xs text-[var(--kt-color-text-muted)]">{formatDate(thread.last_message_at)}</p>
               </div>
-              <p className="mt-1 line-clamp-2 text-sm text-stone-600">{normalizePreview(thread.last_message)}</p>
-              <p className="mt-2 text-xs text-stone-400">{thread.message_count}件のやりとり</p>
+              <p className="mt-1 line-clamp-2 text-sm text-[var(--kt-color-text-secondary)]">{normalizePreview(thread.last_message)}</p>
+              <p className="mt-2 text-xs text-[var(--kt-color-text-muted)]">{thread.message_count}件のやりとり</p>
             </Link>
           </li>
         ))}

@@ -45,6 +45,22 @@ class TemplesConfig(AppConfig):
     verbose_name = "Temples"
 
     def ready(self):
+        # Storage cleanup は TEMPLES_LOAD_SIGNALS の分岐より前に登録する。
+        # この env は geocode / Shrine 系の重い signal を止めるためのもので、
+        # ファイル削除まで止めると、無効化した環境で実ファイルが静かに孤児化する。
+        # データ整合性に関わる receiver は常に登録する。
+        from django.apps import apps as _apps
+        from django.db.models.signals import post_delete as _post_delete
+
+        from .signals import cleanup_deleted_goshuin_image_file
+
+        _post_delete.connect(
+            cleanup_deleted_goshuin_image_file,
+            sender=_apps.get_model("temples", "GoshuinImage"),
+            dispatch_uid="temples.cleanup_deleted_goshuin_image_file",
+            weak=False,
+        )
+
         # CI/テストでシグナルを読みたくない場合は環境変数で無効化
         if os.getenv("TEMPLES_LOAD_SIGNALS", "1") != "1":
             return

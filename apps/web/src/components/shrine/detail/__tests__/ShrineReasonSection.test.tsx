@@ -36,4 +36,18 @@ describe("ShrineReasonSection", () => {
       expect(screen.getByText("理由テキスト").className).toContain("text-[var(--kt-color-text-secondary)]");
     });
   });
+
+  describe("variant=plain (PR-G3 editorial flow)", () => {
+    it("borderless: 外枠sectionにborder/surface/shadowクラスを持たず、見出し(<h2>)と本文は維持する", () => {
+      const { container } = render(<ShrineReasonSection section={section} variant="plain" />);
+      const outer = container.querySelector("section")!;
+      expect(outer.className).not.toMatch(/\bborder\b/);
+      expect(outer.className).not.toContain("bg-[var(--kt-color-surface-default)]");
+      expect(outer.className).not.toMatch(/shadow-\[/);
+
+      const heading = screen.getByText("この神社が候補に入った理由");
+      expect(heading.tagName).toBe("H2");
+      expect(screen.getByText("理由テキスト")).toBeInTheDocument();
+    });
+  });
 });

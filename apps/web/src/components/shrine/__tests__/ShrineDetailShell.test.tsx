@@ -54,6 +54,11 @@ describe("ShrineDetailShell", () => {
       const cta = screen.getByRole("link", { name: "Googleマップで経路案内" });
       expect(cta.className).toContain("rounded-[var(--kt-radius-panel)]");
       expect(cta.className).toContain("text-[var(--kt-color-text-inverse)]");
+      // Route CTAはPrimary Action(Emerald)として表示する。旧slate-900のliteral直書きは使わない。
+      expect(cta.className).toContain("bg-[var(--kt-color-action-primary)]");
+      expect(cta.className).toContain("hover:bg-[var(--kt-color-action-primary-hover)]");
+      expect(cta.className).not.toContain("slate-900");
+      expect(cta.className).not.toContain("slate-800");
     });
 
     it("御朱印追加CTAがradius-panel / surface-default / text-primaryを参照する", () => {

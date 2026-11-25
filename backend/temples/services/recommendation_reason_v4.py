@@ -166,6 +166,49 @@ def _reason_strength_from_confidence(confidence: Any) -> str:
     return "assertive"
 
 
+# TRADITION_ALWAYS_HEDGED契約（docs/core/recommendation-reason-contract.md）:
+# confidenceはSourceへの信頼度であり、history_type（記述がその出来事を確定した
+# 史実として書いているか、伝承として書いているか）とは責務が別の軸である。
+# confidence=highは「Sourceは信頼できる」ことしか意味せず、「記述内容が史実として
+# 確定している」ことは意味しない。history_type="tradition"のFactは、Source信頼度に
+# 関わらず断定表現(assertive)を出してはならない。
+_TRADITION_HISTORY_TYPE = "tradition"
+
+
+def _apply_tradition_hedge_floor(reason_strength: str, history_type: Any) -> str:
+    """history_type="tradition"のFactについて、reason_strengthの下限をweakenedに引き上げる。
+
+    confidence由来で既にsuppressedと判定されているFactはそのまま
+    suppressed（最も安全側）を維持し、ここでは書き戻さない。assertiveのみを
+    weakenedへ引き下げる。content本文が手動でhedge表現を含んでいるかには依存しない
+    （_build_fact_text()のテンプレート選択自体を強制する設計）。
+    """
+    if history_type == _TRADITION_HISTORY_TYPE and reason_strength == "assertive":
+        return "weakened"
+    return reason_strength
+
+
+# weakened分岐のhistory本文が、既に伝承・伝聞としてhedge済みの語尾で終わっているか。
+# 表現強度（weakened）の判定には使わない。判定の正本はhistory_type +
+# _apply_tradition_hedge_floor()であり、ここはweakened分岐内で同義hedgeの
+# 重複（「〜と伝えられていると伝えられています。」）を避けるための表示専用判定。
+_HEDGED_HISTORY_TAILS = (
+    "と伝えられている",
+    "と伝えられています",
+    "が伝えられている",
+    "とされている",
+    "とされています",
+    "とされる",
+    "と伝わる",
+    "という伝承がある",
+)
+_TRAILING_PUNCTUATION = "。、．.，,！!？? 　"
+
+
+def _history_already_hedged(history_text: str) -> bool:
+    return history_text.rstrip(_TRAILING_PUNCTUATION).endswith(_HEDGED_HISTORY_TAILS)
+
+
 def _build_fact(
     candidate_profile: dict[str, Any], meaning_translation: dict[str, Any]
 ) -> tuple[dict[str, Any], dict[str, str]]:
@@ -178,7 +221,9 @@ def _build_fact(
     `_build_fact_text()`がテンプレート選択にのみ使う内部専用の値であり、
     RecommendationReasonV4の公開dictへは含めない。
     """
-    history_theme = _first_string(candidate_profile.get("history_theme"), meaning_translation.get("history_theme"))
+    # culture_translation is Derived Meaning (Explanation-only), not a raw
+    # shrine fact.  It remains available to Interpretation/Action below.
+    history_theme = _first_string(candidate_profile.get("history_theme"))
     deity = _first_string(candidate_profile.get("deity"), candidate_profile.get("main_deity"), candidate_profile.get("enshrined_deity"))
     shrine_history = _first_string(candidate_profile.get("history"), candidate_profile.get("shrine_history"), candidate_profile.get("origin"))
     place_context = _first_string(candidate_profile.get("place_context"), candidate_profile.get("area_context"), candidate_profile.get("location_context"))
@@ -188,6 +233,9 @@ def _build_fact(
 
     deity_reason_strength = _reason_strength_from_confidence(candidate_profile.get("deity_confidence"))
     shrine_history_reason_strength = _reason_strength_from_confidence(candidate_profile.get("shrine_history_confidence"))
+    shrine_history_reason_strength = _apply_tradition_hedge_floor(
+        shrine_history_reason_strength, candidate_profile.get("shrine_history_type")
+    )
 
     # confidence=low(suppressed)のKnowledge Factは、Recommendation Reason
     # （fact/evidence/used_fact/quality監査を含む）へ一切使用しない。
@@ -304,8 +352,9 @@ def _build_interpretation(
     if state_copy:
         if primary_need and not shrine_context_need and not consultation_axis_copy:
             parts.append(f"{primary_need}相談として受け取れます")
-        state_suffix = "要素が強めに出ています" if emotion_intensity == "high" else "要素があります"
-        parts.append(f"{state_copy}を中心に、{state_suffix}")
+        # 利用者の状態を言い切らず、「相談の言葉から読み取ったこと」として伝える。
+        state_degree = "強く感じられます" if emotion_intensity == "high" else "感じられます"
+        parts.append(f"相談の言葉からは、{state_copy}が{state_degree}")
     else:
         primary_decision = _copy_for_key(
             DECISION_COPY,
@@ -356,6 +405,43 @@ def _build_used_interpretation(
         "historical_interpretation": historical_interpretation,
         "theme": interpretation.get("theme"),
     }
+
+
+USER_SELECTED_TAG_FALLBACK_LABEL_PREFIX = "goriyaku_tag:"
+
+
+def _user_selected_tag_note(authority: dict[str, Any]) -> str:
+    """Describe a user-selected condition without claiming a consultation match."""
+    primary_fact = _as_dict(authority.get("primary_reason_fact"))
+    label = _first_string(primary_fact.get("label"))
+    # タグ名が引けなかったときは "goriyaku_tag:<id>" が入るため、条件名なしの文にする。
+    if label and not label.startswith(USER_SELECTED_TAG_FALLBACK_LABEL_PREFIX):
+        condition = f"選んだ条件「{label}」"
+    else:
+        condition = "選んだ条件"
+    return f"{condition}にゆかりのある神社です。今の相談内容との結びつきは、詳細ページで確かめられます。"
+
+
+def _align_interpretation_with_authority(
+    interpretation: dict[str, Any],
+    authority_context: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Keep consultation understanding without inventing ranking authority."""
+    authority = _as_dict(authority_context)
+    primary_source = _first_string(authority.get("primary_reason_source"))
+    text = _first_string(interpretation.get("text")) or "相談内容から、今扱いたいテーマを読み取っています。"
+
+    if primary_source == "user_selected_tag":
+        # 条件だけを根拠に「相談に最適」と読める言い方はしない
+        # (docs/product/recommendation-signal-authority.md)。
+        text = f"{text.rstrip('。')}。{_user_selected_tag_note(authority)}"
+    elif primary_source in {"element", "visit_style", "fallback"}:
+        text = (
+            f"{text.rstrip('。')}。"
+            "今回は明確な意味的一致が確認できないため、条件に近い候補として整理しています。"
+        )
+
+    return {**interpretation, "text": text}
 
 
 def _build_action(interpretation_profile: dict[str, Any], meaning_translation: dict[str, Any]) -> dict[str, Any]:
@@ -523,7 +609,11 @@ def _build_fact_text(fact: dict[str, Any], reason_strength: dict[str, str] | Non
     elif fact_shrine_history:
         history_text = fact_shrine_history.rstrip("。")
         if strength.get("shrine_history") == "weakened":
-            fact_text = f"{subject}には、{history_text}と伝えられています。"
+            if _history_already_hedged(history_text):
+                # 本文自身のhedgeを尊重し、同義のhedgeを重ねない（weakenedのまま）。
+                fact_text = f"{subject}には、{history_text.rstrip(_TRAILING_PUNCTUATION)}。"
+            else:
+                fact_text = f"{subject}には、{history_text}と伝えられています。"
         else:
             fact_text = f"{subject}には、{history_text}という背景があります。"
         if fact_goriyaku:
@@ -536,7 +626,7 @@ def _build_fact_text(fact: dict[str, Any], reason_strength: dict[str, str] | Non
         # deity / shrine_history / goriyaku / history_theme が一つもない場合。
         # （confidence=lowによりsuppressされた場合を含む。）
         # place_context(住所)や神社名だけでは神社固有Factがあるとは表現しない。
-        fact_text = "神社固有情報が十分でないため、相談条件との一致を中心に整理しています。"
+        fact_text = "神社固有情報が十分でないため、確認できる情報をもとに候補として整理しています。"
 
     if visit_style_copies:
         fact_details.extend(visit_style_copies[:2])
@@ -553,12 +643,38 @@ def _build_reason_text(
     interpretation: dict[str, Any],
     action: dict[str, Any],
     reason_strength: dict[str, str] | None = None,
+    authority_context: dict[str, Any] | None = None,
 ) -> str:
     """Compose reason_text as Fact -> Interpretation -> Action.
 
     Keep each sentence responsible for one layer only.
     """
+    authority = _as_dict(authority_context)
+    primary_source = _first_string(authority.get("primary_reason_source"))
+    primary_fact = _as_dict(authority.get("primary_reason_fact"))
+    semantic_authority = primary_source in {
+        "history_theme",
+        "need_tag",
+        "text_hint",
+        "goriyaku_tag",
+    }
+
     fact_text = _build_fact_text(fact, reason_strength)
+    has_shrine_fact = any(
+        _is_present_fact_value(fact.get(key)) for key in QUALITY_FACT_KEYS
+    )
+    if semantic_authority and not has_shrine_fact:
+        primary_label = _first_string(primary_fact.get("label"))
+        if primary_label:
+            label_copy = _copy_for_key(NEED_COPY, primary_label) or primary_label
+            subject = _first_string(fact.get("name")) or "この神社"
+            fact_text = f"{subject}には、{label_copy}ことに関わる登録情報があります。"
+    elif primary_source and not semantic_authority and has_shrine_fact:
+        fact_text = (
+            f"{fact_text.rstrip('。')}。"
+            "この情報は神社を説明する補助情報であり、今回の順位根拠ではありません。"
+        )
+
     interpretation_text = _first_string(interpretation.get("text")) or "相談内容から、今扱いたいテーマを読み取っています。"
     action_text = _first_string(action.get("text")) or "次に確認したいことを一つだけ決めます。"
 
@@ -572,6 +688,7 @@ def build_recommendation_reason_v4(
     interpretation_profile: dict[str, Any] | None = None,
     meaning_translation: dict[str, Any] | None = None,
     candidate_profile: dict[str, Any] | None = None,
+    authority_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a preview-only Recommendation Reason v4 payload.
 
@@ -585,14 +702,23 @@ def build_recommendation_reason_v4(
     candidate = _as_dict(candidate_profile) or _as_dict(recommendation_input.get("candidate_profile"))
 
     fact, reason_strength = _build_fact(candidate, meaning)
-    interpretation_layer = _build_interpretation(interpretation, meaning)
+    interpretation_layer = _align_interpretation_with_authority(
+        _build_interpretation(interpretation, meaning),
+        authority_context,
+    )
     action = _build_action(interpretation, meaning)
     used_fact = _build_used_fact(fact)
     used_interpretation = _build_used_interpretation(interpretation, meaning, interpretation_layer, fact)
     used_action = _build_used_action(interpretation, meaning, action)
 
     reason = RecommendationReasonV4(
-        reason_text=_build_reason_text(fact, interpretation_layer, action, reason_strength),
+        reason_text=_build_reason_text(
+            fact,
+            interpretation_layer,
+            action,
+            reason_strength,
+            authority_context,
+        ),
         fact=fact,
         interpretation=interpretation_layer,
         action=action,

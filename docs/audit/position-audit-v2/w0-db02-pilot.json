@@ -1,0 +1,156 @@
+{
+  "reason_code_counts": {
+    "PRIMARY_SOURCE_MISSING": 5,
+    "PRODUCTION_SNAPSHOT_UNAVAILABLE": 5,
+    "SPREADSHEET_SNAPSHOT_UNAVAILABLE": 5
+  },
+  "results": [
+    {
+      "audit_status": "HOLD",
+      "candidate_id": "wave0-007",
+      "coordinate_delta_m": null,
+      "corroboration_sources": [],
+      "existing_resolution_record": null,
+      "join_status": "PRODUCTION_SNAPSHOT_UNAVAILABLE",
+      "name_jp": "射水神社",
+      "official_address": "富山県高岡市古城1番1号",
+      "primary_latitude": null,
+      "primary_longitude": null,
+      "primary_source_type": null,
+      "primary_source_url": null,
+      "production_id": null,
+      "reason_codes": [
+        "PRIMARY_SOURCE_MISSING",
+        "PRODUCTION_SNAPSHOT_UNAVAILABLE",
+        "SPREADSHEET_SNAPSHOT_UNAVAILABLE"
+      ],
+      "seed_latitude": 36.7484968,
+      "seed_longitude": 137.0215428,
+      "spreadsheet_join_status": "JOIN_NONE",
+      "stored_address": "富山県高岡市古城1番1号",
+      "stored_latitude": null,
+      "stored_longitude": null,
+      "verified_at": null
+    },
+    {
+      "audit_status": "HOLD",
+      "candidate_id": "wave0-008",
+      "coordinate_delta_m": null,
+      "corroboration_sources": [],
+      "existing_resolution_record": null,
+      "join_status": "PRODUCTION_SNAPSHOT_UNAVAILABLE",
+      "name_jp": "別小江神社",
+      "official_address": "愛知県名古屋市北区安井4丁目14-14",
+      "primary_latitude": null,
+      "primary_longitude": null,
+      "primary_source_type": null,
+      "primary_source_url": null,
+      "production_id": null,
+      "reason_codes": [
+        "PRIMARY_SOURCE_MISSING",
+        "PRODUCTION_SNAPSHOT_UNAVAILABLE",
+        "SPREADSHEET_SNAPSHOT_UNAVAILABLE"
+      ],
+      "seed_latitude": 35.21055728,
+      "seed_longitude": 136.92090454,
+      "spreadsheet_join_status": "JOIN_NONE",
+      "stored_address": "愛知県名古屋市北区安井4丁目14-14",
+      "stored_latitude": null,
+      "stored_longitude": null,
+      "verified_at": null
+    },
+    {
+      "audit_status": "HOLD",
+      "candidate_id": "wave0-009",
+      "coordinate_delta_m": null,
+      "corroboration_sources": [],
+      "existing_resolution_record": null,
+      "join_status": "PRODUCTION_SNAPSHOT_UNAVAILABLE",
+      "name_jp": "戸隠神社 中社",
+      "official_address": "長野県長野市戸隠3506",
+      "primary_latitude": null,
+      "primary_longitude": null,
+      "primary_source_type": null,
+      "primary_source_url": null,
+      "production_id": null,
+      "reason_codes": [
+        "PRIMARY_SOURCE_MISSING",
+        "PRODUCTION_SNAPSHOT_UNAVAILABLE",
+        "SPREADSHEET_SNAPSHOT_UNAVAILABLE"
+      ],
+      "seed_latitude": 36.7425065,
+      "seed_longitude": 138.0850524,
+      "spreadsheet_join_status": "JOIN_NONE",
+      "stored_address": "長野県長野市戸隠3506",
+      "stored_latitude": null,
+      "stored_longitude": null,
+      "verified_at": null
+    },
+    {
+      "audit_status": "HOLD",
+      "candidate_id": "wave0-010",
+      "coordinate_delta_m": null,
+      "corroboration_sources": [],
+      "existing_resolution_record": "docs/audit/shrine-position/sapporo-suwa-jinja-position-resolution.md",
+      "join_status": "PRODUCTION_SNAPSHOT_UNAVAILABLE",
+      "name_jp": "札幌諏訪神社",
+      "official_address": "北海道札幌市東区北12条東1丁目1番10号",
+      "primary_latitude": null,
+      "primary_longitude": null,
+      "primary_source_type": null,
+      "primary_source_url": null,
+      "production_id": null,
+      "reason_codes": [
+        "PRIMARY_SOURCE_MISSING",
+        "PRODUCTION_SNAPSHOT_UNAVAILABLE",
+        "SPREADSHEET_SNAPSHOT_UNAVAILABLE"
+      ],
+      "seed_latitude": 43.07603505258046,
+      "seed_longitude": 141.3540979693115,
+      "spreadsheet_join_status": "JOIN_NONE",
+      "stored_address": "北海道札幌市東区北12条東1丁目1番10号",
+      "stored_latitude": null,
+      "stored_longitude": null,
+      "verified_at": null
+    },
+    {
+      "audit_status": "HOLD",
+      "candidate_id": "wave0-011",
+      "coordinate_delta_m": null,
+      "corroboration_sources": [],
+      "existing_resolution_record": null,
+      "join_status": "PRODUCTION_SNAPSHOT_UNAVAILABLE",
+      "name_jp": "少彦名神社",
+      "official_address": "大阪府大阪市中央区道修町2-1-8",
+      "primary_latitude": null,
+      "primary_longitude": null,
+      "primary_source_type": null,
+      "primary_source_url": null,
+      "production_id": null,
+      "reason_codes": [
+        "PRIMARY_SOURCE_MISSING",
+        "PRODUCTION_SNAPSHOT_UNAVAILABLE",
+        "SPREADSHEET_SNAPSHOT_UNAVAILABLE"
+      ],
+      "seed_latitude": 34.6885642,
+      "seed_longitude": 135.50596579,
+      "spreadsheet_join_status": "JOIN_NONE",
+      "stored_address": "大阪府大阪市中央区道修町2-1-8",
+      "stored_latitude": null,
+      "stored_longitude": null,
+      "verified_at": null
+    }
+  ],
+  "schema_version": "position-audit-v2/1.0",
+  "totals": {
+    "auto_pass": 0,
+    "hold": 5,
+    "review": 0,
+    "total": 5
+  },
+  "unresolved_input_dependencies": [
+    "production snapshot 未指定。sql/shrine_position_audit_snapshot.sql を readonly_query.sh 経由で取得し --production-snapshot で渡すこと。",
+    "spreadsheet snapshot 未指定。Evidence Index を export し --spreadsheet-snapshot で渡すこと。",
+    "primary evidence snapshot 未指定。Position Contract 適合の一次位置資料を --primary-evidence-snapshot で渡すこと。"
+  ]
+}

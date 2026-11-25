@@ -3,7 +3,7 @@ import Constants from "expo-constants";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { View, Text, ScrollView, Pressable, Image, StyleSheet, Platform } from "react-native";
 import { SHRINES } from "../../data/shrines";
-import { kamimusubiDark as theme } from "../../design/theme";
+import { appColors as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { StateCard } from "../../components/common/StateCard";
 import Button from "../../components/ui/Button";
@@ -18,6 +18,11 @@ import {
 import { fetchPopularShrines, type PopularShrine } from "../../lib/popularShrines";
 import { trackSearchScreenView, trackShrineCardClick } from "../../lib/searchAnalytics";
 import { filterShrines, parseSearchFilters } from "../../lib/searchFilters";
+import { typography } from "../../design/typography";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+// リストの送り記号。旧実装は "›" のグリフだった。
+const CHEVRON_SIZE = 20;
 
 // Androidの地図可否はAPIキー実値ではなく、app.config.tsが生成したbooleanを
 // Constants.expoConfig経由で参照する(process.env.EXPO_PUBLIC_*はEAS BuildのGradle
@@ -97,12 +102,7 @@ export default function SearchPage() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} style={styles.back}>
-        <Text style={styles.backText}>← 戻る</Text>
-      </Pressable>
-
       <View style={styles.hero}>
-        <Text style={styles.heroLead}>神社を探す</Text>
         <Text style={styles.heroTitle}>今の気持ちに合う神社を、{`\n`}静かに見つける</Text>
         <Text style={styles.heroSub}>地域やご利益、気になる言葉から、参拝先との接点を確認できます。</Text>
       </View>
@@ -144,7 +144,9 @@ export default function SearchPage() {
                     }}
                     style={({ pressed }) => [styles.cardMain, pressed && styles.cardPressed]}
                   >
-                    <Image source={{ uri: s.imageUrl }} style={styles.cardImage} />
+                    {/* 写真は、出典と使用権利を確認したものがある場合だけ出す。
+                        無い間は枠ごと出さない(灰色の箱や無関係な画像を置かない)。 */}
+                    {s.imageUrl ? <Image source={{ uri: s.imageUrl }} style={styles.cardImage} /> : null}
                     <View style={styles.cardBody}>
                       <Text style={styles.cardName}>{s.name}</Text>
                       <Text style={styles.cardArea}>{s.prefecture}</Text>
@@ -156,9 +158,12 @@ export default function SearchPage() {
                         ))}
                       </View>
                     </View>
-                    <Text accessibilityElementsHidden style={styles.chevron}>
-                      ›
-                    </Text>
+                    <Ionicons
+                      accessibilityElementsHidden
+                      name="chevron-forward"
+                      size={CHEVRON_SIZE}
+                      color={theme.accent}
+                    />
                   </Pressable>
 
                   {isMapSectionAvailable ? (
@@ -208,7 +213,15 @@ export default function SearchPage() {
       <View style={styles.popularSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>人気の神社</Text>
-          <Text style={styles.sectionCount}>{popularStatus === "ready" ? `${popularShrines.length}件` : ""}</Text>
+          {/* ここは上位3件だけを出す(loadPopularShrinesのslice)。全件はランキング画面が持つ。 */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="人気の神社をすべて見る"
+            hitSlop={12}
+            onPress={() => router.push("/ranking")}
+          >
+            <Text style={styles.sectionLink}>すべて見る</Text>
+          </Pressable>
         </View>
 
         {popularStatus === "loading" ? (
@@ -252,9 +265,12 @@ export default function SearchPage() {
                     </Text>
                   ) : null}
                 </View>
-                <Text accessibilityElementsHidden style={styles.chevron}>
-                  ›
-                </Text>
+                <Ionicons
+                  accessibilityElementsHidden
+                  name="chevron-forward"
+                  size={CHEVRON_SIZE}
+                  color={theme.accent}
+                />
               </Pressable>
             ))}
           </View>
@@ -311,43 +327,17 @@ const styles = StyleSheet.create({
     paddingTop: 22,
     paddingBottom: 96,
   },
-  back: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: theme.borderGold,
-    paddingVertical: 8,
-    paddingHorizontal: 13,
-    borderRadius: 999,
-    backgroundColor: "transparent",
-    marginBottom: 28,
-  },
-  backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
-  },
   hero: {
     paddingBottom: 22,
     gap: 10,
   },
-  heroLead: {
-    color: theme.mutedSoft,
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
   heroTitle: {
+    ...typography.display,
     color: theme.text,
-    fontSize: 28,
-    fontWeight: "900",
-    lineHeight: 38,
-    letterSpacing: 0.8,
   },
   heroSub: {
+    ...typography.subhead,
     color: theme.muted,
-    fontSize: 13,
-    lineHeight: 21,
-    fontWeight: "600",
   },
   summaryCard: {
     backgroundColor: theme.surface,
@@ -358,23 +348,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   summaryLabel: {
+    ...typography.eyebrow,
     color: theme.mutedSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.8,
     marginBottom: 8,
   },
   summaryText: {
+    ...typography.body,
     color: theme.text,
-    fontSize: 14,
-    fontWeight: "800",
   },
   summaryHint: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
     marginTop: 8,
-    fontWeight: "600",
   },
   tagRow: {
     flexDirection: "row",
@@ -396,14 +381,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: theme.surfaceSoft,
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   tagText: {
-    color: theme.gold,
-    fontSize: 12,
-    fontWeight: "700",
+    ...typography.footnoteStrong,
+    color: theme.accent,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -412,14 +396,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
+    ...typography.subheading,
     color: theme.text,
-    fontSize: 18,
-    fontWeight: "900",
+  },
+  sectionLink: {
+    ...typography.footnoteStrong,
+    color: theme.accent,
   },
   sectionCount: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
+    ...typography.footnoteStrong,
+    color: theme.accent,
   },
   popularSection: {
     marginBottom: 26,
@@ -432,7 +418,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: theme.borderGold,
+    borderColor: theme.borderAccent,
     borderRadius: 18,
     padding: 12,
     gap: 12,
@@ -442,7 +428,7 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 999,
     backgroundColor: theme.surfaceSoft,
-    color: theme.gold,
+    color: theme.accent,
     fontSize: 13,
     fontWeight: "900",
     lineHeight: 28,
@@ -482,14 +468,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   cardName: {
+    ...typography.title,
     color: theme.text,
-    fontSize: 16,
-    fontWeight: "900",
   },
   cardArea: {
+    ...typography.footnote,
     color: theme.muted,
-    fontSize: 12,
-    fontWeight: "700",
   },
   miniTagRow: {
     flexDirection: "row",
@@ -506,13 +490,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   miniTagText: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  chevron: {
-    color: theme.gold,
-    fontSize: 22,
-    fontWeight: "800",
+    ...typography.caption,
+    color: theme.accentSoft,
   },
 });

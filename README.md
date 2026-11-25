@@ -1,4 +1,6 @@
-# AI参拝ナビ（MVP）統合ドキュメント
+# KAMI MUSUBI
+
+AI参拝ナビ MVP 統合ドキュメント
 
 ## プロダクト導線
 
@@ -55,9 +57,26 @@ Concierge First では、トップ画面とコンシェルジュ画面を統合�
 
 ---
 
+## 現行開発スコープ（2026-10-25）
+
+現在の開発・ユーザー検証対象は **Web MVP** とし、次の4領域に集中する。
+
+1. AIコンシェルジュ（相談から推薦まで）
+2. 神社情報・推薦理由（由緒・出典・データ品質）
+3. Webマップ・経路案内（参拝の検討につなぐ）
+4. ユーザー獲得・行動分析（利用開始、詳細閲覧、経路遷移、再訪の観測）
+
+Mobile（Expo / Android / iOS）、御朱印画像登録等の画像機能拡張、課金機能の拡張は**新規開発を保留**する。既存コードや導線は直ちに削除しない。ただし**UIの保留はAPI停止を意味しない**。公開中のエンドポイントはセキュリティ上の管理対象に含め、停止または保護の実装・検証は別PRで行う。再開条件と優先順位は母艦判断とする。
+
+**Mobile保留の限定例外（2026-11-24 母艦判断）：** `ShrineNearbySpot` の神社周辺歴史スポット機能に限り、Webと同一のデータ・Publication Gate・Position Gate・カテゴリー3分類・同一神社性・出典／翻訳承認・未確認座標非表示ルールをMobile（Expo / React Native）にも適用する。公開可否の判定はBackendを唯一の正本とし、WebとMobileに重複実装しない。Mobile UIはPR-5の対象とするが、PR開始・マージ・配布には個別の母艦判断が必要。Mobile全体の新規開発保留、ストア公開保留、既存APIの安全性管理は変更しない。正本：`docs/product/shrine-nearby-spot-spec.md`。
+
+技術責務の正本は `docs/core/architecture.md`、開発順序の正本は `docs/core/roadmap.md`。セキュリティ監査の所見は `docs/audit/` で管理し、Critical/High修正が完了したとは扱わない。
+
+---
+
 ## 概要
 
-**AI参拝ナビ（MVP）**は、ユーザーの悩みや願いごとに応じて神社を提案し、神社詳細の確認から経路案内までつなぐ**神社コンシェルジュアプリ**です。Webを中心に開発し、将来的にMobile（Expo）へ展開予定です。
+**KAMI MUSUBI**は、ユーザーの悩みや願いごとに応じて神社を提案し、神社詳細の確認から経路案内までつなぐ**神社コンシェルジュアプリ**です。Webを中心に開発し、将来的にMobile（Expo）へ展開予定です。
 
 ### AIの役割
 
@@ -77,6 +96,7 @@ Concierge First では、トップ画面とコンシェルジュ画面を統合�
 
 - AIコンシェルジュ（悩みや願いごとに応じた神社提案。失敗時は距離順 top3 フォールバック）
 - 神社詳細の確認（推薦理由、基本情報、公開御朱印を確認）
+  - 神社周辺の歴史スポット（境内の見どころとは別に表示する。仕様は承認済み・実装は未着手。正本：`docs/product/shrine-nearby-spot-spec.md`）
 - 経路案内（神社詳細から参拝導線をつなぐ）
 - 地図ページ `/map` による周辺探索（補助機能）
 - お気に入り・御朱印（補助機能）
@@ -117,6 +137,10 @@ source ../.venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver 127.0.0.1:8000
+
+BILLING_STUB_PLAN=free BILLING_STUB_ACTIVE=0 python manage.py runserver 127.0.0.1:8000 --noreload
+
+BILLING_STUB_PLAN=premium BILLING_STUB_ACTIVE=1 python manage.py runserver 127.0.0.1:8000 --noreload
 ```
 
 ```bash
@@ -321,7 +345,7 @@ export async function GET(req: NextRequest) {
 
 ## Mobile
 
-`apps/mobile/` は継続開発中で、pnpm workspace の正式メンバーです。CI（`.github/workflows/mobile-ci.yml`）・EAS Build ともに対象で、依存関係はルートの `pnpm-lock.yaml` で一元管理しています。
+`apps/mobile/` はpnpm workspaceの正式メンバーで、CI・EAS Buildの構成は維持している。Android APKのビルド実績はあるが、**Expo / Android / iOSの新規開発と実機QAは当面保留**とする。依存関係はルートの `pnpm-lock.yaml` で管理し、再開時には互換性と安全性を改めて確認する。
 
 ---
 
@@ -407,6 +431,15 @@ export async function GET(req: NextRequest) {
 	•	画像アップロード、即公開、御朱印同時実装はスコープ外
 	•	duplication detection は name + address を基本に扱う
 
+## 神社マスタ（Shrine）の書き込み権限
+	•	神社マスタの作成・更新・削除は staff（`is_staff`）だけが行える。権限は backend で判定する
+	•	`/api/shrines/` の create / update / partial_update / destroy は staff 限定（default-deny）。一般ユーザーと未ログインは 401 / 403
+	•	`POST /api/shrines/ingest/`（place_id から取り込み）は誰でも呼べるが、未登録の Place から神社マスタを新規作成できるのは staff だけ。staff 以外は登録済みの神社を返すか、未登録なら作らずに 404（`shrine_not_registered`）を返す
+	•	`POST /api/places/resolve/` は神社マスタを作らない。登録済みなら神社 id を、未登録なら `registered: false` と Place の表示用情報を返し、Web（`/shrines/resolve`）は場所の情報だけを表示する
+	•	Django Admin は staff ログインが前提で、モデル権限（または superuser）で操作範囲が決まる
+	•	一般ユーザーの神社追加は Shrine Submission（審査後に staff が承認）を通す
+	•	公開の閲覧・検索・推薦と、ユーザー所有のお気に入り・御朱印・参拝記録は対象外（従来どおり）
+
 
 ## Billing State と Premium UI 制御
 	•	premium 判定の正本は backend billing state
@@ -471,19 +504,25 @@ LLM_BASE_URL=...
 
 Concierge API（`/api/concierge/chat/`）は `throttle_scope="concierge"` を使用します。デフォルトのレートは **8/min** です。
 
+`POST /api/places/resolve/` は専用 scope `places-resolve`（デフォルト **10/min**）を使用します。GET（候補検索）は対象外で、global の匿名制限（`anon` 100/min）は GET / POST の両方に従来どおり掛かります。識別子は WS-04 の client identity（`shrine_project/throttling.py`）をそのまま使い、制限を超えたリクエストは 429 を返し、Google 呼び出しも DB 書き込みも行いません。
+`GET /api/places/nearby/` と legacy alias（`/api/places/nearby_search/`, `/api/places/nearby-search/`）は共通 view で専用 scope `places-nearby`（デフォルト **30/min**、`THROTTLE_PLACES_NEARBY` で上書き）を使い、3 URL で同じ bucket を共有します。識別子は同じ WS-04 client identity、global の匿名/ユーザー制限も掛かり、429 のときは Google を呼びません（WS-13）。
+
+Web の `/shrines/resolve`（server component）は Django を `djFetch` で直接呼び、利用者リクエストの `x-forwarded-for` で client identity を署名します（Next.js サーバー自身が送信元として全利用者で bucket を共有しないため）。
+
 ### 上書き（必要なときだけ）
 
 環境変数で変更できます。
 
 - 推奨: `THROTTLE_CONCIERGE`
 - 互換: `CONCIERGE_THROTTLE`（旧名称。設定されていれば上書き）
+- `THROTTLE_PLACES_RESOLVE`（`places-resolve` の上書き。例: `30/min`）
 
 例:
 
 ```bash
 export THROTTLE_CONCIERGE=1/min
 
-# ローカルでほぼ無効化（ingest以外）
+# ローカルでほぼ無効化（shrines_ingest と places-resolve は除外。外部APIとDB書き込みを伴うため）
 export DISABLE_THROTTLE=1
 ```
 

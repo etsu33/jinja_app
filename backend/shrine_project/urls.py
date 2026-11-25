@@ -15,14 +15,14 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 from rest_framework.authentication import SessionAuthentication
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
+from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
+from users.api.auth import AuthTokenObtainPairView
 from temples import api_views_concierge as concierge
 
-from users.api.views import MeView as ApiMeView
 from .views import favicon, index
 from temples.api.views.shrine_submission import ShrineSubmissionCreateView
 
@@ -34,6 +34,9 @@ from temples.api.views.shrine_submission import ShrineSubmissionCreateView
 )
 @api_view(["GET"])
 @permission_classes([AllowAny])
+# Render の内部 health check は edge を通らず CF-Connecting-IP を持たない。throttle（と匿名識別子の解決）を
+# 通さないことで、health check が 429 になって再起動される経路と edge warning の誤検知をなくす（WS-04 P-1）。
+@throttle_classes([])
 def healthz(request):
     return JsonResponse({"ok": True, "release": getattr(settings, "RELEASE", None)})
 
@@ -82,13 +85,12 @@ urlpatterns = [
     path("", index),
     path("favicon.ico", favicon),
     path("admin/", admin.site.urls),
-    path("api/users/me/", ApiMeView.as_view(), name="users-me"),
     path("api/", include(("users.api.urls", "users"), namespace="users_api")),
     path("api/", include(("temples.api.urls", "temples"), namespace="temples")),
     path("api/concierge/plan/", concierge.plan, name="concierge-plan"),
     path("api/_debug/whoami/", whoami, name="whoami"),
     path("_debug/whoami_jwt/", whoami_jwt, name="whoami_jwt"),
-    path("api/auth/jwt/create/", TokenObtainPairView.as_view(), name="jwt_create"),
+    path("api/auth/jwt/create/", AuthTokenObtainPairView.as_view(), name="jwt_create"),
     path("api/auth/jwt/refresh/", TokenRefreshView.as_view(), name="jwt_refresh"),
     path("api/auth/jwt/verify/", TokenVerifyView.as_view(), name="jwt_verify"),
     path(

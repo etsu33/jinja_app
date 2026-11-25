@@ -17,11 +17,14 @@ export function isUnauthenticatedError(error: unknown): error is Unauthenticated
 // 呼び出し側がstatusで区別できるようにする(メッセージ文字列のparseに頼らない)。
 export class HttpError extends Error {
   status: number;
+  // 異常応答の本文(未加工の文字列)。400のフィールドエラー等を呼び出し側で解釈するために保持する。
+  body: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, body = "") {
     super(message);
     this.name = "HttpError";
     this.status = status;
+    this.body = body;
   }
 }
 
@@ -79,9 +82,15 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new HttpError(res.status, `HTTP ${res.status}: ${text || res.statusText}`);
+    throw new HttpError(res.status, `HTTP ${res.status}: ${text || res.statusText}`, text);
   }
 
+  return (await res.json()) as T;
+}
+
+// 204 No Content は本文が無いため res.json() を呼ばずに undefined を返す。
+async function readAuthBody<T>(res: Response): Promise<T> {
+  if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
 
@@ -103,9 +112,9 @@ async function requestAuth<T>(path: string, init: RequestInit): Promise<T> {
   if (first.status !== 401) {
     if (!first.ok) {
       const text = await first.text().catch(() => "");
-      throw new HttpError(first.status, `HTTP ${first.status}: ${text || first.statusText}`);
+      throw new HttpError(first.status, `HTTP ${first.status}: ${text || first.statusText}`, text);
     }
-    return (await first.json()) as T;
+    return readAuthBody<T>(first);
   }
 
   const refreshed = await refreshAccessToken();
@@ -128,10 +137,10 @@ async function requestAuth<T>(path: string, init: RequestInit): Promise<T> {
 
   if (!retry.ok) {
     const text = await retry.text().catch(() => "");
-    throw new HttpError(retry.status, `HTTP ${retry.status}: ${text || retry.statusText}`);
+    throw new HttpError(retry.status, `HTTP ${retry.status}: ${text || retry.statusText}`, text);
   }
 
-  return (await retry.json()) as T;
+  return readAuthBody<T>(retry);
 }
 
 export async function get<T>(path: string, init?: RequestInit): Promise<T> {
@@ -162,6 +171,14 @@ export async function postAuth<T>(path: string, body: unknown, init?: RequestIni
     ...init,
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+// 204(本文なし)の場合は undefined を返す。
+export async function deleteAuth<T = void>(path: string, init?: RequestInit): Promise<T> {
+  return requestAuth<T>(path, {
+    ...init,
+    method: "DELETE",
   });
 }
 

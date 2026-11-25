@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from shrine_project.throttling import ScopedRateThrottle
 from temples.api.serializers.geocode import (
     ReverseQuerySerializer,
     ReverseResponseSerializer,

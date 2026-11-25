@@ -19,6 +19,8 @@ tags:
     description: 経路検索（距離・時間・ポリライン）
   - name: ScoreV3Admin
     description: Score v3 観測・判定ダッシュボード（IsAdminUser 専用）
+  - name: DeepDive
+    description: Deep Dive 回答生成（Verified Knowledge Factのみを根拠にしたLLM回答）
 
 paths:
   /api/populars/:
@@ -239,6 +241,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DirectionsResponse"
+
+  /api/deep-dive/ask/:
+    post:
+      summary: Deep Dive 回答生成
+      description: >
+        shrine_id + question を受け取り、Verified Knowledge Factのみを根拠にした
+        回答を返す。readiness判定・Fact取得・Evidence filtering・LLM呼び出しは
+        すべてBackendが行う（Client側はreadiness/facts/sources/confidence/
+        verification_statusのいずれも指定できない）。readiness="not_ready"や
+        該当Factが0件の場合もHTTP 200で返る（Knowledge不足という正常な
+        Product Stateであり、エラーではない）。
+      tags: [DeepDive]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeepDiveAskRequest"
+      responses:
+        "200":
+          description: OK（readiness="not_ready"／Fact 0件の場合も200で返る）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeepDiveAskResponse"
+        "400":
+          description: Validation Error — shrine_id/questionが不正
+        "404":
+          description: Not Found — 指定されたshrine_idの神社が存在しない
+        "500":
+          description: Internal Server Error — 予期しない内部エラー
 
 
 components:
@@ -886,3 +919,83 @@ components:
             $ref: "#/components/schemas/ConciergePlanStop"
         data:
           $ref: "#/components/schemas/ConciergePlanData"
+
+    DeepDiveAskRequest:
+      type: object
+      required: [shrine_id, question]
+      properties:
+        shrine_id:
+          type: integer
+          minimum: 1
+          description: "対象神社のID"
+        question:
+          type: string
+          maxLength: 2000
+          description: >
+            自由文の質問。空文字も許容する（分類できない入力として
+            unanswered_aspects で正常に返る。エラーにはならない）。
+
+    DeepDiveFactUsed:
+      type: object
+      required: [type, id, label]
+      properties:
+        type:
+          type: string
+          enum: [deity, history]
+        id:
+          type: integer
+        label:
+          type: string
+
+    DeepDiveSourceUsed:
+      type: object
+      required: [id, title, publisher, source_type, url]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        publisher:
+          type: string
+        source_type:
+          type: string
+        url:
+          type: string
+
+    DeepDiveAskResponse:
+      type: object
+      required:
+        [
+          answer,
+          readiness,
+          question_type,
+          facts_used,
+          sources_used,
+          limitations,
+          unanswered_aspects,
+        ]
+      properties:
+        answer:
+          type: string
+        readiness:
+          type: string
+          enum: [full, limited, not_ready]
+        question_type:
+          type: array
+          items:
+            type: string
+        facts_used:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeepDiveFactUsed"
+        sources_used:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeepDiveSourceUsed"
+        limitations:
+          type: string
+          nullable: true
+        unanswered_aspects:
+          type: array
+          items:
+            type: string

@@ -1,3 +1,5 @@
+import type { ShrineKnowledgeSource } from "@/lib/api/types";
+
 export type DetailReasonGroup = {
   title: string;
   items: string[];
@@ -61,6 +63,10 @@ export type DetailFactDeity = {
 };
 
 export type DetailFactHistoryItem = {
+  // Backend id (ShrineHistory.id), preserved for stable identity across Presentation Grouping
+  // (docs/audit/shrine-knowledge-grouping-implementation-readiness.md §9). Optional so existing
+  // hand-written fixtures/tests that predate this field keep type-checking unchanged.
+  id?: number;
   history_type: string;
   history_type_label: string;
   title: string;
@@ -68,6 +74,42 @@ export type DetailFactHistoryItem = {
   period_text: string;
   sort_order: number;
   displayState: FactDisplayState;
+  // Per-Fact provenance (readiness audit §10). Never shared/merged across Facts, including when
+  // multiple Facts render under one Presentation Grouping heading.
+  sources?: ShrineKnowledgeSource[];
+  // この由緒・歴史を境内で確かめられる見どころ（Highlights PR-5）。見どころの節へのリンクに使う。
+  highlightLinks?: DetailHighlightLink[];
+};
+
+export type DetailHighlightLink = {
+  id: number;
+  name: string;
+};
+
+export type DetailHistoryLink = {
+  id: number;
+  title: string;
+};
+
+export type DetailHighlightItem = {
+  id: number;
+  categoryLabel: string;
+  name: string;
+  description: string;
+  historicalConnection: string;
+  locationHint: string;
+  // 神社詳細の「由緒・歴史」に出ているものだけ。由緒・歴史の節へのリンクに使う。
+  linkedHistories: DetailHistoryLink[];
+  sources: ShrineKnowledgeSource[];
+  // 表示用に整えた現地確認の日（例: 2026年11月21日）。無ければ null。
+  observedOnLabel: string | null;
+};
+
+// 「ここで見られるもの」（Highlights PR-5）。Fact と同じく Premium で隠さない。
+export type DetailHighlightSection = {
+  kind: "highlight";
+  heading: string;
+  items: DetailHighlightItem[];
 };
 
 export type DetailFactSection = {

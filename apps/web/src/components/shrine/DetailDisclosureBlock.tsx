@@ -44,7 +44,7 @@ export default function DetailDisclosureBlock({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={cn("w-full px-4 py-3 text-left", "flex items-start justify-between gap-3", "hover:bg-slate-50")}
+        className={cn("w-full px-4 py-3 text-left", "flex items-start justify-between gap-3", "hover:bg-[var(--kt-color-background-subtle)]")}
         aria-expanded={open}
       >
         {materials.length ? (
@@ -64,12 +64,12 @@ export default function DetailDisclosureBlock({
           <div className="flex items-center gap-2">
             <div className="truncate text-sm font-semibold text-[var(--kt-color-text-primary)]">{title}</div>
             {lv ? (
-              <span className="shrink-0 rounded-[var(--kt-radius-pill)] bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-[var(--kt-color-text-secondary)]">
+              <span className="shrink-0 rounded-[var(--kt-radius-pill)] bg-[var(--kt-color-surface-elevated)] px-2 py-0.5 text-[10px] font-semibold text-[var(--kt-color-text-secondary)]">
                 {lv}
               </span>
             ) : null}
           </div>
-          <div className="mt-1 line-clamp-2 text-xs text-slate-600">{summary}</div>
+          <div className="mt-1 line-clamp-2 text-xs text-[var(--kt-color-text-secondary)]">{summary}</div>
         </div>
 
         <span

@@ -1,0 +1,412 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "wave0-db03-oomiwa-official",
+      "source_type": "shrine_official",
+      "title": "大神神社 神社概要・御祭神・ご由緒",
+      "publisher": "大神神社",
+      "url": "https://oomiwa.or.jp/jinja/",
+      "bibliography": "ご由緒: https://oomiwa.or.jp/jinja/goyuisho/",
+      "accessed_at": "2026-09-25",
+      "verified_at": "2026-09-25T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "W0-DB03 Source Packet Freeze（docs/audit/shrine-expansion-wave0-db03-source-packet-freeze.md）で凍結した公式Source。"
+    },
+    {
+      "key": "wave0-db03-kitano-official",
+      "source_type": "shrine_official",
+      "title": "北野天満宮 御祭神・由緒",
+      "publisher": "北野天満宮",
+      "url": "https://kitanotenmangu.or.jp/about/",
+      "bibliography": "",
+      "accessed_at": "2026-09-25",
+      "verified_at": "2026-09-25T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "W0-DB03 Source Packet Freeze（docs/audit/shrine-expansion-wave0-db03-source-packet-freeze.md）で凍結した公式Source。"
+    },
+    {
+      "key": "wave0-db03-heian-official",
+      "source_type": "shrine_official",
+      "title": "平安神宮 御祭神・由緒・歴史",
+      "publisher": "平安神宮",
+      "url": "https://www.heianjingu.or.jp/about/history/",
+      "bibliography": "",
+      "accessed_at": "2026-09-25",
+      "verified_at": "2026-09-25T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "W0-DB03 Source Packet Freeze（docs/audit/shrine-expansion-wave0-db03-source-packet-freeze.md）で凍結した公式Source。"
+    },
+    {
+      "key": "wave0-db03-okadagu-official",
+      "source_type": "shrine_official",
+      "title": "岡田宮 御祭神・由緒",
+      "publisher": "岡田宮",
+      "url": "https://www.okadagu.jp/about/concept.html",
+      "bibliography": "",
+      "accessed_at": "2026-09-25",
+      "verified_at": "2026-09-25T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "W0-DB03 Source Packet Freeze（docs/audit/shrine-expansion-wave0-db03-source-packet-freeze.md）で凍結した公式Source。"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "大神神社",
+        "address": "奈良県桜井市三輪1422"
+      },
+      "deities": [
+        {
+          "display_name": "大物主大神",
+          "canonical_name": "大物主大神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "packet境界: 創祀伝承から現祭神rowを追加しない。大物主大神 / 大国主神を別祭神へ分割しない。",
+          "source_keys": [
+            "wave0-db03-oomiwa-official"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "貞観元年の正一位叙位",
+          "content": "859年、大神神社の神階は正一位となった。",
+          "period_text": "貞観元年（859）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "packet境界: 創祀伝承は確定史実へ昇格させず、年代の明示された歴史イベントのみ採用。",
+          "source_keys": [
+            "wave0-db03-oomiwa-official"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "北野天満宮",
+        "address": "京都府京都市上京区馬喰町"
+      },
+      "deities": [
+        {
+          "display_name": "菅原道真公",
+          "canonical_name": "菅原道真公",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-kitano-official"
+          ]
+        },
+        {
+          "display_name": "中将殿",
+          "canonical_name": "中将殿",
+          "role": "secondary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "公式Sourceが相殿として明示。",
+          "source_keys": [
+            "wave0-db03-kitano-official"
+          ]
+        },
+        {
+          "display_name": "吉祥女",
+          "canonical_name": "吉祥女",
+          "role": "secondary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "公式Sourceが相殿として明示。",
+          "source_keys": [
+            "wave0-db03-kitano-official"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "天暦元年の創建",
+          "content": "947年、北野の地に菅原道真公を祀る社として創建された。",
+          "period_text": "天暦元年（947）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-kitano-official"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "平安神宮",
+        "address": "京都府京都市左京区岡崎西天王町97"
+      },
+      "deities": [
+        {
+          "display_name": "桓武天皇",
+          "canonical_name": "桓武天皇",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-heian-official"
+          ]
+        },
+        {
+          "display_name": "孝明天皇",
+          "canonical_name": "孝明天皇",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-heian-official"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "明治28年の平安神宮創建",
+          "content": "1895年3月15日、桓武天皇を御祭神として平安神宮が創建された。",
+          "period_text": "明治28年3月15日（1895）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-heian-official"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "昭和15年の孝明天皇合祀",
+          "content": "1940年、孝明天皇が合祀された。",
+          "period_text": "昭和15年（1940）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-heian-official"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "岡田宮",
+        "address": "福岡県北九州市八幡西区岡田町1-1"
+      },
+      "deities": [
+        {
+          "display_name": "神日本磐余彦命（神武天皇）",
+          "canonical_name": "神日本磐余彦命",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "packet境界: 公式表示表記を保持。殿ごとの祭神を集合ラベルへまとめない。",
+          "source_keys": [
+            "wave0-db03-okadagu-official"
+          ]
+        },
+        {
+          "display_name": "大国主命",
+          "canonical_name": "大国主命",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-okadagu-official"
+          ]
+        },
+        {
+          "display_name": "少彦名命",
+          "canonical_name": "少彦名命",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-okadagu-official"
+          ]
+        },
+        {
+          "display_name": "県主熊鰐命",
+          "canonical_name": "県主熊鰐命",
+          "role": "unknown",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-okadagu-official"
+          ]
+        },
+        {
+          "display_name": "高皇産霊神",
+          "canonical_name": "高皇産霊神",
+          "role": "unknown",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-okadagu-official"
+          ]
+        },
+        {
+          "display_name": "神皇産霊神",
+          "canonical_name": "神皇産霊神",
+          "role": "unknown",
+          "sort_order": 5,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-okadagu-official"
+          ]
+        },
+        {
+          "display_name": "玉留産霊神",
+          "canonical_name": "玉留産霊神",
+          "role": "unknown",
+          "sort_order": 6,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-okadagu-official"
+          ]
+        },
+        {
+          "display_name": "生産霊神",
+          "canonical_name": "生産霊神",
+          "role": "unknown",
+          "sort_order": 7,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-okadagu-official"
+          ]
+        },
+        {
+          "display_name": "足産霊神",
+          "canonical_name": "足産霊神",
+          "role": "unknown",
+          "sort_order": 8,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-okadagu-official"
+          ]
+        },
+        {
+          "display_name": "大宮売神",
+          "canonical_name": "大宮売神",
+          "role": "unknown",
+          "sort_order": 9,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-okadagu-official"
+          ]
+        },
+        {
+          "display_name": "事代主神",
+          "canonical_name": "事代主神",
+          "role": "unknown",
+          "sort_order": 10,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-okadagu-official"
+          ]
+        },
+        {
+          "display_name": "御膳神",
+          "canonical_name": "御膳神",
+          "role": "unknown",
+          "sort_order": 11,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db03-okadagu-official"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "神武東征に関する岡田宮伝承",
+          "content": "『古事記』等に結びつく伝承として、神武天皇と五瀬命が東征の途中に岡田宮の地に滞在したと伝えられている。",
+          "period_text": "神武東征伝承",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-25T00:00:00+09:00",
+          "note": "packet境界: source_confirmed はSourceが伝承を記載していることの確認であり、確定史実化ではない。history_type=tradition を維持。",
+          "source_keys": [
+            "wave0-db03-okadagu-official"
+          ]
+        }
+      ]
+    }
+  ]
+}
