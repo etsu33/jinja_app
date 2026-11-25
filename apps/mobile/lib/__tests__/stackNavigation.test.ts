@@ -23,6 +23,7 @@ const STACK_ROUTES = [
   "consultation-history/index",
   "consultation-history/[id]",
   "recently-viewed/index",
+  "compass/index",
   "login",
   "signup",
 ];

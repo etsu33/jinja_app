@@ -50,6 +50,12 @@ export default function Home() {
     router.push("/search");
   };
 
+  // コンパス(今月の方向と参拝候補)。タブは増やさず、ホームの補助の入口に置く。
+  // 相談文・誕生日などは渡さない。コンパスは目的・出発地点・生年月日を自分の画面で受け取る。
+  const openCompass = () => {
+    router.push({ pathname: "/compass", params: { ref: "home" } });
+  };
+
   // 相談の入力は Guided Journey へ移した (ios-ui-spec-v2.md 08節)。
   // ここの自由入力は STEP 1「今、どんなことを整理したいですか？」そのものなので、
   // 書いてあれば topicDone を付けて STEP 1 を飛ばす。同じ問いを二度出さない。
@@ -132,6 +138,16 @@ export default function Home() {
           variant="outline"
           onPress={openSearch}
           accessibilityLabel="神社を探す"
+          style={isIndigoHome ? indigoStyles.searchEntryCta : styles.searchEntryCta}
+          textStyle={isIndigoHome ? indigoStyles.searchEntryText : undefined}
+        />
+
+        {/* コンパス入口(補助CTA)。神社を探すと同じ見た目にして、主CTAより目立たせない。 */}
+        <Button
+          title="今月の参拝コンパス"
+          variant="outline"
+          onPress={openCompass}
+          accessibilityLabel="今月の参拝コンパスを開く"
           style={isIndigoHome ? indigoStyles.searchEntryCta : styles.searchEntryCta}
           textStyle={isIndigoHome ? indigoStyles.searchEntryText : undefined}
         />
