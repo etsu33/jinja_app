@@ -26,7 +26,8 @@ Web（Expo Webを含む）・Androidは既存のLight Themeの実体を使用す
 
 検証はNode 22.23.4のTypeScript/Vitest、変更TS/TSXの限定Lint、Webトークン契約、iPhone 16e / iOS 26.1の表示比較で行う。
 既存モバイルにはLintスクリプトがない。限定Lintは既存24指摘が残るが、変更前後を照合して新規指摘0件を確認する。
-キーボード操作、VoiceOver、実データを用いた認証・購入・登録のE2E完了を意味しない。
+2026-11-25にXCTestで主要導線・キーボード操作・AX5のホーム操作と、19ルートの表示状態の自動アクセシビリティ監査を確認した。
+実機VoiceOver、全データ状態、実ログイン・購入・登録等のE2Eは未完了。修正内容・適用状態・未確認項目は[検証記録](../../docs/mobile/ios-ui-runtime-qa.md)を参照。
 
 ## 現在のステータス
 

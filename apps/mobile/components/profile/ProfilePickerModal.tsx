@@ -1,5 +1,5 @@
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { appColors as theme, appSemanticTheme } from "../../design/platformTheme";
+import { appColors as theme, appSemanticTheme, isIndigoIOS } from "../../design/platformTheme";
 import { radius } from "../../design/radius";
 import { typography } from "../../design/typography";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -26,8 +26,8 @@ export function ProfilePickerModal({
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(event) => event.stopPropagation()}>
+      <Pressable accessible={isIndigoIOS ? false : undefined} style={styles.backdrop} onPress={onClose}>
+        <Pressable accessible={isIndigoIOS ? false : undefined} style={styles.sheet} onPress={(event) => event.stopPropagation()}>
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
             <Pressable

@@ -25,6 +25,8 @@ Mobile（Expo / Android / iOS）・実機QA・ストア公開、御朱印画像�
 
 2026-11-24の個別承認により、ホームの実画面承認後、iOS全画面のプレゼンテーション層へIndigo & Goldを展開する。Web/Android・API・認証・推薦・課金・ルーティングは対象外。色定義は既存theme.tsへ集約し、platformTheme.tsがiOSでのみ選択する。構成と検証範囲は `apps/mobile/README.md` を参照。Mobileの機能追加・ストア公開の保留方針を解除するものではない。
 
+2026-11-25のXCTest操作・アクセシビリティ確認とiOS限定の入力・モーダル修正は[検証記録](../mobile/ios-ui-runtime-qa.md)にまとめる。実機VoiceOverと全データ状態の確認は未完了。
+
 ---
 
 ## 現在地

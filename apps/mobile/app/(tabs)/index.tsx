@@ -75,7 +75,7 @@ export default function Home() {
           <View style={indigoStyles.cloudBottomRight}><HomeCloud /></View>
         </View>
       ) : null}
-      <ScrollView contentContainerStyle={[styles.content, isIndigoHome && indigoStyles.content]}>
+      <ScrollView contentContainerStyle={[styles.content, isIndigoHome && indigoStyles.content]} keyboardShouldPersistTaps={isIndigoHome ? "handled" : "never"}>
         {/* 既存ロゴはiOSホームだけで使用する。文字ロゴが名前を伝える。 */}
         <View style={[styles.header, isIndigoHome && indigoStyles.header]}>
           {isIndigoHome ? <Image source={require("../../assets/icon.png")} style={indigoStyles.logo} resizeMode="contain" accessible={false} /> : null}

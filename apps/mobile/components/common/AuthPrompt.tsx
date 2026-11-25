@@ -2,7 +2,7 @@ import * as React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { appColors as theme, appSemanticTheme } from "../../design/platformTheme";
+import { appColors as theme, appSemanticTheme, isIndigoIOS } from "../../design/platformTheme";
 import { spacing } from "../../design/spacing";
 import { radius } from "../../design/radius";
 import Button from "../ui/Button";
@@ -37,7 +37,7 @@ export function AuthPrompt({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable accessible={isIndigoIOS ? false : undefined} style={styles.backdrop} onPress={onClose}>
         <View style={styles.card} onStartShouldSetResponder={() => true}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.description}>{description}</Text>
