@@ -77,12 +77,31 @@ describe("ShrineHighlightSection", () => {
     expect(screen.getByRole("link", { name: "公式サイト" })).toHaveAttribute("href", "https://example.com");
   });
 
+  it("出典は「出典（N件）」の折りたたみで出し、最初は閉じている", () => {
+    const sources = [1, 2].map((id) => ({
+      id,
+      source_type: "shrine_official",
+      title: `公式サイト${id}`,
+      publisher: "",
+      url: `https://example.com/${id}`,
+      verification_status: "source_confirmed",
+      confidence: "",
+    }));
+    render(<ShrineHighlightSection section={section([item({ sources })])} />);
+    const summary = screen.getByText("出典（2件）");
+    const details = summary.closest("details");
+    expect(details).not.toBeNull();
+    expect(details).not.toHaveAttribute("open");
+    expect(details?.querySelectorAll("a")).toHaveLength(2);
+    expect(screen.queryByRole("heading", { name: "出典" })).not.toBeInTheDocument();
+  });
+
   it("空の項目は見出しごと出さない", () => {
     render(<ShrineHighlightSection section={section([item()])} />);
     expect(screen.queryByText("この見どころが伝える歴史")).not.toBeInTheDocument();
     expect(screen.queryByText(/場所の目安/)).not.toBeInTheDocument();
     expect(screen.queryByText(/現地で確認/)).not.toBeInTheDocument();
-    expect(screen.queryByText("出典")).not.toBeInTheDocument();
+    expect(screen.queryByText(/出典/)).not.toBeInTheDocument();
   });
 
   it("各見どころに画面内リンク用の id をつける", () => {

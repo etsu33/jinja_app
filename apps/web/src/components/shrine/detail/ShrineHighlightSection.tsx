@@ -3,8 +3,8 @@
 import { useEffect, useRef } from "react";
 
 import ShrineHighlightAnchorLink from "@/components/shrine/detail/ShrineHighlightAnchorLink";
-import { SourceList } from "@/components/shrine/detail/ShrineFactSection";
 import type { DetailHighlightItem, DetailHighlightSection } from "@/components/shrine/detail/types";
+import type { ShrineKnowledgeSource } from "@/lib/api/types";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { shrineHighlightAnchorId, shrineHistoryAnchorId } from "@/lib/shrine/buildShrineHighlightSection";
 
@@ -47,6 +47,45 @@ function useHighlightsViewTracking(shrineId: number | null, highlightCount: numb
   }, [shrineId, highlightCount]);
 
   return ref;
+}
+
+// 見どころの出典は各ブロックに「出典（N件）」の1行で出し、押すとそのブロックの出典が開く（折りたたみ）。
+// 根拠を読んだ事実のすぐ横で開けるようにしつつ、画面の情報量を抑える。
+// 決定：ドライブ「KAMI MUSUBI 文章と見どころの選定・表現ルール v1.0（案）」6章⑤（2026-11-26 えつこさん）。
+export function CollapsibleSourceList({ sources }: { sources: ShrineKnowledgeSource[] }) {
+  if (sources.length === 0) return null;
+
+  return (
+    <details className="group mt-3 border-t border-[var(--kt-color-border-default)] pt-1">
+      <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-1 text-[11px] font-semibold tracking-[0.04em] text-[var(--kt-color-text-muted)] [&::-webkit-details-marker]:hidden">
+        <span aria-hidden="true" className="inline-block transition-transform group-open:rotate-90">
+          ›
+        </span>
+        出典（{sources.length}件）
+      </summary>
+      <ul className="mb-1 flex flex-wrap gap-x-3 gap-y-1">
+        {sources.map((source, index) => {
+          const label = source.title || source.publisher || "出典";
+          return (
+            <li key={`${source.id}:${index}`}>
+              {source.url ? (
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-xs text-[var(--kt-color-text-muted)] underline underline-offset-2"
+                >
+                  {label}
+                </a>
+              ) : (
+                <span className="text-xs text-[var(--kt-color-text-muted)]">{label}</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </details>
+  );
 }
 
 function HighlightCard({ item, shrineId }: { item: DetailHighlightItem; shrineId: number | null }) {
@@ -108,7 +147,7 @@ function HighlightCard({ item, shrineId }: { item: DetailHighlightItem; shrineId
         <p className="mt-2 text-[11px] text-[var(--kt-color-text-muted)]">{item.observedOnLabel}に現地で確認</p>
       ) : null}
 
-      <SourceList sources={item.sources} />
+      <CollapsibleSourceList sources={item.sources} />
     </li>
   );
 }
