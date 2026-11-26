@@ -133,7 +133,9 @@ describe("AuthProvider analytics identity", () => {
     });
 
     await waitFor(() => expect(screen.getByTestId("logged-in")).toHaveTextContent("yes"));
-    expect(identify).toHaveBeenCalledTimes(2);
+    // identify は描画のあとの useEffect で呼ばれる（AuthProvider.tsx）。「yes」が出た時点では
+    // まだ呼ばれていないことがあるため、呼ばれるまで待つ。
+    await waitFor(() => expect(identify).toHaveBeenCalledTimes(2));
     expect(identify.mock.calls[1]).toEqual(["42"]);
   });
 
