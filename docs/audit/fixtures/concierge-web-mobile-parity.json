@@ -16,8 +16,7 @@
         "query": "仕事の迷いを整理したい",
         "filters": {},
         "profile_context": {
-          "user_profile": {},
-          "derived_profile": {}
+          "user_profile": {}
         }
       },
       "expected_responses": {
@@ -53,9 +52,6 @@
         "profile_context": {
           "user_profile": {
             "goriyaku_tag_ids": [7]
-          },
-          "derived_profile": {
-            "raw_extra": "ご利益: 仕事運"
           }
         },
         "goriyaku_tag_ids": [7],
@@ -94,10 +90,7 @@
           "free_text": "補助条件: 静かな場所がいい"
         },
         "profile_context": {
-          "user_profile": {},
-          "derived_profile": {
-            "raw_extra": "補助条件: 静かな場所がいい"
-          }
+          "user_profile": {}
         },
         "extra_condition": "補助条件: 静かな場所がいい"
       },
@@ -132,8 +125,7 @@
         "query": "仕事の迷いを整理したい",
         "filters": {},
         "profile_context": {
-          "user_profile": {},
-          "derived_profile": {}
+          "user_profile": {}
         },
         "location": {
           "lat": 35.68,
@@ -166,10 +158,7 @@
           "free_text": "参拝予定日: 2026-12-01"
         },
         "profile_context": {
-          "user_profile": {},
-          "derived_profile": {
-            "raw_extra": "参拝予定日: 2026-12-01"
-          }
+          "user_profile": {}
         },
         "extra_condition": "参拝予定日: 2026-12-01",
         "visit_date": "2026-12-01"
@@ -202,8 +191,7 @@
         "profile_context": {
           "user_profile": {
             "goriyaku_tag_ids": []
-          },
-          "derived_profile": {}
+          }
         },
         "goriyaku_tag_ids": []
       },
@@ -229,8 +217,7 @@
         "query": "仕事の迷いを整理したい",
         "filters": {},
         "profile_context": {
-          "user_profile": {},
-          "derived_profile": {}
+          "user_profile": {}
         }
       },
       "expected_responses": {
@@ -260,8 +247,7 @@
         "query": "仕事の迷いを整理したい",
         "filters": {},
         "profile_context": {
-          "user_profile": {},
-          "derived_profile": {}
+          "user_profile": {}
         }
       },
       "expected_responses": {
@@ -300,9 +286,6 @@
         "profile_context": {
           "user_profile": {
             "visit_style_tags": ["quiet"]
-          },
-          "derived_profile": {
-            "raw_extra": "参拝スタイル: 静かに整えたい"
           }
         },
         "extra_condition": "参拝スタイル: 静かに整えたい"
@@ -336,8 +319,7 @@
         "query": "仕事の迷いを整理したい",
         "filters": {},
         "profile_context": {
-          "user_profile": {},
-          "derived_profile": {}
+          "user_profile": {}
         }
       },
       "expected_responses": {
@@ -350,7 +332,7 @@
       "state": {
         "birthdate": "1990-01-01"
       },
-      "canonical_equal": false,
+      "canonical_equal": true,
       "web": {
         "version": 1,
         "mode": "need",
@@ -360,25 +342,10 @@
         "version": 1,
         "mode": "need",
         "query": "仕事の迷いを整理したい",
-        "filters": {
-          "birthdate": "1990-01-01",
-          "extra_condition": "誕生日: 1990-01-01",
-          "free_text": "誕生日: 1990-01-01"
-        },
+        "filters": {},
         "profile_context": {
-          "user_profile": {
-            "birthday": "1990-01-01",
-            "birthdate": "1990-01-01"
-          },
-          "derived_profile": {
-            "raw_extra": "誕生日: 1990-01-01",
-            "gogyo": "水",
-            "kyusei": "一白水星",
-            "lifePath": "3"
-          }
-        },
-        "birthdate": "1990-01-01",
-        "extra_condition": "誕生日: 1990-01-01"
+          "user_profile": {}
+        }
       },
       "expected_responses": {
         "web": "response-1",
@@ -406,17 +373,7 @@
         "query": "仕事の迷いを整理したい",
         "filters": {},
         "profile_context": {
-          "user_profile": {
-            "birthday": "1990-01-01",
-            "birthdate": "1990-01-01",
-            "birthTime": "05:25",
-            "birthPlace": "東京都"
-          },
-          "derived_profile": {
-            "kyusei": "一白水星",
-            "gogyo": "水",
-            "lifePath": "3"
-          }
+          "user_profile": {}
         }
       },
       "expected_responses": {

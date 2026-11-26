@@ -347,3 +347,9 @@ Backend 検証はテストプロセスの DATABASE_URL を一時DBへ向け、�
 再開時に `/private/tmp` の未コミット worktree が削除されていたため、永続 worktree へ復元し、
 上記テストをすべて再実行してからコミットした。
 表示以外の input/auth/birthday 等の既知差は、この実装の範囲外として残る。
+
+## 2026-11-26 更新（P-03 の解消）
+
+- モバイルのコンシェルジュ・相談画面から生年月日の入力欄を外した。モバイルは top-level・filters の birthdate、extra 内の「誕生日: …」、profile_context の出生関連と derived_profile を送らない（Web と同じ）。
+- 決定はドライブ「KAMI MUSUBI コンシェルジュとコンパスの役割の線引き」（2026-11-25・26）。
+- fixture（`fixtures/concierge-web-mobile-parity.json`）のモバイルの期待リクエストを合わせて更新し、`mobile-birthday` は `canonical_equal: true` になった（strip 後に Web と同値）。

@@ -26,12 +26,17 @@ import {
 } from "../../../lib/conditionPayload";
 import { postConciergeChat } from "../../../lib/conciergeChatRequest";
 import { trackActionEvent, type ActionEventActionType } from "../../../lib/actionEvents";
-import { useProfileStore } from "../../../store/profileStore";
 import {
   directionReferenceMatchCopy,
   validDirectionReferenceOrNull,
   type DirectionReference,
 } from "../../../../../packages/shared/directionReference";
+import {
+  isInMonthDirection,
+  normalizeMonthDirection,
+  type ConciergeMonthDirection,
+} from "../../../../../packages/shared/monthDirection";
+import { MonthDirectionMark, MonthDirectionSummary } from "../../../components/concierge/MonthDirection";
 import { toOriginPayload, type UserOrigin } from "../../../../../packages/shared/userOrigin";
 import { buildRecommendationReasonDisplay } from "../../../../../packages/shared/recommendationReasonDisplay";
 import { getOriginSession } from "../../../lib/originSession";
@@ -104,6 +109,8 @@ type RecommendationCard = {
   shrineId?: string;
   actionSuggestionV4Preview?: ActionSuggestionV4Preview | null;
   directionReference?: DirectionReference | null;
+  // 今月の方角にある神社だけ true（packages/shared/monthDirection.ts）。合わない神社は false で、何も表示しない。
+  inMonthDirection: boolean;
   analyticsProvenance: RecommendationAnalyticsProvenance;
   // docs/audit/recommendation-instance-identity-propagation.md: Backend-issued rid,
   // reused as-is. Never generated/derived on Mobile.
@@ -175,6 +182,7 @@ type RecommendationApiCard = {
   action_suggestion_v4_preview?: unknown;
   actionSuggestionV4Preview?: unknown;
   direction_reference?: DirectionReference | null;
+  in_month_direction?: boolean;
   primary_reason_source?: string | null;
   _primary_reason_source?: string | null;
   recommendation_instance_id?: string | null;
@@ -197,7 +205,6 @@ function normalizeRecommendationReasonDetail(raw: unknown): RecommendationReason
 // 1回の送信に効かせる条件。state とレンダーのタイミングをずらさずに submit へ渡すため、
 // 値の組として扱う。項目は従来の payload と同じで、増減させていない。
 type ConditionInputs = {
-  birthdate: string;
   plannedVisitDate: string;
   visitStyle?: string;
   goriyaku?: string;
@@ -209,15 +216,20 @@ type ConciergeChatResponse = {
   data?: {
     recommendations?: RecommendationApiCard[];
   };
+  // 今月の方角（生年月日を登録したログイン中の人だけ）。並び順には使っていない。
+  month_direction?: unknown;
+};
+
+type ConciergeFetchResult = {
+  cards: RecommendationCard[];
+  monthDirection: ConciergeMonthDirection | null;
 };
 
 type ConciergeChatRequestPayload = {
   version: 1;
   mode: "need";
   query: string;
-  birthdate?: string;
   filters: {
-    birthdate?: string;
     goriyaku_tag_ids?: number[];
     visit_style_tags?: string[];
     extra_condition?: string;
@@ -416,6 +428,7 @@ function toRecommendationCard(item: RecommendationApiCard, candidate: ConciergeC
     shrineId: shrineId !== undefined && shrineId !== null ? String(shrineId) : undefined,
     actionSuggestionV4Preview,
     directionReference: validDirectionReferenceOrNull(item.direction_reference),
+    inMonthDirection: isInMonthDirection(item),
     analyticsProvenance,
     recommendationInstanceId,
   };
@@ -451,14 +464,12 @@ async function fetchConciergeRecommendations({
   profileContext?: ProfileContextPayload;
   plannedVisitDate?: string;
   location?: { lat: number; lng: number };
-}): Promise<RecommendationCard[]> {
+}): Promise<ConciergeFetchResult> {
   const payload: ConciergeChatRequestPayload = {
     version: 1,
     mode: "need",
     query: consultation,
-    birthdate: conditionFilters.birthdate,
     filters: {
-      birthdate: conditionFilters.birthdate,
       goriyaku_tag_ids: conditionFilters.goriyaku_tag_ids,
       visit_style_tags: conditionFilters.visit_style_tags,
       extra_condition: conditionFilters.extra_condition,
@@ -475,7 +486,10 @@ async function fetchConciergeRecommendations({
 
   // ログイン中ならログイン情報を付けて送る（lib/conciergeChatRequest.ts）。
   const body = await postConciergeChat<ConciergeChatResponse>(payload);
-  return normalizeRecommendations(body.data?.recommendations ?? []);
+  return {
+    cards: normalizeRecommendations(body.data?.recommendations ?? []),
+    monthDirection: normalizeMonthDirection(body.month_direction),
+  };
 }
 
 
@@ -582,6 +596,8 @@ function ResultCard({
         </View>
       ) : null}
 
+      <MonthDirectionMark inMonthDirection={card.inMonthDirection} />
+
       {reasonDisplay.directionReference ? (
         <View style={styles.directionReferenceCard}>
           <Text accessibilityRole="header" style={styles.directionReferenceLabel}>方位の参考情報</Text>
@@ -684,10 +700,12 @@ function ReferenceCard({ card }: { card: RecommendationCard }) {
 }
 function ConciergeResults({
   results,
+  monthDirection,
   onDetail,
   onActionEvent,
 }: {
   results: RecommendationCard[];
+  monthDirection: ConciergeMonthDirection | null;
   onDetail: (card: RecommendationCard, rank: number) => void;
   onActionEvent: (params: {
     card: RecommendationCard;
@@ -705,6 +723,8 @@ function ConciergeResults({
   if (!results.length) return null;
   return (
     <View style={styles.resultsArea}>
+      {/* 今月の方角（生年月日を登録したログイン中の人だけ）。結果の上に1回だけ。 */}
+      <MonthDirectionSummary monthDirection={monthDirection} />
       {registered.length ? (
         <>
           <View style={styles.resultsIntro}>
@@ -746,7 +766,6 @@ export default function ConciergeScreen() {
   const params = useLocalSearchParams<{
     q?: string;
     theme?: string;
-    birthdate?: string;
     visitStyle?: string;
     goriyaku?: string;
     support?: string;
@@ -758,11 +777,10 @@ export default function ConciergeScreen() {
   // タブ画面はネイティブヘッダーを持たないため、Dynamic Island / ステータスバーの
   // 高さを自分で避ける(下層画面はStackのヘッダーが避けている)。
   const insets = useSafeAreaInsets();
-  const { userProfile: globalUserProfile } = useProfileStore();
 
   const initialQuery = [params.q, params.theme].filter(Boolean).join(" ").trim();
   // 相談画面の条件だけが入力されている場合、相談文が空でも初回送信できるようにする
-  const initialHasCondition = Boolean(params.birthdate || params.plannedVisitDate || params.visitStyle || params.goriyaku || params.support);
+  const initialHasCondition = Boolean(params.plannedVisitDate || params.visitStyle || params.goriyaku || params.support);
 
   const [input, setInput] = React.useState(initialQuery);
   const [consultationText, setConsultationText] = React.useState(initialQuery);
@@ -770,15 +788,15 @@ export default function ConciergeScreen() {
   const [loading, setLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [results, setResults] = React.useState<RecommendationCard[]>([]);
+  const [monthDirection, setMonthDirection] = React.useState<ConciergeMonthDirection | null>(null);
   const trackedImpressionKeysRef = React.useRef<Set<string>>(new Set());
   const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>(params.visitStyle || undefined);
-  const [birthdate, setBirthdate] = React.useState(params.birthdate ?? "");
   const [plannedVisitDate, setPlannedVisitDate] = React.useState(params.plannedVisitDate ?? "");
   const initialOrigin: UserOrigin | null = getOriginSession() ?? (params.originLat && params.originLng ? { latitude: Number(params.originLat), longitude: Number(params.originLng), source: "device", displayName: "現在地", accuracy: "precise" } : null);
   const [origin, setOrigin] = React.useState<UserOrigin | null>(initialOrigin);
   const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>(params.goriyaku || undefined);
   const [supportText, setSupportText] = React.useState(params.support ?? "");
-  const hasAnyCondition = Boolean(selectedVisitStyle || birthdate.trim() || plannedVisitDate.trim() || selectedGoriyaku || supportText.trim());
+  const hasAnyCondition = Boolean(selectedVisitStyle || plannedVisitDate.trim() || selectedGoriyaku || supportText.trim());
   const isSendDisabled = loading || (!input.trim() && !hasAnyCondition);
 
   React.useEffect(() => {
@@ -793,7 +811,6 @@ export default function ConciergeScreen() {
   const paramsKey = [
     params.q,
     params.theme,
-    params.birthdate,
     params.plannedVisitDate,
     params.visitStyle,
     params.goriyaku,
@@ -812,14 +829,12 @@ export default function ConciergeScreen() {
     // 同じインスタンスが生き残るため、params から state を揃え直す。
     // state の反映はこのレンダー内では見えないので、送信には同じ値を直接渡す。
     const incoming: ConditionInputs = {
-      birthdate: params.birthdate ?? "",
       plannedVisitDate: params.plannedVisitDate ?? "",
       visitStyle: params.visitStyle || undefined,
       goriyaku: params.goriyaku || undefined,
       supportText: params.support ?? "",
       origin: getOriginSession() ?? initialOrigin,
     };
-    setBirthdate(incoming.birthdate);
     setPlannedVisitDate(incoming.plannedVisitDate);
     setSelectedVisitStyle(incoming.visitStyle);
     setSelectedGoriyaku(incoming.goriyaku);
@@ -834,7 +849,6 @@ export default function ConciergeScreen() {
 
   const submit = async (text: string, override?: ConditionInputs) => {
     const applied: ConditionInputs = override ?? {
-      birthdate,
       plannedVisitDate,
       visitStyle: selectedVisitStyle,
       goriyaku: selectedGoriyaku,
@@ -844,7 +858,6 @@ export default function ConciergeScreen() {
     const appliedHasCondition = Boolean(
       applied.visitStyle ||
         applied.goriyaku ||
-        applied.birthdate.trim() ||
         applied.plannedVisitDate.trim() ||
         applied.supportText.trim(),
     );
@@ -862,7 +875,6 @@ export default function ConciergeScreen() {
     try {
       const goriyakuTagIds = await resolveGoriyakuTagIds(applied.goriyaku);
       const condition: ConditionState = {
-        birthdate: applied.birthdate,
         plannedVisitDate: applied.plannedVisitDate,
         visitStyleLabel: applied.visitStyle,
         goriyakuLabel: applied.goriyaku,
@@ -870,8 +882,8 @@ export default function ConciergeScreen() {
         supportText: applied.supportText,
       };
       const conditionFilters = buildConditionFilters(condition);
-      const profileContext = buildConditionProfileContext({ condition, globalUserProfile });
-      const recommendations = await fetchConciergeRecommendations({
+      const profileContext = buildConditionProfileContext({ condition });
+      const { cards: recommendations, monthDirection: nextMonthDirection } = await fetchConciergeRecommendations({
         consultation: queryText,
         conditionFilters,
         profileContext,
@@ -879,6 +891,7 @@ export default function ConciergeScreen() {
         location: toOriginPayload(applied.origin),
       });
       setResults(recommendations);
+      setMonthDirection(nextMonthDirection);
       AccessibilityInfo.announceForAccessibility(
         `神社の提案結果を更新しました。${recommendations.length}件です。`,
       );
@@ -897,7 +910,6 @@ export default function ConciergeScreen() {
     const query = new URLSearchParams();
     const topic = consultationText === CONSULTATION_FALLBACK ? "" : consultationText.trim();
     if (topic) query.set("q", topic);
-    if (birthdate.trim()) query.set("birthdate", birthdate.trim());
     if (plannedVisitDate.trim()) query.set("plannedVisitDate", plannedVisitDate.trim());
     if (selectedVisitStyle) query.set("visitStyle", selectedVisitStyle);
     if (selectedGoriyaku) query.set("goriyaku", selectedGoriyaku);
@@ -972,7 +984,6 @@ export default function ConciergeScreen() {
     { label: "参拝スタイル", value: selectedVisitStyle ?? "" },
     { label: "願うご縁", value: selectedGoriyaku ?? "" },
     { label: "参拝予定日", value: plannedVisitDate.trim() },
-    { label: "誕生日", value: birthdate.trim() },
     { label: "出発地点", value: origin?.displayName ?? "" },
     { label: "その他", value: supportText.trim() },
   ].filter((item) => item.value.length > 0);
@@ -1086,7 +1097,7 @@ export default function ConciergeScreen() {
         </View>
 
         {/* 結果カード */}
-        {submitted ? <ConciergeResults results={results} onDetail={handleDetail} onActionEvent={handleActionEvent}/> : null}
+        {submitted ? <ConciergeResults results={results} monthDirection={monthDirection} onDetail={handleDetail} onActionEvent={handleActionEvent}/> : null}
       </ScrollView>
 
       {/* 入力バー */}

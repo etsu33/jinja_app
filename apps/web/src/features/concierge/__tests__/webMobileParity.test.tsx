@@ -14,6 +14,7 @@ import ConciergeSectionsRenderer from "../components/ConciergeSectionsRenderer";
 import { normalizeRecommendations as normalizeWeb } from "@/lib/api/concierge/normalize";
 import * as provenance from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
 import * as direction from "../../../../../../packages/shared/directionReference";
+import * as monthDirection from "../../../../../../packages/shared/monthDirection";
 import { toOriginPayload, type UserOrigin } from "../../../../../../packages/shared/userOrigin";
 import * as facts from "../../../../../mobile/lib/recommendationReasonFacts";
 import * as reasonV4 from "../../../../../mobile/lib/recommendationReasonV4";
@@ -66,6 +67,9 @@ function mobileFunctions(post: (...args: any[]) => any) {
   const deps = {
     ...provenance,
     ...direction,
+    ...monthDirection,
+    MonthDirectionSummary: () => null,
+    MonthDirectionMark: () => null,
     ...facts,
     ...reasonV4,
     ...candidateAdapter,
@@ -86,7 +90,7 @@ function mobileFunctions(post: (...args: any[]) => any) {
     ...Object.keys(deps),
     `${code}\nreturn { fetchConciergeRecommendations, normalizeRecommendations, ConciergeResults };`,
   )(...Object.values(deps)) as {
-    fetchConciergeRecommendations: (input: any) => Promise<any[]>;
+    fetchConciergeRecommendations: (input: any) => Promise<{ cards: any[]; monthDirection: unknown }>;
     normalizeRecommendations: (input: any[]) => any[];
     ConciergeResults: React.ComponentType<any>;
   };
@@ -139,10 +143,10 @@ describe("Web/Mobile parity audit: actual request and display functions", () => 
     unmount();
     const condition: ConditionState = state;
     const post = vi.fn().mockResolvedValue({ data: { recommendations: mobileRecs } });
-    const cards = await mobileFunctions(post).fetchConciergeRecommendations({
+    const { cards } = await mobileFunctions(post).fetchConciergeRecommendations({
       consultation: fixture.query,
       conditionFilters: buildConditionFilters(condition),
-      profileContext: buildConditionProfileContext({ condition, globalUserProfile: state.globalUserProfile ?? {} }),
+      profileContext: buildConditionProfileContext({ condition }),
       plannedVisitDate: state.plannedVisitDate?.trim() || undefined,
       location: toOriginPayload((state.origin ?? null) as UserOrigin | null),
     });

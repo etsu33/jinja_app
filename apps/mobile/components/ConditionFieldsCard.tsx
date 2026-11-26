@@ -14,10 +14,9 @@ const CHECK_ICON_SIZE = 15;
 // リストの送り記号。旧実装は "›" のグリフだった。
 const CHEVRON_SIZE = 20;
 
-// Home画面・Concierge結果画面で共通の条件レイヤー入力（誕生日・参拝スタイル・ご利益・補助条件）
+// Home画面・Concierge結果画面で共通の条件レイヤー入力（参拝予定日・出発地点・参拝スタイル・ご利益・補助条件）
+// 生年月日の入力は置かない（コンシェルジュでは生年月日を使わない。ドライブ「KAMI MUSUBI コンシェルジュとコンパスの役割の線引き」）。
 export type ConditionFieldsCardProps = {
-  birthdate: string;
-  onChangeBirthdate: (value: string) => void;
   plannedVisitDate: string;
   onChangePlannedVisitDate: (value: string) => void;
   locationStatus?: "idle" | "loading" | "ready" | "error";
@@ -34,8 +33,6 @@ export type ConditionFieldsCardProps = {
 };
 
 export function ConditionFieldsCard({
-  birthdate,
-  onChangeBirthdate,
   plannedVisitDate,
   onChangePlannedVisitDate,
   locationStatus = "idle",
@@ -74,25 +71,6 @@ export function ConditionFieldsCard({
         <Text style={styles.introText}>
           すべて任意の補助条件です。必要な項目だけ選ぶと、次の相談画面でその条件を反映したご縁を確認できます。
         </Text>
-      </View>
-
-      <View style={styles.divider} />
-
-      <View style={styles.inputBlock}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.label}>誕生日</Text>
-          <Text style={styles.caption}>命式や吉方位の参考にします</Text>
-        </View>
-        <TextInput
-          {...inputAppearance}
-          accessibilityLabel="誕生日"
-          value={birthdate}
-          onChangeText={onChangeBirthdate}
-          placeholder="例: 1984-05-15"
-          placeholderTextColor={theme.mutedDark}
-          style={styles.input}
-          editable={!disabled}
-        />
       </View>
 
       <View style={styles.divider} />

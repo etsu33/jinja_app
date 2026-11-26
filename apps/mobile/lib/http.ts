@@ -175,6 +175,14 @@ export async function postAuth<T>(path: string, body: unknown, init?: RequestIni
 }
 
 // 204(本文なし)の場合は undefined を返す。
+export async function patchAuth<T>(path: string, body: unknown, init?: RequestInit): Promise<T> {
+  return requestAuth<T>(path, {
+    ...init,
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function deleteAuth<T = void>(path: string, init?: RequestInit): Promise<T> {
   return requestAuth<T>(path, {
     ...init,
