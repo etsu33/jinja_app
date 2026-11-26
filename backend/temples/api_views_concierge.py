@@ -55,6 +55,7 @@ from temples.services.concierge_chat_candidates import (
 )
 from temples.services.concierge_history import append_chat
 from temples.services.direction_reference import attach_direction_references
+from temples.services.concierge_month_direction import build_concierge_month_direction
 from temples.services.concierge_plan import build_plan_response
 from temples.services.consultation_interpreter import interpret_consultation
 from temples.services.consultation_meaning import extract_consultation_meaning
@@ -321,6 +322,7 @@ def _build_chat_response(
     anon_cookie_value: Optional[str],
     consultation_meaning: Dict[str, Any],
     feature_words_en: Optional[Dict[str, Any]] = None,
+    month_direction: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     thread_id = str(thread.id) if thread is not None else None
 
@@ -350,6 +352,11 @@ def _build_chat_response(
     # travel モードのときだけ。英語の辞書を使ったときは、取り出した特徴語で並べ替えている（temples/services/travel_ranking.py）。
     if feature_words_en is not None:
         body["feature_words_en"] = feature_words_en
+
+    # 生年月日を登録したログイン中の人の、日本語の相談のときだけ載せる（今月の方角）。
+    # 並び順には使っていない。temples/services/concierge_month_direction.py
+    if month_direction is not None:
+        body["month_direction"] = month_direction
 
     if remaining is not None:
         body["remaining"] = remaining
@@ -883,6 +890,32 @@ class ConciergeChatView(APIView):
                         if isinstance(recommendation, dict):
                             recommendation.pop("direction_reference", None)
 
+            # 今月の方角（並び順を決めたあとに添えるだけ）。
+            # 生年月日はサーバーのプロフィールからだけ読み、相談で送られた生年月日は使わない。
+            month_direction = None
+            month_direction_lists = []
+            for recommendation_key in ("recommendations", "recommendations_v2"):
+                recommendation_list = recs.get(recommendation_key)
+                if isinstance(recommendation_list, list) and all(
+                    recommendation_list is not seen for seen in month_direction_lists
+                ):
+                    month_direction_lists.append(recommendation_list)
+            try:
+                month_direction = build_concierge_month_direction(
+                    user=user,
+                    language=language,
+                    origin={"lat": lat, "lng": lng} if lat is not None and lng is not None else None,
+                    recommendation_lists=month_direction_lists,
+                )
+            except Exception:
+                # 添える情報なので、失敗しても応答は止めない。生年月日はログに出さない。
+                log.error("[concierge/month_direction] enrichment_failed rid=%s", rid)
+                month_direction = None
+                for recommendation_list in month_direction_lists:
+                    for recommendation in recommendation_list:
+                        if isinstance(recommendation, dict):
+                            recommendation.pop("in_month_direction", None)
+
             # Recommendation Instance Identity Contract
             # (docs/audit/recommendation-instance-identity-propagation.md, Option C):
             # reuse the existing per-request rid as the immutable recommendation_instance_id.
@@ -1088,6 +1121,7 @@ class ConciergeChatView(APIView):
                     ),
                     consultation_meaning=extract_consultation_meaning(query).as_dict(),
                     feature_words_en=feature_words_en,
+                    month_direction=month_direction,
                 )
 
             phase = "response"
