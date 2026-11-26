@@ -1,0 +1,261 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "meiji-about",
+      "source_type": "shrine_official",
+      "title": "明治神宮 公式サイト「明治神宮とは」",
+      "publisher": "明治神宮",
+      "url": "https://www.meijijingu.or.jp/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-01",
+      "verified_at": "2026-08-01T07:50:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": ""
+    },
+    {
+      "key": "meiji-faq-ca1",
+      "source_type": "shrine_official",
+      "title": "明治神宮 公式サイト「Q&A 明治神宮関係」",
+      "publisher": "明治神宮",
+      "url": "https://www.meijijingu.or.jp/faq/?ca=1",
+      "bibliography": "",
+      "accessed_at": "2026-11-26",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "Q1（創建日・両御祭神の崩御日）、Q4（代々木の地名の由来）、Q13（清正井の伝説）をページを開いて確認（2026-11-26）。"
+    },
+    {
+      "key": "meiji-faq-all",
+      "source_type": "shrine_official",
+      "title": "明治神宮 公式サイト「Q&A（全て）」",
+      "publisher": "明治神宮",
+      "url": "https://www.meijijingu.or.jp/faq/",
+      "bibliography": "",
+      "accessed_at": "2026-11-26",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "Q12（大鳥居：大きさ・初代の材・落雷・二代目・初代の移設先）をページを開いて確認（2026-11-26）。幅は「17.1m」（境内地図は笠木の長さ17m）。"
+    },
+    {
+      "key": "meiji-guide",
+      "source_type": "shrine_official",
+      "title": "明治神宮 公式サイト「境内地図」",
+      "publisher": "明治神宮",
+      "url": "https://www.meijijingu.or.jp/guide/",
+      "bibliography": "",
+      "accessed_at": "2026-11-26",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "本殿（三間社流造、昭和33年復興）、大鳥居の寸法、宝物殿（「※現在、休館中」の表記あり）、代々木、御苑、清正井をページを開いて確認（2026-11-26）。宝物殿の休館表記は宝物殿ページの期間限定公開と食い違う。"
+    },
+    {
+      "key": "meiji-gyoen",
+      "source_type": "shrine_official",
+      "title": "明治神宮 公式サイト「明治神宮御苑」",
+      "publisher": "明治神宮",
+      "url": "https://www.meijijingu.or.jp/midokoro/gyoen/",
+      "bibliography": "",
+      "accessed_at": "2026-11-26",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "御苑の由来（加藤家・井伊家の下屋敷、宮内省所管、明治26年頃の整備、鎮座地決定の理由のひとつ）、南池、清正井をページを開いて確認（2026-11-26）。"
+    },
+    {
+      "key": "meiji-houmotsuden",
+      "source_type": "shrine_official",
+      "title": "明治神宮 公式サイト「宝物殿」",
+      "publisher": "明治神宮",
+      "url": "https://www.meijijingu.or.jp/museum/houmotsuden/",
+      "bibliography": "",
+      "accessed_at": "2026-11-26",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "境内の北方、大正10年10月末竣功、校倉風大床造り、初期の鉄筋コンクリート建築、平成23年6月重要文化財指定、令和3年再公開・期間限定公開をページを開いて確認（2026-11-26）。建設の目的は明記なし。"
+    },
+    {
+      "key": "meiji-museum",
+      "source_type": "shrine_official",
+      "title": "明治神宮 公式サイト「明治神宮ミュージアム」",
+      "publisher": "明治神宮",
+      "url": "https://www.meijijingu.or.jp/museum/",
+      "bibliography": "",
+      "accessed_at": "2026-11-26",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "鎮座百年祭記念事業・令和元年10月開館、隈研吾氏の設計、杜と調和する2階建て、1階杜の展示室・2階宝物展示室（キヨッソーネの御尊影・六頭曳儀装車）・企画展示室（定期的に展示替）をページを開いて確認（2026-11-26）。"
+    },
+    {
+      "key": "meiji-shaho-2019-autumn",
+      "source_type": "shrine_official",
+      "title": "明治神宮 社報『代々木』令和元年秋号「明治神宮ミュージアム 10月26日開館へ」",
+      "publisher": "明治神宮",
+      "url": "https://www.meijijingu.or.jp/books_top/?id=1585012590-603543",
+      "bibliography": "",
+      "accessed_at": "2026-11-26",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "medium",
+      "language": "ja",
+      "note": "設計は隈研吾建築都市設計事務所、10月26日開館。ウェブ検索の抜粋で確認（ページは直接開いていない）。"
+    },
+    {
+      "key": "meiji-rekishidb-87",
+      "source_type": "shrine_official",
+      "title": "明治神宮歴史データベース「本殿遷座祭」",
+      "publisher": "明治神宮",
+      "url": "https://www.rekishidb.meijijingu.or.jp/glossary/detail.php?id=87",
+      "bibliography": "",
+      "accessed_at": "2026-11-26",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "昭和20年4月14日未明の空襲、昭和21年5月の御仮殿、昭和28年7月奉賛会発足、社殿を木造と決定、全国と海外からの奉賛をページを開いて確認（2026-11-26）。遷座の年（昭和33年）はこのページに明記なし（境内地図で確認）。"
+    },
+    {
+      "key": "meiji-rekishidb-119",
+      "source_type": "shrine_official",
+      "title": "明治神宮歴史データベース「大鳥居建替工事」",
+      "publisher": "明治神宮",
+      "url": "https://www.rekishidb.meijijingu.or.jp/glossary/detail.php?id=119",
+      "bibliography": "",
+      "accessed_at": "2026-11-26",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "昭和50年12月23日の竣功、旧大鳥居が大宮氷川神社の二の鳥居であることをページを開いて確認（2026-11-26）。阿里山の檜・落雷の日付はこのページになく、Q&A Q12で確認。"
+    },
+    {
+      "key": "meiji-rekishidb-2020-12",
+      "source_type": "shrine_official",
+      "title": "明治神宮歴史データベース「年表 令和2年12月」",
+      "publisher": "明治神宮",
+      "url": "https://www.rekishidb.meijijingu.or.jp/chronology/era_detail.php?year=2020&month=12",
+      "bibliography": "",
+      "accessed_at": "2026-11-26",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "令和2年12月23日「御本殿以下36棟、重要文化財に指定告知（官報号外第271号）」をページを開いて確認（2026-11-26）。"
+    },
+    {
+      "key": "meiji-museum-exhibition-shosoin",
+      "source_type": "shrine_official",
+      "title": "明治神宮ミュージアム 展覧会情報「正倉院宝物を受け継ぐ―明治天皇に始まる宝物模造の歴史」開催のお知らせ",
+      "publisher": "明治神宮",
+      "url": "https://www.meijijingu.or.jp/museum/exhibitions/?id=1699595603-042426",
+      "bibliography": "",
+      "accessed_at": "2026-11-26",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "medium",
+      "language": "ja",
+      "note": "「明治神宮鎮座の際に明治天皇・昭憲皇太后の御物を修めるべく建設された明治神宮宝物殿」（宝物殿の建設目的）。ウェブ検索の抜粋で確認（2026-11-26、ページは直接開いていない）。"
+    },
+    {
+      "key": "bunka-kunishitei-meiji-honden",
+      "source_type": "cultural_property",
+      "title": "国指定文化財等データベース「明治神宮 本殿」",
+      "publisher": "文化庁",
+      "url": "https://kunishitei.bunka.go.jp/bsys/maindetails/102/00005235",
+      "bibliography": "",
+      "accessed_at": "2026-11-26",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "重文指定年月日 2020.12.23（令和2.12.23）。ウェブ検索の抜粋で確認（2026-11-26）。"
+    },
+    {
+      "key": "bunka-shingikai-218-gijiyoshi",
+      "source_type": "cultural_property",
+      "title": "第218回文化審議会文化財分科会議事要旨（令和2年10月16日）",
+      "publisher": "文化庁",
+      "url": "https://www.bunka.go.jp/seisaku/bunkashingikai/bunkazai/20/pdf/92788501_06.pdf",
+      "bibliography": "",
+      "accessed_at": "2026-11-26",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "別紙「（重要文化財の新規指定）明治神宮 36棟」。ウェブ検索の抜粋で確認（2026-11-26）。"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "明治神宮",
+        "address": "東京都渋谷区代々木神園町1-1"
+      },
+      "deities": [],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "人工の杜の造営",
+          "content": "約70万平方メートルの杜は、創建にあたって全国から献木された約10万本を植え、「永遠の杜」を目指してつくられた人工林である。",
+          "period_text": "大正時代（創建時）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "draft",
+          "confidence": "",
+          "verified_at": null,
+          "note": "判定シート H-2（えつこ確認 OK・2026-11-26）。下書きで投入し、公開時に管理画面で source_confirmed・verified_at・confidence を個別に設定する。",
+          "source_keys": [
+            "meiji-about"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "戦災と復興",
+          "content": "昭和20年（1945年）4月14日未明の空襲で御本殿以下の主な建物のほとんどを失った。昭和21年に仮殿が建てられ、昭和28年に奉賛会ができて復興が始まった。社殿は木造と決まり、全国と海外からの奉賛によって、昭和33年（1958年）に復興した。",
+          "period_text": "昭和20年〜33年",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "draft",
+          "confidence": "",
+          "verified_at": null,
+          "note": "判定シート H-3（えつこ確認 OK・2026-11-26）。昭和33年は境内地図、その他は歴史データベース「本殿遷座祭」。下書きで投入。",
+          "source_keys": [
+            "meiji-rekishidb-87",
+            "meiji-guide"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "御本殿以下36棟の重要文化財指定",
+          "content": "令和2年（2020年）12月23日、明治神宮の御本殿以下36棟が重要文化財に指定された（官報号外で告示）。宝物殿はそれより前の平成23年（2011年）6月に重要文化財に指定されている。",
+          "period_text": "平成23年・令和2年",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "draft",
+          "confidence": "",
+          "verified_at": null,
+          "note": "判定シート H-4（えつこ確認 OK・2026-11-26）。36棟は文化審議会議事要旨、指定日は国指定文化財等データベース、宝物殿の平成23年指定は宝物殿ページ（公的資料では未確認）。下書きで投入。",
+          "source_keys": [
+            "meiji-rekishidb-2020-12",
+            "meiji-houmotsuden",
+            "bunka-kunishitei-meiji-honden",
+            "bunka-shingikai-218-gijiyoshi"
+          ]
+        }
+      ]
+    }
+  ]
+}
