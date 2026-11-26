@@ -217,6 +217,12 @@ Decided by えつこさん on 2026-11-26（Drive「KAMI MUSUBI ルールの目�
 - §3 is unchanged: popularity or visitor counts of an individual shrine are still not screening
   inputs.
 - How a shrine address is assigned to a survey area is recorded in the screening audit, not here.
+- **Tokyo identity source（2026-11-26）:** a listing in 東京都神社庁 (name and address) is treated as
+  the accepted official Source in place of a frozen Ready Set, so IDENTITY_SOURCE = STRONG.
+- **Enrichment target in Tokyo（2026-11-26）:** a 神社庁 listing alone is not enough, because the
+  directory also lists many small local shrines. A shrine is enriched only when it has an official
+  website that publishes its 由緒 or a precinct guide（境内の説明）. Others are PRIORITY_B for now.
+  Exceptions are decided by えつこさん case by case.
 
 ## 8. Non-goals
 
