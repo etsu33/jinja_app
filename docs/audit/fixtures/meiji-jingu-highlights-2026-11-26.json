@@ -1,0 +1,174 @@
+{
+  "schema": "highlight_fixture_v1",
+  "shrine_ref": {
+    "name_jp": "明治神宮",
+    "address": "東京都渋谷区代々木神園町1-1"
+  },
+  "note": "本番では管理画面で入れる値の一覧。ローカルQAでは scripts/local_qa/load_highlight_fixture_local.py が読む。publication_status・翻訳の review_status は下書き。ローカルQAの --publish-for-local-qa のときだけローカルDBで公開・承認にする。",
+  "highlights": [
+    {
+      "stable_key": "meiji-yoyogi",
+      "category": "nature",
+      "sort_order": 1,
+      "verification_status": "source_confirmed",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "confidence": "high",
+      "publication_status": "draft",
+      "translation_ja": {
+        "name": "代々木（よよぎ）",
+        "description": "代々「樅（もみ）」の大木が育ったことから「代々木」という地名が生まれた、と伝えられている場所。明治神宮のQ&Aも、地名の由来の話として紹介している。",
+        "historical_connection": "",
+        "location_hint": "",
+        "review_status": "draft"
+      },
+      "source_urls": [
+        "https://www.meijijingu.or.jp/guide/",
+        "https://www.meijijingu.or.jp/faq/?ca=1"
+      ],
+      "histories": []
+    },
+    {
+      "stable_key": "meiji-museum",
+      "category": "cultural_heritage",
+      "sort_order": 2,
+      "verification_status": "source_confirmed",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "confidence": "high",
+      "publication_status": "draft",
+      "translation_ja": {
+        "name": "明治神宮ミュージアム",
+        "description": "明治神宮の鎮座百年を記念して、令和元年（2019年）10月に開館した展示施設。1階では明治神宮の歴史や日々の営みを展示・映像で紹介し、2階では明治天皇・昭憲皇太后ゆかりの宝物を展示している。代表的な収蔵品には御尊影や六頭曳儀装車がある。建物は隈研吾の設計によるもので、周囲の杜との調和を特徴とする。展示内容は時期によって異なる。",
+        "historical_connection": "",
+        "location_hint": "",
+        "review_status": "draft"
+      },
+      "source_urls": [
+        "https://www.meijijingu.or.jp/museum/",
+        "https://www.meijijingu.or.jp/books_top/?id=1585012590-603543"
+      ],
+      "histories": []
+    },
+    {
+      "stable_key": "meiji-gyoen",
+      "category": "nature",
+      "sort_order": 3,
+      "verification_status": "source_confirmed",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "confidence": "high",
+      "publication_status": "draft",
+      "translation_ja": {
+        "name": "御苑",
+        "description": "御社殿の南側に広がる庭園。江戸時代は加藤家・井伊家の下屋敷の庭園で、明治時代に宮内省の所管となり、明治26年頃、明治天皇が昭憲皇太后のために遊歩庭園として整えた。花菖蒲は明治天皇が植えさせたもの。明治神宮の鎮座地が代々木に決まった大きな理由のひとつにもなった。",
+        "historical_connection": "明治天皇が昭憲皇太后のために整えた庭園があったことが、代々木に明治神宮が創建される理由のひとつになった。",
+        "location_hint": "",
+        "review_status": "draft"
+      },
+      "source_urls": [
+        "https://www.meijijingu.or.jp/midokoro/gyoen/",
+        "https://www.meijijingu.or.jp/about/"
+      ],
+      "histories": [
+        {
+          "history_type": "official_origin",
+          "title": "明治神宮の創建"
+        }
+      ]
+    },
+    {
+      "stable_key": "meiji-kiyomasa-ido",
+      "category": "historical_site",
+      "sort_order": 4,
+      "verification_status": "source_confirmed",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "confidence": "high",
+      "publication_status": "draft",
+      "translation_ja": {
+        "name": "清正井",
+        "description": "御苑の中にある湧水。加藤清正が掘ったと伝えられる。明治神宮のQ&Aは、この地が一時加藤家の下屋敷だったことや、特殊な仕組みで水が湧き出すと考えられたことから生まれた伝説だと説明している。",
+        "historical_connection": "",
+        "location_hint": "",
+        "review_status": "draft"
+      },
+      "source_urls": [
+        "https://www.meijijingu.or.jp/guide/",
+        "https://www.meijijingu.or.jp/faq/?ca=1"
+      ],
+      "histories": []
+    },
+    {
+      "stable_key": "meiji-otorii",
+      "category": "architecture",
+      "sort_order": 5,
+      "verification_status": "source_confirmed",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "confidence": "high",
+      "publication_status": "draft",
+      "translation_ja": {
+        "name": "大鳥居（第二鳥居）",
+        "description": "南参道と北参道の出合い口に立つ木造の明神鳥居。高さ12m、柱間 9.1m、柱の径 1.2m、笠木の長さ 17mで、木造の明神鳥居としては日本一の大きさとされる。大正9年（1920年）の初代の大鳥居は台湾の阿里山の檜でつくられたが、昭和41年（1966年）7月22日の落雷で柱が破損した。今の鳥居は二代目で、昭和50年（1975年）12月23日に竣功した。初代の鳥居は大宮氷川神社の鳥居として使われている。",
+        "historical_connection": "",
+        "location_hint": "",
+        "review_status": "draft"
+      },
+      "source_urls": [
+        "https://www.meijijingu.or.jp/guide/",
+        "https://www.meijijingu.or.jp/faq/",
+        "https://www.rekishidb.meijijingu.or.jp/glossary/detail.php?id=119"
+      ],
+      "histories": []
+    },
+    {
+      "stable_key": "meiji-honden",
+      "category": "architecture",
+      "sort_order": 6,
+      "verification_status": "source_confirmed",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "confidence": "high",
+      "publication_status": "draft",
+      "translation_ja": {
+        "name": "本殿（御社殿）",
+        "description": "三間社流造の本殿。昭和20年（1945年）4月14日未明の空襲で御本殿以下の主な建物を失い、全国からの奉賛で木造で復興され、昭和33年（1958年）に遷座した。令和2年（2020年）12月23日、御本殿以下36棟が重要文化財に指定された（告示）。",
+        "historical_connection": "昭和20年（1945年）の空襲で失われた御社殿が、昭和33年（1958年）に復興された。",
+        "location_hint": "",
+        "review_status": "draft"
+      },
+      "source_urls": [
+        "https://www.meijijingu.or.jp/guide/",
+        "https://www.rekishidb.meijijingu.or.jp/glossary/detail.php?id=87",
+        "https://www.rekishidb.meijijingu.or.jp/chronology/era_detail.php?year=2020&month=12"
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "戦災と復興"
+        }
+      ]
+    },
+    {
+      "stable_key": "meiji-houmotsuden",
+      "category": "architecture",
+      "sort_order": 7,
+      "verification_status": "source_confirmed",
+      "verified_at": "2026-11-26T07:30:00+00:00",
+      "confidence": "high",
+      "publication_status": "draft",
+      "translation_ja": {
+        "name": "宝物殿",
+        "description": "境内の北方にある建物。大正10年（1921年）10月末に竣功した。奈良の正倉院の校倉造りを模した「校倉風大床造り」で、日本の初期の鉄筋コンクリート建築を代表する建物。平成23年（2011年）6月に国の重要文化財に指定された。",
+        "historical_connection": "創建の翌年に竣功し、長く御祭神の御物を展示してきた。",
+        "location_hint": "",
+        "review_status": "draft"
+      },
+      "source_urls": [
+        "https://www.meijijingu.or.jp/museum/houmotsuden/",
+        "https://www.meijijingu.or.jp/guide/"
+      ],
+      "histories": [
+        {
+          "history_type": "official_origin",
+          "title": "明治神宮の創建"
+        }
+      ]
+    }
+  ]
+}
