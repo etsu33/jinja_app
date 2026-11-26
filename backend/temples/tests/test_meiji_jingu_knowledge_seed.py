@@ -84,14 +84,13 @@ def test_highlight_fixture_matches_model_vocabulary_and_seed_sources():
     items = data["highlights"]
     assert [i["stable_key"] for i in items] == [
         "meiji-yoyogi",
-        "meiji-museum",
         "meiji-gyoen",
         "meiji-kiyomasa-ido",
         "meiji-otorii",
         "meiji-honden",
         "meiji-houmotsuden",
     ]
-    assert [i["sort_order"] for i in items] == list(range(1, 8))
+    assert [i["sort_order"] for i in items] == list(range(1, 7))
     for i in items:
         assert i["category"] in categories
         assert i["publication_status"] == "draft"
