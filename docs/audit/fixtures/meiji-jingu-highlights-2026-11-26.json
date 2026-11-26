@@ -4,7 +4,7 @@
     "name_jp": "明治神宮",
     "address": "東京都渋谷区代々木神園町1-1"
   },
-  "note": "本番では管理画面で入れる値の一覧。ローカルQAでは scripts/local_qa/load_highlight_fixture_local.py が読む。publication_status・翻訳の review_status は下書き。ローカルQAの --publish-for-local-qa のときだけローカルDBで公開・承認にする。 2026-11-26 18:45 えつこさん決定で文を見直し（ミュージアムは外した。6件）。",
+  "note": "本番では管理画面で入れる値の一覧。ローカルQAでは scripts/local_qa/load_highlight_fixture_local.py が読む。publication_status・翻訳の review_status は下書き。ローカルQAの --publish-for-local-qa のときだけローカルDBで公開・承認にする。 2026-11-26 18:45 えつこさん決定で文を見直し（ミュージアムは外した。6件）。 2026-11-26 19:44 えつこさん決定：重要文化財の指定年月日と36棟は H-4 に集約し、本殿・宝物殿の本文は建築的特徴と「国の重要文化財に指定されている」を残す。",
   "highlights": [
     {
       "stable_key": "meiji-yoyogi",
@@ -106,7 +106,7 @@
       "publication_status": "draft",
       "translation_ja": {
         "name": "本殿（御社殿）",
-        "description": "三間社流造の本殿。令和2年（2020年）、御本殿以下36棟が重要文化財に指定された。",
+        "description": "三間社流造の本殿。国の重要文化財に指定されている。",
         "historical_connection": "昭和20年（1945年）の空襲で失われた御社殿が、昭和33年（1958年）に復興された。",
         "location_hint": "",
         "review_status": "draft"
@@ -133,7 +133,7 @@
       "publication_status": "draft",
       "translation_ja": {
         "name": "宝物殿",
-        "description": "境内の北方にある建物。正倉院の校倉造りを模した、日本の初期の鉄筋コンクリート建築。平成23年（2011年）に国の重要文化財に指定された。",
+        "description": "境内の北方にある建物。正倉院の校倉造りを模した、日本の初期の鉄筋コンクリート建築で、国の重要文化財に指定されている。",
         "historical_connection": "創建の翌年に竣功し、長く御祭神の御物を展示していた。",
         "location_hint": "",
         "review_status": "draft"
