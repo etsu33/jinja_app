@@ -1874,7 +1874,7 @@ export default function ConciergeClientFull() {
                     もう少し自分に合わせる（任意）
                   </p>
                   <p className="mt-0.5 text-[11px] text-[var(--kt-color-text-muted)]">
-                    参拝の希望・誕生日・ご利益・参拝の詳細は、相談テーマを補う条件として扱います。
+                    参拝の希望・ご利益・参拝の詳細は、相談テーマを補う条件として扱います。
                   </p>
                 </div>
                 {!isFilterOpen ? (
