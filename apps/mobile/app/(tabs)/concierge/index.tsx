@@ -24,7 +24,7 @@ import {
   type ConditionState,
   type ProfileContextPayload,
 } from "../../../lib/conditionPayload";
-import { post } from "../../../lib/http";
+import { postConciergeChat } from "../../../lib/conciergeChatRequest";
 import { trackActionEvent, type ActionEventActionType } from "../../../lib/actionEvents";
 import {
   directionReferenceMatchCopy,
@@ -484,7 +484,8 @@ async function fetchConciergeRecommendations({
     ...(profileContext ? { profile_context: profileContext } : {}),
   };
 
-  const body = await post<ConciergeChatResponse>("/concierge/chat/", payload);
+  // ログイン中ならログイン情報を付けて送る（lib/conciergeChatRequest.ts）。
+  const body = await postConciergeChat<ConciergeChatResponse>(payload);
   return {
     cards: normalizeRecommendations(body.data?.recommendations ?? []),
     monthDirection: normalizeMonthDirection(body.month_direction),
