@@ -1,5 +1,5 @@
 // apps/web/src/components/shrine/detail/__tests__/ShrineFactSection.test.tsx
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import ShrineFactSection from "../ShrineFactSection";
@@ -326,7 +326,7 @@ describe("ShrineFactSection", () => {
       expect(screen.getByText("異なる見解を含む情報")).toBeInTheDocument();
     });
 
-    it("異なるSourceはSection末尾の出典一覧へ集約され、いずれも失われない", () => {
+    it("出典は歴史カードごとに「出典（N件）」の折りたたみで出し、最初は閉じている（事実との対応を保つ）", () => {
       render(
         <ShrineFactSection
           section={makeSection({
@@ -378,15 +378,25 @@ describe("ShrineFactSection", () => {
         />,
       );
 
-      // Fact本体のcard内にはSourceが描画されず、Section末尾の「出典」見出し配下に集約される
-      expect(screen.getByText("出典")).toBeInTheDocument();
-      const sourceALink = screen.getByRole("link", { name: "史料A" });
-      expect(sourceALink).toHaveAttribute("href", "https://example.com/a");
-      expect(screen.getByText("史料B")).toBeInTheDocument();
-      expect(screen.queryByRole("link", { name: "史料B" })).not.toBeInTheDocument();
+      // 各カードに1つずつ「出典（1件）」の折りたたみがあり、最初は閉じている
+      const summaries = screen.getAllByText("出典（1件）");
+      expect(summaries).toHaveLength(2);
+      for (const summary of summaries) {
+        const details = summary.closest("details");
+        expect(details).not.toBeNull();
+        expect(details).not.toHaveAttribute("open");
+      }
+      // 史料Aは説Aのカードに、史料Bは説Bのカードにある（節の下へのまとめはしない）
+      const cardA = screen.getByText("説A").closest("div[class*='rounded']") as HTMLElement;
+      const cardB = screen.getByText("説B").closest("div[class*='rounded']") as HTMLElement;
+      expect(within(cardA).getByRole("link", { name: "史料A" })).toHaveAttribute("href", "https://example.com/a");
+      expect(within(cardA).queryByText("史料B")).not.toBeInTheDocument();
+      expect(within(cardB).getByText("史料B")).toBeInTheDocument();
+      expect(within(cardB).queryByRole("link", { name: "史料B" })).not.toBeInTheDocument();
+      expect(within(cardB).queryByText("史料A")).not.toBeInTheDocument();
     });
 
-    it("同一URLのSourceは複数Factにまたがっても出典一覧で1回だけ表示される（dedupe）", () => {
+    it("同一URLのSourceを共有する複数Factは、それぞれのカードに出典を出す（カードをまたいでまとめない）", () => {
       const sharedSource = {
         id: 200,
         source_type: "shrine_official" as const,
@@ -427,7 +437,8 @@ describe("ShrineFactSection", () => {
         />,
       );
 
-      expect(screen.getAllByRole("link", { name: "○○神社 公式サイト" })).toHaveLength(1);
+      expect(screen.getAllByRole("link", { name: "○○神社 公式サイト" })).toHaveLength(2);
+      expect(screen.getAllByText("出典（1件）")).toHaveLength(2);
     });
 
     it("sourcesが空/未指定のFactはSource一覧を表示しない（クラッシュしない）", () => {

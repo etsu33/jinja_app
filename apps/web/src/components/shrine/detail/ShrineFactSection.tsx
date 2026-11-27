@@ -1,6 +1,7 @@
 // apps/web/src/components/shrine/detail/ShrineFactSection.tsx
 import type { DetailFactDeity, DetailFactHistoryItem, DetailFactSection } from "@/components/shrine/detail/types";
 import type { ShrineKnowledgeSource } from "@/lib/api/types";
+import CollapsibleSourceList from "@/components/shrine/detail/CollapsibleSourceList";
 import ShrineHighlightAnchorLink from "@/components/shrine/detail/ShrineHighlightAnchorLink";
 import { groupShrineHistoryFacts } from "@/lib/shrine/buildShrineFactSection";
 import { shrineHighlightAnchorId, shrineHistoryAnchorId } from "@/lib/shrine/buildShrineHighlightSection";
@@ -44,53 +45,21 @@ function DeityList({ deities }: { deities: DetailFactDeity[] }) {
   );
 }
 
-// Section末尾へ集約表示するSource一覧。dedupe基準はurl（非空の場合）、urlを持たないSourceは
-// id基準でdedupeする。異なるSource（url/idが異なる）は失わない — 同一urlのみを1件へまとめる。
-function collectSectionSources(histories: DetailFactHistoryItem[]): ShrineKnowledgeSource[] {
+// 1枚の歴史カードに出す出典。同じカードの中で同じURL（URLが無ければ同じid）が重なったときだけ1件にまとめる。
+// カードをまたいだまとめはしない — どの出典がどの事実の根拠かを、その事実のカードで読めるようにするため
+// （ドライブ「文章と見どころの選定・表現ルール v1.0（案）」6章⑤、2026-11-27 えつこさん決定）。
+function cardSources(history: DetailFactHistoryItem): ShrineKnowledgeSource[] {
   const seen = new Set<string>();
   const collected: ShrineKnowledgeSource[] = [];
 
-  for (const history of histories) {
-    for (const source of history.sources ?? []) {
-      const dedupeKey = source.url ? `url:${source.url}` : `id:${source.id}`;
-      if (seen.has(dedupeKey)) continue;
-      seen.add(dedupeKey);
-      collected.push(source);
-    }
+  for (const source of history.sources ?? []) {
+    const dedupeKey = source.url ? `url:${source.url}` : `id:${source.id}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    collected.push(source);
   }
 
   return collected;
-}
-
-export function SourceList({ sources }: { sources: ShrineKnowledgeSource[] }) {
-  if (sources.length === 0) return null;
-
-  return (
-    <div className="mt-3 border-t border-[var(--kt-color-border-default)] pt-3">
-      <h4 className="text-[11px] font-semibold tracking-[0.04em] text-[var(--kt-color-text-muted)]">出典</h4>
-      <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-        {sources.map((source, index) => {
-          const label = source.title || source.publisher || "出典";
-          return (
-            <li key={`${source.id}:${index}`}>
-              {source.url ? (
-                <a
-                  href={source.url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="text-xs text-[var(--kt-color-text-muted)] underline underline-offset-2"
-                >
-                  {label}
-                </a>
-              ) : (
-                <span className="text-xs text-[var(--kt-color-text-muted)]">{label}</span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
 }
 
 // 1 Fact = 1 card。Presentation Grouping（groupShrineHistoryFacts）はこのcardの内容・identity・
@@ -149,6 +118,7 @@ function HistoryCard({
           ))}
         </div>
       ) : null}
+      <CollapsibleSourceList sources={cardSources(history)} />
     </div>
   );
 }
@@ -192,7 +162,6 @@ function HistoryList({ histories, shrineId }: { histories: DetailFactHistoryItem
           </div>
         ) : null}
       </div>
-      <SourceList sources={collectSectionSources(histories)} />
     </div>
   );
 }
