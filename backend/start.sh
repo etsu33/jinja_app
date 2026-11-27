@@ -207,5 +207,18 @@ else
   echo "Skipping production data bootstrap. Set RUN_BOOTSTRAP_ON_START=1 to run it explicitly."
 fi
 
+# --- Static files (always on, no DB access, never blocks startup) -----------
+# Collects admin / DRF / app static files into STATIC_ROOT so WhiteNoise can
+# serve them under /static/. Runs here rather than in a Render Build Command so
+# it works without the dashboard or a Shell. A failure only breaks the admin's
+# CSS/JS, not the API, so it is logged and startup continues to gunicorn.
+echo "Collecting static files..."
+if python manage.py collectstatic --noinput; then
+  echo "Static files collected."
+else
+  collectstatic_exit=$?
+  echo "ERROR: collectstatic failed (exit=${collectstatic_exit}); /static/ may return 404 and startup continues."
+fi
+
 echo "Starting gunicorn on 0.0.0.0:${PORT}..."
 exec gunicorn shrine_project.wsgi:application --bind "0.0.0.0:${PORT}" --workers "${WEB_CONCURRENCY}" --timeout 120 --worker-tmp-dir /dev/shm --access-logfile - --error-logfile - --capture-output

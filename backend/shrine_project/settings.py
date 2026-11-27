@@ -266,6 +266,9 @@ ROUTE_PROVIDER = os.getenv("ROUTE_PROVIDER") or ("dummy" if IS_PYTEST else "osrm
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # 管理画面などの /static/ を gunicorn から配信する（本番は DEBUG=False で Django 自身は配信しない）。
+    # WhiteNoise の推奨どおり SecurityMiddleware の直後、ほかのミドルウェアより前に置く。
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -488,10 +491,14 @@ RELEASE = os.getenv("RENDER_GIT_COMMIT", "local")
 # --- Storage ---
 STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "local")  # local / r2
 
+# 静的ファイルは STORAGE_BACKEND に関係なく WhiteNoise で配信する（start.sh の collectstatic が STATIC_ROOT に集める）。
+# Manifest 版は manifest が無いと {% static %} が例外になるので使わない。
+STATICFILES_STORAGE_BACKEND = "whitenoise.storage.CompressedStaticFilesStorage"
+
 if STORAGE_BACKEND == "r2":
     STORAGES = {
         "default": {"BACKEND": "storages.backends.s3boto3.S3Boto3Storage"},
-        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+        "staticfiles": {"BACKEND": STATICFILES_STORAGE_BACKEND},
     }
 
     AWS_ACCESS_KEY_ID = os.environ["R2_ACCESS_KEY_ID"]
@@ -511,6 +518,10 @@ if STORAGE_BACKEND == "r2":
     MEDIA_URL = R2_PUBLIC_BASE_URL + "/"
     MEDIA_ROOT = None
 else:
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": STATICFILES_STORAGE_BACKEND},
+    }
     MEDIA_URL = "/media/"
     MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", str(BASE_DIR / "media")))
 
