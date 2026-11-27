@@ -200,6 +200,30 @@ Without a trigger, a C candidate stays deferred, with no time limit and no penal
   reorder or interrupt them.
 - Priority is re-screened when new sources appear. It is not a permanent attribute.
 
+## 7A. Area scoping for processing order（2026-11-26）
+
+Decided by えつこさん on 2026-11-26（Drive「KAMI MUSUBI ルールの目次」に記録）.
+
+- **Processing order may be scoped by area, using a public survey.** The area decides only *where
+  screening and enrichment start*. Within the area, §3–§6 apply unchanged.
+- **Tokyo:** start with the top 10 destinations in 東京都産業労働局「令和7年 国・地域別外国人旅行者行動特性調査」
+  （published 2026-06-30, n=16,008, multiple answers; every area at 23% or more）:
+  渋谷, 銀座, 東京駅周辺・丸の内・日本橋, 新宿・大久保, 浅草, 秋葉原, 上野, 原宿・表参道・青山, 池袋, 六本木・赤坂.
+  Source: https://www.metro.tokyo.lg.jp/ja/information/press/2026/06/2026063029
+- The survey measures **visits to an area, not visits to shrines**. It is a processing-order input
+  only.
+- Area scoping is **never** read by runtime code, never stored on a shrine, and never used for
+  recommendation ranking, scoring or display（§2 invariants hold）.
+- §3 is unchanged: popularity or visitor counts of an individual shrine are still not screening
+  inputs.
+- How a shrine address is assigned to a survey area is recorded in the screening audit, not here.
+- **Tokyo identity source（2026-11-26）:** a listing in 東京都神社庁 (name and address) is treated as
+  the accepted official Source in place of a frozen Ready Set, so IDENTITY_SOURCE = STRONG.
+- **Enrichment target in Tokyo（2026-11-26）:** a 神社庁 listing alone is not enough, because the
+  directory also lists many small local shrines. A shrine is enriched only when it has an official
+  website that publishes its 由緒 or a precinct guide（境内の説明）. Others are PRIORITY_B for now.
+  Exceptions are decided by えつこさん case by case.
+
 ## 8. Non-goals
 
 - No runtime ranking, scoring or eligibility change.
