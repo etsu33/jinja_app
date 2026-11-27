@@ -71,7 +71,38 @@
 - 詳細APIの見どころは日本語固定（`HIGHLIGHT_DETAIL_LANGUAGE = "ja"`、`backend/temples/api/serializers/shrine.py`）。`?lang=en` を付けても日本語の判定で返る。英語の翻訳は本番に0件。設計どおり
 - 本番とローカルの差：本番の Render は develop `ddaf60d` で動いており、えつこさんのMacも同じ develop に更新済み。コードの差は無い。データは本番とローカルで別（ローカルには見どころが無い前提）
 
-## 4. 手順2：見どころ6件を下書きで入れる（未実施・承認待ち）
+## 4. 手順2：見どころ6件を下書きで入れる（実施済み 2026-11-27）
+
+### 実施の結果
+
+2026-11-27 05:31 にえつこさんが手順2の実行を承認。10:15〜11:32 にえつこさんが本番の Django 管理画面（`https://jinja-backend.onrender.com/admin/`）で入力し、1画面ごとに Claude が本番を読み取りだけのSQLで確かめた。Claude は本番に書き込んでいない。
+
+| id | stable_key | category | sort_order | 出典（ShrineKnowledgeSource id） | 由緒・歴史（ShrineHistory id） |
+|---|---|---|---|---|---|
+| 7 | meiji-yoyogi | nature | 1 | 157、155 | なし |
+| 8 | meiji-gyoen | nature | 2 | 158、1 | 1 |
+| 9 | meiji-kiyomasa-ido | historical_site | 3 | 157、155 | なし |
+| 10 | meiji-otorii | architecture | 4 | 157、156、163 | なし |
+| 11 | meiji-honden | architecture | 5 | 157、162、164 | 249 |
+| 12 | meiji-houmotsuden | architecture | 6 | 159、157 | 1 |
+
+- 件数：見どころ6件、日本語の翻訳6件（1件ずつ）、出典のつながり14件、由緒・歴史のつながり3件（shrine はすべて明治神宮 id=1）、アンサー0件
+- 本文：6件とも name・description・historical_connection が `docs/audit/fixtures/meiji-jingu-highlights-2026-11-26.json`（PR #3542 の版）と1文字も違わない（MD5 で照合）。location_hint は空
+- 状態：6件とも publication_status=draft、verification_status=source_confirmed、verified_at=2026-11-26 16:30 JST（07:30 UTC）、confidence=high。翻訳は review_status=draft、reviewed_at 空
+- 公開側：本番の `GET /api/shrines/1/` で `highlights` は `[]`、`histories` は id=1 の旧本文1件だけ（H-2〜H-4 は draft のため出ない）。利用者に見える変化は無い
+- 出典（ShrineKnowledgeSource）は166件のまま。途中で誤って開いた出典の追加画面からは何も作られていない
+- 下書きの由緒・歴史（id=249）への見どころのつながりは、管理画面で保存できた
+
+### 入力中に分かったこと（次の神社のため）
+
+- 管理画面は1画面につき1行。見どころ本体 → 翻訳（Shrine highlight translations）→ 出典のつながり（Shrine highlight sources）→ 由緒・歴史のつながり（Shrine highlight historys）の4画面に分かれる。「Shrine knowledge sources」は出典そのものを作る画面で、手順2では使わない
+- verified_at は管理画面で日本時間で入る（`TIME_ZONE = "Asia/Tokyo"`）。ファイルの 07:30 UTC は 16:30 と入れる
+- 由緒・歴史のプルダウンは「神社の番号:題名」（`ShrineHistory.__str__`）。頭の数字は由緒・歴史の id ではない
+- 出典のプルダウンは番号が出ず、新しい順（`ordering = ["-created_at"]`）。166件から題名で探すことになる
+- 翻訳と由緒・歴史のつながりの画面では、前に選んだ見どころが残ることがある。1回、代々木のまま保存し、翻訳の一意制約（見どころ×言語）で止まった（本番は変わっていない）
+- 由緒・歴史のつながりの画面の Shrine は最初は空。選ばずに保存すると入らない（宝物殿で1回起きて入れ直した）
+
+### 入れた値（計画）
 
 管理画面で入れる値は `docs/audit/fixtures/meiji-jingu-highlights-2026-11-26.json`。判定シートのタブ「本番投入データ（案）」と同じ。
 
@@ -116,6 +147,13 @@
 - H-4 との重なり（19:44 えつこさん決定）：事実の部分的な重複は許容し、説明の重複は避ける。重要文化財の指定年月日と36棟は H-4 に集約し、本殿・宝物殿の本文には建築的特徴と「国の重要文化財に指定されている」だけを残した。historical_connection・由緒・歴史とのつながり・出典は変えていない
 - ルール v1.3 の状態：6件とも登録候補（本文の事実は 2026-11-26 にページを開いて確認した公式ページで追える）
 
-## 8. 変えていないもの
+## 8. 清正井の名称（2026-11-27 えつこさん決定）
+
+- 名前を「清正井」から「清正井（きよまさのいど）」に変える。明治神宮公式サイトの御苑ページ・境内地図ページの表記に合わせる（2026-11-27 にページを開いて確認）。代々木（よよぎ）と同じく読みを添える
+- stable_key（`meiji-kiyomasa-ido`）・id・出典・由緒・歴史とのつながり・本文・状態は変えない
+- 投入用ファイルの name と判定シート（見どころタブ D6、本番投入データ（案）タブ A34・E34）を直した
+- 本番の下書き：2026-11-27 12:07 にえつこさんが承認し、12:10 に管理画面で翻訳 id=9 の name を「清正井（きよまさのいど）」に直した。読み取りで確認：name は投入用ファイルと1文字も違わない（MD5 一致）、本文・歴史の文・location_hint・review_status=draft・reviewed_at 空・出典（157、155）・publication_status=draft・sort_order=3 は変わっていない
+
+## 9. 変えていないもの
 
 Publication Gate、推薦エンジン、モデル・マイグレーション、投入コマンド、既存データ（id=1 を含む）。
