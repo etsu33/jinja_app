@@ -90,7 +90,7 @@ function HighlightCard({ item, shrineId }: { item: DetailHighlightItem; shrineId
       {item.linkedHistories.length > 0 ? (
         <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
           {item.linkedHistories.map((history) => (
-            <li key={history.id}>
+            <li key={history.id} className="min-w-0 max-w-full">
               <ShrineHighlightAnchorLink
                 targetId={shrineHistoryAnchorId(history.id)}
                 shrineId={shrineId}
