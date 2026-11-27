@@ -3,6 +3,12 @@
 import type { ReactNode } from "react";
 
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+import { cn } from "@/lib/utils";
+
+// 由緒・歴史のタイトルや見どころの名前が長くても（空白の無い長い英語を含む）、カードの幅で折り返す。
+// 親が flex のとき a 自身が flex アイテムになるので min-w-0 で縮められるようにし、
+// wrap-anywhere（overflow-wrap:anywhere）で最小幅の計算にも折り返しを効かせる（break-words だけでは flex の最小幅が縮まない）。
+export const SHRINE_HIGHLIGHT_ANCHOR_WRAP_CLASS = "min-w-0 max-w-full wrap-anywhere";
 
 type Props = {
   targetId: string;
@@ -26,7 +32,7 @@ export default function ShrineHighlightAnchorLink({
   return (
     <a
       href={`#${targetId}`}
-      className={className}
+      className={cn(SHRINE_HIGHLIGHT_ANCHOR_WRAP_CLASS, className)}
       onClick={() => {
         trackSearchEvent("shrine_highlight_link_click", {
           source: "shrine_detail",

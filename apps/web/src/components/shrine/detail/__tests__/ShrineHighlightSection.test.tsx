@@ -127,6 +127,20 @@ describe("ShrineHighlightSection", () => {
     });
   });
 
+  it("長いタイトルでもカードの幅で折り返せるクラスをリンクと親の li につける", () => {
+    const longTitle = "MeijiJinguMainSanctuaryImportantCulturalPropertyDesignation";
+    render(
+      <ShrineHighlightSection
+        section={section([item({ id: 12, linkedHistories: [{ id: 30, title: longTitle }] })])}
+      />,
+    );
+    const link = screen.getByRole("link", { name: `由緒・歴史を読む：${longTitle}` });
+    expect(link).toHaveClass("min-w-0", "max-w-full", "wrap-anywhere");
+    // 既存の見た目のクラスは残す
+    expect(link).toHaveClass("text-xs", "underline");
+    expect(link.closest("li")).toHaveClass("min-w-0", "max-w-full");
+  });
+
   it("節が画面に入ったら件数つきで1回だけ計測する", () => {
     let callback: IntersectionObserverCallback = () => {};
     const disconnect = vi.fn();
@@ -197,6 +211,12 @@ describe("ShrineFactSection と見どころのリンク", () => {
   it("見どころへのリンクが無ければ「現地で見られる場所」を出さない", () => {
     render(<ShrineFactSection section={facts()} />);
     expect(screen.queryByText("現地で見られる場所：")).not.toBeInTheDocument();
+  });
+
+  it("見どころの名前が長くてもカードの幅で折り返せるクラスをリンクにつける", () => {
+    render(<ShrineFactSection section={facts([{ id: 12, name: "HondenMainSanctuaryEastWestShinmonGates" }])} />);
+    const link = screen.getByRole("link", { name: "HondenMainSanctuaryEastWestShinmonGates" });
+    expect(link).toHaveClass("min-w-0", "max-w-full", "wrap-anywhere", "text-xs", "underline");
   });
 
   it("「現地で見られる場所」から見どころへ移り、押したら計測する", () => {
