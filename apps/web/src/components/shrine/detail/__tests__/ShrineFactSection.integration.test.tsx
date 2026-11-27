@@ -192,7 +192,7 @@ describe("ShrineFactSection integration (API response相当 -> ViewModel -> UI)"
   // 実データ(backend/temples/data/knowledge_seeds/batch_10_seed.json、大國魂神社)で確認された
   // 重複パターン: 異なるhistory_typeを持つ2つのShrineHistoryが、同一ShrineKnowledgeSource行を
   // M2Mで共有している。PR: 神社詳細の出典表示と経路CTAをDark UI向けに整理。
-  it("Phase6: 同一Sourceを共有する複数Factは、出典欄で1回だけ表示される（実データの重複パターン再現）", () => {
+  it("Phase6: 同一Sourceを共有する複数Factは、それぞれのカードに出典を出す（実データの重複パターン再現）", () => {
     const sharedOfficialSource = makeApiSource({
       id: 500,
       title: "大國魂神社 公式サイト",
@@ -228,8 +228,8 @@ describe("ShrineFactSection integration (API response相当 -> ViewModel -> UI)"
     expect(screen.getByText("創建の伝承")).toBeInTheDocument();
     expect(screen.getByText("歴史的出来事")).toBeInTheDocument();
 
-    // 同一Sourceは出典欄で1回だけ
-    expect(screen.getAllByRole("link", { name: "大國魂神社 公式サイト" })).toHaveLength(1);
+    // 出典は事実ごとのカードに出す（2026-11-27 決定）。同じSourceでも各カードで1回ずつ
+    expect(screen.getAllByRole("link", { name: "大國魂神社 公式サイト" })).toHaveLength(2);
   });
 
   it("Phase5: Knowledge未登録（deities/historiesとも空）のAPIレスポンス相当fixtureはセクション自体を生成しない", () => {
